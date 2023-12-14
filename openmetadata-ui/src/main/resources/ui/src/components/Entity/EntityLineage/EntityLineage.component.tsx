@@ -115,6 +115,7 @@ import SVGIcons from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../Loader/Loader';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
@@ -1347,12 +1348,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   }, []);
 
-  const handleEditLineageClick = useCallback(() => {
-    setEditMode((pre) => !pre && !deleted);
-    resetSelectedData();
-    setIsDrawerOpen(false);
-  }, [deleted]);
-
   const handleEdgeClick = useCallback(
     (_e: React.MouseEvent<Element, MouseEvent>, edge: Edge) => {
       setSelectedEdgeInfo(edge);
@@ -1721,14 +1716,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                     !isFullScreen ? onFullScreenClick : undefined
                   }
                   hasEditAccess={hasEditAccess}
-                  isColumnsExpanded={expandAllColumns}
-                  isEditMode={isEditMode}
-                  lineageConfig={lineageConfig}
-                  lineageData={updatedLineageData}
-                  loading={loading}
-                  status={status}
-                  zoomValue={zoomValue}
-                  onEditLinageClick={handleEditLineageClick}
                   onExitFullScreenViewClick={
                     isFullScreen ? onExitFullScreenViewClick : undefined
                   }
@@ -1760,7 +1747,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               isMainNode={
                 selectedNode.name === updatedLineageData?.entity?.name
               }
-              selectedNode={selectedNode}
+              selectedNode={selectedNode as SourceType}
               show={isDrawerOpen}
               onCancel={closeDrawer}
             />

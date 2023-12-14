@@ -33,13 +33,13 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [upstreamDepth, setUpstreamDepth] = useState<number>(
-    config.upstreamDepth || 1
+    config?.upstreamDepth || 1
   );
   const [downstreamDepth, setDownstreamDepth] = useState<number>(
-    config.downstreamDepth || 1
+    config?.downstreamDepth || 1
   );
   const [nodesPerLayer, setNodesPerLayer] = useState<number>(
-    config.nodesPerLayer || 1
+    config?.nodesPerLayer || 1
   );
 
   const handleSave = () => {

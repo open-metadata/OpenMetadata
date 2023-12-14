@@ -45,6 +45,23 @@
 .lineage-node {
   border: 1px solid @lineage-border;
   border-radius: 4px;
+  .profiler-item {
+    width: 36px;
+    height: 36px;
+    margin-right: 4px;
+    border-radius: 4px;
+    line-height: 21px;
+    font-size: 14px;
+    &.green {
+      border: 1px solid @green-5;
+    }
+    &.amber {
+      border: 1px solid @yellow-4;
+    }
+    &.red {
+      border: 1px solid @red-5;
+    }
+  }
 }
 
 .react-flow__node-default,

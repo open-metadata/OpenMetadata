@@ -17,7 +17,6 @@ import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
-import { EntityLineage } from '../../../generated/type/entityLineage';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 
 export interface SelectedNode {
@@ -111,24 +110,14 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   showZoom?: boolean;
   showFitView?: boolean;
   fitViewParams?: FitViewOptions;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
   onFitView?: () => void;
   handleFullScreenViewClick?: () => void;
   onExitFullScreenViewClick?: () => void;
   deleted: boolean | undefined;
-  isEditMode: boolean;
   hasEditAccess: boolean | undefined;
-  isColumnsExpanded: boolean;
-  onEditLinageClick: () => void;
-  onExpandColumnClick: () => void;
-  loading: boolean;
-  status: LoadingState;
-  zoomValue: number;
-  lineageData: EntityLineage;
-  lineageConfig: LineageConfig;
-  onOptionSelect: (value?: string) => void;
-  onLineageConfigUpdate: (config: LineageConfig) => void;
+  onExpandColumnClick?: () => void;
+  onOptionSelect?: (value?: string) => void;
+  onLineageConfigUpdate?: (config: LineageConfig) => void;
 }
 
 export type LineagePos = 'from' | 'to';

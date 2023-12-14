@@ -411,7 +411,8 @@ export const getDeletedLineagePlaceholder = () => {
 
 export const getLayoutedElements = (
   elements: CustomElement,
-  direction = EntityLineageDirection.LEFT_RIGHT
+  direction = EntityLineageDirection.LEFT_RIGHT,
+  isExpanded = true
 ) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -423,7 +424,6 @@ export const getLayoutedElements = (
   const nodeIds = node.map((item) => item.id);
 
   node.forEach((el) => {
-    const isExpanded = el.data.isExpanded;
     dagreGraph.setNode(el.id, {
       width: NODE_WIDTH,
       height: isExpanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT,

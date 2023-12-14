@@ -15,16 +15,27 @@ import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NodeProps, useUpdateNodeInternals } from 'reactflow';
+import {
+  getIncomers,
+  getOutgoers,
+  Handle,
+  NodeProps,
+  Position,
+  useUpdateNodeInternals,
+} from 'reactflow';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
+import { formTwoDigitNumber } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { checkUpstreamDownstream } from '../../../utils/LineageV1Utils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { getConstraintIcon } from '../../../utils/TableUtils';
+import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
+import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import './custom-node.less';
-import { getColumnHandle, getHandle } from './CustomNode.utils';
+import { getColumnHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
 import { ModifiedColumn } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
@@ -32,28 +43,52 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 const CustomNodeV1 = (props: NodeProps) => {
   const { t } = useTranslation();
   const updateNodeInternals = useUpdateNodeInternals();
-  const { data, type, isConnectable, selected, id } = props;
-  /* eslint-disable-next-line */
+  const { data, type, isConnectable } = props;
+
   const {
-    columns,
-    label,
-    removeNodeHandler,
-    handleColumnClick,
-    onNodeExpand,
     isEditMode,
-    isExpanded,
-    isNewNode,
-    isTraced,
-    selectedColumns = [],
-    lineageLeafNodes,
-    isNodeLoading,
-    loadNodeHandler,
-    onSelect,
-    node,
-  } = data;
+    expandedNodes,
+    tracedNodes,
+    tracedColumns,
+    selectedNode,
+    nodes,
+    edges,
+    onColumnClick,
+    removeNodeHandler,
+    loadChildNodesHandler,
+  } = useLineageProvider();
+
+  /* eslint-disable-next-line */
+  const { label, isNewNode, saved, node = {} } = data;
+  const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
+
+  const isSelected = selectedNode === node;
+  const { columns, id, testSuite, lineage } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<ModifiedColumn[]>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isTraced, setIsTraced] = useState<boolean>(false);
+
+  const { hasDownstream, hasUpstream } = checkUpstreamDownstream(
+    id,
+    lineage ?? []
+  );
+
+  const isLeafNode = useMemo(() => {
+    return (
+      (getOutgoers(node, nodes, edges).length === 0 && hasDownstream) ||
+      (getIncomers(node, nodes, edges).length === 0 && hasUpstream)
+    );
+  }, [nodes, edges]);
+
+  const supportsColumns = useMemo(() => {
+    if (node && node.entityType === EntityType.TABLE) {
+      return true;
+    }
+
+    return false;
+  }, [node]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -80,17 +115,17 @@ const CustomNodeV1 = (props: NodeProps) => {
   const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setShowAllColumns(true);
-    setFilteredColumns(Object.values(columns));
+    setFilteredColumns(Object.values(columns ?? []));
   };
 
   const nodeLabel = useMemo(() => {
-    if (isNewNode && !node) {
+    if (isNewNode) {
       return label;
     } else {
       return (
         <>
           <LineageNodeLabelV1 node={node} />
-          {selected && isEditMode ? (
+          {isSelected && isEditMode ? (
             <Button
               className="lineage-node-remove-btn bg-body-hover"
               icon={
@@ -107,7 +142,92 @@ const CustomNodeV1 = (props: NodeProps) => {
         </>
       );
     }
-  }, [node, isNewNode, label, selected, isEditMode]);
+  }, [node, isNewNode, label, isSelected, isEditMode]);
+
+  const getHandle = useCallback(() => {
+    switch (nodeType) {
+      case EntityLineageNodeType.OUTPUT:
+        return (
+          <>
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Left}
+              type="target"
+            />
+            {isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-handle flex-center react-flow__handle-right"
+                icon={<PlusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  loadChildNodesHandler(node);
+                }}
+              />
+            )}
+          </>
+        );
+
+      case EntityLineageNodeType.INPUT:
+        return (
+          <>
+            {isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-handle flex-center react-flow__handle-left"
+                icon={<PlusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  loadChildNodesHandler(node);
+                }}
+              />
+            )}
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Right}
+              type="source"
+            />
+          </>
+        );
+
+      case EntityLineageNodeType.NOT_CONNECTED:
+        return null;
+
+      default:
+        return (
+          <>
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Left}
+              type="target"
+            />
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Right}
+              type="source"
+            />
+          </>
+        );
+    }
+  }, [node, nodeType, isConnectable, isLeafNode, loadChildNodesHandler]);
+
+  useEffect(() => {
+    setIsExpanded(expandedNodes.includes(id));
+  }, [expandedNodes, id]);
+
+  useEffect(() => {
+    setIsTraced(tracedNodes.includes(id));
+  }, [tracedNodes, id]);
 
   useEffect(() => {
     updateNodeInternals(id);
@@ -130,41 +250,65 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={classNames(
         'lineage-node p-0',
-        selected || data.selected
-          ? 'custom-node-header-active'
-          : 'custom-node-header-normal',
+        isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
         { 'custom-node-header-tracing': isTraced }
       )}>
-      {getHandle(
-        node,
-        type,
-        isConnectable,
-        lineageLeafNodes,
-        isNodeLoading,
-        'lineage-node-handle',
-        onSelect,
-        loadNodeHandler
-      )}
+      {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
 
-        {node && node.type === EntityType.TABLE && (
-          <div className="column-container bg-grey-1 p-sm">
-            <Button
-              className="flex-center text-primary rounded-4"
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNodeExpand?.(!isExpanded, node);
-              }}>
-              {t('label.column-plural')}
-              {isExpanded ? (
-                <UpOutlined style={{ fontSize: '12px' }} />
-              ) : (
-                <DownOutlined style={{ fontSize: '12px' }} />
+        {supportsColumns && (
+          <div className="column-container bg-grey-1 p-sm p-y-xs">
+            <div className="d-flex justify-between items-center">
+              <Button
+                className="flex-center text-primary rounded-4 p-xss"
+                icon={
+                  <div className="d-flex w-5 h-5 m-r-xs text-base-color">
+                    {getEntityIcon(node.entityType || '')}
+                  </div>
+                }
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
+                }}>
+                {t('label.column-plural')}
+                {isExpanded ? (
+                  <UpOutlined style={{ fontSize: '12px' }} />
+                ) : (
+                  <DownOutlined style={{ fontSize: '12px' }} />
+                )}
+              </Button>
+              {node.entityType === EntityType.TABLE && testSuite && (
+                <div className="d-flex justify-between">
+                  <div
+                    className="profiler-item green"
+                    data-testid="test-passed">
+                    <div
+                      className="font-medium"
+                      data-testid="test-passed-value">
+                      {formTwoDigitNumber(testSuite?.summary?.success ?? 0)}
+                    </div>
+                  </div>
+                  <div
+                    className="profiler-item amber"
+                    data-testid="test-aborted">
+                    <div
+                      className="font-medium"
+                      data-testid="test-aborted-value">
+                      {formTwoDigitNumber(testSuite?.summary?.aborted ?? 0)}
+                    </div>
+                  </div>
+                  <div className="profiler-item red" data-testid="test-failed">
+                    <div
+                      className="font-medium"
+                      data-testid="test-failed-value">
+                      {formTwoDigitNumber(testSuite?.summary?.failed ?? 0)}
+                    </div>
+                  </div>
+                </div>
               )}
-            </Button>
+            </div>
 
             {isExpanded && (
               <div className="m-t-md">
@@ -182,7 +326,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                 <section className="m-t-md" id="table-columns">
                   <div className="border rounded-4">
                     {filteredColumns.map((column) => {
-                      const isColumnTraced = selectedColumns.includes(
+                      const isColumnTraced = tracedColumns.includes(
                         column.fullyQualifiedName
                       );
 
@@ -198,7 +342,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                           key={column.fullyQualifiedName}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleColumnClick(column.fullyQualifiedName);
+                            onColumnClick(column.fullyQualifiedName);
                           }}>
                           {getColumnHandle(
                             column.type,
@@ -233,4 +377,4 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
 };
 
-export default CustomNodeV1;
+export default memo(CustomNodeV1);

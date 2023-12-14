@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityLineageReponse } from '../components/Lineage/Lineage.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
@@ -30,6 +32,19 @@ export const getLineageByFQN = async (
 
 export const updateLineageEdge = async (edge: AddLineage) => {
   const response = await APIClient.put<AddLineage>(`/lineage`, edge);
+
+  return response.data;
+};
+
+export const getLineageDataByFQN = async (
+  fqn: string,
+  config?: LineageConfig,
+  queryFilter?: string
+) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<EntityLineageReponse>(
+    `/search/getLineage?fqn=${fqn}&depth=${upstreamDepth}&upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}&query_filter=${queryFilter}`
+  );
 
   return response.data;
 };

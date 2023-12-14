@@ -17,10 +17,8 @@ import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { isLeafNode } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
-  LeafNodes,
   LineagePos,
   LoadingNodeState,
   SelectedNode,
@@ -30,7 +28,7 @@ export const getHandle = (
   node: EntityReference,
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  lineageLeafNodes: LeafNodes,
+  isLeafNode: boolean,
   isNodeLoading: LoadingNodeState,
   className?: string,
   onSelect?: (state: boolean, value: SelectedNode) => void,
@@ -41,7 +39,7 @@ export const getHandle = (
       <>
         {getHandleByType(isConnectable, Position.Left, 'target', className)}
         {generateExpandButton(
-          lineageLeafNodes,
+          isLeafNode,
           node,
           isNodeLoading,
           'to',
@@ -55,7 +53,7 @@ export const getHandle = (
     return (
       <>
         {generateExpandButton(
-          lineageLeafNodes,
+          isLeafNode,
           node,
           isNodeLoading,
           'from',
@@ -79,7 +77,7 @@ export const getHandle = (
 };
 
 const generateExpandButton = (
-  lineageLeafNodes: LeafNodes,
+  isLeaf: boolean,
   node: EntityReference,
   isNodeLoading: LoadingNodeState,
   direction: LineagePos,
@@ -87,10 +85,10 @@ const generateExpandButton = (
   onSelect?: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler?: (node: EntityReference, pos: LineagePos) => void
 ) => {
-  const isLeaf = isLeafNode(lineageLeafNodes, node?.id as string, direction);
-  const isLoading = node.id.includes(isNodeLoading.id as string);
+  // const isLoading = node.id.includes(isNodeLoading.id as string);
+  const isLoading = false;
 
-  if (!isLeaf && !isLoading) {
+  if (isLeaf && !isLoading) {
     return (
       <Button
         className={classNames(

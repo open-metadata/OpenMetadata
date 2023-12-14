@@ -97,8 +97,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     debouncedOnSearch,
   ]);
 
-  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
-    const searchText = e.target.value;
+  const handleChange = (value: string): void => {
+    const searchText = value;
     setSearchValue(searchText);
     debounceOnSearch(searchText);
   };
@@ -126,14 +126,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 className="d-flex items-center text-sm"
                 key={entity.fullyQualifiedName}
                 onClick={() => {
-                  onSelectHandler?.({
-                    description: entity.description,
-                    displayName: entity.displayName,
-                    id: entity.id,
-                    type: entity.entityType as string,
-                    name: entity.name,
-                    fullyQualifiedName: entity.fullyQualifiedName,
-                  });
+                  onSelectHandler?.(entity as EntityReference);
                 }}>
                 <img
                   alt={entity.serviceType}

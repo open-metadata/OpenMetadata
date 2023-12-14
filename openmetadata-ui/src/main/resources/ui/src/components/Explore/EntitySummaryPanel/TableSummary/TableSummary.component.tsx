@@ -31,7 +31,7 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,

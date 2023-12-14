@@ -13,12 +13,12 @@
 
 import { Edge, Node } from 'reactflow';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
-import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 
 export interface LineageDrawerProps {
   show: boolean;
   onCancel: () => void;
-  selectedNode: SelectedNode;
+  selectedNode: SourceType;
   isMainNode: boolean;
 }
 
@@ -28,7 +28,7 @@ export interface EdgeInfoDrawerInfo {
   visible: boolean;
   hasEditAccess: boolean;
   onClose: () => void;
-  onEdgeDescriptionUpdate: (updatedEdgeDetails: AddLineage) => Promise<void>;
+  onEdgeDescriptionUpdate?: (updatedEdgeDetails: AddLineage) => Promise<void>;
 }
 type InfoType = {
   key: string;

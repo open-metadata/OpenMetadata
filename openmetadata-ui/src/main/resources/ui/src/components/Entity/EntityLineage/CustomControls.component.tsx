@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { SettingOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Select, Space } from 'antd';
+import { FilterOutlined, SettingOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
 import Input from 'antd/lib/input/Input';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import React, {
   FC,
   memo,
@@ -24,7 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useReactFlow } from 'reactflow';
+import { Node, useReactFlow } from 'reactflow';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
@@ -38,39 +40,70 @@ import {
   ZOOM_SLIDER_STEP,
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../../pages/ExplorePage/ExplorePage.interface';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getSelectedValuesFromQuickFilter } from '../../../utils/Explore.utils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
+import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 
 const CustomControls: FC<ControlProps> = ({
   style,
-  isColumnsExpanded,
   showFitView = true,
   showZoom = true,
   fitViewParams,
   className,
   deleted,
-  isEditMode,
   hasEditAccess,
-  onEditLinageClick,
-  onExpandColumnClick,
   handleFullScreenViewClick,
   onExitFullScreenViewClick,
-  loading,
-  status,
-  zoomValue,
-  lineageData,
-  lineageConfig,
-  onOptionSelect,
-  onLineageConfigUpdate,
 }: ControlProps) => {
   const { t } = useTranslation();
   const { fitView, zoomTo } = useReactFlow();
-  const [zoom, setZoom] = useState<number>(zoomValue);
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
+  const {
+    nodes,
+    lineageConfig,
+    expandAllColumns,
+    onLineageEditClick,
+    zoomValue,
+    loading,
+    status,
+    reactFlowInstance,
+    toggleColumnView,
+    isEditMode,
+    onLineageConfigUpdate,
+    onQueryFilterUpdate,
+    onNodeClick,
+  } = useLineageProvider();
+  const [zoom, setZoom] = useState<number>(zoomValue);
+  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([]);
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => [...prevSelected, key]);
+  };
+
+  const filterMenu: ItemType[] = useMemo(() => {
+    return filters.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      onClick: handleMenuClick,
+    }));
+  }, [filters]);
 
   const onZoomHandler = useCallback(
     (zoomLevel: number) => {
@@ -113,13 +146,28 @@ const CustomControls: FC<ControlProps> = ({
     }
   }, [zoomValue]);
 
+  useEffect(() => {
+    const dropdownItems = getAssetsPageQuickFilters();
+
+    setFilters(
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          undefined // pass in state variable
+        ),
+      }))
+    );
+  }, []);
+
   const nodeOptions = useMemo(
     () =>
-      [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
-        label: getEntityName(node),
+      [...(nodes || [])].map((node) => ({
+        label: getEntityName(node.data.node),
         value: node.id,
       })),
-    [lineageData]
+    [nodes]
   );
 
   const editIcon = useMemo(() => {
@@ -136,11 +184,98 @@ const CustomControls: FC<ControlProps> = ({
 
   const handleDialogSave = useCallback(
     (config: LineageConfig) => {
-      onLineageConfigUpdate(config);
+      onLineageConfigUpdate?.(config);
       setDialogVisible(false);
     },
     [onLineageConfigUpdate, setDialogVisible]
   );
+
+  const onOptionSelect = useCallback(
+    (value?: string) => {
+      const selectedNode = nodes.find((node: Node) => node.id === value);
+      if (selectedNode) {
+        const { position } = selectedNode;
+        onNodeClick(selectedNode);
+        // moving selected node in center
+        reactFlowInstance &&
+          reactFlowInstance.setCenter(position.x, position.y, {
+            duration: ZOOM_TRANSITION_DURATION,
+            zoom: zoomValue,
+          });
+      }
+    },
+    [onNodeClick, reactFlowInstance]
+  );
+
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must: QueryFieldInterface[] = [];
+    data.forEach((filter) => {
+      if (!isEmpty(filter.value)) {
+        const should: QueryFieldValueInterface[] = [];
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term: Record<string, string> = {};
+            term[filter.key] = filterValue.key;
+            should.push({ term });
+          });
+        }
+
+        must.push({
+          bool: { should },
+        });
+      }
+    });
+
+    const quickFilterQuery = isEmpty(must)
+      ? undefined
+      : {
+          query: { bool: { must } },
+        };
+
+    onQueryFilterUpdate(JSON.stringify(quickFilterQuery));
+  };
+
+  const handleQuickFiltersValueSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          if (preField.key === field.key) {
+            return field;
+          } else {
+            return preField;
+          }
+        });
+
+        handleQuickFiltersChange(data);
+
+        return data;
+      });
+    },
+    [setSelectedQuickFilters]
+  );
+
+  useEffect(() => {
+    const updatedQuickFilters = filters
+      .filter((filter) => selectedFilter.includes(filter.key))
+      .map((selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
+
+        return originalFilterItem || selectedFilterItem;
+      });
+
+    const newItems = updatedQuickFilters.filter(
+      (item) =>
+        !selectedQuickFilters.some(
+          (existingItem) => item.key === existingItem.key
+        )
+    );
+
+    if (newItems.length > 0) {
+      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
+    }
+  }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
     <>
@@ -163,6 +298,23 @@ const CustomControls: FC<ControlProps> = ({
             })}
             onChange={onOptionSelect}
           />
+          <Space className="m-l-xs" size={16}>
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button icon={<FilterOutlined />} size="small" type="primary" />
+            </Dropdown>
+            <ExploreQuickFilters
+              aggregations={{}}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Space>
         </Col>
         <Col span={12}>
           <Space className="justify-end w-full" size={16}>
@@ -171,8 +323,8 @@ const CustomControls: FC<ControlProps> = ({
               className="expand-btn"
               data-testid="expand-column"
               type="primary"
-              onClick={onExpandColumnClick}>
-              {isColumnsExpanded
+              onClick={() => toggleColumnView()}>
+              {expandAllColumns
                 ? t('label.collapse-all')
                 : t('label.expand-all')}
             </Button>
@@ -292,7 +444,7 @@ const CustomControls: FC<ControlProps> = ({
                     ? t('label.edit-entity', { entity: t('label.lineage') })
                     : NO_PERMISSION_FOR_ACTION
                 }
-                onClick={onEditLinageClick}
+                onClick={onLineageEditClick}
               />
             )}
           </Space>

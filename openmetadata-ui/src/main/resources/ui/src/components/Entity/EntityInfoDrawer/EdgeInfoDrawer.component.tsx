@@ -95,12 +95,14 @@ const EdgeInfoDrawer = ({
       },
       pipeline: {
         key: t('label.edge'),
-        value: data?.pipeline ? getEntityName(data?.pipeline) : undefined,
+        value: data?.edge?.pipeline
+          ? getEntityName(data?.edge?.pipeline)
+          : undefined,
         link:
-          data?.pipeline &&
+          data?.edge?.pipeline &&
           getEntityLink(
-            data?.pipeline.type,
-            getEncodedFqn(data?.pipeline.fullyQualifiedName)
+            data?.edge?.pipeline.type,
+            getEncodedFqn(data?.edge?.pipeline.fullyQualifiedName)
           ),
       },
       functionInfo: {
@@ -135,7 +137,7 @@ const EdgeInfoDrawer = ({
             lineageDetails,
           },
         };
-        await onEdgeDescriptionUpdate(updatedEdgeDetails);
+        await onEdgeDescriptionUpdate?.(updatedEdgeDetails);
         setIsDescriptionEditable(false);
       } else {
         setIsDescriptionEditable(false);

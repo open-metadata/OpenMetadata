@@ -12,13 +12,16 @@
  */
 
 import { Button } from 'antd';
-import React, { Fragment, useCallback } from 'react';
+import React, { Fragment, useCallback, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
+import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 interface LineageEdgeIconProps {
@@ -59,8 +62,22 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { onEdgeClick, addPipelineClick, ...rest } = data;
+  const { onEdgeClick, addPipelineClick, edge, isColumnLineage, ...rest } =
+    data;
   const offset = 4;
+
+  const { tracedNodes, tracedColumns } = useLineageProvider();
+
+  const isColumnHighlighted = useMemo(() => {
+    if (!isColumnLineage) {
+      return false;
+    }
+
+    return (
+      tracedColumns.includes(data.sourceHandle) &&
+      tracedColumns.includes(data.targetHandle)
+    );
+  }, [isColumnLineage, tracedColumns]);
 
   const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
@@ -87,6 +104,23 @@ export const CustomEdge = ({
     targetPosition,
   });
 
+  const updatedStyle = useMemo(() => {
+    const isNodeTraced =
+      tracedNodes.includes(edge.fromEntity.id) &&
+      tracedNodes.includes(edge.toEntity.id);
+
+    let isStrokeNeeded = isNodeTraced;
+
+    if (isColumnLineage) {
+      isStrokeNeeded = isColumnHighlighted;
+    }
+
+    return {
+      ...style,
+      ...{ stroke: isStrokeNeeded ? INFO_COLOR : undefined },
+    };
+  }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
+
   const isPipelineEdgeAllowed = (
     sourceType: EntityType,
     targetType: EntityType
@@ -98,9 +132,22 @@ export const CustomEdge = ({
   };
 
   const isColumnLineageAllowed =
-    !data.isColumnLineage &&
-    isPipelineEdgeAllowed(data.sourceType, data.targetType);
-  const hasLabel = data.label;
+    !isColumnLineage &&
+    isPipelineEdgeAllowed(data.edge.fromEntity.type, data.edge.toEntity.type);
+
+  const hasLabel = useMemo(() => {
+    if (isColumnLineage) {
+      return false;
+    }
+    if (data.edge?.pipeline) {
+      return getEntityName(data.edge?.pipeline);
+    }
+
+    return false;
+  }, [isColumnLineage, data]);
+
+  // const hasLabel = isColumnLineage ?? getEntityName(data.edge?.pipeline);
+
   const isSelectedEditMode = selected && data.isEditMode;
   const isSelected = selected;
 
@@ -179,7 +226,7 @@ export const CustomEdge = ({
         data-testid="react-flow-edge-path"
         id={id}
         markerEnd={markerEnd}
-        style={style}
+        style={updatedStyle}
       />
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}

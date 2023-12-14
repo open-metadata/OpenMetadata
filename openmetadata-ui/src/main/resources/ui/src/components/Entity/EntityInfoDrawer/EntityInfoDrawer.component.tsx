@@ -27,21 +27,11 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
-import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDataModelsByName } from '../../../rest/dataModelsAPI';
-import { getMlModelByFQN } from '../../../rest/mlModelAPI';
-import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
-import { getStoredProceduresByName } from '../../../rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getHeaderLabel } from '../../../utils/EntityLineageUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityTags,
 } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import ContainerSummary from '../../Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from '../../Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
@@ -52,7 +42,6 @@ import SearchIndexSummary from '../../Explore/EntitySummaryPanel/SearchIndexSumm
 import StoredProcedureSummary from '../../Explore/EntitySummaryPanel/StoredProcedureSummary/StoredProcedureSummary.component';
 import TableSummary from '../../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from '../../Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
-import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import './entity-info-drawer.less';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 
@@ -66,108 +55,19 @@ const EntityInfoDrawer = ({
     {} as EntityDetailUnion
   );
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const fetchEntityDetail = async (selectedNode: SelectedNode) => {
-    let response = {};
-    const encodedFqn = getEncodedFqn(selectedNode.fqn);
-    const commonFields = ['tags', 'owner'];
-
-    setIsLoading(true);
-    try {
-      switch (selectedNode.type) {
-        case EntityType.TABLE: {
-          response = await getTableDetailsByFQN(encodedFqn, [
-            ...commonFields,
-            'columns',
-            'usageSummary',
-            'profile',
-          ]);
-
-          break;
-        }
-        case EntityType.PIPELINE: {
-          response = await getPipelineByFqn(encodedFqn, [
-            ...commonFields,
-            'followers',
-            'tasks',
-          ]);
-
-          break;
-        }
-        case EntityType.TOPIC: {
-          response = await getTopicByFqn(encodedFqn ?? '', commonFields);
-
-          break;
-        }
-        case EntityType.DASHBOARD: {
-          response = await getDashboardByFqn(encodedFqn, [
-            ...commonFields,
-            'charts',
-          ]);
-
-          break;
-        }
-        case EntityType.MLMODEL: {
-          response = await getMlModelByFQN(encodedFqn, [
-            ...commonFields,
-            'dashboard',
-          ]);
-
-          break;
-        }
-        case EntityType.CONTAINER: {
-          response = await getContainerByName(
-            encodedFqn,
-            'dataModel,owner,tags'
-          );
-
-          break;
-        }
-
-        case EntityType.DASHBOARD_DATA_MODEL: {
-          response = await getDataModelsByName(
-            encodedFqn,
-            'owner,tags,followers'
-          );
-
-          break;
-        }
-
-        case EntityType.STORED_PROCEDURE: {
-          response = await getStoredProceduresByName(encodedFqn, 'owner,tags');
-
-          break;
-        }
-
-        case EntityType.SEARCH_INDEX: {
-          response = await getSearchIndexDetailsByFQN(encodedFqn, 'owner,tags');
-
-          break;
-        }
-
-        default:
-          break;
-      }
-      setEntityDetail(response);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const tags = useMemo(
-    () => getEntityTags(selectedNode.type, entityDetail),
+    () =>
+      getEntityTags(selectedNode.entityType ?? EntityType.TABLE, entityDetail),
     [entityDetail, selectedNode]
   );
 
   const summaryComponent = useMemo(() => {
-    switch (selectedNode.type) {
+    switch (selectedNode.entityType) {
       case EntityType.TABLE:
         return (
           <TableSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Table}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -177,7 +77,6 @@ const EntityInfoDrawer = ({
           <TopicSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Topic}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -187,7 +86,6 @@ const EntityInfoDrawer = ({
           <DashboardSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Dashboard}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -197,7 +95,6 @@ const EntityInfoDrawer = ({
           <PipelineSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Pipeline}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -207,7 +104,6 @@ const EntityInfoDrawer = ({
           <MlModelSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Mlmodel}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -216,7 +112,6 @@ const EntityInfoDrawer = ({
           <ContainerSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Container}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -226,7 +121,6 @@ const EntityInfoDrawer = ({
           <DataModelSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as DashboardDataModel}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -236,7 +130,6 @@ const EntityInfoDrawer = ({
           <StoredProcedureSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as StoredProcedure}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -246,7 +139,6 @@ const EntityInfoDrawer = ({
           <SearchIndexSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as SearchIndex}
-            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -254,10 +146,10 @@ const EntityInfoDrawer = ({
       default:
         return null;
     }
-  }, [entityDetail, fetchEntityDetail, tags, selectedNode, isLoading]);
+  }, [entityDetail, tags, selectedNode]);
 
   useEffect(() => {
-    fetchEntityDetail(selectedNode);
+    setEntityDetail(selectedNode);
   }, [selectedNode]);
 
   return (
@@ -291,12 +183,12 @@ const EntityInfoDrawer = ({
                 'entity-info-header-link': !isMainNode,
               })}>
               <span className="m-r-xs w-4">
-                {getEntityIcon(selectedNode.type)}
+                {getEntityIcon(selectedNode.entityType as string)}
               </span>
               {getHeaderLabel(
                 selectedNode.displayName ?? selectedNode.name,
-                selectedNode.fqn,
-                selectedNode.type,
+                selectedNode.fullyQualifiedName,
+                selectedNode.entityType as string,
                 isMainNode
               )}
             </Typography>
