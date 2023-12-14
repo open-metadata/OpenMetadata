@@ -13,6 +13,10 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 import {
+  customFormatDateTime,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
+import {
   addUser,
   deleteSoftDeletedUser,
   interceptURL,
@@ -29,6 +33,28 @@ const adminName = `Admincttest${uuid()}`;
 const adminEmail = `${adminName}@gmail.com`;
 
 const searchBotText = 'bot';
+
+const expirationTime = {
+  oneday: '1',
+  sevendays: '7',
+  onemonth: '30',
+  twomonths: '60',
+  threemonths: '90',
+};
+
+const revokeToken = () => {
+  // Click on revoke button
+  cy.get('[data-testid="revoke-button"]').should('be.visible').click();
+  // Verify the revoke text
+  cy.get('[data-testid="body-text"]').should(
+    'contain',
+    'Are you sure you want to revoke access for Personal Access Token?'
+  );
+  // Click on confirm button
+  cy.get('[data-testid="save-button"]').click();
+  // Verify the revoke is successful
+  cy.get('[data-testid="revoke-button"]').should('not.exist');
+};
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
@@ -133,5 +159,69 @@ describe('Admin flow should work properly', () => {
   it('Permanently Delete Soft Deleted admin', () => {
     softDeleteUser(adminName, true);
     deleteSoftDeletedUser(adminName);
+  });
+
+  describe('Personal Access Token flow should work properly', () => {
+    beforeEach(() => {
+      cy.login();
+    });
+
+    it('Token should be generated and revoked', function () {
+      // Enter profile section
+      cy.get('.username').click();
+      cy.get('[data-testid="user-name"] > .ant-typography').click();
+      cy.get('[data-testid="access-token"] > .ant-space-item').click();
+      cy.get('[data-testid="access-token"] > .ant-space-item').should(
+        'be.visible'
+      );
+
+      // generate token
+      cy.get('[data-testid="no-token"]').should('be.visible');
+      cy.get('[data-testid="auth-mechanism"] > span').click();
+      cy.get('[data-testid="token-expiry"]').should('be.visible').click();
+      cy.contains('1 hr').should('exist').should('be.visible').click();
+      cy.get('[data-testid="token-expiry"]').should('be.visible');
+      cy.get('[data-testid="save-edit"]').should('be.visible').click();
+
+      // revoke token
+      cy.get('[data-testid="revoke-button"] > span').should('be.visible');
+      cy.get('[data-testid="revoke-button"] > span').click();
+      cy.get('[data-testid="save-button"] > span').click();
+      cy.get(':nth-child(1) > .ant-row > .ant-form-item-label > label').should(
+        'be.visible'
+      );
+    });
+
+    Object.values(expirationTime).forEach((expiry) => {
+      it(`Update token expiration for ${expiry} days`, () => {
+        cy.get('.username').click();
+        cy.get('[data-testid="user-name"] > .ant-typography').click();
+        cy.get('[data-testid="access-token"] > .ant-space-item').click();
+        cy.get('[data-testid="access-token"] > .ant-space-item').should(
+          'be.visible'
+        );
+        cy.get('[data-testid="no-token"]').should('be.visible');
+        cy.get('[data-testid="auth-mechanism"] > span').click();
+
+        cy.get('[data-testid="token-expiry"]').click();
+        // Select the expiration period
+        cy.contains(`${expiry} days`).click();
+        // Save the updated date
+        const expiryDate = customFormatDateTime(
+          getEpochMillisForFutureDays(expiry),
+          `ccc d'th' MMMM, yyyy`
+        );
+        cy.get('[data-testid="save-edit"]').click();
+        cy.get('[data-testid="center-panel"]')
+          .find('[data-testid="revoke-button"]')
+          .should('be.visible');
+        // Verify the expiry time
+        cy.get('[data-testid="token-expiry"]')
+          .invoke('text')
+          .should('contain', `Expires on ${expiryDate}`);
+        cy.get('[data-testid="token-expiry"]').click();
+        revokeToken();
+      });
+    });
   });
 });
