@@ -37,10 +37,20 @@ export interface EntityNameProps {
   displayName?: string;
 }
 
+export interface HighlightedTagLabel extends TagLabel {
+  isHighlighted: boolean;
+}
+
 const getTitleName = (data: EntityNameProps) =>
   getEntityName(data) || NO_DATA_PLACEHOLDER;
 
-const getTitle = ({ content, sourceUrl }) => {
+const getTitle = ({
+  content,
+  sourceUrl,
+}: {
+  content: string | JSX.Element | JSX.Element[];
+  sourceUrl: string;
+}) => {
   return sourceUrl ? (
     <Link target="_blank" to={{ pathname: sourceUrl }}>
       <div className="d-flex">
@@ -63,13 +73,16 @@ const getTitle = ({ content, sourceUrl }) => {
 export const getSortedTagsWithHighlight = ({
   sortTagsBasedOnGivenArr,
   tags,
-}): TagLabel[] => {
+}: {
+  sortTagsBasedOnGivenArr: string[];
+  tags?: TagLabel[];
+}): (TagLabel | HighlightedTagLabel)[] => {
   const ColumnDataTags: {
-    tagForSort: TagLabel[];
+    tagForSort: HighlightedTagLabel[];
     remainingTags: TagLabel[];
   } = { tagForSort: [], remainingTags: [] };
 
-  const { tagForSort, remainingTags } = tags?.reduce((acc, tag) => {
+  tags?.reduce((acc, tag) => {
     if (sortTagsBasedOnGivenArr?.includes(tag.tagFQN)) {
       acc.tagForSort.push({ ...tag, isHighlighted: true });
     } else {
@@ -79,87 +92,90 @@ export const getSortedTagsWithHighlight = ({
     return acc;
   }, ColumnDataTags);
 
-  return [...tagForSort, ...remainingTags];
+  return [...ColumnDataTags.tagForSort, ...ColumnDataTags.remainingTags];
 };
 
 // sort and highlight summary list based on tags and global search
 const sortAndHighlightSummaryList = (
   listHighlights: string[],
   entityType: SummaryEntityType,
-  entityInfo: Array<Column | Field | Chart | Task | MlFeature>,
+  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
   tableConstraints?: TableConstraint[],
   highlights?: SearchedDataProps['data'][number]['highlights']
 ) => {
   const tagHighlights = get(highlights, 'tag.name', []);
-  const listHighlightsMap =
-    listHighlights?.reduce((acc, colHighlight, index) => {
-      acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
 
-      return acc;
-    }, {}) ?? {};
+  const listHighlightsMap: { [key: string]: number } = {};
+  listHighlights?.reduce((acc, colHighlight, index) => {
+    acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
 
-  const { entityWithSortOption, entityWithoutSortOption } = entityInfo.reduce(
-    (acc, listItem) => {
-      const listData = {
-        name: listItem.name || NO_DATA_PLACEHOLDER,
-        title: getTitle({
-          content: getTitleName(listItem),
-          sourceUrl: listItem.sourceUrl,
-        }),
-        type: listItem.dataType ?? listItem.chatType ?? listItem.taskType,
+    return acc;
+  }, listHighlightsMap);
+
+  const EntityData = {
+    entityWithSortOption: [] as BasicEntityInfo[],
+    entityWithoutSortOption: [] as BasicEntityInfo[],
+  };
+
+  entityInfo?.reduce((acc, listItem) => {
+    const listData = {
+      name: listItem.name,
+      title: getTitle({
+        content: getTitleName(listItem),
+        sourceUrl: listItem.sourceUrl,
+      }),
+      type: listItem.dataType ?? listItem.chatType ?? listItem.taskType,
+      tags: listItem.tags,
+      description: listItem.description,
+      ...(entityType === SummaryEntityType.COLUMN && {
+        columnConstraint: listItem.constraint,
+        tableConstraints: tableConstraints,
+      }),
+      ...(entityType === SummaryEntityType.MLFEATURE && {
+        algorithm: listItem.featureAlgorithm,
+      }),
+      children: getFormattedEntityData(
+        entityType,
+        listItem.children,
+        undefined,
+        highlights
+      ),
+    };
+
+    const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
+      tagHighlights?.includes(tag.tagFQN)
+    );
+
+    if (
+      isTagHighlightsPresentInListItemTags ||
+      !isUndefined(listHighlightsMap[listItem.name ?? ''])
+    ) {
+      listData.tags = getSortedTagsWithHighlight({
+        sortTagsBasedOnGivenArr: tagHighlights,
         tags: listItem.tags,
-        description: listItem.description,
-        ...(entityType === SummaryEntityType.COLUMN && {
-          columnConstraint: listItem.constraint,
-          tableConstraints: tableConstraints,
-        }),
-        ...(entityType === SummaryEntityType.MLFEATURE && {
-          algorithm: listItem.featureAlgorithm,
-        }),
-        children: getFormattedEntityData(
-          entityType,
-          listItem.children,
-          undefined,
-          highlights
-        ),
-      };
+      });
 
-      const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
-        tagHighlights?.includes(tag.tagFQN)
-      );
-
-      if (
-        isTagHighlightsPresentInListItemTags ||
-        !isUndefined(listHighlightsMap[listItem.name])
-      ) {
-        listData.tags = getSortedTagsWithHighlight({
-          sortTagsBasedOnGivenArr: tagHighlights,
-          tags: listItem.tags,
+      if (!isUndefined(listHighlightsMap[listItem.name ?? ''])) {
+        listData.title = getTitle({
+          content: stringToHTML(
+            listHighlights[listHighlightsMap[listItem.name]]
+          ),
+          sourceUrl: listItem.sourceUrl,
         });
-
-        if (!isUndefined(listHighlightsMap[listItem.name])) {
-          listData.title = getTitle({
-            content: stringToHTML(
-              listHighlights[listHighlightsMap[listItem.name]]
-            ),
-            sourceUrl: listItem.sourceUrl,
-          });
-        }
-
-        acc.entityWithSortOption.push(listData);
-      } else {
-        acc.entityWithoutSortOption.push(listData);
       }
 
-      return acc;
-    },
-    {
-      entityWithSortOption: [] as BasicEntityInfo[],
-      entityWithoutSortOption: [] as BasicEntityInfo[],
+      acc.entityWithSortOption.push(listData);
+    } else {
+      acc.entityWithoutSortOption.push(listData);
     }
-  );
 
-  return [...entityWithSortOption, ...entityWithoutSortOption];
+    return acc;
+  }, EntityData);
+
+  return [
+    ...EntityData.entityWithSortOption,
+    ...EntityData.entityWithoutSortOption,
+  ];
 };
 
 export const getFormattedEntityData = (
@@ -172,17 +188,21 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  const listHighlights = [];
+  if (Object.values(SummaryEntityType).includes(entityType)) {
+    const listHighlights: string[] = [];
 
-  SummaryListHighlightKeysMap[entityType].forEach((highlightKey) => {
-    listHighlights.push(...get(highlights, highlightKey, []));
-  });
+    SummaryListHighlightKeysMap[entityType]?.forEach((highlightKey) => {
+      listHighlights.push(...get(highlights, highlightKey, []));
+    });
 
-  return sortAndHighlightSummaryList(
-    listHighlights,
-    entityType,
-    entityInfo,
-    tableConstraints,
-    highlights
-  );
+    return sortAndHighlightSummaryList(
+      listHighlights,
+      entityType,
+      entityInfo,
+      tableConstraints,
+      highlights
+    );
+  } else {
+    return [];
+  }
 };
