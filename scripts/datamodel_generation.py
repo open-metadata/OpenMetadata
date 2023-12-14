@@ -46,6 +46,6 @@ main(args)
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
     with open(file_path, "r", encoding="UTF-8") as file_:
         content = file_.read()
-        content = content.replace("(?U)", "(?u)")
+        content = content.replace("^(?U)", "(?u)^")
     with open(file_path, "w", encoding="UTF-8") as file_:
         file_.write(content)

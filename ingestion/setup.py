@@ -28,7 +28,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
-    "pandas": "pandas==1.3.5",
+    "pandas": "pandas~=2.1",
     "pyarrow": "pyarrow~=10.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
@@ -58,7 +58,9 @@ COMMONS = {
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
-        "python-snappy~=0.6.1",
+        # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
+        # Using this as an alternative
+        "cramjam~=2.7",
     },
     "hive": {
         "presto-types-parser>=0.0.2",
