@@ -33,6 +33,8 @@ class SASClient:
         self.custom_filter_datatables = config.dataTablesCustomFilter
         self.enable_reports = config.reports
         self.custom_filter_reports = config.reportsCustomFilter
+        self.enable_dataflows = config.dataflows
+        self.custom_filter_dataflows = config.dataflowsCustomFilter
 
     def list_datatables(self):
         logger.debug(f"filter for datatables are: enable datatables - {self.enable_datatables}, "
@@ -60,9 +62,20 @@ class SASClient:
 
     def list_reports(self):
         logger.debug(f"filter for reports are: enable reports - {self.enable_reports}, "
-                     f"custom filter - {self.enable_reports}")
+                     f"custom filter - {self.custom_filter_reports}")
         endpoint = (f"catalog/search?indices=reports&q="
                     f"{self.custom_filter_reports if str(self.custom_filter_reports) != 'None' else '*'}")
+        headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
+        response = self.client._request("GET", path=endpoint, headers=headers)
+        if "error" in response.keys():
+            raise APIError(response["error"])
+        return response["items"]
+
+    def list_data_flows(self):
+        logger.debug(f"filter for reports are: enable reports - {self.enable_dataflows}, "
+                     f"custom filter - {self.custom_filter_dataflows}")
+        endpoint = (f"catalog/search?indices=dataflows&q="
+                    f"{self.custom_filter_dataflows if str(self.custom_filter_dataflows) != 'None' else '*'}")
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client._request("GET", path=endpoint, headers=headers)
         if "error" in response.keys():
@@ -80,6 +93,7 @@ class SASClient:
         headers = {
             "Content-type": "application/vnd.sas.metadata.instance.query+json",
             "Accept": "application/json",
+            # 'x-sas-links': "none"
         }
         logger.info(f"{query}")
         response = self.client._request(
@@ -106,8 +120,7 @@ class SASClient:
         return self.config.serverHost + endpoint
 
     def load_table(self, endpoint):
-        headers = {"Content-type": "text/plain"}
-        self.client._request("PUT", path=endpoint, headers=headers)
+        self.client.put(path=endpoint, data={})
 
     def get_report_relationship(self, report_id):
         endpoint = f"reports/commons/relationships/reports/{report_id}"
