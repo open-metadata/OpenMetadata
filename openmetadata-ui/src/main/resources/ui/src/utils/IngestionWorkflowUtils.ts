@@ -61,6 +61,10 @@ export const getSchemaByWorkflowType = (
   serviceCategory: ServiceCategory
 ) => {
   const customProperties = {
+    displayName: {
+      description: 'Display Name of the workflow',
+      type: 'string',
+    },
     name: {
       description: 'Name of the workflow',
       type: 'string',
