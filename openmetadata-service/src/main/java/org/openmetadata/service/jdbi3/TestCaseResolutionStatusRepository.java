@@ -105,14 +105,21 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
     TestCaseResolutionStatus latestTestCaseFailure =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+
+    boolean isLatestTestCaseResolutionStatus = latestTestCaseFailure != null;
+    TestCaseResolutionStatusTypes latestTestCaseResolutionStatusType =
+        isLatestTestCaseResolutionStatus ? latestTestCaseFailure.getTestCaseResolutionStatusType() : null;
+
     recordEntity.setStateId(
-        ((latestTestCaseFailure != null)
-                && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved))
+        (isLatestTestCaseResolutionStatus
+                && latestTestCaseFailure.getTestCaseResolutionStatusType() != null
+                && // first failure of a test case
+                !latestTestCaseResolutionStatusType.equals(TestCaseResolutionStatusTypes.Resolved))
             ? latestTestCaseFailure.getStateId()
             : UUID.randomUUID());
 
-    if (latestTestCaseFailure != null
-        && latestTestCaseFailure.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.Assigned)) {
+    if (isLatestTestCaseResolutionStatus
+        && latestTestCaseResolutionStatusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
       String jsonThread =
           Entity.getCollectionDAO().feedDAO().fetchThreadByTestCaseResolutionStatusId(latestTestCaseFailure.getId());
       Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
