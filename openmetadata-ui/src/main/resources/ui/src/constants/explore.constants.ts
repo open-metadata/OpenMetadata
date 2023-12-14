@@ -14,7 +14,6 @@
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
-import searchClassBase from '../utils/SearchClassBase';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
@@ -54,7 +53,6 @@ export interface ExploreTabInfo {
   selectedIcon?: string;
 }
 
-export const tabsInfo = searchClassBase.getTabsInfo();
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
