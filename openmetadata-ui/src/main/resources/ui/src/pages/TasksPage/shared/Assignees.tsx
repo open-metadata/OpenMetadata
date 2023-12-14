@@ -13,7 +13,7 @@
 
 import { Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
-import { debounce, groupBy, isUndefined } from 'lodash';
+import { debounce, groupBy, isArray, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
@@ -28,6 +28,7 @@ interface Props {
   onSearch: (value: string) => void;
   onChange: (values: Option[]) => void;
   disabled?: boolean;
+  isSingleSelect?: boolean;
 }
 
 const Assignees: FC<Props> = ({
@@ -36,13 +37,17 @@ const Assignees: FC<Props> = ({
   onChange,
   options,
   disabled,
+  isSingleSelect = false,
 }) => {
   const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {
-    const newValues = (newOptions as Option[]).map((option) => ({
-      label: option['data-label'],
-      value: option.value,
-      type: option.type,
-    }));
+    const newValues = (isArray(newOptions) ? newOptions : [newOptions]).map(
+      (option) => ({
+        label: option['data-label'],
+        value: option.value,
+        type: option.type,
+        name: option.name,
+      })
+    );
 
     onChange(newValues as Option[]);
   };
@@ -98,7 +103,7 @@ const Assignees: FC<Props> = ({
       defaultActiveFirstOption={false}
       disabled={disabled}
       filterOption={false}
-      mode="multiple"
+      mode={isSingleSelect ? undefined : 'multiple'}
       notFoundContent={null}
       options={updatedOption}
       placeholder={t('label.select-to-search')}

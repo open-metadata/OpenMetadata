@@ -18,6 +18,7 @@ import {
   Form,
   MenuProps,
   Row,
+  Select,
   Space,
   Tooltip,
   Typography,
@@ -27,9 +28,15 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
+import { isEmpty, isEqual, isUndefined, noop, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -43,11 +50,14 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
+import { CloseTask } from '../../../generated/api/feed/closeTask';
 import { TaskType } from '../../../generated/api/feed/createThread';
+import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   TaskDetails,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { TestCaseFailureReasonType } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
@@ -74,6 +84,8 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -87,6 +99,7 @@ export const TaskTab = ({
   const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useAuthContext();
+  const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
 
   const { task: taskDetails } = taskThread;
@@ -147,6 +160,8 @@ export const TaskTab = ({
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
+  const isTaskTestCaseResult =
+    taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
 
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
@@ -191,7 +206,7 @@ export const TaskTab = ({
     </Typography.Text>
   );
 
-  const updateTaskData = (data: TaskDetails) => {
+  const updateTaskData = (data: TaskDetails | ResolveTask) => {
     if (!taskDetails?.id) {
       return;
     }
@@ -237,20 +252,32 @@ export const TaskTab = ({
   const onEditAndSuggest = ({
     description,
     updatedTags,
+    testCaseFailureReason,
+    testCaseFailureComment,
   }: {
     description: string;
     updatedTags: TagLabel[];
+    testCaseFailureReason: TestCaseFailureReasonType;
+    testCaseFailureComment: string;
   }) => {
+    let data = {} as ResolveTask;
     if (isTaskTags) {
-      const tagsData = {
+      data = {
         newValue: JSON.stringify(updatedTags) || '[]',
       };
-
-      updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: description };
-      updateTaskData(data as TaskDetails);
+      if (isTaskTestCaseResult) {
+        data = {
+          newValue: testCaseFailureComment,
+          testCaseFQN: entityFQN,
+          testCaseFailureReason,
+        };
+      } else {
+        data = { newValue: description };
+      }
     }
+
+    updateTaskData(data as ResolveTask);
   };
 
   /**
@@ -283,16 +310,32 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && !isTaskTestCaseResult && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
     }
+    const closedTask = {
+      comment,
+    } as CloseTask;
+    if (isTaskGlossaryApproval) {
+      closedTask.comment = 'Rejected';
+    } else if (isTaskTestCaseResult) {
+      const assigneeFqn = updatedAssignees[0].name ?? '';
+      if (
+        taskDetails?.assignees.some((assignee) => assigneeFqn === assignee.name)
+      ) {
+        return;
+      }
+      closedTask.comment = updatedAssignees[0].name ?? '';
+      closedTask.testCaseFQN = entityFQN;
+    }
 
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
-    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-      comment: updatedComment,
-    } as unknown as TaskDetails)
+    updateTask(
+      TaskOperation.REJECT,
+      taskDetails?.id + '',
+      closedTask as CloseTask
+    )
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
@@ -345,6 +388,47 @@ export const TaskTab = ({
     );
   }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
+  const testCaseResultFlow = useMemo(() => {
+    const hasApprovalAccess =
+      isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-assignee-can-reassign-or-resolve')
+              : ''
+          }>
+          <Button
+            data-testid="reject-task"
+            // disabled={!hasApprovalAccess}
+            onClick={() => setIsEditAssignee(true)}>
+            {t('label.re-assign')}
+          </Button>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-assignee-can-reassign-or-resolve')
+              : ''
+          }>
+          <Button
+            data-testid="approve-task"
+            disabled={!hasApprovalAccess}
+            type="primary"
+            onClick={() => setShowEditTaskModel(true)}>
+            {t('label.resolved')}
+          </Button>
+        </Tooltip>
+      </Space>
+    );
+  }, [taskDetails, isAssignee, isPartOfAssigneeTeam]);
+
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
       return null;
@@ -354,6 +438,10 @@ export const TaskTab = ({
 
     if (isTaskGlossaryApproval) {
       return approvalWorkflowActions;
+    }
+
+    if (isTaskTestCaseResult) {
+      return testCaseResultFlow;
     }
 
     const parsedSuggestion = [
@@ -416,6 +504,8 @@ export const TaskTab = ({
     isTaskGlossaryApproval,
     isCreator,
     approvalWorkflowActions,
+    testCaseResultFlow,
+    isTaskTestCaseResult,
   ]);
 
   const initialFormValue = useMemo(() => {
@@ -459,6 +549,103 @@ export const TaskTab = ({
     setOptions(initialAssignees);
   }, [initialAssignees]);
 
+  const taskHeader = isTaskTestCaseResult ? (
+    <div className={classNames('d-flex justify-between')}>
+      <div className={classNames('gap-2', 'flex-center')}>
+        <Typography.Text className="text-grey-muted">
+          {t('label.assignee-plural')}:{' '}
+        </Typography.Text>
+        <AssigneeList assignees={taskDetails?.assignees ?? []} />
+      </div>
+      <div className={classNames('gap-2', 'flex-center')}>
+        <Typography.Text className="text-grey-muted">
+          {t('label.created-by')}:{' '}
+        </Typography.Text>
+        <OwnerLabel
+          hasPermission={false}
+          owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
+          onUpdate={noop}
+        />
+      </div>
+    </div>
+  ) : (
+    <div
+      className={classNames('d-flex justify-between', {
+        'flex-column': isEditAssignee,
+      })}>
+      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+        {isEditAssignee ? (
+          <Form
+            form={assigneesForm}
+            layout="vertical"
+            onFinish={handleAssigneeUpdate}>
+            <Form.Item
+              data-testid="assignees"
+              label={`${t('label.assignee-plural')}:`}
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
+              <InlineEdit
+                className="assignees-edit-input"
+                direction="horizontal"
+                onCancel={() => {
+                  setIsEditAssignee(false);
+                  assigneesForm.setFieldValue('assignees', initialAssignees);
+                }}
+                onSave={() => assigneesForm.submit()}>
+                <Assignees
+                  disabled={Boolean(owner)}
+                  options={options}
+                  value={updatedAssignees}
+                  onChange={(values) =>
+                    assigneesForm.setFieldValue('assignees', values)
+                  }
+                  onSearch={(query) => fetchOptions(query, setOptions)}
+                />
+              </InlineEdit>
+            </Form.Item>
+          </Form>
+        ) : (
+          <>
+            <Typography.Text className="text-grey-muted">
+              {t('label.assignee-plural')}:{' '}
+            </Typography.Text>
+            <AssigneeList
+              assignees={taskDetails?.assignees ?? []}
+              showUserName={false}
+            />
+            {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
+              <Button
+                className="flex-center p-0"
+                data-testid="edit-assignees"
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                size="small"
+                type="text"
+                onClick={() => setIsEditAssignee(true)}
+              />
+            ) : null}
+          </>
+        )}
+      </div>
+      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+        <Typography.Text className="text-grey-muted">
+          {t('label.created-by')}:{' '}
+        </Typography.Text>
+        <OwnerLabel
+          hasPermission={false}
+          owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
+          onUpdate={noop}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -474,88 +661,7 @@ export const TaskTab = ({
 
         {getTaskLinkElement}
       </Col>
-      <Col span={24}>
-        <div
-          className={classNames('d-flex justify-between', {
-            'flex-column': isEditAssignee,
-          })}>
-          <div
-            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
-            {isEditAssignee ? (
-              <Form
-                form={assigneesForm}
-                layout="vertical"
-                onFinish={handleAssigneeUpdate}>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
-                      }),
-                    },
-                  ]}>
-                  <InlineEdit
-                    className="assignees-edit-input"
-                    direction="horizontal"
-                    onCancel={() => {
-                      setIsEditAssignee(false);
-                      assigneesForm.setFieldValue(
-                        'assignees',
-                        initialAssignees
-                      );
-                    }}
-                    onSave={() => assigneesForm.submit()}>
-                    <Assignees
-                      disabled={Boolean(owner)}
-                      options={options}
-                      value={updatedAssignees}
-                      onChange={(values) =>
-                        assigneesForm.setFieldValue('assignees', values)
-                      }
-                      onSearch={(query) => fetchOptions(query, setOptions)}
-                    />
-                  </InlineEdit>
-                </Form.Item>
-              </Form>
-            ) : (
-              <>
-                <Typography.Text className="text-grey-muted">
-                  {t('label.assignee-plural')}:{' '}
-                </Typography.Text>
-                <AssigneeList
-                  assignees={taskDetails?.assignees ?? []}
-                  showUserName={false}
-                />
-                {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
-                  <Button
-                    className="flex-center p-0"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
-              </>
-            )}
-          </div>
-          <div
-            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
-            <Typography.Text className="text-grey-muted">
-              {t('label.created-by')}:{' '}
-            </Typography.Text>
-            <OwnerLabel
-              hasPermission={false}
-              owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
-              onUpdate={noop}
-            />
-          </div>
-        </div>
-      </Col>
+      <Col span={24}>{taskHeader}</Col>
       <Col span={24}>
         {isTaskDescription && (
           <DescriptionTask
@@ -586,6 +692,9 @@ export const TaskTab = ({
             />
           ))}
         </div>
+      </Col>
+
+      <Col span={24}>
         {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
@@ -608,7 +717,55 @@ export const TaskTab = ({
           initialValues={initialFormValue}
           layout="vertical"
           onFinish={onEditAndSuggest}>
-          {isTaskTags ? (
+          {isTaskTestCaseResult ? (
+            <>
+              <Form.Item
+                label={t('label.reason')}
+                name="testCaseFailureReason"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.reason'),
+                    }),
+                  },
+                ]}>
+                <Select
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.reason'),
+                  })}>
+                  {Object.values(TestCaseFailureReasonType).map((value) => (
+                    <Select.Option key={value}>
+                      {startCase(value)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                label={t('label.comment')}
+                name="testCaseFailureComment"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.comment'),
+                    }),
+                  },
+                ]}>
+                <RichTextEditor
+                  height="200px"
+                  initialValue=""
+                  placeHolder={t('message.write-your-text', {
+                    text: t('label.comment'),
+                  })}
+                  ref={markdownRef}
+                  onTextChange={(value) =>
+                    form.setFieldValue('testCaseFailureComment', value)
+                  }
+                />
+              </Form.Item>
+            </>
+          ) : isTaskTags ? (
             <Form.Item
               data-testid="tags-label"
               label={t('label.tag-plural')}
@@ -653,6 +810,45 @@ export const TaskTab = ({
           )}
         </Form>
       </Modal>
+      {isTaskTestCaseResult && (
+        <Modal
+          maskClosable
+          closable={false}
+          closeIcon={null}
+          open={isEditAssignee}
+          title={`${t('label.edit-entity', {
+            entity: t('label.task-lowercase'),
+          })} #${taskDetails?.id} ${taskThread.message}`}
+          width={768}
+          onCancel={() => setIsEditAssignee(false)}
+          onOk={assigneesForm.submit}>
+          <Form form={assigneesForm} layout="vertical" onFinish={onTaskReject}>
+            <Form.Item
+              data-testid="assignees"
+              label={`${t('label.assignee-plural')}:`}
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
+              <Assignees
+                isSingleSelect
+                disabled={Boolean(owner)}
+                options={options}
+                value={updatedAssignees}
+                onChange={(values) =>
+                  assigneesForm.setFieldValue('assignees', values)
+                }
+                onSearch={(query) => fetchOptions(query, setOptions)}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      )}
     </Row>
   );
 };

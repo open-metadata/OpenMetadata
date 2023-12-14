@@ -13,9 +13,10 @@
 import { Col, Divider, Row, Space, Tabs, TabsProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -47,15 +48,16 @@ const IncidentManagerDetailPage = () => {
     isLoading: true,
   });
 
-  const onTestCaseUpdate = useCallback(
-    (data: TestCase) => setTestCaseData((prev) => ({ ...prev, data })),
-    [setTestCaseData]
-  );
+  const onTestCaseUpdate = (data: TestCase) => {
+    setTestCaseData((prev) => ({ ...prev, data }));
+  };
 
   const tabDetails: TabsProps['items'] = useMemo(
     () => [
       {
-        label: <TabsLabel id="by-tables" name={t('label.test-case-result')} />,
+        label: (
+          <TabsLabel id="test-case-result" name={t('label.test-case-result')} />
+        ),
         children: (
           <TestCaseResultTab
             testCaseData={testCaseData.data}
@@ -65,9 +67,13 @@ const IncidentManagerDetailPage = () => {
         key: IncidentManagerTabs.TEST_CASE_RESULTS,
       },
       {
-        label: <TabsLabel id="by-test-cases" name={t('label.issue-plural')} />,
+        label: <TabsLabel id="issue" name={t('label.issue-plural')} />,
         key: IncidentManagerTabs.ISSUES,
-        children: <TestCaseIssueTab />,
+        children: (
+          <ActivityFeedProvider>
+            <TestCaseIssueTab />
+          </ActivityFeedProvider>
+        ),
       },
     ],
     [testCaseData]

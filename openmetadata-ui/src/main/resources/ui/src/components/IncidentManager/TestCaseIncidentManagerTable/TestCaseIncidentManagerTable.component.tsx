@@ -82,14 +82,8 @@ const TestCaseIncidentManagerTable = ({
     }
   };
 
-  const handleStatusSubmit = async (
-    updatedData: TestCaseResolutionStatus,
-    record: TestCaseResolutionStatus
-  ) => {
-    // handlePatchTestCaseResult(record, {
-    //   ...record.testCaseResult,
-    //   testCaseResolutionStatusReference: updatedData,
-    // });
+  const handleStatusSubmit = async () => {
+    //
   };
 
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
@@ -159,7 +153,7 @@ const TestCaseIncidentManagerTable = ({
         render: (_, record: TestCaseResolutionStatus) => (
           <TestCaseIncidentManagerStatus
             data={record}
-            onSubmit={(status) => handleStatusSubmit(status, record)}
+            onSubmit={handleStatusSubmit}
           />
         ),
       },
