@@ -19,7 +19,7 @@ import { SearchedDataProps } from '../../src/components/SearchedData/SearchedDat
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { SummaryListHighlightKeysMap } from '../constants/EntitySummaryPanel.constant';
+import { SummaryListHighlightKeysMap } from '../constants/EntitySummaryPanelUtils.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
