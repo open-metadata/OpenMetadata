@@ -22,10 +22,9 @@ public class NoopSecretsManager extends SecretsManager {
     super(secretsManagerProvider, secretsConfig);
   }
 
-  public static NoopSecretsManager getInstance(
-      SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
+  public static NoopSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new NoopSecretsManager(secretsManagerProvider, secretsConfig);
+      instance = new NoopSecretsManager(SecretsManagerProvider.NOOP, secretsConfig);
     }
     return instance;
   }

@@ -29,9 +29,10 @@ public class SecretsManagerFactory {
       return secretsManager;
     }
     SecretsManager.SecretsConfig secretsConfig =
-        new SecretsManager.SecretsConfig(clusterName, config.getPrefix(), config.getTags());
+        new SecretsManager.SecretsConfig(clusterName, config.getPrefix(), config.getTags(), config.getParameters());
     SecretsManagerProvider secretsManagerProvider =
         config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.NOOP;
+
     switch (secretsManagerProvider) {
       case NOOP:
       case AWS_SSM:
@@ -47,19 +48,18 @@ public class SecretsManagerFactory {
         to connect to AWS SSM as specified in the docs:
         https://docs.open-metadata.org/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
         */
-        secretsManager = NoopSecretsManager.getInstance(secretsManagerProvider, secretsConfig);
+        secretsManager = NoopSecretsManager.getInstance(secretsConfig);
         break;
       case MANAGED_AWS:
-        secretsManager = AWSSecretsManager.getInstance(config, secretsConfig);
+        secretsManager = AWSSecretsManager.getInstance(secretsConfig);
         break;
       case MANAGED_AWS_SSM:
-        secretsManager = AWSSSMSecretsManager.getInstance(config, secretsConfig);
+        secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
         break;
       case IN_MEMORY:
         secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
         break;
       default:
-        throw new IllegalArgumentException("Not implemented secret manager store: " + secretsManagerProvider);
     }
     return secretsManager;
   }

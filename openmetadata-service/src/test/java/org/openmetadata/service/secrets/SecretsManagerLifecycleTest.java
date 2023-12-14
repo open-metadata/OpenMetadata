@@ -38,7 +38,7 @@ public class SecretsManagerLifecycleTest {
   static void setUp() {
     secretsManager =
         InMemorySecretsManager.getInstance(
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key1:value1", "key2:value2")));
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key1:value1", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
@@ -150,7 +150,7 @@ public class SecretsManagerLifecycleTest {
 
     // if the tags are not well formatted, we don't return anything
     SecretsManager.SecretsConfig secretsConfig =
-        new SecretsManager.SecretsConfig(null, null, List.of("key:value", "random"));
-    assertEquals(Map.of(), SecretsManager.getTags(secretsConfig));
+        new SecretsManager.SecretsConfig(null, null, List.of("random", "key:value", "random"), null);
+    assertEquals(Map.of("key", "value"), SecretsManager.getTags(secretsConfig));
   }
 }

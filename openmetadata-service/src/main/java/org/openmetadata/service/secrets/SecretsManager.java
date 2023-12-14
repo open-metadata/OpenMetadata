@@ -18,25 +18,26 @@ import static java.util.Objects.isNull;
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -47,7 +48,7 @@ import org.openmetadata.service.util.ReflectionUtil;
 
 @Slf4j
 public abstract class SecretsManager {
-  public record SecretsConfig(String clusterName, String prefix, List<String> tags) {}
+  public record SecretsConfig(String clusterName, String prefix, List<String> tags, Parameters parameters) {}
 
   @Getter private final SecretsConfig secretsConfig;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
@@ -101,7 +102,7 @@ public abstract class SecretsManager {
       try {
         encryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), true);
       } catch (Exception e) {
-        throw new CustomExceptionMessage(
+        throw new SecretsManagerException(
             Response.Status.BAD_REQUEST, String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
@@ -113,7 +114,7 @@ public abstract class SecretsManager {
       try {
         decryptPasswordFields(authenticationMechanism);
       } catch (Exception e) {
-        throw new CustomExceptionMessage(
+        throw new SecretsManagerException(
             Response.Status.BAD_REQUEST, String.format("Failed to decrypt user bot instance [%s]", name));
       }
     }
@@ -128,7 +129,7 @@ public abstract class SecretsManager {
     try {
       encryptPasswordFields(ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
     } catch (Exception e) {
-      throw new CustomExceptionMessage(
+      throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
           String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
@@ -144,7 +145,7 @@ public abstract class SecretsManager {
     try {
       decryptPasswordFields(ingestionPipeline);
     } catch (Exception e) {
-      throw new CustomExceptionMessage(
+      throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
           String.format("Failed to decrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
@@ -160,7 +161,7 @@ public abstract class SecretsManager {
     try {
       encryptPasswordFields(workflowConverted, buildSecretId(true, "workflow", workflow.getName()), true);
     } catch (Exception e) {
-      throw new CustomExceptionMessage(
+      throw new SecretsManagerException(
           Response.Status.BAD_REQUEST, String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
@@ -176,7 +177,7 @@ public abstract class SecretsManager {
     try {
       decryptPasswordFields(workflowConverted);
     } catch (Exception e) {
-      throw new CustomExceptionMessage(
+      throw new SecretsManagerException(
           Response.Status.BAD_REQUEST, String.format("Failed to decrypt workflow instance [%s]", workflow.getName()));
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
@@ -192,7 +193,7 @@ public abstract class SecretsManager {
       try {
         encryptPasswordFields(openMetadataConnectionConverted, buildSecretId(true, "serverconnection"), store);
       } catch (Exception e) {
-        throw new CustomExceptionMessage(
+        throw new SecretsManagerException(
             Response.Status.BAD_REQUEST, "Failed to encrypt OpenMetadataConnection instance.");
       }
       return openMetadataConnectionConverted;
@@ -208,7 +209,7 @@ public abstract class SecretsManager {
       try {
         decryptPasswordFields(openMetadataConnectionConverted);
       } catch (Exception e) {
-        throw new CustomExceptionMessage(
+        throw new SecretsManagerException(
             Response.Status.BAD_REQUEST, "Failed to decrypt OpenMetadataConnection instance.");
       }
       return openMetadataConnectionConverted;
@@ -227,7 +228,7 @@ public abstract class SecretsManager {
                   Object obj = ReflectionUtil.getObjectFromMethod(method, toEncryptObject);
                   String fieldName = method.getName().replaceFirst("get", "");
                   // if the object matches the package of openmetadata
-                  if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                  if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
                     // encryptPasswordFields
                     encryptPasswordFields(
                         obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)), store);
@@ -265,7 +266,7 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
                   // encryptPasswordFields
                   decryptPasswordFields(obj);
                   // check if it has annotation
@@ -347,7 +348,7 @@ public abstract class SecretsManager {
     try {
       deleteSecrets(workflowConverted, buildSecretId(true, "workflow", workflow.getName()));
     } catch (Exception e) {
-      throw new CustomExceptionMessage(
+      throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
           String.format("Failed to delete secrets from workflow instance [%s]", workflow.getName()));
     }
@@ -364,7 +365,7 @@ public abstract class SecretsManager {
                 // check if it has annotation:
                 // We are replicating the logic that we use for storing the fields we need to encrypt
                 // at encryptPasswordFields
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
                   deleteSecrets(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   deleteSecretInternal(buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
@@ -374,11 +375,17 @@ public abstract class SecretsManager {
   }
 
   public static Map<String, String> getTags(SecretsConfig secretsConfig) {
-    try {
-      return secretsConfig.tags.stream().collect(Collectors.toMap(s -> s.split(":")[0], s -> s.split(":")[1]));
-    } catch (Exception e) {
-      LOG.error(String.format("The SecretsConfig could not extract tags from [%s]", secretsConfig.tags));
-      return Map.of();
-    }
+    Map<String, String> tags = new HashMap<>();
+    secretsConfig.tags.forEach(
+        keyValue -> {
+          try {
+            tags.put(keyValue.split(":")[0], keyValue.split(":")[1]);
+          } catch (Exception e) {
+            LOG.error(
+                String.format(
+                    "The SecretsConfig could not extract tag from [%s] due to [%s]", keyValue, e.getMessage()));
+          }
+        });
+    return tags;
   }
 }

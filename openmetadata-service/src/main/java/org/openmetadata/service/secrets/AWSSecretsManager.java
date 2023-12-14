@@ -18,7 +18,6 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -33,8 +32,8 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
-  private AWSSecretsManager(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
-    super(MANAGED_AWS, config, secretsConfig);
+  private AWSSecretsManager(SecretsConfig secretsConfig) {
+    super(MANAGED_AWS, secretsConfig);
   }
 
   @Override
@@ -86,9 +85,9 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     this.secretsClient.deleteSecret(deleteSecretRequest);
   }
 
-  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
+  public static AWSSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new AWSSecretsManager(config, secretsConfig);
+      instance = new AWSSecretsManager(secretsConfig);
     }
     return instance;
   }

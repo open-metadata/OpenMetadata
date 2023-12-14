@@ -15,7 +15,6 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
@@ -29,8 +28,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
-  private AWSSSMSecretsManager(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
-    super(MANAGED_AWS_SSM, config, secretsConfig);
+  private AWSSSMSecretsManager(SecretsConfig secretsConfig) {
+    super(MANAGED_AWS_SSM, secretsConfig);
   }
 
   @Override
@@ -82,8 +81,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     this.ssmClient.deleteParameter(deleteParameterRequest);
   }
 
-  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
-    if (instance == null) instance = new AWSSSMSecretsManager(config, secretsConfig);
+  public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {
+    if (instance == null) instance = new AWSSSMSecretsManager(secretsConfig);
     return instance;
   }
 
