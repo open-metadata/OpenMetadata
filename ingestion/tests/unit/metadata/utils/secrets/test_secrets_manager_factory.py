@@ -40,7 +40,7 @@ class TestSecretsManagerFactory(TestCase):
     def test_get_not_implemented_secret_manager(self):
         with self.assertRaises(NotImplementedError) as not_implemented_error:
             om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-                SecretsManagerProvider.noop,
+                SecretsManagerProvider.db,
                 SecretsManagerClientLoader.noop,
             )
             om_connection.secretsManagerProvider = "aws"
@@ -54,7 +54,7 @@ class TestSecretsManagerFactory(TestCase):
     def test_invalid_config_secret_manager(self):
 
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-            SecretsManagerProvider.noop,
+            SecretsManagerProvider.db,
             SecretsManagerClientLoader.noop,
         )
         om_connection.secretsManagerLoader = "random"
@@ -66,7 +66,7 @@ class TestSecretsManagerFactory(TestCase):
 
     def test_get_none_secret_manager(self):
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-            SecretsManagerProvider.noop,
+            SecretsManagerProvider.db,
             SecretsManagerClientLoader.noop,
         )
         om_connection.secretsManagerProvider = None
