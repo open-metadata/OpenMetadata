@@ -268,7 +268,7 @@ const ColumnProfileTable = () => {
   const addButtonContent = [
     {
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
-      key: '1',
+      key: 'test-case',
       onClick: () => {
         history.push({
           pathname: getAddDataQualityTableTestPath(
@@ -280,8 +280,8 @@ const ColumnProfileTable = () => {
       },
     },
     {
-      label: <TabsLabel id="metric" name={t('label.custom-metric')} />,
-      key: '2',
+      label: <TabsLabel id="custom-metric" name={t('label.custom-metric')} />,
+      key: 'custom-metric',
       onClick: () => {
         history.push({
           pathname: getAddCustomMetricPath(
