@@ -389,8 +389,8 @@ export const TaskTab = ({
   }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const testCaseResultFlow = useMemo(() => {
-    const hasApprovalAccess =
-      isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    // const hasApprovalAccess =
+    //   isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
     return (
       <Space
@@ -398,11 +398,12 @@ export const TaskTab = ({
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
-          title={
-            !hasApprovalAccess
-              ? t('message.only-assignee-can-reassign-or-resolve')
-              : ''
-          }>
+        // title={
+        //   !hasApprovalAccess
+        //     ? t('message.only-assignee-can-reassign-or-resolve')
+        //     : ''
+        // }
+        >
           <Button
             data-testid="reject-task"
             // disabled={!hasApprovalAccess}
@@ -412,14 +413,15 @@ export const TaskTab = ({
         </Tooltip>
 
         <Tooltip
-          title={
-            !hasApprovalAccess
-              ? t('message.only-assignee-can-reassign-or-resolve')
-              : ''
-          }>
+        // title={
+        //   !hasApprovalAccess
+        //     ? t('message.only-assignee-can-reassign-or-resolve')
+        //     : ''
+        // }
+        >
           <Button
             data-testid="approve-task"
-            disabled={!hasApprovalAccess}
+            // disabled={!hasApprovalAccess}
             type="primary"
             onClick={() => setShowEditTaskModel(true)}>
             {t('label.resolved')}
