@@ -130,9 +130,7 @@ export const getSchemaByWorkflowType = (
       break;
 
     default:
-      schema = {};
-
-      break;
+      return schema;
   }
 
   const rjsfSchema = schema as RJSFSchema;
