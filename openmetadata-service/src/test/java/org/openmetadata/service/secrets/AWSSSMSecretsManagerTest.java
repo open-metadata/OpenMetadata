@@ -28,7 +28,8 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   void setUpSpecific(SecretsManagerConfiguration config) {
     secretsManager =
         AWSSSMSecretsManager.getInstance(
-            config, new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2")));
+            config,
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     ((AWSSSMSecretsManager) secretsManager).setSsmClient(ssmClient);
     reset(ssmClient);
   }

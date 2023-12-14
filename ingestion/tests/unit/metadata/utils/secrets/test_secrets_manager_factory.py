@@ -24,7 +24,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.secrets.secrets_manager_factory import (
     SecretsManagerConfigException,
     SecretsManagerFactory,
@@ -77,7 +77,7 @@ class TestSecretsManagerFactory(TestCase):
         )
         assert secrets_manager_factory.get_secrets_manager() is not None
         assert isinstance(
-            secrets_manager_factory.get_secrets_manager(), NoopSecretsManager
+            secrets_manager_factory.get_secrets_manager(), DBSecretsManager
         )
 
     @patch("metadata.clients.aws_client.boto3")
