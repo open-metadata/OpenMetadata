@@ -45,7 +45,7 @@ VERSIONS = {
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
-    "pyhive": "pyhive~=0.7",
+    "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
@@ -191,7 +191,8 @@ plugins: Dict[str, Set[str]] = {
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
+        "pure-sasl",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
@@ -199,7 +200,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        "pure-sasl",
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
