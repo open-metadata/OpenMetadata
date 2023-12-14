@@ -107,7 +107,7 @@ const sortAndHighlightSummaryList = (
 
   const listHighlightsMap: { [key: string]: number } = {};
   listHighlights?.reduce((acc, colHighlight, index) => {
-    acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
+    acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
 
     return acc;
   }, listHighlightsMap);
@@ -148,7 +148,8 @@ const sortAndHighlightSummaryList = (
 
     if (
       isTagHighlightsPresentInListItemTags ||
-      !isUndefined(listHighlightsMap[listItem.name ?? ''])
+      !isUndefined(listHighlightsMap[listItem.name ?? '']) ||
+      !isUndefined(listHighlightsMap[listItem.description ?? ''])
     ) {
       listData.tags = getSortedTagsWithHighlight({
         sortTagsBasedOnGivenArr: tagHighlights,
@@ -162,6 +163,11 @@ const sortAndHighlightSummaryList = (
           ),
           sourceUrl: listItem.sourceUrl,
         });
+      }
+
+      if (!isUndefined(listHighlightsMap[listItem.description ?? ''])) {
+        listData.description =
+          listHighlights[listHighlightsMap[listItem.description]];
       }
 
       acc.entityWithSortOption.push(listData);

@@ -13,13 +13,17 @@
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 
 export const SummaryListHighlightKeysMap = {
-  [SummaryEntityType.COLUMN]: ['columns.name', 'columns.childrens.name'],
-  [SummaryEntityType.FIELD]: ['fields.name', 'fields.childrens.name'], // Todo have to update highlight key
-  [SummaryEntityType.CHART]: ['charts.name', 'charts.childrens.name'], // Todo have to update the highlight key
-  [SummaryEntityType.TASK]: ['tasks.name', 'tasks.childrens.name'],
-  [SummaryEntityType.MLFEATURE]: ['features.name', 'features.childrens.name'], // Todo have to update the highlight key
-  [SummaryEntityType.SCHEMAFIELD]: [
-    'schemafields.name',
-    'schemafields.childrens.name',
-  ], // Todo have to update the highlight key
+  [SummaryEntityType.COLUMN]: [
+    'columns.name',
+    'columns.children.name',
+    'synonyms',
+    'dataModel.columns.name',
+    'dataModel.columns.description',
+    'dataModel.columns.children.name',
+  ],
+  [SummaryEntityType.FIELD]: [], // not found any key in ElasticSearchClient.java file
+  [SummaryEntityType.CHART]: ['charts.name', 'charts.description'],
+  [SummaryEntityType.TASK]: ['tasks.name', 'tasks.description'],
+  [SummaryEntityType.MLFEATURE]: ['mlFeatures.name', 'mlFeatures.description'],
+  [SummaryEntityType.SCHEMAFIELD]: [], // not found any key in ElasticSearchClient.java file
 };
