@@ -10,7 +10,7 @@ on:
     paths:
       - openmetadata-ui/src/main/resources/ui/**
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
 

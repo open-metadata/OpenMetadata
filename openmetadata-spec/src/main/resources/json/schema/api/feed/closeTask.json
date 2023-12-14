@@ -8,6 +8,10 @@
     "comment": {
       "description": "The closing comment explaining why the task is being closed.",
       "type": "string"
+    },
+    "testCaseFQN": {
+      "description": "Fully qualified name of the test case.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["comment"],

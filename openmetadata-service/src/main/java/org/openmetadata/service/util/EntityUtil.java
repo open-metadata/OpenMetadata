@@ -563,6 +563,10 @@ public final class EntityUtil {
     return taskType == TaskType.RequestApproval;
   }
 
+  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
+    return taskType == TaskType.RequestTestCaseFailureResolution;
+  }
+
   public static Column findColumn(List<Column> columns, String columnName) {
     return columns.stream()
         .filter(c -> c.getName().equals(columnName))

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { User } from '../../generated/entity/teams/user';
 
 export interface Props {
@@ -21,10 +22,12 @@ export interface Props {
   };
   handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
+  authenticationMechanism?: PersonalAccessToken;
 }
 
 export enum UserPageTabs {
   ACTIVITY = 'activity_feed',
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
+  ACCESS_TOKEN = 'access-token',
 }
