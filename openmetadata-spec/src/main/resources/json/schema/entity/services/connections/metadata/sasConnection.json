@@ -74,6 +74,27 @@
           "type": "string"
         }
       ]
+    },
+    "dataflows": {
+      "description": "Enable dataflow for ingestion",
+      "type": "boolean",
+      "default": false
+    },
+    "dataflowsCustomFilter": {
+      "title": "Custom Filter for dataflows",
+      "description": "Custom filter for dataflows",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for dataflows",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for dataflows",
+          "type": "string"
+        }
+      ]
     }
   },
   "required": ["username", "password", "serverHost"],

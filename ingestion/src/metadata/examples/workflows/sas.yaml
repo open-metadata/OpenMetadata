@@ -11,6 +11,8 @@ source:
       dataTablesCustomFilter: None
       reports: False
       reportsCustomFilter: None
+      dataflows: False
+      dataflowsCustomFilter: None
   sourceConfig:
     config:
       type: DatabaseMetadata

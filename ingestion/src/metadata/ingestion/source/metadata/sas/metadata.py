@@ -1,3 +1,4 @@
+import copy
 import json
 import re
 import time
@@ -121,33 +122,11 @@ class SasSource(Source):
                 # populate the table entity
                 yield from self.create_table_entity(table)
 
-                # also create lineage between the table and its source
-                if "sourceName" in table["attributes"]:
-                    target_table_entity = self.metadata.get_by_name(
-                        entity=Table, fqn=self.table_fqns[-1]
-                    )
-                    source_name = table["attributes"]["sourceName"]
-                    sanitized_source_name = re.sub("[@!#$%^&*]", "", source_name)
-                    param = f"filter=contains(name, '{sanitized_source_name}')"
-                    get_instances_with_param = (
-                        self.sas_client.get_instances_with_param(param)
-                    )
-                    if get_instances_with_param and len(get_instances_with_param) == 1:
-                        source_table = get_instances_with_param[0]
-                        yield from self.create_table_entity(source_table)
-                        source_name = self.table_fqns.pop()
-                        source_table_entity = self.metadata.get_by_name(
-                            entity=Table, fqn=source_name
-                        )
-                        yield from self.create_table_lineage(
-                            source_table_entity, target_table_entity
-                        )
         if self.sas_client.enable_reports:
             report_entities = self.sas_client.list_reports()
             yield from self.create_dashboard_service("SAS_reports")
             for report in report_entities:
                 self.table_fqns = []
-                self.chart_names = []
 
                 # There isn't a schema for creating report entities, maybe this will work instead
                 logger.info(f"Ingesting report: {report}")
@@ -164,27 +143,37 @@ class SasSource(Source):
                     self.report_description = str(self.report_description)
                 for table in report_tables:
                     yield from self.create_table_entity(table)
-                    if "sourceName" in table["attributes"] and table["attributes"]["sourceName"] != "":
-                        target_table_entity = self.metadata.get_by_name(
-                            entity=Table, fqn=self.table_fqns[-1]
-                        )
-                        source_name = table["attributes"]["sourceName"]
-                        param = f"filter=eq(name, '{source_name}')"
-                        get_instances_with_param = (
-                            self.sas_client.get_instances_with_param(param)
-                        )
 
-                        if get_instances_with_param:
-                            source_table = get_instances_with_param[0]
-                            yield from self.create_table_entity(source_table)
-                            source_name = self.table_fqns.pop()
-                            source_table_entity = self.metadata.get_by_name(
-                                entity=Table, fqn=source_name
-                            )
-                            yield from self.create_table_lineage(
-                                source_table_entity, target_table_entity
-                            )
-                yield from self.create_report_entity(report)
+                yield from self.create_report_entity(report_instance)
+
+        if self.sas_client.enable_dataflows:
+            data_flow_entities = self.sas_client.list_data_flows()
+            yield from self.create_dashboard_service("SAS_dataFlows")
+            for data_flow in data_flow_entities:
+                self.table_fqns = []
+                data_flow_instance = self.sas_client.get_instance(data_flow["id"])
+                input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
+                output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
+                input_asset_ids = []
+                output_asset_ids = []
+                for rel in data_flow_instance["relationships"]:
+                    if rel["definitionId"] == input_asset_definition:
+                        input_asset_ids.append(rel["endpointId"])
+                    elif rel["definitionId"] == output_asset_definition:
+                        output_asset_ids.append(rel["endpointId"])
+                input_assets = [self.sas_client.get_instance(id) for id in input_asset_ids]
+                output_assets = [self.sas_client.get_instance(id) for id in output_asset_ids]
+
+                for input_asset in input_assets:
+                    yield from self.create_table_entity(input_asset)
+                input_fqns = copy.deepcopy(self.table_fqns)
+
+                self.table_fqns = []
+                for output_asset in output_assets:
+                    yield from self.create_table_entity(output_asset)
+                output_fqns = copy.deepcopy(self.table_fqns)
+
+                yield from self.create_data_flow_entity(data_flow_instance, input_fqns, output_fqns)
 
     def create_database_service(self, service_name):
         # Create a custom database connection config
@@ -255,33 +244,35 @@ class SasSource(Source):
         return database_entity
 
     def create_database_schema(self, table):
-        table_detail = self.sas_client.get_instance(table["id"])
-
         try:
-            table_resource_endpoint = table_detail["resourceId"][1:]
-            table_resource = self.sas_client.get_resource(
-                table_resource_endpoint
+            # 'dataTables/dataSources/cas~fs~cas-shared-default~fs~Public/tables/RANDOM_COLS_TARGET'
+            context = table["resourceId"].split("/")[3]
+
+            provider = context.split("~")[0]
+            self.db_name = context.split("~")[2]
+            self.db_schema_name = context.split("~")[4]
+
+            db_service = self.create_database_service(provider)
+            database = CreateDatabaseRequest(
+                name=self.db_name,  # cas_shared_default
+                # displayName=self.db_name,  # cas_shared_default
+                service=db_service.fullyQualifiedName,
             )
-            data_store_endpoint = ""
-            for link in table_resource["links"]:
-                if link["rel"] == "dataSource":
-                    data_store_endpoint = link["uri"][1:]
-                    break
-            data_store = self.sas_client.get_data_source(data_store_endpoint)
-            database = self.create_database(data_store)
-            self.db_schema_name = data_store["name"]
+            database = self.metadata.create_or_update(data=database)
+
             db_schema = CreateDatabaseSchemaRequest(
-                name=data_store["name"], database=database.fullyQualifiedName
+                name=self.db_schema_name, database=database.fullyQualifiedName
             )
             db_schema_entity = self.metadata.create_or_update(db_schema)
             return db_schema_entity
-        except HTTPError as httperror:
+
+        except HTTPError as _:
             # We find the "database" entity in Information Catalog
             # We first see if the table is a member of the library through the relationships attribute
             # Or we could use views to query the dataStores
             data_store_data_sets = "4b114f6e-1c2a-4060-9184-6809a612f27b"
             data_store_id = None
-            for relation in table_detail["relationships"]:
+            for relation in table["relationships"]:
                 if relation["definitionId"] != data_store_data_sets:
                     continue
                 data_store_id = relation["endpointId"]
@@ -321,7 +312,7 @@ class SasSource(Source):
             col_name = item["name"]
             parsed_string["name"] = col_name.replace('"', "'")
             parsed_string["ordinalPosition"] = item["index"]
-            if datatype in ["char", "varchar", "binary", "varbinary"]:
+            if datatype.lower() in ["char", "varchar", "binary", "varbinary"]:
                 parsed_string["dataLength"] = 0
             col = Column(**parsed_string)
             columns.append(col)
@@ -353,6 +344,9 @@ class SasSource(Source):
             table_name = table_entity_instance["name"]
             table_extension = table_entity_instance["attributes"]
 
+            # create tables in database
+            database_schema = self.create_database_schema(table_entity_instance)
+
             # find the table entity to see if it already exists
             table_fqn = fqn.build(
                 self.metadata,
@@ -368,143 +362,132 @@ class SasSource(Source):
 
             # if the table entity already exists, we don't need to create it again
             # only update it when either the sourceUrl or analysisTimeStamp changed
-            if table_entity and table_entity.extension:
-                self.table_fqns.append(table_fqn)
+            if (not table_entity or
+                    (table_url != table_entity.sourceUrl.__root__ or
+                     table_entity.extension.__root__.get("analysisTimeStamp") !=
+                     table_extension.get("analysisTimeStamp"))):
 
-                last_analyzed_timestamp = table_entity.extension.__root__.get("analysisTimeStamp")
-                if (table_url == table_entity.sourceUrl.__root__ and
-                        last_analyzed_timestamp == table_extension.get("analysisTimeStamp")):
-                    return
-
-            # create tables in database
-            database_schema = self.create_database_schema(table_entity_instance)
-
-            # For now many dataField attributes will be cut since currently there is no functionality for adding custom
-            # attributes to columns - luckily this functionality exists for tables so dataSet fields will be included
-            columns: List[Column] = []
-            col_profile_list = []
-            # Creating the columns of the table
-            for entity in entities:
-                if entity["id"] == table_id:
-                    continue
-                if "Column" not in entity["type"]:
-                    continue
-                col_attributes = entity["attributes"]
-                if "casDataType" in col_attributes:
-                    datatype = col_attributes["casDataType"]
-                else:
-                    datatype = col_attributes["dataType"]
-                if datatype == "num":
-                    datatype = "numeric"
-                parsed_string = ColumnTypeParser._parse_datatype_string(datatype)
-                col_name = entity["name"]
-                parsed_string["name"] = col_name.replace('"', "'")
-                parsed_string["ordinalPosition"] = col_attributes["ordinalPosition"]
-                # Column profile to be added
-                attr_map = {
-                    "mean": "mean",
-                    "median": "sum",
-                    "min": "min",
-                    "max": "max",
-                    "standardDeviation": "stddev",
-                    "missingCount": "nullCount",
-                    "completenessPercent": "valuesPercentage",
-                    "uniquenessPercent": "uniqueProportion",
-                    "cardinalityCount": "distinctCount",
-                    "skewness": "nonParametricSkew",
-                    "quantiles25": "firstQuartile",
-                    "quantiles50": "median",
-                    "quantiles75": "thirdQuartile",
-                    "mismatchedCount": "missingCount",
-                    "charsMinCount": "minLength",
-                    "charsMaxCount": "maxLength",
-                }
-                col_profile_dict = dict()
-                for attr in attr_map:
-                    if attr in col_attributes:
-                        if attr == "uniquenessPercent":
-                            col_profile_dict[attr_map[attr]] = col_attributes[attr] / 100
-                        else:
-                            col_profile_dict[attr_map[attr]] = col_attributes[attr]
-
-                if "rowCount" in table_extension:
-                    col_profile_dict["valuesCount"] = table_extension["rowCount"]
-                if "valuesCount" in col_profile_dict:
-                    if "distinctCount" in col_profile_dict:
-                        col_profile_dict["distinctProportion"] = (
-                                col_profile_dict["distinctCount"]
-                                / col_profile_dict["valuesCount"]
-                        )
-                        col_profile_dict["uniqueCount"] = col_profile_dict["distinctCount"]
-                    if "nullCount" in col_profile_dict:
-                        col_profile_dict["nullProportion"] = (
-                                col_profile_dict["nullCount"] / col_profile_dict["valuesCount"]
-                        )
-                    if "missingCount" in col_profile_dict:
-                        col_profile_dict["missingPercentage"] = (
-                                col_profile_dict["missingCount"]
-                                / col_profile_dict["valuesCount"]
-                        )
-                        col_profile_dict["validCount"] = (
-                                col_profile_dict["valuesCount"]
-                                - col_profile_dict["missingCount"]
-                        )
-                timestamp = time.time() - 100000
-                col_profile_dict["timestamp"] = timestamp
-                col_profile_dict["name"] = parsed_string["name"]
-                column_profile = ColumnProfile(**col_profile_dict)
-                col_profile_list.append(column_profile)
-                parsed_string["profile"] = column_profile
-
-                if datatype in ["char", "varchar", "binary", "varbinary"]:
-                    if "charsMaxCount" in col_attributes:
-                        parsed_string["dataLength"] = col_attributes["charsMaxCount"]
+                # create the columns of the table
+                columns: List[Column] = []
+                col_profile_list = []
+                for entity in entities:
+                    if entity["id"] == table_id:
+                        continue
+                    if "Column" not in entity["type"]:
+                        continue
+                    col_attributes = entity["attributes"]
+                    if "casDataType" in col_attributes:
+                        datatype = col_attributes["casDataType"]
                     else:
-                        parsed_string["dataLength"] = 0
-                logger.info(f"This is parsed string: {parsed_string}")
-                col = Column(**parsed_string)
-                columns.append(col)
+                        datatype = col_attributes["dataType"]
+                    if datatype == "num":
+                        datatype = "numeric"
+                    parsed_string = ColumnTypeParser._parse_datatype_string(datatype)
+                    col_name = entity["name"]
+                    parsed_string["name"] = col_name.replace('"', "'")
+                    parsed_string["ordinalPosition"] = col_attributes["ordinalPosition"]
+                    # Column profile to be added
+                    attr_map = {
+                        "mean": "mean",
+                        "median": "sum",
+                        "min": "min",
+                        "max": "max",
+                        "standardDeviation": "stddev",
+                        "missingCount": "nullCount",
+                        "completenessPercent": "valuesPercentage",
+                        "uniquenessPercent": "uniqueProportion",
+                        "cardinalityCount": "distinctCount",
+                        "skewness": "nonParametricSkew",
+                        "quantiles25": "firstQuartile",
+                        "quantiles50": "median",
+                        "quantiles75": "thirdQuartile",
+                        "mismatchedCount": "missingCount",
+                        "charsMinCount": "minLength",
+                        "charsMaxCount": "maxLength",
+                    }
+                    col_profile_dict = dict()
+                    for attr in attr_map:
+                        if attr in col_attributes:
+                            if attr == "uniquenessPercent":
+                                col_profile_dict[attr_map[attr]] = col_attributes[attr] / 100
+                            else:
+                                col_profile_dict[attr_map[attr]] = col_attributes[attr]
 
-            if len(columns) == 0:
-                # Create columns alternatively
-                table_description = ("Table has not been analyzed. "
-                                     f"Head over to <a target=\"_blank\" href=\"{table_url}\">SAS Information Catalog"
-                                     f"</a> to analyze the table.")
-                try:
-                    table_resource_id = self.sas_client.get_instance(table_id)["resourceId"][1:]
-                    table_resource = self.sas_client.get_resource(table_resource_id)
-                    columns = self.create_columns_alt(table_resource)
-                except HTTPError as httperror:
-                    table_description = (
-                            str(httperror) + " This table does not exist in the file path"
-                    )
-            else:
-                table_description = (f"Last analyzed: <b>{table_extension.get('analysisTimeStamp')}</b>. "
-                                     f"Visit <a target=\"_blank\" href=\"{table_url}\">SAS Information Catalog</a>"
-                                     f" for more information.")
+                    if "rowCount" in table_extension:
+                        col_profile_dict["valuesCount"] = table_extension["rowCount"]
+                    if "valuesCount" in col_profile_dict:
+                        if "distinctCount" in col_profile_dict:
+                            col_profile_dict["distinctProportion"] = (
+                                    col_profile_dict["distinctCount"]
+                                    / col_profile_dict["valuesCount"]
+                            )
+                            col_profile_dict["uniqueCount"] = col_profile_dict["distinctCount"]
+                        if "nullCount" in col_profile_dict:
+                            col_profile_dict["nullProportion"] = (
+                                    col_profile_dict["nullCount"] / col_profile_dict["valuesCount"]
+                            )
+                        if "missingCount" in col_profile_dict:
+                            col_profile_dict["missingPercentage"] = (
+                                    col_profile_dict["missingCount"]
+                                    / col_profile_dict["valuesCount"]
+                            )
+                            col_profile_dict["validCount"] = (
+                                    col_profile_dict["valuesCount"]
+                                    - col_profile_dict["missingCount"]
+                            )
+                    timestamp = time.time() - 100000
+                    col_profile_dict["timestamp"] = timestamp
+                    col_profile_dict["name"] = parsed_string["name"]
+                    column_profile = ColumnProfile(**col_profile_dict)
+                    col_profile_list.append(column_profile)
+                    parsed_string["profile"] = column_profile
 
-            # Building table extension attr
-            for attr in table_extension:
-                if type(table_extension[attr]) == bool:
-                    table_extension[attr] = str(table_extension[attr])
+                    if datatype.lower() in ["char", "varchar", "binary", "varbinary"]:
+                        if "charsMaxCount" in col_attributes:
+                            parsed_string["dataLength"] = col_attributes["charsMaxCount"]
+                        else:
+                            parsed_string["dataLength"] = 0
+                    logger.info(f"This is parsed string: {parsed_string}")
+                    col = Column(**parsed_string)
+                    columns.append(col)
 
-            custom_attributes = [custom_attribute["name"] for custom_attribute in TABLE_CUSTOM_ATTR]
-            extension_attributes = {attr: value for attr, value in table_extension.items() if attr in custom_attributes}
+                if len(columns) == 0:
+                    # Create columns alternatively
+                    table_description = ("Table has not been analyzed. "
+                                         f"Head over to <a target=\"_blank\" href=\"{table_url}\">"
+                                         f"SAS Information Catalog</a> to analyze the table.")
+                    try:
+                        table_resource = self.sas_client.get_resource(table_entity_instance["resourceId"][1:])
+                        columns = self.create_columns_alt(table_resource)
+                    except HTTPError as http_err:
+                        table_description = f"{str(http_err)} This table does not exist in the file path"
+                else:
+                    table_description = (f"Last analyzed: <b>{table_extension.get('analysisTimeStamp')}</b>. "
+                                         f"Visit <a target=\"_blank\" href=\"{table_url}\">SAS Information Catalog</a>"
+                                         f" for more information.")
 
-            table_request = CreateTableRequest(
-                name=table_name,
-                sourceUrl=table_url,
-                description=table_description,
-                columns=columns,
-                databaseSchema=database_schema.fullyQualifiedName,
-                extension=extension_attributes
-            )
+                # build table extension attr
+                for attr in table_extension:
+                    if isinstance(table_extension[attr], bool):
+                        table_extension[attr] = str(table_extension[attr])
 
-            yield Either(right=table_request)
+                custom_attributes = [custom_attribute["name"] for custom_attribute in TABLE_CUSTOM_ATTR]
+                extension_attributes = {attr: value for attr, value in table_extension.items() if
+                                        attr in custom_attributes}
 
-            logger.info(f"schema: {table_id}, {self.db_service_name}, {self.db_name}, {self.db_schema_name}")
+                table_request = CreateTableRequest(
+                    name=table_name,
+                    sourceUrl=table_url,
+                    description=table_description,
+                    columns=columns,
+                    databaseSchema=database_schema.fullyQualifiedName,
+                    extension=extension_attributes
+                )
 
-            if not table_entity:
+                yield Either(right=table_request)
+
+                logger.info(f"schema: {table_id}, {self.db_service_name}, {self.db_name}, {self.db_schema_name}")
+
                 # find the table entity to see if it already exists
                 table_fqn = fqn.build(
                     self.metadata,
@@ -515,50 +498,82 @@ class SasSource(Source):
                     table_name=table_name,
                 )
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                self.table_fqns.append(table_fqn)
+                # self.table_fqns.append(table_fqn)
 
-            # update the description
-            logger.debug(f"Updating description for {table_entity.id.__root__} with {table_description}")
-            patch = [{"op": "add", "path": "/description", "value": table_description}]
-            self.metadata.client.patch(
-                path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
-            )
+                # create lineage between the table and its source
+                if "sourceName" in table_extension and table_extension["sourceName"] != "":
+                    source_name = table_extension["sourceName"]
+                    # see if the source table already exists
+                    source_table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.db_service_name,
+                        database_name=self.db_name,
+                        schema_name=self.db_schema_name,
+                        table_name=source_name,
+                    )
+                    logger.debug(f"source_table_fqn for sourceTable is {source_table_fqn}")
+                    source_table_entity = self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
 
-            # update the custom properties
-            logger.debug(f"Updating custom properties for {table_entity.id.__root__} with {extension_attributes}")
-            patch = [{"op": "add", "path": "/extension", "value": extension_attributes}]
-            self.metadata.client.patch(
-                path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
-            )
+                    # process to create lineage if source table doesn't exist
+                    if not source_table_entity:
+                        sanitized_source_name = re.sub("[@!#$%^&*]", "", source_name)
+                        param = f"filter=contains(name, '{sanitized_source_name}')"
+                        get_instances_with_param = (self.sas_client.get_instances_with_param(param))
+                        if get_instances_with_param and len(get_instances_with_param) == 1:
+                            source_table = get_instances_with_param[0]
+                            yield from self.create_table_entity(source_table)
 
-            # quit updating table profile if table doesn't exist
-            if table_description and "This table does not exist in the file path" in table_description:
-                return
+                    source_table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=source_table_fqn
+                    )
+                    if source_table_entity:
+                        yield from self.create_table_lineage(
+                            source_table_entity, table_entity
+                        )
 
-            # update table profile
-            table_profile_dict = {}
-            timestamp = time.time() - 100000
-            table_profile_dict["timestamp"] = timestamp
-            table_profile_dict["createDateTime"] = creation_timestamp
-            table_profile_dict["rowCount"] = 0 if "rowCount" not in table_extension \
-                else table_extension["rowCount"]
-            table_profile_dict["columnCount"] = 0 if "columnCount" not in table_extension \
-                else table_extension["columnCount"]
-            table_profile_dict["sizeInByte"] = 0 if "dataSize" not in extension_attributes \
-                else table_extension["dataSize"]
-            table_profile = TableProfile(**table_profile_dict)
+                # update the description
+                logger.debug(f"Updating description for {table_entity.id.__root__} with {table_description}")
+                patch = [{"op": "add", "path": "/description", "value": table_description}]
+                self.metadata.client.patch(
+                    path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
+                )
 
-            # create Profiles & Data Quality Column
-            table_profile_request = CreateTableProfileRequest(
-                tableProfile=table_profile, columnProfile=col_profile_list
-            )
-            self.metadata.client.put(
-                path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/tableProfile",
-                data=table_profile_request.json(),
-            )
+                # update the custom properties
+                logger.debug(f"Updating custom properties for {table_entity.id.__root__} with {extension_attributes}")
+                patch = [{"op": "add", "path": "/extension", "value": extension_attributes}]
+                self.metadata.client.patch(
+                    path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
+                )
+
+                # quit updating table profile if table doesn't exist
+                if table_description and "This table does not exist in the file path" in table_description:
+                    return
+
+                # update table profile
+                table_profile_dict = {}
+                timestamp = time.time() - 100000
+                table_profile_dict["timestamp"] = timestamp
+                table_profile_dict["createDateTime"] = creation_timestamp
+                table_profile_dict["rowCount"] = 0 if "rowCount" not in table_extension \
+                    else table_extension["rowCount"]
+                table_profile_dict["columnCount"] = 0 if "columnCount" not in table_extension \
+                    else table_extension["columnCount"]
+                table_profile_dict["sizeInByte"] = 0 if "dataSize" not in extension_attributes \
+                    else table_extension["dataSize"]
+                table_profile = TableProfile(**table_profile_dict)
+
+                # create Profiles & Data Quality Column
+                table_profile_request = CreateTableProfileRequest(
+                    tableProfile=table_profile, columnProfile=col_profile_list
+                )
+                self.metadata.client.put(
+                    path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/tableProfile",
+                    data=table_profile_request.json(),
+                )
 
         except Exception as exc:
-            logger.error(f"table failed to creat: {table}")
+            logger.error(f"table failed to create: {table}")
             yield Either(
                 left=StackTraceError(
                     name=table_name,
@@ -566,6 +581,9 @@ class SasSource(Source):
                     stack_trace=traceback.format_exc(),
                 )
             )
+        finally:
+            if table_entity:
+                self.table_fqns.append(table_fqn)
 
     def add_table_custom_attributes(self):
         string_type = self.metadata.client.get(path="/metadata/types/name/string")["id"]
@@ -650,14 +668,11 @@ class SasSource(Source):
         report_id = report["id"]
         report_name = report["name"]
         try:
-            report_instance = self.sas_client.get_instance(report_id)
-            logger.info(f"{self.config.type}")
-            logger.info(f"{self.service_connection}")
-            report_resource = report_instance["resourceId"]
+            report_resource = report["resourceId"]
             report_url = self.sas_client.get_report_link("report", report_resource)
             report_request = CreateDashboardRequest(
-                name=report_id,
-                displayName=report_instance["name"],
+                name=report_name,
+                displayName=report_name,
                 sourceUrl=report_url,
                 charts=self.chart_names,
                 service=self.dashboard_service_name,
@@ -669,7 +684,7 @@ class SasSource(Source):
                 self.metadata,
                 entity_type=Dashboard,
                 service_name=self.dashboard_service_name,
-                dashboard_name=report_id,
+                dashboard_name=report_name,
             )
 
             dashboard_entity = self.metadata.get_by_name(
@@ -684,7 +699,7 @@ class SasSource(Source):
                     "table", "dashboard", entity, dashboard_entity
                 )
         except Exception as exc:
-            logger.error(f"report failed to creat: {report}")
+            logger.error(f"report failed to create: {report}")
             yield Either(
                 left=StackTraceError(
                     name=report_name,
@@ -693,12 +708,59 @@ class SasSource(Source):
                 )
             )
 
-    def create_in_out_tables(self, table_ids):
-        table_entities = []
-        for id in table_ids:
-            asset = self.sas_client.get_instance(id)
-            table_entities.append(asset)
-        return table_entities
+    def create_data_flow_entity(self, data_flow, input_fqns, output_fqns):
+        print(input_fqns, output_fqns)
+        data_flow_id = data_flow["id"]
+        data_flow_resource = data_flow["resourceId"]
+
+        try:
+            data_flow_url = self.sas_client.get_report_link(
+                "dataFlow", data_flow_resource
+            )
+            data_flow_request = CreateDashboardRequest(
+                name=data_flow["name"],
+                service=self.dashboard_service_name,
+                sourceUrl=data_flow_url,
+            )
+            yield Either(right=data_flow_request)
+
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.dashboard_service_name,
+                dashboard_name=data_flow["name"],
+            )
+
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard, fqn=dashboard_fqn
+            )
+
+            input_entities = []
+            output_entities = []
+            for input_entity in input_fqns:
+                input_entity = self.metadata.get_by_name(entity=Table, fqn=input_entity)
+                input_entities.append(input_entity)
+            for output_entity in output_fqns:
+                output_entity = self.metadata.get_by_name(entity=Table, fqn=output_entity)
+                output_entities.append(output_entity)
+
+            for entity in input_entities:
+                yield self.create_lineage_request(
+                    "table", "dashboard", entity, dashboard_entity
+                )
+            for entity in output_entities:
+                yield self.create_lineage_request(
+                    "dashboard", "table", dashboard_entity, entity
+                )
+        except Exception as exc:
+            logger.error(f"dataflow failed to create: {data_flow}")
+            yield Either(
+                left=StackTraceError(
+                    name=data_flow_id,
+                    error=f"Unexpected exception to create data flow [{data_flow_id}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         pass
