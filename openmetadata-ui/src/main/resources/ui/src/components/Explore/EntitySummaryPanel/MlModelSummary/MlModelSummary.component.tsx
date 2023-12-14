@@ -80,7 +80,6 @@ function MlModelSummary({
         <Divider className="m-y-xs" />
 
         <SummaryTagsDescription
-          ags={tags ?? entityDetails.tags ?? []}
           entityDetail={entityDetails}
           tags={
             tags ??
