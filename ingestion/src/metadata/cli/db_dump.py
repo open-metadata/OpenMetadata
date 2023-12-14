@@ -123,9 +123,12 @@ def get_hash_column_name(engine: Engine, table_name: str) -> Optional[str]:
 
 def run_query_iter(engine: Engine, query: str) -> Iterable[Row]:
     """Return a generator of rows, one row at a time, with a limit of 100 in-mem rows"""
-
-    for row in engine.execute(text(query)).yield_per(100):
-        yield row
+    with engine.connect() as conn:
+        result = conn.execution_options(
+            stream_results=True, max_row_buffer=100
+        ).execute(text(query))
+        for row in result:
+            yield row
 
 
 def dump_json(tables: List[str], engine: Engine, output: Path) -> None:
