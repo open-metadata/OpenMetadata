@@ -26,9 +26,9 @@ export const stringToSlug = (dataString: string, slugString = '') => {
  * @return {Node}       The template HTML
  */
 export const stringToHTML = function (
-  strHTML: string
+  strHTML: string | undefined
 ): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : strHTML;
+  return strHTML ? parse(strHTML) : '';
 };
 
 /**

@@ -297,7 +297,7 @@ export const mockInvalidDataResponse = [
     columnConstraints: undefined,
     tableConstraints: undefined,
     description: undefined,
-    name: undefined,
+    name: '',
     tags: undefined,
     title: (
       <Text className="entity-title" data-testid="entity-title">

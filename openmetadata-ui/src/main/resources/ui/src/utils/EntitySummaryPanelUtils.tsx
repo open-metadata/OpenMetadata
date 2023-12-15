@@ -83,7 +83,7 @@ export const getSortedTagsWithHighlight = ({
   } = { tagForSort: [], remainingTags: [] };
 
   tags?.reduce((acc, tag) => {
-    if (sortTagsBasedOnGivenArr?.includes(tag.tagFQN)) {
+    if (sortTagsBasedOnGivenArr.includes(tag.tagFQN)) {
       acc.tagForSort.push({ ...tag, isHighlighted: true });
     } else {
       acc.remainingTags.push(tag);
@@ -99,7 +99,7 @@ export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
   tableConstraints?: TableConstraint[],
-  highlights?: SearchedDataProps['data'][number]['highlights']
+  highlights?: SearchedDataProps['data'][number]['highlight']
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -127,7 +127,7 @@ export const getFormattedEntityData = (
 
     entityInfo?.reduce((acc, listItem) => {
       const listItemModifiedData = {
-        name: listItem.name,
+        name: listItem.name || '',
         title: getTitle({
           content: getTitleName(listItem),
           sourceUrl: listItem.sourceUrl,
@@ -151,13 +151,18 @@ export const getFormattedEntityData = (
       };
 
       const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
-        tagHighlights?.includes(tag.tagFQN)
+        tagHighlights.includes(tag.tagFQN)
       );
+
+      const highlightedListItemNameIndex =
+        listHighlightsMap[listItem.name ?? ''];
+      const highlightedListItemDescriptionIndex =
+        listHighlightsMap[listItem.description ?? ''];
 
       if (
         isTagHighlightsPresentInListItemTags ||
-        !isUndefined(listHighlightsMap[listItem.name ?? '']) ||
-        !isUndefined(listHighlightsMap[listItem.description ?? ''])
+        !isUndefined(highlightedListItemNameIndex) ||
+        !isUndefined(highlightedListItemDescriptionIndex)
       ) {
         if (isTagHighlightsPresentInListItemTags) {
           listItemModifiedData.tags = getSortedTagsWithHighlight({
@@ -166,24 +171,20 @@ export const getFormattedEntityData = (
           });
         }
 
-        if (!isUndefined(listHighlightsMap[listItem.name ?? ''])) {
+        if (!isUndefined(highlightedListItemNameIndex)) {
           listItemModifiedData.title = getTitle({
-            content: stringToHTML(
-              listHighlights[listHighlightsMap[listItem.name]]
-            ),
+            content: stringToHTML(listHighlights[highlightedListItemNameIndex]),
             sourceUrl: listItem.sourceUrl,
           });
         }
 
-        if (!isUndefined(listHighlightsMap[listItem.description ?? ''])) {
+        if (!isUndefined(highlightedListItemDescriptionIndex)) {
           listItemModifiedData.description =
-            listHighlights[listHighlightsMap[listItem.description]];
+            listHighlights[highlightedListItemDescriptionIndex];
         }
-
-        acc.listItemWithSortOption.push(listItemModifiedData);
-      } else {
-        acc.listItemWithoutSortOption.push(listItemModifiedData);
       }
+
+      acc.listItemWithSortOption.push(listItemModifiedData);
 
       return acc;
     }, SummaryListData);
