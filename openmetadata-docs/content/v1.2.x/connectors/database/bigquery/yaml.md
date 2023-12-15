@@ -98,6 +98,7 @@ link="/connectors/database/bigquery/roles"
   / %}
 {% /tilesContainer %}
 
+## Metadata Ingestion
 
 ### 1. Define the YAML Config
 

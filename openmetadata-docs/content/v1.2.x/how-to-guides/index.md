@@ -87,7 +87,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Enhance organizational **[Data Culture](/how-to-guides/data-insights)** to gain crucial insights to drive innovation.
 
-- Define your **[Glossary](/how-to-guides/data-governance/glossary-classification)** to build a common understanding of terms within your organization.
+- Define your **[Glossary](/how-to-guides/data-governance/glossary)** to build a common understanding of terms within your organization.
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
 

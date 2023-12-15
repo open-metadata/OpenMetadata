@@ -47,6 +47,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+## Requirements
 ### Data Catalog API Permissions 
 
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)

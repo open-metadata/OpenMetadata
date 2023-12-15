@@ -36,7 +36,7 @@ You can view all the tags in the right panel.
 
 Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/data-governance/classification/tiers).
 
-Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/data-governance/classification/classification).
+Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/data-governance/classification/overview#classification-in-openmetadata).
 
 ## Auto-Classification in OpenMetadata
 
