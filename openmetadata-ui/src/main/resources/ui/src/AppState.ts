@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
-import { EntityUnion } from './components/Explore/explore.interface';
+import { EntityUnion } from './components/Explore/ExplorePage.interface';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,
   User,
 } from './generated/entity/teams/user';
-import { ImageList } from './generated/type/profile';
 
 class AppState {
   urlPathname = '';
@@ -38,17 +37,6 @@ class AppState {
   entityData: Record<string, EntityUnion> = {};
   userTeams: Array<UserTeams> = [];
   userPermissions: ResourcePermission[] = [];
-  userProfilePics: Array<{
-    id: string;
-    name: string;
-    profile: ImageList['image512'];
-    displayName?: string;
-  }> = [];
-  userProfilePicsLoading: Array<{
-    id: string;
-    name: string;
-  }> = [];
-
   inPageSearchText = '';
   explorePageTab = 'tables';
 
@@ -66,13 +54,6 @@ class AppState {
       getAllUsers: action,
       getAllTeams: action,
       getAllPermissions: action,
-      getUserProfilePic: action,
-      getUserDisplayName: action,
-      updateUserProfilePic: action,
-      getProfilePicsLoading: action,
-      updateProfilePicsLoading: action,
-      isProfilePicLoading: action,
-      removeProfilePicsLoading: action,
       getUrlPathname: action,
       updateUrlPathname: action,
     });
@@ -116,81 +97,6 @@ class AppState {
     this.explorePageTab = tab;
   }
 
-  updateUserProfilePic(
-    id?: string,
-    username?: string,
-    profile?: ImageList['image512'],
-    displayName?: string
-  ) {
-    if (!id && !username) {
-      return;
-    }
-
-    const filteredList = this.userProfilePics.filter((item) => {
-      // compare id only if present
-      if (item.id && id) {
-        return item.id !== id;
-      } else {
-        return item.name !== username;
-      }
-    });
-    this.userProfilePics = [
-      ...filteredList,
-      {
-        id: id || '',
-        name: username || '',
-        profile,
-        displayName,
-      },
-    ];
-
-    return profile;
-  }
-
-  updateProfilePicsLoading(id?: string, username?: string) {
-    if (!id && !username) {
-      return;
-    }
-
-    const alreadyLoading = !isUndefined(
-      this.userProfilePicsLoading.find((loadingItem) => {
-        // compare id only if present
-        if (loadingItem.id && id) {
-          return loadingItem.id === id;
-        } else {
-          return loadingItem.name === username;
-        }
-      })
-    );
-
-    if (!alreadyLoading) {
-      this.userProfilePicsLoading = [
-        ...this.userProfilePicsLoading,
-        {
-          id: id || '',
-          name: username || '',
-        },
-      ];
-    }
-  }
-
-  removeProfilePicsLoading(id?: string, username?: string) {
-    if (!id && !username) {
-      return;
-    }
-
-    const filteredList = this.userProfilePicsLoading.filter((loadingItem) => {
-      // compare id only if present
-      if (loadingItem.id && id) {
-        return loadingItem.id !== id;
-      } else {
-        return loadingItem.name !== username;
-      }
-    });
-
-    this.userProfilePicsLoading = filteredList;
-  }
-
   getCurrentUserDetails() {
     if (!isEmpty(this.userDetails) && !isNil(this.userDetails)) {
       return this.userDetails;
@@ -202,53 +108,6 @@ class AppState {
     } else {
       return;
     }
-  }
-
-  getUserProfilePic(id?: string, username?: string) {
-    const data = this.userProfilePics.find((item) => {
-      // compare id only if present
-      if (item.id && id) {
-        return item.id === id;
-      } else {
-        return item.name === username;
-      }
-    });
-
-    return data?.profile;
-  }
-
-  getUserDisplayName(id?: string, username?: string) {
-    const data = this.userProfilePics.find((item) => {
-      // compare id only if present
-      if (item.id && id) {
-        return item.id === id;
-      } else {
-        return item.name === username;
-      }
-    });
-
-    return data?.displayName;
-  }
-
-  getAllUserProfilePics() {
-    return this.userProfilePics;
-  }
-
-  getProfilePicsLoading() {
-    return this.userProfilePicsLoading;
-  }
-
-  isProfilePicLoading(id?: string, username?: string) {
-    const data = this.userProfilePicsLoading.find((loadingPic) => {
-      // compare id only if present
-      if (loadingPic.id && id) {
-        return loadingPic.id === id;
-      } else {
-        return loadingPic.name === username;
-      }
-    });
-
-    return Boolean(data);
   }
 
   getAllUsers() {

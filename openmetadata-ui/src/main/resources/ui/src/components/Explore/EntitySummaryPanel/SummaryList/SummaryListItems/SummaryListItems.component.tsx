@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
-import RichTextEditorPreviewer from '../../../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
 
@@ -34,7 +34,7 @@ function SummaryListItem({
       <div className="summary-list-item-container">
         <Row gutter={[0, 8]}>
           <Col
-            className="d-flex items-center"
+            className="d-flex items-baseline"
             data-testid="title-container"
             span={24}>
             {isColumnsData &&

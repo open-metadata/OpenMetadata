@@ -5,8 +5,8 @@
   "description": "Application Pipeline Configuration.",
   "type": "object",
   "definitions": {
-    "testSuiteConfigType": {
-      "description": "Pipeline Source Config For Application Pipeline type",
+    "applicationConfigType": {
+      "description": "Pipeline Source Config For Application Pipeline type. Nothing is required.",
       "type": "string",
       "enum": ["Application"],
       "default": "Application"
@@ -15,14 +15,17 @@
   "properties": {
     "type": {
       "description": "Pipeline type",
-      "$ref": "#/definitions/testSuiteConfigType",
-      "default": "TestSuite"
+      "$ref": "#/definitions/applicationConfigType",
+      "default": "Application"
     },
-    "entityFullyQualifiedName": {
-      "description": "Fully qualified name of the application to be executed",
-      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
+    "appConfig": {
+      "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/appConfig",
+      "description": "Application configuration"
     }
   },
-  "required": ["type", "entityFullyQualifiedName"],
   "additionalProperties": false
 }

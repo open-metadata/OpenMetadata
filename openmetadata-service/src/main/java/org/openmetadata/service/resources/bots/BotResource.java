@@ -243,9 +243,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
             responseCode = "200",
             description = "bot",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Bot for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} and version {version} is not found")
       })
   public Bot getVersion(
       @Context UriInfo uriInfo,
@@ -311,9 +309,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

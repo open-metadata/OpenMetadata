@@ -24,6 +24,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -55,7 +56,6 @@ import org.openmetadata.service.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardService, CreateDashboardService> {
@@ -122,14 +122,13 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
     CreateDashboardService update =
         createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     fieldUpdated(change, "connection", dashboardConnection, dashboardConnection1);
-    DashboardService updatedService =
-        updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    DashboardService updatedService = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     validateConnection(
         update.getConnection(), updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
-    change = getChangeDescription(updatedService.getVersion());
+    change = getChangeDescription(updatedService, MINOR_UPDATE);
     updatedService = getEntity(service.getId(), TEST_AUTH_HEADERS);
     assertNotNull(updatedService.getConnection());
     assertNotNull(
@@ -147,7 +146,7 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
     update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     updatedService = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateConnection(
         dashboardConnection2, updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
@@ -227,10 +226,13 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

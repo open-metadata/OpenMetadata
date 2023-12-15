@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableDescription from '../../../components/TableDescription/TableDescription.component';
@@ -171,15 +171,12 @@ const SearchIndexFieldsTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 180,
+        width: 220,
         fixed: 'left',
         render: (_, record: SearchIndexField) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
+          <div className="d-inline-flex w-max-90">
             <span className="break-word">{getEntityName(record)}</span>
-          </Space>
+          </div>
         ),
       },
       {
@@ -276,7 +273,7 @@ const SearchIndexFieldsTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.field'),
-          })}: "${editField.field.name}"`}
+          })}: "${getEntityName(editField.field)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.field'),
           })}

@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCaseResolutionStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseResolutionStatus",
+  "description": "Schema to capture test case resolution status.",
+  "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatus",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "type": "object",
+  "definitions": {
+    "testCaseResolutionStatusTypes": {
+      "description": "Test case resolution status type.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes",
+      "type": "string",
+      "enum": ["New","Ack", "Assigned", "Resolved"],
+      "javaEnums": [
+        {"name": "New"},
+        {"name": "Ack"},
+        {"name":  "Assigned"},
+        {"name": "Resolved"}
+      ]
+    },
+    "severities": {
+      "description": "Test case resolution status type.",
+      "javaType": "org.openmetadata.schema.tests.type.Severity",
+      "type": "string",
+      "enum": ["Severity1", "Severity2", "Severity3", "Severity4", "Severity5"],
+      "javaEnums": [
+        {"name": "Severity1"},
+        {"name":  "Severity2"},
+        {"name": "Severity3"},
+        {"name": "Severity4"},
+        {"name": "Severity5"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this failure instance",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "stateId": {
+      "description": "Sequence ID for a failure status. Statuses belonging to the same sequence will have the same ID. Unique across a failure cycle, i.e. new -> ack -> ... -> resolved.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "timestamp": {
+      "description": "Timestamp on which the failure was created.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseResolutionStatusType": {
+      "description": "Status of Test Case Acknowledgement.",
+      "$ref": "#/definitions/testCaseResolutionStatusTypes"
+    },
+    "testCaseResolutionStatusDetails": {
+      "description": "Details of the test case failure status.",
+      "oneOf": [
+        {"$ref": "./assigned.json"},
+        {"$ref": "./resolved.json"}
+      ],
+      "default": null
+    },
+    "updatedBy": {
+      "description": "User who updated the test case failure status.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Time when test case resolution was updated.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseReference": {
+      "description": "Test case reference",
+      "$ref": "../type/entityReference.json"
+    },
+    "severity": {
+      "description": "Severity failure for the test associated with the resolution.",
+      "$ref": "#/definitions/severities"
+    }
+  },
+  "required": ["testCaseResolutionStatusType"],
+  "additionalProperties": false
+}

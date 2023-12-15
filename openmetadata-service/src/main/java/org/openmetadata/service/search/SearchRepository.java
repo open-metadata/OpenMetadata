@@ -1,8 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -13,6 +18,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIE
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,14 +29,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.SortedMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -44,9 +50,11 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -62,29 +70,32 @@ public class SearchRepository {
 
   private final String language;
 
+  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+  private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   public final List<String> dataInsightReports =
       List.of(
-          "entityReportData",
-          "webAnalyticEntityViewReportData",
-          "webAnalyticUserActivityReportData",
-          "rawCostAnalysisReportData",
-          "aggregatedCostAnalysisReportData");
+          ENTITY_REPORT_DATA,
+          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
+          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+          RAW_COST_ANALYSIS_REPORT_DATA,
+          AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
-  public SearchRepository(ElasticSearchConfiguration config) {
+  public SearchRepository(ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
     elasticSearchConfiguration = config;
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {
       searchClient = new ElasticSearchClient(config);
     }
+    this.searchIndexFactory = searchIndexFactory;
     this.language = config != null ? config.getSearchIndexMappingLanguage().value() : "en";
     loadIndexMappings();
     Entity.setSearchRepository(this);
@@ -99,16 +110,28 @@ public class SearchRepository {
   }
 
   private void loadIndexMappings() {
+    Set<String> entities;
     entityIndexMap = new HashMap<>();
     try (InputStream in = getClass().getResourceAsStream("/elasticsearch/indexMapping.json")) {
       assert in != null;
       JsonObject jsonPayload = JsonUtils.readJson(new String(in.readAllBytes())).asJsonObject();
-      Set<String> entities = jsonPayload.keySet();
+      entities = jsonPayload.keySet();
       for (String s : entities) {
         entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to load indexMapping.json");
+    }
+    try (InputStream in2 = getClass().getResourceAsStream("/elasticsearch/collate/indexMapping.json")) {
+      if (in2 != null) {
+        JsonObject jsonPayload = JsonUtils.readJson(new String(in2.readAllBytes())).asJsonObject();
+        entities = jsonPayload.keySet();
+        for (String s : entities) {
+          entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load indexMapping.json");
     }
   }
 
@@ -117,20 +140,20 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      createIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
     }
   }
 
   public void updateIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      updateIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      updateIndex(indexMapping);
     }
   }
 
   public void dropIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      deleteIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      deleteIndex(indexMapping);
     }
   }
 
@@ -164,7 +187,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Index for entity %s due to ", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Index for entity %s", indexMapping.getIndexName()));
     }
   }
 
@@ -195,7 +218,7 @@ public class SearchRepository {
       String entityType = entity.getEntityReference().getType();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
         String doc = JsonUtils.pojoToJson(index.buildESDoc());
         searchClient.createEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
@@ -214,12 +237,12 @@ public class SearchRepository {
         // Report data type is an entity itself where each report data type has its own index
         entityType = ((ReportData) entity).getReportDataType().toString();
       } else {
-        entityType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+        entityType = entity.getEntityReference().getType();
       }
       String entityId = entity.getId().toString();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
         String doc = JsonUtils.pojoToJson(index.buildESDoc());
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
@@ -243,11 +266,12 @@ public class SearchRepository {
             && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
           scriptTxt = getScriptWithParams(entity, doc);
         } else {
-          SearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
+          SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
           doc = elasticSearchIndex.buildESDoc();
         }
         searchClient.updateEntity(indexMapping.getIndexName(), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(entityType, entityId, entity.getChangeDescription(), indexMapping);
+        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
         LOG.error(
             String.format(
@@ -257,14 +281,60 @@ public class SearchRepository {
     }
   }
 
+  public void updateEntity(EntityReference entityReference) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    EntityInterface entity = entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+    // Update Entity
+    updateEntity(entity);
+  }
+
   public void propagateInheritedFieldsToChildren(
       String entityType, String entityId, ChangeDescription changeDescription, IndexMapping indexMapping) {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
-      Pair<String, String> parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+      Pair<String, String> parentMatch;
+      if (!updates.getValue().isEmpty()
+          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
+          && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE))) {
+        parentMatch = new ImmutablePair<>("service.id", entityId);
+      } else {
+        parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+      }
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
         searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
       }
+    }
+  }
+
+  public void propagateGlossaryTags(String entityType, String glossaryFQN, ChangeDescription changeDescription) {
+    Map<String, Object> fieldData = new HashMap<>();
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagAdded", tagLabels);
+        }
+      }
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) changeDescription.getFieldsDeleted().get(0).getOldValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagDeleted", tagLabels);
+        }
+      }
+      searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("tags.tagFQN", glossaryFQN),
+          new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
     }
   }
 
@@ -382,6 +452,9 @@ public class SearchRepository {
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>(entityType + ".id", docId),
             new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+        // we are doing below because we want to delete the data products with domain when domain is deleted
+        searchClient.deleteEntityByFields(
+            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
         break;
       case Entity.TAG:
       case Entity.GLOSSARY_TERM:
@@ -513,7 +586,7 @@ public class SearchRepository {
     return searchClient.suggest(request);
   }
 
-  public TreeMap<Long, List<Object>> getSortedDate(
+  public SortedMap<Long, List<Object>> getSortedDate(
       String team,
       Long scheduleTime,
       Long currentTime,

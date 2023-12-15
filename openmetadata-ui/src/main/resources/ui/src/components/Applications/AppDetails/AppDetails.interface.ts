@@ -14,9 +14,13 @@
 import { PipelineStatus } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export interface DataInsightLatestRun {
-  lastIngestionLogs: {
-    data_insight_task: string;
-    total: string;
-  };
+  data_insight_task: string;
+  total: string;
   pipelineStatus: PipelineStatus;
+}
+
+export enum AppAction {
+  ENABLE = 'enable',
+  DISABLE = 'disable',
+  UNINSTALL = 'uninstall',
 }

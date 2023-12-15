@@ -13,18 +13,9 @@
 Python Dependencies
 """
 
-import os
 from typing import Dict, Set
 
-from setuptools import find_namespace_packages, setup
-
-
-def get_long_description():
-    root = os.path.dirname(__file__)
-    with open(os.path.join(root, "README.md"), encoding="UTF-8") as file:
-        description = file.read()
-    return description
-
+from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
@@ -33,11 +24,11 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.17.0",
+    "great-expectations": "great-expectations~=0.18.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
-    "pandas": "pandas==1.3.5",
+    "pandas": "pandas<=2,<3",
     "pyarrow": "pyarrow~=10.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
@@ -54,7 +45,7 @@ VERSIONS = {
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
-    "pyhive": "pyhive~=0.7",
+    "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
@@ -67,7 +58,9 @@ COMMONS = {
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
-        "python-snappy~=0.6.1",
+        # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
+        # Using this as an alternative
+        "cramjam~=2.7",
     },
     "hive": {
         "presto-types-parser>=0.0.2",
@@ -123,15 +116,17 @@ base_requirements = {
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
-    "typing-compat~=0.1.0",  # compatibility requirements for 3.7
-    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
+    "typing_extensions>=4.8.0",
     "typing-inspect",
     "wheel~=0.38.4",
 }
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
+    "airflow": {
+        VERSIONS["airflow"],
+        "attrs",
+    },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena==3.0.8"},
     "atlas": {},
@@ -184,6 +179,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
+    "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
@@ -195,7 +191,8 @@ plugins: Dict[str, Set[str]] = {
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
+        "pure-sasl",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
@@ -203,7 +200,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        "pure-sasl",
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
@@ -260,13 +257,14 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
-    "datamodel-code-generator==0.22.0",
-    "docker",
+    "datamodel-code-generator==0.24.2",
     "isort",
     "pre-commit",
     "pycln",
     "pylint~=3.0.0",
+    # For publishing
     "twine",
+    "build",
 }
 
 test = {
@@ -306,34 +304,7 @@ e2e_test = {
     "pytest-base-url",
 }
 
-build_options = {"includes": ["_cffi_backend"]}
 setup(
-    name="openmetadata-ingestion",
-    version="1.2.0.0.dev0",
-    url="https://open-metadata.org/",
-    author="OpenMetadata Committers",
-    license="Apache License 2.0",
-    description="Ingestion Framework for OpenMetadata",
-    long_description=get_long_description(),
-    long_description_content_type="text/markdown",
-    python_requires=">=3.8",
-    options={"build_exe": build_options},
-    package_dir={"": "src"},
-    package_data={"metadata.examples": ["workflows/*.yaml"]},
-    zip_safe=False,
-    dependency_links=[],
-    project_urls={
-        "Documentation": "https://docs.open-metadata.org/",
-        "Source": "https://github.com/open-metadata/OpenMetadata",
-    },
-    packages=find_namespace_packages(where="./src", exclude=["tests*"]),
-    namespace_package=["metadata"],
-    entry_points={
-        "console_scripts": ["metadata = metadata.cmd:metadata"],
-        "apache_airflow_provider": [
-            "provider_info = airflow_provider_openmetadata:get_provider_config"
-        ],
-    },
     install_requires=list(base_requirements),
     extras_require={
         "base": list(base_requirements),

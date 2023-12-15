@@ -262,14 +262,14 @@ public class SearchServiceResource
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Object store service for instance {id} and version " + "{version} is not found")
+            description = "Object store service for instance {id} and version {version} is not found")
       })
   public SearchService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "search service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
-              description = "search service version number in the form `major`" + ".`minor`",
+              description = "search service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -334,9 +334,7 @@ public class SearchServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -346,10 +344,10 @@ public class SearchServiceResource
   @Operation(
       operationId = "deleteSearchService",
       summary = "Delete an search service",
-      description = "Delete an search services. If containers belong the service, it can't be " + "deleted.",
+      description = "Delete an search services. If containers belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "SearchService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -380,13 +378,17 @@ public class SearchServiceResource
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the SearchService", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
   @PUT

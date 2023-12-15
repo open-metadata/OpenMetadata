@@ -93,16 +93,24 @@ class BigqueryUnitTest(TestCase):
 class BigqueryLineageSourceTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
     @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    @patch(
+        "metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id"
+    )
     def __init__(
-        self, methodName, get_connection, test_connection, OpenMetadata
+        self,
+        methodName,
+        set_project_id_lineage,
+        test_connection,
+        get_connection,
     ) -> None:
         super().__init__(methodName)
 
         self.config = OpenMetadataWorkflowConfig.parse_obj(
             mock_credentials_path_bq_config
         )
-        self.bq_query_parser = BigqueryLineageSource(self.config.source, OpenMetadata())
+        self.bq_query_parser = BigqueryLineageSource(
+            self.config.source, self.config.workflowConfig.openMetadataServerConfig
+        )
 
     def test_get_engine_without_project_id_specified(self):
         for engine in self.bq_query_parser.get_engine():

@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
-      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts";
+      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -128,7 +128,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -246,7 +246,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Dashboard for instance {id} and version {version} is " + "not found")
+            description = "Dashboard for instance {id} and version {version} is not found")
       })
   public Dashboard getVersion(
       @Context UriInfo uriInfo,
@@ -295,9 +295,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -413,10 +411,14 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the dashboard", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -445,6 +447,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .withSourceUrl(create.getSourceUrl())
         .withDashboardType(create.getDashboardType())
         .withProject(create.getProject())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

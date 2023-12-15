@@ -30,7 +30,11 @@ const renderItems = () => {
         editor: props.editor,
       });
 
-      if (!props.clientRect) {
+      if (
+        !props.clientRect ||
+        props.editor.isActive('table') ||
+        props.editor.isActive('callout')
+      ) {
         return;
       }
 

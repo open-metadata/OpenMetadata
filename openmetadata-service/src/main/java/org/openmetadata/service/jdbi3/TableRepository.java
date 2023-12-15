@@ -15,13 +15,14 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -29,7 +30,6 @@ import com.google.common.collect.Streams;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -71,6 +71,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -88,7 +89,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns,sourceHash";
   // Table fields that can be updated in a PUT request
   static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
@@ -100,11 +101,13 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
-  public static final String TABLE_COLUMN_EXTENSION = "table.column.";
-  public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
+  public static final String TABLE_COLUMN_EXTENSION = "table.column";
+  public static final String TABLE_EXTENSION = "table.table";
+  public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
   public static final String TABLE_PROFILER_CONFIG = "tableProfilerConfig";
 
   public static final String COLUMN_FIELD = "columns";
+  public static final String CUSTOM_METRICS = "customMetrics";
 
   public TableRepository() {
     super(
@@ -118,7 +121,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setFields(Table table, Fields fields) {
+  public void setFields(Table table, Fields fields) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
@@ -128,25 +131,30 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD)) {
       // We'll get column tags only if we are getting the column fields
-      getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+      populateEntityFieldTags(
+          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setSourceHash(fields.contains("sourceHash") ? table.getSourceHash() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
-    getCustomMetrics(fields.contains("customMetrics"), table);
-    return table;
+    table.setCustomMetrics(fields.contains(CUSTOM_METRICS) ? getCustomMetrics(table, null) : table.getCustomMetrics());
+    if ((fields.contains(COLUMN_FIELD)) && (fields.contains(CUSTOM_METRICS))) {
+      for (Column column : table.getColumns()) {
+        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
   }
 
   @Override
-  public Table clearFields(Table table, Fields fields) {
+  public void clearFields(Table table, Fields fields) {
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfilerConfig(fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
-    return table;
   }
 
   @Override
@@ -168,12 +176,8 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void restorePatchAttributes(Table original, Table updated) {
     // Patch can't make changes to following fields. Ignore the changes.
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withDatabase(original.getDatabase())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withDatabase(original.getDatabase()).withService(original.getService());
   }
 
   @Override
@@ -186,8 +190,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -218,7 +221,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -242,8 +245,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table getSampleData(UUID tableId, boolean authorizePII) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     TableData sampleData =
         JsonUtils.readValue(
             daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
@@ -253,7 +255,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -264,8 +266,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     daoCollection.entityExtensionDAO().delete(tableId, TABLE_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
@@ -294,7 +295,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Validate all the columns
     if (tableProfilerConfig.getExcludeColumns() != null) {
@@ -324,9 +325,9 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
     daoCollection.entityExtensionDAO().delete(tableId, TABLE_PROFILER_CONFIG_EXTENSION);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    clearFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
@@ -353,7 +354,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
     daoCollection
         .profilerDataTimeSeriesDao()
         .insert(
@@ -474,7 +475,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table getLatestTableProfile(String fqn, boolean authorizePII) {
-    Table table = dao.findEntityByName(fqn, ALL);
+    Table table = findByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
             daoCollection
@@ -486,7 +487,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       return PIIMasker.getTableProfile(table);
     }
 
@@ -495,77 +496,48 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-    String columnName = customMetric.getColumnName();
-    validateColumn(table, columnName);
+    Table table = find(tableId, NON_DELETED);
 
-    // Override any custom metric definition with the same name
-    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
-    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
+    String customMetricName = customMetric.getName();
+    String customMetricColumnName = customMetric.getColumnName();
+    String extensionType = customMetricColumnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    String extension = CUSTOM_METRICS_EXTENSION + extensionType + "." + customMetricName;
+
+    // Validate the column name exists in the table
+    if (customMetricColumnName != null) {
+      validateColumn(table, customMetricColumnName);
+    }
+
+    CustomMetric storedCustomMetrics = getCustomMetric(table, extension);
     if (storedCustomMetrics != null) {
-      for (CustomMetric cm : storedCustomMetrics) {
-        storedMapCustomMetrics.put(cm.getName(), cm);
-      }
+      storedCustomMetrics.setExpression(customMetric.getExpression());
     }
 
-    // existing metric use the previous UUID
-    if (storedMapCustomMetrics.containsKey(customMetric.getName())) {
-      CustomMetric prevMetric = storedMapCustomMetrics.get(customMetric.getName());
-      customMetric.setId(prevMetric.getId());
-    }
-
-    storedMapCustomMetrics.put(customMetric.getName(), customMetric);
-    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
-        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(customMetric));
     // return the newly created/updated custom metric only
-    for (Column column : table.getColumns()) {
-      if (column.getName().equals(columnName)) {
-        column.setCustomMetrics(List.of(customMetric));
-      }
-    }
+    setFieldsInternal(table, new Fields(Set.of(CUSTOM_METRICS, COLUMN_FIELD)));
     return table;
   }
 
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-    validateColumn(table, columnName);
+    Table table = find(tableId, NON_DELETED);
+    if (columnName != null) validateColumn(table, columnName);
 
-    // Override any custom metric definition with the same name
-    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
-    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
-    if (storedCustomMetrics != null) {
-      for (CustomMetric cm : storedCustomMetrics) {
-        storedMapCustomMetrics.put(cm.getName(), cm);
-      }
-    }
+    // Get unique entity extension and delete data from DB
+    String extensionType = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    String extension = CUSTOM_METRICS_EXTENSION + extensionType + "." + metricName;
+    daoCollection.entityExtensionDAO().delete(tableId, extension);
 
-    if (!storedMapCustomMetrics.containsKey(metricName)) {
-      throw new EntityNotFoundException(String.format("Failed to find %s for %s", metricName, table.getName()));
-    }
-
-    CustomMetric deleteCustomMetric = storedMapCustomMetrics.get(metricName);
-    storedMapCustomMetrics.remove(metricName);
-    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-    daoCollection
-        .entityExtensionDAO()
-        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    // return the newly created/updated custom metric test only
-    for (Column column : table.getColumns()) {
-      if (column.getName().equals(columnName)) {
-        column.setCustomMetrics(List.of(deleteCustomMetric));
-      }
-    }
+    // return the newly created/updated custom metric only
+    setFieldsInternal(table, new Fields(Set.of(CUSTOM_METRICS, COLUMN_FIELD)));
     return table;
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -603,24 +575,11 @@ public class TableRepository extends EntityRepository<Table> {
       }
       stored.setTags(modelColumn.getTags());
     }
-    applyTags(table.getColumns());
+    applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
-  }
-
-  private void addDerivedColumnTags(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return;
-    }
-
-    for (Column column : columns) {
-      column.setTags(addDerivedTags(column.getTags()));
-      if (column.getChildren() != null) {
-        addDerivedColumnTags(column.getChildren());
-      }
-    }
   }
 
   @Override
@@ -631,10 +590,6 @@ public class TableRepository extends EntityRepository<Table> {
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-
-    // Validate column tags
-    addDerivedColumnTags(table.getColumns());
-    validateColumnTags(table.getColumns());
   }
 
   @Override
@@ -665,36 +620,22 @@ public class TableRepository extends EntityRepository<Table> {
     return new TableUpdater(original, updated, operation);
   }
 
-  private void validateColumnTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      checkMutuallyExclusive(column.getTags());
-      if (column.getChildren() != null) {
-        validateColumnTags(column.getChildren());
-      }
-    }
-  }
-
-  private void applyTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
-      if (column.getChildren() != null) {
-        applyTags(column.getChildren());
-      }
-    }
-  }
-
   @Override
   public void applyTags(Table table) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
-    applyTags(table.getColumns());
+    applyColumnTags(table.getColumns());
   }
 
   @Override
   public EntityInterface getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+  }
+
+  @Override
+  public void validateTags(Table entity) {
+    super.validateTags(entity);
+    validateColumnTags(entity.getColumns());
   }
 
   @Override
@@ -803,14 +744,6 @@ public class TableRepository extends EntityRepository<Table> {
     return childrenColumn;
   }
 
-  // TODO duplicated code
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
-    }
-  }
-
   private void validateTableFQN(String fqn) {
     try {
       dao.existsByName(fqn);
@@ -831,7 +764,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = dao.findEntityByName(tableFQN);
+      Table joinedWithTable = findByName(tableFQN, NON_DELETED);
 
       // Validate column
       ColumnUtil.validateColumnFQN(joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());
@@ -1007,18 +940,30 @@ public class TableRepository extends EntityRepository<Table> {
     return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
-  private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-    return JsonUtils.readObjects(
+  private CustomMetric getCustomMetric(Table table, String extension) {
+    return JsonUtils.readValue(
         daoCollection.entityExtensionDAO().getExtension(table.getId(), extension), CustomMetric.class);
   }
 
-  private void getCustomMetrics(boolean setMetrics, Table table) {
-    // Add custom metrics info to columns if requested
-    List<Column> columns = table.getColumns();
-    for (Column c : listOrEmpty(columns)) {
-      c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : c.getCustomMetrics());
+  private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
+    String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    extension = CUSTOM_METRICS_EXTENSION + extension;
+
+    List<ExtensionRecord> extensionRecords = daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
+    List<CustomMetric> customMetrics = new ArrayList<>();
+    for (ExtensionRecord extensionRecord : extensionRecords) {
+      customMetrics.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), CustomMetric.class));
     }
+
+    if (columnName != null) {
+      // Filter custom metrics by column name
+      customMetrics =
+          customMetrics.stream()
+              .filter(metric -> metric.getColumnName().equals(columnName))
+              .collect(Collectors.toList());
+    }
+
+    return customMetrics;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -1036,6 +981,8 @@ public class TableRepository extends EntityRepository<Table> {
       updateConstraints(origTable, updatedTable);
       updateColumns(COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {

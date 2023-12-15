@@ -1,17 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +25,7 @@ public class TableIndex implements ColumnIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
+          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
 
   final Table table;
 
@@ -88,12 +79,11 @@ public class TableIndex implements ColumnIndex {
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
-    if (table.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
-    }
-    if (table.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(table.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(table.getOwner()));
+    doc.put("service", getEntityWithDisplayName(table.getService()));
+    doc.put("domain", getEntityWithDisplayName(table.getDomain()));
+    doc.put("database", getEntityWithDisplayName(table.getDatabase()));
+    doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }
 
@@ -114,15 +104,7 @@ public class TableIndex implements ColumnIndex {
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 1.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
     fields.put("columns.name.ngram", 1.0f);

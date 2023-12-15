@@ -12,7 +12,6 @@
 DBT source methods.
 """
 import traceback
-from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -34,8 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -46,7 +43,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -54,6 +51,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -86,6 +84,7 @@ from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -420,7 +419,9 @@ class DbtSource(DbtServiceSource):
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=table_fqn
+                            entity_type=Table,
+                            fqn_search_string=table_fqn,
+                            fields="sourceHash",
                         ),
                         fetch_multiple_entities=False,
                     )
@@ -708,22 +709,28 @@ class DbtSource(DbtServiceSource):
                     )
 
                 # Patch column descriptions from DBT
+                column_descriptions = []
                 for column in data_model.columns:
                     if column.description:
-                        self.metadata.patch_column_description(
-                            table=table_entity,
-                            column_fqn=fqn.build(
-                                self.metadata,
-                                entity_type=Column,
-                                service_name=service_name,
-                                database_name=database_name,
-                                schema_name=schema_name,
-                                table_name=table_name,
-                                column_name=column.name.__root__,
-                            ),
-                            description=column.description.__root__,
-                            force=force_override,
+                        column_descriptions.append(
+                            ColumnDescription(
+                                column_fqn=fqn.build(
+                                    self.metadata,
+                                    entity_type=Column,
+                                    service_name=service_name,
+                                    database_name=database_name,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    column_name=column.name.__root__,
+                                ),
+                                description=column.description,
+                            )
                         )
+                self.metadata.patch_column_descriptions(
+                    table=table_entity,
+                    column_descriptions=column_descriptions,
+                    force=force_override,
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -814,7 +821,6 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    # pylint: disable=too-many-locals
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
@@ -829,7 +835,6 @@ class DbtSource(DbtServiceSource):
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
-                test_case_failure_status = TestCaseFailureStatus()  # type: ignore
                 if dbt_test_result.status.value in [
                     item.value for item in DbtTestSuccessEnum
                 ]:
@@ -840,15 +845,6 @@ class DbtSource(DbtServiceSource):
                 ]:
                     test_case_status = TestCaseStatus.Failed
                     test_result_value = 0
-                    test_case_failure_status = TestCaseFailureStatus(
-                        testCaseFailureStatusType=TestCaseFailureStatusType.New,
-                        testCaseFailureReason=None,
-                        testCaseFailureComment=None,
-                        updatedAt=Timestamp(
-                            __root__=int(datetime.utcnow().timestamp() * 1000)
-                        ),
-                        updatedBy=None,
-                    )
 
                 # Process the Test Timings
                 dbt_test_timings = dbt_test_result.timing
@@ -863,7 +859,7 @@ class DbtSource(DbtServiceSource):
                     dbt_timestamp = self.context.run_results_generate_time.timestamp()
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=dbt_timestamp,
+                    timestamp=convert_timestamp_to_milliseconds(dbt_timestamp),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
@@ -871,7 +867,6 @@ class DbtSource(DbtServiceSource):
                             value=str(test_result_value),
                         )
                     ],
-                    testCaseFailureStatus=test_case_failure_status,
                     sampleData=None,
                     result=None,
                 )

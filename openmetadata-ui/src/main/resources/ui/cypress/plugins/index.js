@@ -1,4 +1,5 @@
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 // ***********************************************************
 // This example plugins/index.js can be used to load plugins
 //
@@ -100,10 +101,6 @@ export default (on, config) => {
 
   // Airflow
   config.env.airflowHostPort = env.CYPRESS_AIRFLOW_HOST_PORT;
-
-  // MlModel
-  config.env.mlModelTrackingUri = env.CYPRESS_ML_MODEL_TRACKING_URI;
-  config.env.mlModelRegistryUri = env.CYPRESS_ML_MODEL_REGISTRY_URI;
 
   // S3 storage
   config.env.s3StorageAccessKeyId = env.CYPRESS_S3_STORAGE_ACCESS_KEY_ID;

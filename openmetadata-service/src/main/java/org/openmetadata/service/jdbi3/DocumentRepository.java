@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -44,19 +45,13 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   @Override
-  public void restorePatchAttributes(Document original, Document updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
+  public void setFields(Document document, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public Document setFields(Document document, Fields fields) {
-    return document;
-  }
-
-  @Override
-  public Document clearFields(Document document, Fields fields) {
-    return document;
+  public void clearFields(Document document, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

@@ -28,13 +28,13 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
-    return entity;
+  public void setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public WebAnalyticEvent clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -58,8 +58,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         webAnalyticEventData.getEventType().value(),
         WEB_ANALYTICS_EVENT_DATA_EXTENSION,
         "webAnalyticEventData",
-        JsonUtils.pojoToJson(webAnalyticEventData),
-        webAnalyticEventData.getTimestamp());
+        JsonUtils.pojoToJson(webAnalyticEventData));
     return Response.ok(webAnalyticEventData).build();
   }
 

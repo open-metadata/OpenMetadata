@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
@@ -36,7 +37,8 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import { getEntityName } from './EntityUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -149,6 +151,12 @@ export const getGroupLabel = (index: string) => {
 
       break;
 
+    case SearchIndex.DATA_PRODUCT:
+      label = i18next.t('label.data-product-plural');
+      GroupIcon = DataProductIcon;
+
+      break;
+
     case SearchIndex.TABLE:
     default:
       label = i18next.t('label.table-plural');
@@ -188,7 +196,7 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : name;
+      : getEntityName(suggestion);
 
   const retn = (
     <Button
@@ -200,7 +208,7 @@ export const getSuggestionElement = (
           alt={serviceType}
           className="m-r-sm"
           height="16px"
-          src={serviceTypeLogo(serviceType)}
+          src={serviceUtilClassBase.getServiceTypeLogo(serviceType)}
           width="16px"
         />
       }
@@ -231,7 +239,7 @@ export const filterOptionsByIndex = (
     .slice(0, maxItemsPerType);
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
-  const commonAssets: Record<string, string> = {
+  const commonAssets: Record<string, EntityType> = {
     [SearchIndex.TABLE]: EntityType.TABLE,
     [SearchIndex.PIPELINE]: EntityType.PIPELINE,
     [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
@@ -241,6 +249,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
     [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
     [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+    [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
     [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
     [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
     [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
@@ -248,7 +257,11 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
     [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
     [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
-    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY_TERM,
+    [SearchIndex.TAG]: EntityType.TAG,
+    [SearchIndex.DATABASE]: EntityType.DATABASE,
+    [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+    [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

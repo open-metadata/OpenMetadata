@@ -23,7 +23,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const API_FIELDS = `owner, followers, 
-tags, domain, votes`;
+tags, domain,dataProducts, votes`;
 
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -45,7 +45,6 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
 }));
@@ -66,7 +65,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 
@@ -80,13 +79,13 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
 );
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
@@ -106,7 +105,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/schema-editor/SchemaEditor', () => {
+jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaEditor</p>);
 });
 

@@ -317,13 +317,15 @@ class PowerbiSource(DashboardServiceSource):
                 name=dataset.id,
                 displayName=dataset.name,
                 description=dataset.description,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
             yield Either(right=data_model_request)
+            self.register_record_datamodel(datamodel_requst=data_model_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -400,12 +402,12 @@ class PowerbiSource(DashboardServiceSource):
                         fqn.build(
                             self.metadata,
                             entity_type=Chart,
-                            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                            chart_name=chart.name.__root__,
+                            service_name=self.context.dashboard_service,
+                            chart_name=chart,
                         )
                         for chart in self.context.charts
                     ],
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
@@ -417,7 +419,7 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -626,7 +628,7 @@ class PowerbiSource(DashboardServiceSource):
                                 workspace_id=self.context.workspace.id,
                                 dashboard_id=dashboard_details.id,
                             ),
-                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                            service=self.context.dashboard_service,
                         )
                     )
                 except Exception as exc:

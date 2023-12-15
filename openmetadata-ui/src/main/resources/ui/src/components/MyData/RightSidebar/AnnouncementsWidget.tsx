@@ -16,12 +16,15 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
-import './AnnouncementsWidget.less';
+import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;
@@ -49,9 +52,20 @@ function AnnouncementsWidget({
     if (isEmpty(announcements)) {
       return (
         <div className="flex-center h-full">
-          {t('message.no-entity-data-available', {
-            entity: t('label.announcement-lowercase'),
-          })}
+          <ErrorPlaceHolder
+            icon={
+              <AnnouncementsEmptyIcon
+                height={SIZE.X_SMALL}
+                width={SIZE.X_SMALL}
+              />
+            }
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph>
+              {t('message.no-entity-data-available', {
+                entity: t('label.announcement-lowercase'),
+              })}
+            </Typography.Paragraph>
+          </ErrorPlaceHolder>
         </div>
       );
     }
@@ -70,7 +84,6 @@ function AnnouncementsWidget({
                         about={item.about}
                         className="d-inline"
                         createdBy={item.createdBy}
-                        showUserAvatar={false}
                         timeStamp={item.threadTs}
                       />
                       <FeedCardBodyV1

@@ -15,7 +15,7 @@ import { OperationPermission } from '../../components/PermissionProvider/Permiss
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface MlModelVersionProp {
   version: string;
@@ -23,6 +23,7 @@ export interface MlModelVersionProp {
   isVersionLoading: boolean;
   owner: Mlmodel['owner'];
   domain: Mlmodel['domain'];
+  dataProducts: Mlmodel['dataProducts'];
   tier: TagLabel;
   slashedMlModelName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

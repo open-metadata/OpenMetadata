@@ -34,13 +34,14 @@ import {
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../PermissionProvider/PermissionProvider.interface';
-import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {
   CustomPropertyProps,
@@ -67,11 +68,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
   const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
+  const decodedeFqn = getDecodedFqn(fqn);
 
   const fetchExtentiondetails = async () => {
     const response = await getEntityExtentionDetailsFromEntityType<T>(
       entityType,
-      fqn
+      decodedeFqn
     );
 
     setExtentionDetails(response as ExtentionEntities[T]);
@@ -79,7 +81,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   useEffect(() => {
     fetchExtentiondetails();
-  }, [fqn]);
+  }, [decodedeFqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
   const versionDetails = entityDetails ?? extentionDetails;
@@ -128,7 +130,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         setExtentionDetails(updatedData);
       }
     },
-    [versionDetails]
+    [versionDetails, handleExtensionUpdate]
   );
 
   const extensionObject: {

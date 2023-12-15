@@ -12,7 +12,6 @@
  */
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
-import { observer } from 'mobx-react';
 import moment from 'moment';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,9 +19,9 @@ import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { CreateAnnouncement } from './AddAnnouncementModal';
-import './AnnouncementModal.less';
+import './announcement-modal.less';
 
 interface Props {
   announcement: AnnouncementDetails;
@@ -148,4 +147,4 @@ const EditAnnouncementModal: FC<Props> = ({
   );
 };
 
-export default observer(EditAnnouncementModal);
+export default EditAnnouncementModal;

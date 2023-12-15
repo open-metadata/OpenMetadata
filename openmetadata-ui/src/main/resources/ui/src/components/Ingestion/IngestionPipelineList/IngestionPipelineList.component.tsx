@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
-import Table, { ColumnsType, TableProps } from 'antd/lib/table';
+import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import { isNil, map, startCase } from 'lodash';
@@ -28,15 +28,15 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../rest/ingestionPipelineAPI';
-import { showPagination } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import { FilterIcon } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from '../../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import NextPrevious from '../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
 import Loader from '../../Loader/Loader';
 import { ColumnFilter } from '../../Table/ColumnFilter/ColumnFilter.component';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
@@ -66,6 +66,7 @@ export const IngestionPipelineList = ({
     handlePagingChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
 
   const { t } = useTranslation();
@@ -262,6 +263,7 @@ export const IngestionPipelineList = ({
       </Col>
       <Col span={24}>
         <Table
+          bordered
           columns={tableColumn}
           dataSource={pipelines}
           loading={loading}
@@ -289,7 +291,7 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

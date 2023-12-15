@@ -12,15 +12,37 @@
  */
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status } from '../generated/entity/applications/appRunRecord';
+import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const getStatusTypeForApplication = (status: Status) => {
-  if (status === Status.Failed) {
-    return StatusType.Failure;
-  } else if (status === Status.Success) {
-    return StatusType.Success;
-  } else if (status === Status.Running) {
-    return StatusType.Warning;
+  switch (status) {
+    case Status.Failed:
+      return StatusType.Failure;
+
+    case Status.Success:
+    case Status.Completed:
+      return StatusType.Success;
+
+    case Status.Running:
+      return StatusType.Warning;
+
+    default:
+      return StatusType.Failure;
+  }
+};
+
+export const getStatusFromPipelineState = (status: PipelineState) => {
+  if (status === PipelineState.Failed) {
+    return Status.Failed;
+  } else if (status === PipelineState.Success) {
+    return Status.Success;
+  } else if (
+    status === PipelineState.Running ||
+    status === PipelineState.PartialSuccess ||
+    status === PipelineState.Queued
+  ) {
+    return Status.Running;
   }
 
-  return StatusType.Failure;
+  return Status.Failed;
 };

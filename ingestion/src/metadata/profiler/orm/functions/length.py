@@ -49,6 +49,8 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.IbmDbSa)
 @compiles(LenFn, Dialects.Db2)
 @compiles(LenFn, Dialects.Hana)
+@compiles(LenFn, Dialects.Druid)
+@compiles(LenFn, Dialects.Doris)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 

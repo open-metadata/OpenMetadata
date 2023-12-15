@@ -365,7 +365,7 @@ class LookerSource(DashboardServiceSource):
         fqn_datamodel = fqn.build(
             self.metadata,
             DashboardDataModel,
-            service_name=self.context.dashboard_service.name.__root__,
+            service_name=self.context.dashboard_service,
             data_model_name=data_model_name,
         )
 
@@ -394,7 +394,7 @@ class LookerSource(DashboardServiceSource):
                     name=datamodel_name,
                     displayName=model.name,
                     description=model.description,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
@@ -403,6 +403,7 @@ class LookerSource(DashboardServiceSource):
                     project=model.project_name,
                 )
                 yield Either(right=explore_datamodel)
+                self.register_record_datamodel(datamodel_requst=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
                 self.context.dataModel = self._build_data_model(datamodel_name)
@@ -487,24 +488,23 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
-                yield Either(
-                    right=CreateDashboardDataModelRequest(
-                        name=build_datamodel_name(explore.model_name, view.name),
-                        displayName=view.name,
-                        description=view.description,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        dataModelType=DataModelType.LookMlView.value,
-                        serviceType=DashboardServiceType.Looker.value,
-                        columns=get_columns_from_model(view),
-                        sql=project_parser.parsed_files.get(Includes(view.source_file)),
-                        # In Looker, you need to create Explores and Views within a Project
-                        project=explore.project_name,
-                    )
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=build_datamodel_name(explore.model_name, view.name),
+                    displayName=view.name,
+                    description=view.description,
+                    service=self.context.dashboard_service,
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
                 )
+                yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(
                     build_datamodel_name(explore.model_name, view.name)
                 )
-
+                self.register_record_datamodel(datamodel_requst=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
                 yield Either(
@@ -654,8 +654,8 @@ class LookerSource(DashboardServiceSource):
                 fqn.build(
                     self.metadata,
                     entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+                    service_name=self.context.dashboard_service,
+                    chart_name=chart,
                 )
                 for chart in self.context.charts
             ],
@@ -663,7 +663,7 @@ class LookerSource(DashboardServiceSource):
             # like LookML assets, but rather just organised in folders.
             project=self._get_dashboard_project(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -732,7 +732,7 @@ class LookerSource(DashboardServiceSource):
             fqn=fqn.build(
                 self.metadata,
                 entity_type=DashboardDataModel,
-                service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service_name=self.context.dashboard_service,
                 data_model_name=explore_name,
             ),
         )
@@ -754,6 +754,15 @@ class LookerSource(DashboardServiceSource):
             for explore_name in source_explore_list:
                 cached_explore = self.get_explore(explore_name)
                 if cached_explore:
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=MetadataDashboard,
+                        service_name=self.context.dashboard_service,
+                        dashboard_name=self.context.dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(
+                        entity=MetadataDashboard, fqn=dashboard_fqn
+                    )
                     yield Either(
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
@@ -762,7 +771,7 @@ class LookerSource(DashboardServiceSource):
                                     type="dashboardDataModel",
                                 ),
                                 toEntity=EntityReference(
-                                    id=self.context.dashboard.id.__root__,
+                                    id=dashboard_entity.id.__root__,
                                     type="dashboard",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -775,8 +784,8 @@ class LookerSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=self.context.dashboard.displayName,
-                    error=f"Unexpected exception yielding lineage from [{self.context.dashboard.displayName}]: {exc}",
+                    name=dashboard_entity.displayName,
+                    error=f"Unexpected exception yielding lineage from [{dashboard_entity.displayName}]: {exc}",
                     stack_trace=traceback.format_exc(),
                 )
             )
@@ -861,7 +870,7 @@ class LookerSource(DashboardServiceSource):
                         sourceUrl=chart.query.share_url
                         if chart.query is not None
                         else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}",
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                     )
                 )
 

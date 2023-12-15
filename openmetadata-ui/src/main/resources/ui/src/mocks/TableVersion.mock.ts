@@ -12,7 +12,13 @@
  */
 
 import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
-import { DatabaseServiceType, TableType } from '../generated/entity/data/table';
+import {
+  Constraint,
+  DatabaseServiceType,
+  DataType,
+  Table,
+  TableType,
+} from '../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
@@ -23,7 +29,7 @@ import {
   mockVersionList,
 } from '../mocks/VersionCommon.mock';
 
-export const mockTableData = {
+export const mockTableData: Table = {
   id: 'ab4f893b-c303-43d9-9375-3e620a670b02',
   name: 'raw_product_catalog',
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
@@ -33,7 +39,20 @@ export const mockTableData = {
   updatedAt: 1688442727895,
   updatedBy: 'admin',
   tableType: TableType.Regular,
-  columns: [],
+  columns: [
+    {
+      name: 'shop_id',
+      displayName: 'Shop Id Customer',
+      dataType: DataType.Number,
+      dataTypeDisplay: 'numeric',
+      description:
+        'Unique identifier for the store. This column is the primary key for this table.',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop".shop_id',
+      tags: [],
+      constraint: Constraint.PrimaryKey,
+      ordinalPosition: 1,
+    },
+  ],
   owner: {
     id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
     type: 'user',
@@ -91,6 +110,7 @@ export const tableVersionMockProps: TableVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedTableName: [],
   versionList: mockVersionList,

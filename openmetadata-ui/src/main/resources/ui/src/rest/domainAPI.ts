@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { CreateDomain } from '../generated/api/domains/createDomain';
-import { Domain } from '../generated/entity/domains/domain';
+import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -54,10 +54,6 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteDomain = (id: string) => {
-  return APIClient.delete(`/domains/${id}`);
-};
-
 export const getDomainByName = async (
   domainName: string,
   arrQueryFields: string | string[]
@@ -82,6 +78,38 @@ export const getDomainVersionsList = async (id: string) => {
 export const getDomainVersionData = async (id: string, version: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
   const response = await APIClient.get<Domain>(url);
+
+  return response.data;
+};
+
+export const addAssetsToDomain = async (
+  domainFqn: string,
+  assets: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<Domain>
+  >(`/domains/${domainFqn}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromDomain = async (
+  domainFqn: string,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<Domain>
+  >(`/domains/${domainFqn}/assets/remove`, data);
 
   return response.data;
 };

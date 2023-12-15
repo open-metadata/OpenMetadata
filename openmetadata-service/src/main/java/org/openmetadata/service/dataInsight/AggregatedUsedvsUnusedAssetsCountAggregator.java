@@ -10,7 +10,7 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
     implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUsedvsUnusedAssetsCountAggregator(A aggregations) {
+  protected AggregatedUsedvsUnusedAssetsCountAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
@@ -26,9 +26,12 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
       Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
       Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
       Double total = used + unused;
-      Double usedPercentage = used / total;
-      Double unusedPercentage = unused / total;
-
+      double usedPercentage = 0.0;
+      double unusedPercentage = 0.0;
+      if (total != 0.0) {
+        usedPercentage = used / total;
+        unusedPercentage = unused / total;
+      }
       data.add(
           new AggregatedUsedVsUnusedAssetsCount()
               .withTimestamp(timestamp)

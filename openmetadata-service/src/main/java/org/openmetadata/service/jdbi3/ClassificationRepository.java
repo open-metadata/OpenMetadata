@@ -48,6 +48,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         "");
     quoteFqn = true;
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -56,15 +57,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public Classification setFields(Classification classification, Fields fields) {
+  public void setFields(Classification classification, Fields fields) {
     classification.withTermCount(fields.contains("termCount") ? getTermCount(classification) : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
+    classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
   }
 
   @Override
-  public Classification clearFields(Classification classification, Fields fields) {
+  public void clearFields(Classification classification, Fields fields) {
     classification.withTermCount(fields.contains("termCount") ? classification.getTermCount() : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
+    classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
   }
 
   @Override
@@ -89,7 +90,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
@@ -110,7 +113,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
@@ -125,6 +127,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         }
         // Classification name changed - update tag names starting from classification and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()

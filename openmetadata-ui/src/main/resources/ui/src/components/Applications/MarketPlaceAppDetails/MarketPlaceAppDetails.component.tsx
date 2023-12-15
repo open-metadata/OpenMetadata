@@ -18,11 +18,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { Include } from '../../../generated/type/include';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -84,7 +85,10 @@ const MarketPlaceAppDetails = () => {
 
   const fetchInstalledAppDetails = useCallback(async () => {
     try {
-      await getApplicationByName(fqn, 'owner');
+      await getApplicationByName(fqn, {
+        fields: 'owner',
+        include: Include.All,
+      });
       setIsInstalled(true);
     } catch (error) {
       setIsInstalled(false);
@@ -123,6 +127,7 @@ const MarketPlaceAppDetails = () => {
           <Button
             block
             className="m-t-md"
+            data-testid="install-application"
             disabled={isInstalled}
             type="primary"
             onClick={installApp}>
@@ -176,7 +181,7 @@ const MarketPlaceAppDetails = () => {
       pageTitle={t('label.application-plural')}>
       <Row>
         <Col span={24}>
-          <Typography.Title className="p-md m-0" level={2}>
+          <Typography.Title className="p-md m-0 p-t-xss" level={2}>
             {getEntityName(appData)}
           </Typography.Title>
         </Col>
@@ -202,7 +207,10 @@ const MarketPlaceAppDetails = () => {
 
         <Col span={24}>
           <div className="p-md">
-            <RichTextEditorPreviewer markdown={appData?.description ?? ''} />
+            <RichTextEditorPreviewer
+              enableSeeMoreVariant={false}
+              markdown={appData?.description ?? ''}
+            />
           </div>
         </Col>
       </Row>

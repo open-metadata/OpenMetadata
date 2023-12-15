@@ -13,10 +13,10 @@
 
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { getEntityLinkFromType } from '../../../utils/EntityUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
@@ -35,6 +35,7 @@ interface Props {
   serviceName: string;
   titleColor?: string;
   badge?: React.ReactNode;
+  showName?: boolean;
 }
 
 export const EntityHeader = ({
@@ -48,6 +49,7 @@ export const EntityHeader = ({
   serviceName,
   badge,
   titleColor,
+  showName = true,
 }: Props) => {
   return (
     <div className="w-full">
@@ -74,6 +76,7 @@ export const EntityHeader = ({
         name={entityData.name}
         openEntityInNewPage={openEntityInNewPage}
         serviceName={serviceName}
+        showName={showName}
       />
     </div>
   );

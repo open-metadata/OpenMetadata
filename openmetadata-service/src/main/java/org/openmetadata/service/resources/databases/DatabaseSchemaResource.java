@@ -50,16 +50,14 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databaseSchemas")
@@ -71,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
-  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain";
+  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain,sourceHash";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
@@ -125,7 +123,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
           String databaseParam,
-      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -246,7 +244,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database schema for instance {id} and version {version} is " + "not found")
+            description = "Database schema for instance {id} and version {version} is not found")
       })
   public DatabaseSchema getVersion(
       @Context UriInfo uriInfo,
@@ -296,9 +294,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -383,9 +379,13 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -405,12 +405,81 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @PUT
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "addDataProfilerConfig",
+      summary = "Add databaseSchema profile config",
+      description = "Add databaseSchema profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the DatabaseSchema ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema addDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.addDatabaseSchemaProfilerConfig(id, databaseSchemaProfilerConfig);
+    return addHref(uriInfo, databaseSchema);
+  }
+
+  @GET
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "getDataProfilerConfig",
+      summary = "Get databaseSchema profile config",
+      description = "Get databaseSchema profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the DatabaseSchema ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema getDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.find(id, Include.NON_DELETED);
+    return addHref(
+        uriInfo,
+        databaseSchema.withDatabaseSchemaProfilerConfig(repository.getDatabaseSchemaProfilerConfig(databaseSchema)));
+  }
+
+  @DELETE
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "delete DataProfilerConfig",
+      summary = "Delete database profiler config",
+      description = "delete database profile config to the database.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Database profiler config",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema deleteDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.deleteDatabaseSchemaProfilerConfig(id);
+    return addHref(uriInfo, databaseSchema);
+  }
+
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
     return repository
         .copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
-        .withTags(create.getTags())
         .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod());
+        .withRetentionPeriod(create.getRetentionPeriod())
+        .withSourceHash(create.getSourceHash());
   }
 }

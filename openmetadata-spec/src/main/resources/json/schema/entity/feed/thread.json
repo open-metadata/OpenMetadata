@@ -16,6 +16,7 @@
         "RequestTag",
         "UpdateTag",
         "RequestApproval",
+        "RequestTestCaseFailureResolution",
         "Generic"
       ],
       "javaEnums": [
@@ -33,6 +34,9 @@
         },
         {
           "name": "RequestApproval"
+        },
+        {
+          "name": "RequestTestCaseFailureResolution"
         },
         {
           "name": "Generic"
@@ -77,6 +81,10 @@
         "newValue": {
           "description": "The new value object that was accepted to complete the task.",
           "type": "string"
+        },
+        "testCaseResolutionStatusId": {
+            "description": "The test case resolution status id for which the task is created.",
+            "$ref": "../../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["id", "assignees", "type"],

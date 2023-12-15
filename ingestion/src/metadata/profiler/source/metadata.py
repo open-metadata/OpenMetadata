@@ -64,13 +64,16 @@ class OpenMetadataSource(Source):
     We do this here as well.
     """
 
+    def init_steps(self):
+        super().__init__()
+
+    # pylint: disable=super-init-not-called
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-
-        super().__init__()
+        self.init_steps()
 
         self.config = config
         self.metadata = metadata
@@ -235,9 +238,7 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=[
-                "tableProfilerConfig",
-            ],
+            fields=["tableProfilerConfig", "columns", "customMetrics"],
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(

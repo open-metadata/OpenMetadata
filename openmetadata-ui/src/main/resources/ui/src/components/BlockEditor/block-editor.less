@@ -15,6 +15,12 @@
 @border-radius: 6px;
 @border-color: #e8e8ed;
 @markdown-bg-color: #f8f8fa;
+@hover-bg: #00000005;
+@callout-bg: #f8f8fa;
+@callout-warning-bg: #fff3dc;
+@callout-info-bg: #d1e9ff;
+@callout-danger-bg: #ff4c3b33;
+@callout-border: #afafc1;
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -28,6 +34,17 @@
     float: left;
     height: 0;
     pointer-events: none;
+  }
+  .tiptap.ProseMirror-focused .om-table-header,
+  .tiptap.ProseMirror-focused .om-table-row,
+  .tiptap.ProseMirror-focused div[data-type='callout'] {
+    .is-node-empty.has-focus::before {
+      color: inherit;
+      content: none;
+      float: inherit;
+      height: 0;
+      pointer-events: inherit;
+    }
   }
   .tiptap.ProseMirror {
     font-size: 14px;
@@ -82,7 +99,11 @@
 
     table {
       border-collapse: collapse;
-      margin-left: 35px;
+      width: 100%;
+      table-layout: auto;
+      text-align: left;
+      margin-top: 2em;
+      margin-bottom: 2em;
     }
 
     th,
@@ -90,6 +111,8 @@
       border: 1px solid @border-color;
       margin: 0;
       padding: 8px 16px;
+      min-width: 200px;
+      padding: 0.5rem;
     }
 
     th {
@@ -162,6 +185,12 @@
       li.om-task-item {
         display: flex;
         gap: 4px;
+        line-height: 1.5;
+        > label > input {
+          cursor: pointer;
+          height: 16px;
+          width: 16px;
+        }
       }
     }
   }
@@ -202,8 +231,8 @@
       object-fit: cover;
       border-radius: 4px;
       background: white;
-      width: 46px;
-      height: 46px;
+      width: 32px;
+      height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
     }
   }
@@ -354,4 +383,71 @@
 .om-image-node-embed-link-btn-col {
   display: flex;
   justify-content: end;
+}
+
+.om-callout-node {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  background-color: @callout-bg;
+  color: @text-color;
+  padding: 1rem 1.5rem;
+  gap: 0.5rem;
+  border-radius: 8px;
+  border-left: 8px solid @callout-border;
+  position: relative;
+}
+
+.om-callout-node-warning,
+.om-callout-node-caution {
+  background-color: @callout-warning-bg;
+  border-left-color: @warning-color;
+}
+.om-callout-node-tip,
+.om-callout-node-info {
+  background-color: @callout-info-bg;
+  border-left-color: @info-color;
+}
+
+.om-callout-node-danger {
+  background-color: @callout-danger-bg;
+  border-left-color: @error-color;
+}
+
+.callout-type-btn.ant-btn.ant-btn-text {
+  padding: 2px 4px;
+}
+
+.om-callout-node-popover {
+  .ant-popover-inner-content {
+    padding: 12px 4px;
+  }
+}
+
+.callout-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: baseline;
+  .ant-btn {
+    width: 100%;
+    display: inline-flex;
+    gap: 4px;
+    text-align: left;
+    padding: 8px 16px;
+    height: auto;
+  }
+}
+
+.om-callout-node-content {
+  align-self: center;
+}
+
+.table-menu {
+  padding: 4px 8px;
+  background-color: @white;
+  border: @global-border;
+  border-radius: @border-radius-base;
+  button {
+    padding: 0px;
+  }
 }

@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/Loader/Loader';
@@ -34,6 +35,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
+  DataProductSource,
   GlossarySource,
   MlModelSource,
   Option,
@@ -92,6 +94,9 @@ const Suggestions = ({
   const [dataModelSuggestions, setDataModelSuggestions] = useState<
     DashboardDataModelSearchSource[]
   >([]);
+  const [dataProductSuggestions, setDataProductSuggestions] = useState<
+    DataProductSource[]
+  >([]);
 
   const isMounting = useRef(true);
 
@@ -117,6 +122,9 @@ const Suggestions = ({
     );
     setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
+    setDataProductSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
   };
 
   const getSuggestionsForIndex = (
@@ -141,7 +149,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div role="none">
+      <div data-testid="global-search-suggestion-box" role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -175,6 +183,10 @@ const Suggestions = ({
             searchIndex: SearchIndex.GLOSSARY,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
+          {
+            suggestions: dataProductSuggestions,
+            searchIndex: SearchIndex.DATA_PRODUCT,
+          },
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
         )}
@@ -228,7 +240,7 @@ const Suggestions = ({
     return <Loader />;
   }
 
-  if (options.length === 0 && !isTourOpen) {
+  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
     return (
       <Typography.Text>
         <Transi18next

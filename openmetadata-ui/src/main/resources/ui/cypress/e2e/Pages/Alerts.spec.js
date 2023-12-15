@@ -65,7 +65,7 @@ describe('Alerts page should work properly', () => {
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/events/subscriptions', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()

@@ -12,10 +12,16 @@
  */
 
 import Placeholder from '@tiptap/extension-placeholder';
+import Table from '@tiptap/extension-table';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
+import { DROP_CURSOR_COLOR } from '../../../constants/BlockEditor.constants';
 import BlockAndDragDrop from './BlockAndDragDrop/BlockAndDragDrop';
+import { Callout } from './Callout/Callout';
 import DiffView from './diff-view';
 import { Focus } from './focus';
 import { Hashtag } from './hashtag';
@@ -47,6 +53,10 @@ export const extensions = [
       HTMLAttributes: {
         class: 'om-leading-normal',
       },
+    },
+    dropcursor: {
+      width: 4,
+      color: DROP_CURSOR_COLOR,
     },
   }),
   Placeholder.configure({
@@ -91,6 +101,7 @@ export const extensions = [
     HTMLAttributes: {
       class: 'om-task-item',
     },
+    nested: true,
   }),
   Mention.configure({
     suggestion: mentionSuggestion(),
@@ -106,5 +117,30 @@ export const extensions = [
   BlockAndDragDrop,
   Focus.configure({
     mode: 'deepest',
+  }),
+  Callout,
+  Table.configure({
+    HTMLAttributes: {
+      class: 'om-table',
+      'data-om-table': 'om-table',
+    },
+  }),
+  TableRow.configure({
+    HTMLAttributes: {
+      class: 'om-table-row',
+      'data-om-table-row': 'om-table-row',
+    },
+  }),
+  TableHeader.configure({
+    HTMLAttributes: {
+      class: 'om-table-header',
+      'data-om-table-header': 'om-table-header',
+    },
+  }),
+  TableCell.configure({
+    HTMLAttributes: {
+      class: 'om-table-cell',
+      'data-om-table-cell': 'om-table-cell',
+    },
   }),
 ];

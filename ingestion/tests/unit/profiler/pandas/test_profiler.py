@@ -115,6 +115,7 @@ class ProfilerTest(TestCase):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
             service_connection_config=None,
+            storage_config=None,
             ometa_client=None,
             thread_count=None,
             profile_sample_config=None,
@@ -177,7 +178,6 @@ class ProfilerTest(TestCase):
             histogram=Histogram(
                 boundaries=["30.00 to 31.26", "31.26 and up"], frequencies=[3, 1]
             ),
-            customMetricsProfile=None,
         )
 
     def test_required_metrics(self):
@@ -269,5 +269,8 @@ class ProfilerTest(TestCase):
 
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
-            if metric[1] is not MetricTypes.Table and metric[2].name == "id":
-                assert all(metric_filter.count(m.name()) for m in metric[0])
+            if (
+                metric.metric_type is not MetricTypes.Table
+                and metric.column.name == "id"
+            ):
+                assert all(metric_filter.count(m.name()) for m in metric.metrics)

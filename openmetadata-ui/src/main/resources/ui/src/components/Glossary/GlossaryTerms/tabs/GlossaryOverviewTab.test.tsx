@@ -29,9 +29,16 @@ jest.mock('./GlossaryTermReferences', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermReferences</p>);
 });
 
-jest.mock('../../../common/description/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
+
+jest.mock(
+  '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component',
+  () => {
+    return jest.fn().mockImplementation(() => <>testGlossaryRightPanel</>);
+  }
+);
 
 describe('GlossaryOverviewTab', () => {
   const onUpdate = jest.fn();
@@ -50,6 +57,7 @@ describe('GlossaryOverviewTab', () => {
           isGlossary={isGlossary}
           permissions={permissions}
           selectedData={selectedData}
+          onThreadLinkSelect={jest.fn()}
           onUpdate={onUpdate}
         />
       </BrowserRouter>

@@ -66,7 +66,8 @@ public abstract class SecretsManager {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to encrypt connection instance of %s. Did the Fernet Key change?", connectionType));
     }
   }
 
@@ -82,7 +83,8 @@ public abstract class SecretsManager {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to decrypt connection instance of %s. Did the Fernet Key change?", connectionType));
     }
   }
 
@@ -128,7 +130,7 @@ public abstract class SecretsManager {
 
   public void decryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
     OpenMetadataConnection openMetadataConnection =
-        decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
+        decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection());
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
@@ -160,7 +162,7 @@ public abstract class SecretsManager {
 
   public Workflow decryptWorkflow(Workflow workflow) {
     OpenMetadataConnection openMetadataConnection =
-        decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
+        decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection());
     Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
@@ -191,8 +193,7 @@ public abstract class SecretsManager {
     return null;
   }
 
-  public OpenMetadataConnection decryptOpenMetadataConnection(
-      OpenMetadataConnection openMetadataConnection, boolean store) {
+  public OpenMetadataConnection decryptOpenMetadataConnection(OpenMetadataConnection openMetadataConnection) {
     if (openMetadataConnection != null) {
       OpenMetadataConnection openMetadataConnectionConverted =
           (OpenMetadataConnection)
@@ -267,18 +268,10 @@ public abstract class SecretsManager {
 
   protected abstract String storeValue(String fieldName, String value, String secretId, boolean store);
 
-  protected String getSecretSeparator() {
-    return "/";
-  }
-
-  protected boolean startsWithSeparator() {
-    return true;
-  }
-
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();
     if (addClusterPrefix) {
-      format.append(startsWithSeparator() ? getSecretSeparator() : "");
+      format.append("/");
       format.append(clusterPrefix);
     } else {
       format.append("%s");
@@ -291,7 +284,7 @@ public abstract class SecretsManager {
               if (isNull(secretIdValue)) {
                 throw new SecretsManagerException("Cannot build a secret id with null values.");
               }
-              format.append(getSecretSeparator());
+              format.append("/");
               format.append("%s");
             });
     return String.format(format.toString(), (Object[]) secretIdValues).toLowerCase();

@@ -34,9 +34,13 @@ import {
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import Avatar from '../../common/avatar/Avatar';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import Avatar from '../../common/AvatarComponent/Avatar';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {
@@ -54,7 +58,7 @@ const renderLimitedListMenuItem = ({
   sizeLimit = 2,
   readMoreKey,
 }: ListMenuItemProps) => {
-  const remaningCount =
+  const remainingCount =
     listItems.length ?? 0 > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
@@ -69,9 +73,9 @@ const renderLimitedListMenuItem = ({
           key: item.id,
         })) ?? []),
         ...[
-          remaningCount > 0
+          remainingCount > 0
             ? {
-                label: readMoreLabelRenderer(remaningCount),
+                label: readMoreLabelRenderer(remainingCount),
                 key: readMoreKey ?? 'more-item',
               }
             : null,
@@ -85,10 +89,11 @@ export const UserProfileIcon = () => {
     useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
-  const profilePicture = useMemo(
-    () => currentUser?.profile?.images?.image512,
-    [currentUser]
+  const profilePicture = getImageWithResolutionAndFallback(
+    ImageQuality['6x'],
+    currentUser?.profile?.images
   );
+  const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
@@ -110,7 +115,7 @@ export const UserProfileIcon = () => {
   }, [profilePicture]);
 
   const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
-    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
+    const userName = getEntityName(currentUser) || TERM_USER;
 
     return {
       userName,
@@ -151,13 +156,23 @@ export const UserProfileIcon = () => {
   );
 
   const readMoreTeamRenderer = useCallback(
-    (count) => (
-      <Link
-        className="more-teams-pill"
-        to={getUserPath(currentUser?.name as string)}>
-        {count} {t('label.more')}
-      </Link>
-    ),
+    (count: number, isPersona?: boolean) =>
+      isPersona ? (
+        <Typography.Text
+          className="more-teams-pill"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowAllPersona(true);
+          }}>
+          {count} {t('label.more')}
+        </Typography.Text>
+      ) : (
+        <Link
+          className="more-teams-pill"
+          to={getUserPath(currentUser?.name as string)}>
+          {count} {t('label.more')}
+        </Link>
+      ),
     [currentUser]
   );
 
@@ -226,8 +241,9 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
+          sizeLimit: showAllPersona ? personas?.length : 2,
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTeamRenderer,
+          readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
         }),
         label: (
           <span className="text-grey-muted text-xs">
@@ -271,7 +287,15 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, selectedPersona, teams, roles, personas]
+    [
+      currentUser,
+      userName,
+      selectedPersona,
+      teams,
+      roles,
+      personas,
+      showAllPersona,
+    ]
   );
 
   useEffect(() => {

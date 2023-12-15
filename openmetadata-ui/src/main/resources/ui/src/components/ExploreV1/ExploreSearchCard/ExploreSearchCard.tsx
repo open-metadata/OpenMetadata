@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -37,7 +37,7 @@ import {
   getServiceIcon,
   getUsagePercentile,
 } from '../../../utils/TableUtils';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import './explore-search-card.less';
@@ -58,6 +58,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showTags = true,
       openEntityInNewPage,
       hideBreadcrumbs = false,
+      actionPopoverContent,
+      showCheckboxes = false,
+      checked = false,
+      onCheckboxChange,
     },
     ref
   ) => {
@@ -96,6 +100,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           placeholderText: domain,
           isLink: true,
           openInNewTab: false,
+        });
+      } else {
+        _otherDetails.push({
+          key: 'Domain',
+          value: '',
         });
       }
 
@@ -137,7 +146,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           if (source.style?.iconURL) {
             return (
               <img
-                className="align-middle m-r-xs"
+                className="align-middle m-r-xs object-contain"
                 data-testid="icon"
                 height={24}
                 src={source.style.iconURL}
@@ -162,8 +171,21 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const header = useMemo(() => {
       return (
         <Row gutter={[8, 8]}>
+          {showCheckboxes && (
+            <Col flex="25px">
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={checked}
+                  className="assets-checkbox"
+                  onChange={(e) => {
+                    onCheckboxChange?.(e.target.checked);
+                  }}
+                />
+              </div>
+            </Col>
+          )}
           {!hideBreadcrumbs && (
-            <Col span={24}>
+            <Col className="d-flex" flex="auto">
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
@@ -175,7 +197,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               </div>
             </Col>
           )}
-          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
+          <Col
+            data-testid={`${
+              source.service?.name ? `${source.service.name}-` : 'explore-card-'
+            }${source.name}`}
+            span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text
@@ -189,7 +215,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {entityIcon}
 
                 <Link
-                  className="no-underline w-full line-height-22"
+                  className="no-underline line-height-22"
                   data-testid="entity-link"
                   target={openEntityInNewPage ? '_blank' : '_self'}
                   to={
@@ -211,12 +237,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           </Col>
         </Row>
       );
-    }, [breadcrumbs, source, hideBreadcrumbs]);
+    }, [breadcrumbs, source, hideBreadcrumbs, showCheckboxes, checked]);
 
     return (
       <div
         className={classNames('explore-search-card', className)}
-        data-testid="table-data-card"
+        data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
         onClick={() => {
@@ -245,6 +271,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
+        {actionPopoverContent && (
+          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        )}
       </div>
     );
   }

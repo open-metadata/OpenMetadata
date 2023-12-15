@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import {
   addAnnouncement,
@@ -30,7 +31,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { BASE_URL } from '../../constants/constants';
+import { BASE_URL, uuid } from '../../constants/constants';
 import {
   SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT,
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
@@ -42,6 +43,32 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+
+const policy = {
+  name: `cy-data-steward-policy-${uuid()}`,
+  rules: [
+    {
+      name: 'DataStewardPolicy-EditRule',
+      resources: ['All'],
+      operations: [
+        'EditDescription',
+        'EditDisplayName',
+        'EditOwner',
+        'EditLineage',
+        'EditTags',
+        'ViewAll',
+      ],
+      effect: 'allow',
+    },
+  ],
+};
+let policyId = '';
+
+const role = {
+  name: `cy-data-steward-role-${uuid()}`,
+  policies: [policy.name],
+};
+let roleId = '';
 
 const performCommonOperations = () => {
   // Add and remove tier flow should work properly
@@ -131,6 +158,29 @@ describe('Prerequisite for search index details page test', () => {
         response.body.fullyQualifiedName;
     });
 
+    // Create Data Steward Policy
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/policies`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: policy,
+    }).then((response) => {
+      policyId = response.body.id;
+
+      expect(response.status).to.eq(201);
+
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/roles`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: role,
+      }).then((response) => {
+        roleId = response.body.id;
+
+        expect(response.status).to.eq(201);
+      });
+    });
+
     // Create a new user
     cy.request({
       method: 'POST',
@@ -154,27 +204,21 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    visitEntityDetailsPage(
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
-      undefined,
-      'Search Index'
-    );
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
 
     // Edit domain option should not be available
-    cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
-      const editDomain = $body.find(`[data-testid="add-domain"]`);
-
-      expect(editDomain.length).to.equal(0);
-    });
+    cy.get(
+      `[data-testid="entity-page-header"] [data-testid="add-domain"]`
+    ).should('not.exist');
 
     // Manage button should not be visible on service page
-    cy.get('[data-testid="asset-header-btn-group"]').then(($body) => {
-      const manageButton = $body.find(`[data-testid="manage-button"]`);
-
-      expect(manageButton.length).to.equal(0);
-    });
+    cy.get(
+      '[data-testid="asset-header-btn-group"] [data-testid="manage-button"]'
+    ).should('not.exist');
 
     performCommonOperations();
   });
@@ -205,11 +249,15 @@ describe('Prerequisite for data steward role tests', () => {
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
-    cy.get('[data-testid="edit-roles"]').click();
+    cy.get('[data-testid="user-profile"] .ant-collapse-arrow').click();
 
-    cy.get('[data-testid="inline-edit-container"] #select-role').click();
+    cy.get('[data-testid="edit-roles-button"]').click();
 
-    cy.get('[title="Data Steward"]').click();
+    cy.get('[data-testid="inline-edit-container"] #select-role')
+      .click()
+      .type(role.name);
+
+    cy.get(`[title=${role.name}]`).click();
 
     cy.clickOutside();
 
@@ -230,13 +278,11 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    visitEntityDetailsPage(
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
-      undefined,
-      'Search Index'
-    );
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
 
     // Edit domain option should not be available
     cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
@@ -321,38 +367,23 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
       'Search Index',
-      'Search Index',
       'soft'
     );
 
     cy.get('[data-testid="deleted-badge"]').should('be.visible');
 
     // Edit options for domain owner and tier should not be visible
-    cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
-      const editDomain = $body.find(`[data-testid="add-domain"]`);
-      const editOwner = $body.find(`[data-testid="edit-owner"]`);
-      const editTier = $body.find(`[data-testid="edit-tier"]`);
-
-      expect(editDomain.length).to.equal(0);
-      expect(editOwner.length).to.equal(0);
-      expect(editTier.length).to.equal(0);
-    });
+    cy.get('[data-testid="add-domain"]').should('not.exist');
+    cy.get('[data-testid="edit-owner"]').should('not.exist');
+    cy.get('[data-testid="edit-tier"]').should('not.exist');
 
     // Edit description button should not be visible
-    cy.get(`[data-testid="asset-description-container"]`).then(($body) => {
-      const editDescription = $body.find(`[data-testid="edit-description"]`);
-
-      expect(editDescription.length).to.equal(0);
-    });
+    cy.get('[data-testid="edit-description"]').should('not.exist');
 
     // Edit tags button should not be visible
     cy.get(
-      `[data-testid="entity-right-panel"] [data-testid="tags-container"]`
-    ).then(($body) => {
-      const addTag = $body.find(`[data-testid="add-tag"]`);
-
-      expect(addTag.length).to.equal(0);
-    });
+      `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]`
+    ).should('not.exist');
 
     // Edit description and tags button for fields should not be visible
     cy.get(
@@ -392,7 +423,6 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
-      'Search Index',
       'Search Index'
     );
   });
@@ -404,13 +434,31 @@ describe('Cleanup', () => {
     cy.login();
   });
 
-  it('Delete search index and user', () => {
+  it('Delete user, role and policy', () => {
     const token = localStorage.getItem('oidcIdToken');
 
     // Delete created user
     cy.request({
       method: 'DELETE',
       url: `/api/v1/users/${USER_CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+
+    // Delete policy
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/policies/${policyId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+
+    // Delete role
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/roles/${roleId}?hardDelete=true&recursive=false`,
       headers: { Authorization: `Bearer ${token}` },
     }).then((response) => {
       expect(response.status).to.eq(200);

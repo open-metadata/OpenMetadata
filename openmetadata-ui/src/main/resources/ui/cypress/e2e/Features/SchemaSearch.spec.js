@@ -14,6 +14,7 @@
 /// <reference types="Cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;
@@ -96,6 +97,8 @@ describe('Schema search', () => {
 
     verifyResponseStatusCode('@getServices', 200);
 
+    searchServiceFromSettingPage(serviceName);
+
     // click on created service
     cy.get(`[data-testid="service-name-${serviceName}"]`).click();
 
@@ -115,7 +118,7 @@ describe('Schema search', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databaseSchemas?fields=*&database=${serviceName}.default&include=non-deleted`,
+      `/api/v1/databaseSchemas?fields=*&database=${serviceName}.default*`,
       'databaseSchema'
     );
     interceptURL(

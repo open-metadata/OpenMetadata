@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.teams;
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.*;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -109,7 +110,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
     // Ensure that the user does not have relationship to this persona
     User user = userResourceTest.getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getPersonas().size(), 0);
+    assertEquals(0, user.getPersonas().size());
   }
 
   @Test
@@ -151,7 +152,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
         permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS)));
 
     // Ensure user with UpdateTeam permission can add users to a team.
-    ChangeDescription change = getChangeDescription(persona.getVersion());
+    ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
     fieldAdded(change, "users", userRefs);
     patchEntityAndCheck(persona, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -175,9 +176,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     int removeUserIndex = new Random().nextInt(totalUsers);
     EntityReference deletedUser = persona.getUsers().get(removeUserIndex);
     persona.getUsers().remove(removeUserIndex);
-    ChangeDescription change = getChangeDescription(persona.getVersion());
+    ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
     fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
-    patchEntityAndCheck(persona, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(persona, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   private static void validatePersona(
@@ -195,7 +196,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
   @Override
   public Persona validateGetWithDifferentFields(Persona expectedPersona, boolean byName) throws HttpResponseException {
-    if (expectedPersona.getUsers() == null) {
+    if (nullOrEmpty(expectedPersona.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create =
           userResourceTest
@@ -253,11 +254,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     if (expected == actual) {
       return;
     }
-    if (List.of("users").contains(fieldName)) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+    if ("users".equals(fieldName)) {
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

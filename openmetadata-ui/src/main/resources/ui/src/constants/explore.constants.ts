@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
@@ -56,12 +56,6 @@ export interface ExploreTabInfo {
 }
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
-  [SearchIndex.DATA_PRODUCT]: {
-    label: i18n.t('label.data-product-plural'),
-    sortingFields: tableSortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dataProducts',
-  },
   [SearchIndex.TABLE]: {
     label: i18n.t('label.table-plural'),
     sortingFields: tableSortingFields,
@@ -136,6 +130,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
   },
+  [SearchIndex.DATA_PRODUCT]: {
+    label: i18n.t('label.data-product-plural'),
+    sortingFields: tableSortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dataProducts',
+  },
 };
 
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
@@ -145,4 +145,4 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
 
 export const ALL_EXPLORE_SEARCH_INDEX =
   // eslint-disable-next-line max-len
-  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX}` as SearchIndex;
+  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX},${SearchIndex.DATA_PRODUCT}` as SearchIndex;

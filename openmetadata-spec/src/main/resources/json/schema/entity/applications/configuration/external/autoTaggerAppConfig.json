@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/autoTaggerAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AutoTaggerAppConfig",
+  "description": "Configuration for the Auto Tagger External Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.AutoTaggerAppConfig",
+  "definitions": {
+    "autoTaggerAppType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["AutoTagger"],
+      "default": "AutoTagger"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/autoTaggerAppType",
+      "default": "AutoTagger"
+    },
+    "confidenceLevel": {
+      "title": "Confidence Level",
+      "type": "integer",
+      "description": "Confidence level for the ML models to apply the PII tagging.",
+      "default": 80
+    }
+  },
+  "additionalProperties": false
+}

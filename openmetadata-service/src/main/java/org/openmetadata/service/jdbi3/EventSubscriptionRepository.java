@@ -54,16 +54,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public EventSubscription setFields(EventSubscription entity, Fields fields) {
+  public void setFields(EventSubscription entity, Fields fields) {
     if (entity.getStatusDetails() == null) {
       entity.withStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
     }
-    return entity;
   }
 
   @Override
-  public EventSubscription clearFields(EventSubscription entity, Fields fields) {
-    return entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
+  public void clearFields(EventSubscription entity, Fields fields) {
+    entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
   }
 
   @Override
@@ -91,11 +90,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   public void storeRelationships(EventSubscription entity) {
     // No relationships to store beyond what is stored in the super class
-  }
-
-  @Override
-  public void restorePatchAttributes(EventSubscription original, EventSubscription updated) {
-    updated.withId(original.getId()).withName(original.getName());
   }
 
   private SubscriptionPublisher getPublisher(UUID id) {
@@ -226,10 +220,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
-      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules());
+      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
       recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
-      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig());
-      recordChange("trigger", original.getTrigger(), updated.getTrigger());
+      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig(), true);
+      recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
     }
   }
 }

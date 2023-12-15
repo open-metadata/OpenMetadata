@@ -17,6 +17,7 @@ from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
     PipelineState,
     PipelineStatus,
 )
@@ -26,7 +27,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import datetime_to_ts
 
 SUCCESS_THRESHOLD_VALUE = 90
 
@@ -42,6 +42,8 @@ class WorkflowStatusMixin:
     config: OpenMetadataWorkflowConfig
     _run_id: Optional[str] = None
     metadata: OpenMetadata
+    _start_ts: int
+    ingestion_pipeline: Optional[IngestionPipeline]
 
     # All workflows require a source as a first step
     source: Source
@@ -62,27 +64,14 @@ class WorkflowStatusMixin:
 
         return self._run_id
 
-    def _raise_from_status_internal(self, raise_warnings=False):
-        """
-        Check the status of all steps
-        """
-        if (
-            self.source.get_status().failures
-            and self._get_source_success() < SUCCESS_THRESHOLD_VALUE
-        ):
-            raise WorkflowExecutionError(
-                "Source reported errors", self.source.get_status()
-            )
-
-        for step in self.steps:
-            if step.status.failures:
-                raise WorkflowExecutionError(
-                    f"{step.__class__.__name__} reported errors", step.get_status()
-                )
-            if raise_warnings and step.status.warnings:
-                raise WorkflowExecutionError(
-                    f"{step.__class__.__name__} reported warnings", step.get_status()
-                )
+    def _new_pipeline_status(self, state: PipelineState) -> PipelineStatus:
+        """Create new Pipeline Status"""
+        return PipelineStatus(
+            runId=self.run_id,
+            pipelineState=state,
+            startDate=self._start_ts,
+            timestamp=self._start_ts,
+        )
 
     def set_ingestion_pipeline_status(
         self,
@@ -95,16 +84,13 @@ class WorkflowStatusMixin:
         # if we don't have a related Ingestion Pipeline FQN, no status is set.
         if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
             if state in (PipelineState.queued, PipelineState.running):
-                pipeline_status = PipelineStatus(
-                    runId=self.run_id,
-                    pipelineState=state,
-                    startDate=datetime_to_ts(datetime.now()),
-                    timestamp=datetime_to_ts(datetime.now()),
-                )
+                pipeline_status = self._new_pipeline_status(state)
             else:
                 pipeline_status = self.metadata.get_pipeline_status(
                     self.config.ingestionPipelineFQN, self.run_id
                 )
+                if not pipeline_status:
+                    pipeline_status = self._new_pipeline_status(state)
                 # if workflow is ended then update the end date in status
                 pipeline_status.endDate = datetime.now().timestamp() * 1000
                 pipeline_status.pipelineState = state
@@ -113,18 +99,15 @@ class WorkflowStatusMixin:
                 self.config.ingestionPipelineFQN, pipeline_status
             )
 
-    def update_ingestion_status_at_end(self):
+    def update_pipeline_status_at_end(self):
         """
         Once the execute method is done, update the status
         as OK or KO depending on the success rate.
         """
         pipeline_state = PipelineState.success
-        if SUCCESS_THRESHOLD_VALUE <= self._get_source_success() < 100:
+        if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
             pipeline_state = PipelineState.partialSuccess
         self.set_ingestion_pipeline_status(pipeline_state)
-
-    def _get_source_success(self):
-        return self.source.get_status().calculate_success()
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -132,7 +115,7 @@ class WorkflowStatusMixin:
         and updating Ingestion Pipeline Status
         """
         try:
-            self._raise_from_status_internal(raise_warnings)
+            self.raise_from_status_internal(raise_warnings)
         except WorkflowExecutionError as err:
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
@@ -141,6 +124,6 @@ class WorkflowStatusMixin:
         """
         Returns 1 if source status is failed, 0 otherwise.
         """
-        if self.source.get_status().failures:
+        if self.get_failures():
             return 1
         return 0

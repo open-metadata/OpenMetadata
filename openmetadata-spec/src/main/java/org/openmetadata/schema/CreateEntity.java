@@ -14,8 +14,10 @@
 package org.openmetadata.schema;
 
 import java.util.List;
+import org.checkerframework.checker.units.qual.K;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.TagLabel;
 
 @SuppressWarnings("unchecked")
 public interface CreateEntity {
@@ -26,6 +28,10 @@ public interface CreateEntity {
   String getDescription();
 
   default EntityReference getOwner() {
+    return null;
+  }
+
+  default List<TagLabel> getTags() {
     return null;
   }
 
@@ -53,6 +59,10 @@ public interface CreateEntity {
 
   default <K extends CreateEntity> K withOwner(EntityReference owner) {
     return (K) this;
+  }
+
+  default void setTags(List<TagLabel> tags) {
+    /* no-op implementation to be overridden */
   }
 
   default <K extends CreateEntity> K withExtension(Object extension) {

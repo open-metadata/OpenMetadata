@@ -25,7 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -131,9 +131,10 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
     SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test").withPassword("test12");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
@@ -173,14 +174,14 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     assertResponseContains(
         () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake. Did the Fernet Key change?]");
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     MysqlConnection mysqlConnection = new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
     update.withConnection(databaseConnection);
@@ -203,9 +204,9 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
 
     // Update database connection to a new connection
     CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     oldDatabaseConnection = service.getConnection();
     oldDatabaseConnection.setConfig(
         JsonUtils.convertValue(oldDatabaseConnection.getConfig(), SnowflakeConnection.class));
@@ -220,9 +221,9 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
     databaseConnection.withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add ingestion pipeline to the database service
     IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
@@ -269,7 +270,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
   }
 
   @Test
-  void get_listDatabaseServicesWithInvalidEnumValue_400(TestInfo test) {
+  void get_listDatabaseServicesWithInvalidEnumValue_400() {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "invalid-enum-value");
 
@@ -329,6 +330,9 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
@@ -336,7 +340,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     } else if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

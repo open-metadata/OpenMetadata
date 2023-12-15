@@ -15,6 +15,8 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
@@ -33,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
@@ -41,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -60,7 +64,9 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class Entity {
@@ -190,6 +196,7 @@ public final class Entity {
   //
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
+  public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
@@ -229,7 +236,6 @@ public final class Entity {
   //
   public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
       List.of(
-          USER,
           TEAM,
           ROLE,
           POLICY,
@@ -528,5 +534,34 @@ public final class Entity {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
     }
+  }
+
+  public static <T extends FieldInterface> void populateEntityFieldTags(
+      String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    // Get Flattened Fields
+    List<T> flattenedFields = getFlattenedEntityField(fields);
+
+    // Fetch All tags belonging to Prefix
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
+    for (T c : listOrEmpty(flattenedFields)) {
+      if (setTags) {
+        List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
+        if (columnTag == null) {
+          c.setTags(new ArrayList<>());
+        } else {
+          c.setTags(addDerivedTags(columnTag));
+        }
+      } else {
+        c.setTags(c.getTags());
+      }
+    }
+  }
+
+  public static SearchIndex buildSearchIndex(String entityType, Object entity) {
+    if (searchRepository != null) {
+      return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+    }
+    throw new BadRequestException("searchrepository not initialized");
   }
 }

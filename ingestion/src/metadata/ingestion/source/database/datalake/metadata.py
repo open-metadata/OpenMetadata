@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -134,7 +135,7 @@ class DatalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -143,8 +144,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=bucket.name,
             )
             if filter_by_schema(
@@ -163,8 +164,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=bucket["Name"],
             )
             if filter_by_schema(
@@ -211,8 +212,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema["name"],
             )
             if filter_by_schema(
@@ -236,7 +237,12 @@ class DatalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
@@ -251,7 +257,7 @@ class DatalakeSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        bucket_name = self.context.database_schema.name.__root__
+        bucket_name = self.context.database_schema
         prefix = self.service_connection.prefix
         try:
             metadata_config_response = self.reader.read(
@@ -326,7 +332,7 @@ class DatalakeSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type, table_extension = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             table_constraints = None
             data_frame = fetch_dataframe(
@@ -347,11 +353,17 @@ class DatalakeSource(DatabaseServiceSource):
                     tableType=table_type,
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    databaseSchema=fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=schema_name,
+                    ),
                     fileFormat=table_extension.value if table_extension else None,
                 )
                 yield Either(right=table_request)
-                self.register_record(table_request)
+                self.register_record(table_request=table_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -396,9 +408,9 @@ class DatalakeSource(DatabaseServiceSource):
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             skip_es_search=True,
         )

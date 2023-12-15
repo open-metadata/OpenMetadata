@@ -42,7 +42,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
-  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
+  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels,sourceHash";
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository() {
@@ -94,35 +94,32 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) {
+  public void setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
         fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+    dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
               : null);
     }
-    return dashboard;
   }
 
   @Override
-  public Dashboard clearFields(Dashboard dashboard, Fields fields) {
+  public void clearFields(Dashboard dashboard, Fields fields) {
     dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
     dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
-    return dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
+    dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override
   public void restorePatchAttributes(Dashboard original, Dashboard updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withId(original.getId())
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   private void populateService(Dashboard dashboard) {
@@ -179,19 +176,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
-    return inheritDomain(dashboard, fields, dashboardService);
-  }
-
-  @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
   }
 
   @Override
   public EntityInterface getParentEntity(Dashboard entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
@@ -216,6 +207,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
       updateDashboardUrl(original, updated);
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void update(

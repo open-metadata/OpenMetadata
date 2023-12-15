@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-We require Taxonomy Admin permissions to fetch all Policy Tags
+Bigquery source module
 """
 import os
 import traceback
@@ -30,6 +30,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.entity.data.database import Database, EntityName
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -68,6 +69,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
     StoredProcedureMixin,
@@ -190,7 +192,7 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
+class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -281,7 +283,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
                         classification_description="",
                     )
             # Fetching policy tags on the column level
-            list_project_ids = [self.context.database.name.__root__]
+            list_project_ids = [self.context.database]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
@@ -319,7 +321,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
             )
 
             query_result = [result.schema_description for result in query_resp.result()]
-            return query_result[0]
+            return fqn.unquote_name(query_result[0])
         except IndexError:
             logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
@@ -339,10 +341,15 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
 
         database_schema_request_obj = CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=self.context.database.fullyQualifiedName,
+            database=fqn.build(
+                metadata=self.metadata,
+                entity_type=Database,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
+            ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
-                database_name=self.context.database.name.__root__,
+                database_name=self.context.database,
                 schema_name=schema_name,
             ),
         )
@@ -361,8 +368,8 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
-        schema_name = self.context.database_schema.name.__root__
-        database = self.context.database.name.__root__
+        schema_name = self.context.database_schema
+        database = self.context.database
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         return self.client.get_table(bq_table_fqn)
 
@@ -421,12 +428,18 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
 
+    def get_configured_database(self) -> Optional[str]:
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self.project_ids
+
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 database_name=project_id,
             )
             if filter_by_database(
@@ -450,9 +463,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    fqn._build(
-                        self.context.database.name.__root__, schema_name, table_name
-                    )
+                    fqn._build(self.context.database, schema_name, table_name)
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -469,7 +480,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         """
         check if the table is partitioned table and return the partition details
         """
-        database = self.context.database.name.__root__
+        database = self.context.database
         table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
@@ -579,8 +590,8 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 BIGQUERY_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                 )
             ).all()
             for row in results:
@@ -593,26 +604,32 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    storedProcedureCode=StoredProcedureCode(
-                        language=STORED_PROC_LANGUAGE_MAP.get(
-                            stored_procedure.language or "SQL",
-                        ),
-                        code=stored_procedure.definition,
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(
+                        stored_procedure.language or "SQL",
                     ),
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
-                    sourceUrl=SourceUrl(
-                        __root__=self.get_stored_procedure_url(
-                            database_name=self.context.database.name.__root__,
-                            schema_name=self.context.database_schema.name.__root__,
-                            # Follow the same building strategy as tables
-                            table_name=stored_procedure.name,
-                        )
-                    ),
-                )
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+                sourceUrl=SourceUrl(
+                    __root__=self.get_stored_procedure_url(
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                        # Follow the same building strategy as tables
+                        table_name=stored_procedure.name,
+                    )
+                ),
             )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

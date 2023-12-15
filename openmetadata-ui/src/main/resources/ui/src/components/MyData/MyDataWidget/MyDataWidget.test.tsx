@@ -13,15 +13,46 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from '../../../rest/userAPI';
+import { User } from '../../../generated/entity/teams/user';
+import { searchData } from '../../../rest/miscAPI';
 import { MyDataWidget } from './MyDataWidget.component';
 
-const userDetails = {
-  id: '123',
+const mockUserData: User = {
+  name: 'testUser1',
+  email: 'testUser1@email.com',
+  id: '113',
 };
 
-jest.mock('../../../rest/userAPI', () => ({
-  getUserById: jest.fn().mockImplementation(() =>
+const mockSearchAPIResponse = {
+  data: {
+    hits: {
+      hits: [
+        {
+          _source: {
+            id: '1',
+            name: 'test 1',
+            fullyQualifiedName: 'test-1',
+            type: 'table',
+          },
+        },
+        {
+          _source: {
+            id: '2',
+            name: 'test 2',
+            fullyQualifiedName: 'test-2',
+            type: 'table',
+          },
+        },
+      ],
+      total: {
+        value: 2,
+      },
+    },
+  },
+};
+
+jest.mock('../../../rest/miscAPI', () => ({
+  searchData: jest.fn().mockImplementation(() =>
     Promise.resolve({
       owns: [],
     })
@@ -37,10 +68,10 @@ jest.mock('../../../utils/TableUtils', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('./../../../AppState', () => ({
-  getCurrentUserDetails: jest.fn().mockImplementation(() => {
-    return userDetails;
-  }),
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    currentUser: mockUserData,
+  })),
 }));
 
 jest.mock(
@@ -56,7 +87,15 @@ describe('MyDataWidget component', () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
     });
 
-    expect(getUserById).toHaveBeenCalledWith('123', 'owns');
+    expect(searchData).toHaveBeenCalledWith(
+      '',
+      1,
+      10,
+      '(owner.id:113)',
+      '',
+      '',
+      'all'
+    );
   });
 
   it.skip('should render header', () => {
@@ -84,23 +123,8 @@ describe('MyDataWidget component', () => {
   });
 
   it('should render view all for data present', async () => {
-    (getUserById as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        owns: [
-          {
-            id: '1',
-            name: 'test 1',
-            fullyQualifiedName: 'test-1',
-            type: 'table',
-          },
-          {
-            id: '2',
-            name: 'test 2',
-            fullyQualifiedName: 'test-2',
-            type: 'table',
-          },
-        ],
-      })
+    (searchData as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockSearchAPIResponse)
     );
     act(() => {
       render(
@@ -114,22 +138,7 @@ describe('MyDataWidget component', () => {
   });
 
   it('should render table names', async () => {
-    (getUserById as jest.Mock).mockResolvedValueOnce({
-      owns: [
-        {
-          id: '1',
-          name: 'test 1',
-          fullyQualifiedName: 'test-1',
-          type: 'table',
-        },
-        {
-          id: '2',
-          name: 'test 2',
-          fullyQualifiedName: 'test-2',
-          type: 'table',
-        },
-      ],
-    });
+    (searchData as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
     act(() => {
       render(
         <MemoryRouter>

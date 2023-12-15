@@ -78,15 +78,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public Glossary setFields(Glossary glossary, Fields fields) {
+  public void setFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : glossary.getTermCount());
-    return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : glossary.getUsageCount());
+    glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : glossary.getUsageCount());
   }
 
   @Override
-  public Glossary clearFields(Glossary glossary, Fields fields) {
+  public void clearFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? glossary.getTermCount() : null);
-    return glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
+    glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
   }
 
   @Override
@@ -269,26 +269,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
+      renameAllowed = true;
     }
 
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      updateReviewers(original, updated);
       updateName(original, updated);
-    }
-
-    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) {
-      List<EntityReference> origUsers = listOrEmpty(origGlossary.getReviewers());
-      List<EntityReference> updatedUsers = listOrEmpty(updatedGlossary.getReviewers());
-      updateFromRelationships(
-          "reviewers",
-          Entity.USER,
-          origUsers,
-          updatedUsers,
-          Relationship.REVIEWS,
-          Entity.GLOSSARY,
-          origGlossary.getId());
     }
 
     public void updateName(Glossary original, Glossary updated) {
@@ -299,6 +286,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         }
         // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()

@@ -13,7 +13,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
+import org.postgresql.util.PGobject;
 
 @Slf4j
 public class MigrationUtil {
@@ -118,8 +120,8 @@ public class MigrationUtil {
   }
 
   /**
-   * Before Release 1.2, Glossary and all of the Glossary terms , even the deeply nested glossary terms have contains
-   * relation with Glossary and also its parent GlossaryTerm. This causes delete issue as we recursively delete the
+   * Before Release 1.2, Glossary and all the Glossary terms , even the deeply nested glossary terms have contains
+   * relation with Glossary and also its parent GlossaryTerm. These causes delete issue as we recursively delete the
    * GlossaryTerms When Glossary gets deleted. We have updated the Glossary -> nested GlossaryTerm to be "Has". This
    * migration does following update 1. List all GlossaryTerms, update the status to Accepted , since we introduced the
    * Glossary Approval Workflow 2. For each term we look at who is the parent is, There should be only one parent in
@@ -136,7 +138,15 @@ public class MigrationUtil {
           .mapToMap()
           .forEach(
               row -> {
-                GlossaryTerm term = JsonUtils.readValue((String) row.get("json"), GlossaryTerm.class);
+                String jsonRow;
+                if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+                  jsonRow = (String) row.get("json");
+                } else {
+                  // Postgres stores JSON as a JSONB, so we can't just cast it as a string
+                  PGobject pgObject = (PGobject) row.get("json");
+                  jsonRow = pgObject.getValue();
+                }
+                GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
                 if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
                   term.setStatus(GlossaryTerm.Status.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);

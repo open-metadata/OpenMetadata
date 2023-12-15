@@ -15,7 +15,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -24,6 +23,10 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 @Slf4j
 public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
   private final StepStats stats = new StepStats();
+
+  public ElasticSearchEntitiesProcessor(int total) {
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
 
   @Override
   public BulkRequest process(ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
@@ -69,7 +72,7 @@ public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, Re
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(Objects.requireNonNull(SearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+        JsonUtils.pojoToJson(Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

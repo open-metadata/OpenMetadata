@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/entity/data/container';
-import { Table } from '../../generated/entity/data/table';
+import { Table, TablePartition } from '../../generated/entity/data/table';
 import EntityTableV1 from './SchemaTable.component';
 
 const onEntityFieldSelect = jest.fn();
@@ -78,6 +78,7 @@ const mockEntityTableProp = {
   columnName: '',
   hasTagEditAccess: true,
   tableConstraints: mockTableConstraints,
+  tablePartitioned: {} as TablePartition,
   onEntityFieldSelect,
   onThreadLinkSelect,
   onUpdate,
@@ -131,7 +132,7 @@ jest.mock('../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
@@ -140,7 +141,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock(
-  '../../components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }

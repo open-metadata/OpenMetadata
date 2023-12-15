@@ -27,7 +27,6 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
-import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -241,12 +240,6 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
-        {
-          label: i18next.t('label.data-insight-report'),
-          isProtected: Boolean(isAdminUser),
-          key: 'notifications.dataInsightReport',
-          icon: <DataInsightReportIcon className="side-panel-icons" />,
-        },
       ],
     },
     {
@@ -273,10 +266,16 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'openMetadata.customLogo',
           icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
         },
+        {
+          label: i18next.t('label.login-configuration'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.loginConfiguration',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
       ],
     },
     {
-      category: i18next.t('label.custom-attribute-plural'),
+      category: i18next.t('label.custom-property-plural'),
       key: 'customAttributes',
       items: [
         {

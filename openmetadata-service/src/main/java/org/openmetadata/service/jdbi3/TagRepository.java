@@ -41,6 +41,7 @@ public class TagRepository extends EntityRepository<Tag> {
   public TagRepository() {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, Entity.getCollectionDAO().tagDAO(), "", "");
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -67,6 +68,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
+    super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
   }
 
@@ -98,17 +100,16 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public Tag setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
     }
-    return tag;
   }
 
   @Override
-  public Tag clearFields(Tag tag, Fields fields) {
-    return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
+  public void clearFields(Tag tag, Fields fields) {
+    tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
   private Integer getUsageCount(Tag tag) {
@@ -153,6 +154,7 @@ public class TagRepository extends EntityRepository<Tag> {
         }
         // Category name changed - update tag names starting from classification and all the children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
             .tagUsageDAO()
@@ -175,7 +177,11 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      if (!parentChanged && !classificationChanged) {
+        return;
+      }
 
+      setFullyQualifiedName(updated);
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
           .tagUsageDAO()

@@ -18,12 +18,12 @@ import { PagingWithoutTotal, ServiceTypes } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -158,7 +158,12 @@ function ServiceVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getServiceByFQN(serviceCategory, serviceFQN);
+      const { id } = await getServiceByFQN(
+        serviceCategory,
+        serviceFQN,
+        '',
+        Include.All
+      );
       setServiceId(id);
 
       const versions = await getServiceVersions(serviceCategory, id);

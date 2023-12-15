@@ -50,13 +50,18 @@ import org.apache.commons.io.IOUtils;
 @Slf4j
 public final class CommonUtil {
 
+  private static final List<String> jarNameFilter = List.of("openmetadata", "collate");
+
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    String[] classPathElements = classPath.split(File.pathSeparator);
+    List<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> jarNameFilter.stream().anyMatch(jarName.toLowerCase()::contains))
+            .toList();
 
     for (String element : classPathElements) {
       File file = new File(element);

@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
@@ -39,6 +39,7 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
@@ -47,6 +48,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   breadCrumbList,
   versionList,
@@ -133,9 +135,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.SEARCH_INDEX}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -156,6 +158,11 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.SEARCH_INDEX}

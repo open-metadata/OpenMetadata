@@ -26,6 +26,7 @@ import static org.openmetadata.service.util.TestUtils.AIRFLOW_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -117,12 +118,12 @@ public class PipelineServiceResourceTest extends ServiceResourceTest<PipelineSer
   void put_updatePipelineService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     PipelineService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
-    // Update pipeline description and ingestino service that are null
+    // Update pipeline description and ingestion service that are null
     CreatePipelineService update = createRequest(test).withDescription("description1");
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     PipelineConnection updatedConnection =
         new PipelineConnection()
@@ -154,7 +155,7 @@ public class PipelineServiceResourceTest extends ServiceResourceTest<PipelineSer
             createEntity(
                 createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow]");
+        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow. Did the Fernet Key change?]");
   }
 
   @Test
@@ -274,10 +275,13 @@ public class PipelineServiceResourceTest extends ServiceResourceTest<PipelineSer
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -83,14 +84,33 @@ class ProfilerTest(TestCase):
             EntityColumn(
                 name=ColumnName(__root__="id"),
                 dataType=DataType.INT,
+                customMetrics=[
+                    CustomMetric(
+                        name="custom_metric",
+                        description="custom metric",
+                        expression="SELECT cos(id) FROM users",
+                    )
+                ],
             )
+        ],
+        customMetrics=[
+            CustomMetric(
+                name="custom_metric",
+                description="custom metric",
+                expression="SELECT COUNT(id) / COUNT(age) FROM users",
+            ),
+            CustomMetric(
+                name="custom_metric_two",
+                description="custom metric",
+                expression="SELECT COUNT(id) * COUNT(age) FROM users",
+            ),
         ],
     )
     with patch.object(
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, 5, 43200
+            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
         )
 
     @classmethod
@@ -231,6 +251,30 @@ class ProfilerTest(TestCase):
                 )
             )
 
+    def test__prepare_column_metrics(self):
+        """test _prepare_column_metrics returns as expected"""
+        profiler = Profiler(
+            Metrics.FIRST_QUARTILE.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        metrics = profiler._prepare_column_metrics()
+        for metric in metrics:
+            if metric.metrics:
+                if isinstance(metric.metrics[0], CustomMetric):
+                    assert metric.metrics[0].name.__root__ == "custom_metric"
+                else:
+                    assert metric.metrics[0].name() == "firstQuartile"
+
+    def test__prepare_table_metrics(self):
+        """test _prepare_table_metrics returns as expected"""
+        profiler = Profiler(
+            Metrics.COLUMN_COUNT.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        metrics = profiler._prepare_table_metrics()
+        self.assertEqual(2, len(metrics))
+
     def test_profiler_with_timeout(self):
         """check timeout is properly used"""
 
@@ -241,6 +285,7 @@ class ProfilerTest(TestCase):
                 self.sqlite_conn,
                 None,
                 self.table_entity,
+                None,
                 None,
                 None,
                 None,
@@ -258,6 +303,7 @@ class ProfilerTest(TestCase):
     def test_profiler_get_col_metrics(self):
         """check getc column metrics"""
         metric_filter = ["mean", "min", "max", "firstQuartile"]
+        custom_metric_filter = ["custom_metric"]
         self.sqa_profiler_interface.table_entity.tableProfilerConfig = (
             TableProfilerConfig(
                 includeColumns=[
@@ -272,8 +318,20 @@ class ProfilerTest(TestCase):
 
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
-            if metric[1] is not MetricTypes.Table and metric[2].name == "id":
-                assert all(metric_filter.count(m.name()) for m in metric[0])
+            if (
+                metric.metric_type is not MetricTypes.Table
+                and metric.column.name == "id"
+            ):
+                assert all(
+                    metric_filter.count(m.name())
+                    for m in metric.metrics
+                    if not isinstance(m, CustomMetric)
+                )
+                assert all(
+                    custom_metric_filter.count(m.name.__root__)
+                    for m in metric.metrics
+                    if isinstance(m, CustomMetric)
+                )
 
     @classmethod
     def tearDownClass(cls) -> None:

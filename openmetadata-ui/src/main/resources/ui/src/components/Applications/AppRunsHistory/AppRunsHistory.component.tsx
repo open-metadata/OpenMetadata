@@ -28,19 +28,26 @@ import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { AppType } from '../../../generated/entity/applications/app';
 import { Status } from '../../../generated/entity/applications/appRunRecord';
+import {
+  PipelineState,
+  PipelineStatus,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { getApplicationRuns } from '../../../rest/applicationAPI';
 import {
-  getApplicationRuns,
-  getLatestApplicationRuns,
-} from '../../../rest/applicationAPI';
-import { getStatusTypeForApplication } from '../../../utils/ApplicationUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+  getStatusFromPipelineState,
+  getStatusTypeForApplication,
+} from '../../../utils/ApplicationUtils';
+import {
+  formatDateTime,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -52,7 +59,12 @@ import {
 
 const AppRunsHistory = forwardRef(
   (
-    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
+    {
+      appData,
+      maxRecords,
+      showPagination = true,
+      runsData,
+    }: AppRunsHistoryProps,
     ref
   ) => {
     const { t } = useTranslation();
@@ -70,6 +82,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
+      showPagination: paginationVisible,
     } = usePaging();
 
     const history = useHistory();
@@ -102,12 +115,49 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (appData?.appType === AppType.External) {
+        return false;
+      }
+
       if (record.status === Status.Success && isNull(record?.successContext)) {
         return true;
       }
 
       return record.status === Status.Running;
     }, []);
+
+    const getActionButton = useCallback(
+      (record: AppRunRecordWithId, index: number) => {
+        if (appData?.appType === AppType.Internal) {
+          return (
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+          );
+        } else if (isExternalApp && index === 0) {
+          return (
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+          );
+        } else {
+          return NO_DATA_PLACEHOLDER;
+        }
+      },
+      [showLogAction, appData, isExternalApp]
+    );
 
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
       () => [
@@ -136,7 +186,7 @@ const AppRunsHistory = forwardRef(
 
             return (
               <StatusBadge
-                dataTestId={record.appId + '-status'}
+                dataTestId="pipeline-status"
                 label={capitalize(record.status)}
                 status={status}
               />
@@ -147,24 +197,16 @@ const AppRunsHistory = forwardRef(
           title: t('label.action-plural'),
           dataIndex: 'actions',
           key: 'actions',
-          render: (_, record) => (
-            <Button
-              className="p-0"
-              data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
-              onClick={() => handleRowExpandable(record.id)}>
-              {t('label.log-plural')}
-            </Button>
-          ),
+          render: (_, record, index) => getActionButton(record, index),
         },
       ],
       [
+        appData,
         formatDateTime,
         handleRowExpandable,
         getStatusTypeForApplication,
         showLogAction,
+        getActionButton,
       ]
     );
 
@@ -174,17 +216,27 @@ const AppRunsHistory = forwardRef(
           setIsLoading(true);
 
           if (isExternalApp) {
-            const res = await getLatestApplicationRuns(fqn);
+            const currentTime = Date.now();
+            // past 30 days
+            const startDay = getEpochMillisForPastDays(30);
 
-            setAppRunsHistoryData([
-              {
-                ...res,
-                timestamp: res.pipelineStatus.timestamp,
-                status: (res.pipelineStatus.pipelineState ??
-                  Status.Failed) as Status,
-                id: `${res.pipelineStatus.runId}-${res.pipelineStatus.timestamp}`,
-              },
-            ]);
+            const { data } = await getApplicationRuns(fqn, {
+              startTs: startDay,
+              endTs: currentTime,
+            });
+
+            setAppRunsHistoryData(
+              data
+                .map((item) => ({
+                  ...item,
+                  status: getStatusFromPipelineState(
+                    (item as PipelineStatus).pipelineState ??
+                      PipelineState.Failed
+                  ),
+                  id: (item as PipelineStatus).runId ?? '',
+                }))
+                .slice(0, maxRecords)
+            );
           } else {
             const { data, paging } = await getApplicationRuns(fqn, {
               offset: pagingOffset?.offset ?? 0,
@@ -205,7 +257,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
-      [fqn, pageSize, maxRecords]
+      [fqn, pageSize, maxRecords, appData]
     );
 
     const handleAppHistoryPageChange = ({
@@ -213,7 +265,7 @@ const AppRunsHistory = forwardRef(
     }: PagingHandlerParams) => {
       handlePageChange(currentPage);
       fetchAppHistory({
-        offset: currentPage * pageSize,
+        offset: (currentPage - 1) * pageSize,
       } as Paging);
     };
 
@@ -224,11 +276,16 @@ const AppRunsHistory = forwardRef(
     }));
 
     useEffect(() => {
-      fetchAppHistory();
-    }, [fqn]);
+      if (runsData) {
+        setAppRunsHistoryData(runsData);
+        setIsLoading(false);
+      } else {
+        fetchAppHistory();
+      }
+    }, [fqn, pageSize, runsData]);
 
     return (
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={24}>
           <Table
             bordered
@@ -250,18 +307,16 @@ const AppRunsHistory = forwardRef(
             size="small"
           />
         </Col>
-        <Col span={20}>
-          {paging.total > pageSize && showPagination && (
-            <div className="p-y-md">
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </div>
+        <Col span={24}>
+          {showPagination && paginationVisible && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleAppHistoryPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
           )}
         </Col>
       </Row>

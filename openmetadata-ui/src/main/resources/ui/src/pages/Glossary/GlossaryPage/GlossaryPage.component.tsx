@@ -13,15 +13,15 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
 import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { VotingDataProps } from '../../../components/Voting/voting.interface';
@@ -143,7 +143,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children,votes'
+        'relatedTerms,reviewers,tags,owner,children,votes,domain'
       );
       setSelectedData(response);
     } catch (error) {
@@ -248,28 +248,31 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  const handleGlossaryTermUpdate = async (updatedData: GlossaryTerm) => {
-    const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
-    try {
-      const response = await patchGlossaryTerm(
-        selectedData?.id as string,
-        jsonPatch
-      );
-      if (response) {
-        setSelectedData(response);
-        if (selectedData?.name !== updatedData.name) {
-          history.push(getGlossaryPath(response.fullyQualifiedName));
-          fetchGlossaryList();
+  const handleGlossaryTermUpdate = useCallback(
+    async (updatedData: GlossaryTerm) => {
+      const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
+      try {
+        const response = await patchGlossaryTerm(
+          selectedData?.id as string,
+          jsonPatch
+        );
+        if (response) {
+          setSelectedData(response);
+          if (selectedData?.name !== updatedData.name) {
+            history.push(getGlossaryPath(response.fullyQualifiedName));
+            fetchGlossaryList();
+          }
+        } else {
+          throw t('server.entity-updating-error', {
+            entity: t('label.glossary-term'),
+          });
         }
-      } else {
-        throw t('server.entity-updating-error', {
-          entity: t('label.glossary-term'),
-        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [selectedData]
+  );
 
   const handleGlossaryTermDelete = (id: string) => {
     setDeleteStatus(LOADING_STATE.WAITING);
@@ -302,9 +305,12 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
-    setPreviewAsset(asset);
-  };
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   if (isLoading) {
     return <Loader />;

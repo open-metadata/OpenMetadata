@@ -14,6 +14,7 @@
 export enum QueryFilterFieldsEnum {
   MUST = 'must',
   SHOULD = 'should',
+  MUST_NOT = 'must_not',
 }
 
 export enum ExplorePageTabs {

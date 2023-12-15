@@ -14,10 +14,10 @@
 import { render, screen, waitForElement } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../components/Explore/exlore.mock';
 import { Query } from '../../../generated/entity/data/query';
 import { MOCK_QUERIES } from '../../../mocks/Queries.mock';
 import { searchData } from '../../../rest/miscAPI';
+import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../Explore/Explore.mock';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 

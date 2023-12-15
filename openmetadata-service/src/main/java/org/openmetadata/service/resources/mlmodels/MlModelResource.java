@@ -65,13 +65,13 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/mlmodels")
 @Tag(
     name = "ML Models",
-    description = "`Machine Learning Models` are algorithms trained on data to find patterns or " + "make predictions.")
+    description = "`Machine Learning Models` are algorithms trained on data to find patterns or make predictions.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
@@ -124,7 +124,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(type = "string", example = "airflow"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number models returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number models returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -244,9 +244,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -344,7 +342,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "ML Model for instance {id} and version {version} is " + "not found")
+            description = "ML Model for instance {id} and version {version} is not found")
       })
   public MlModel getVersion(
       @Context UriInfo uriInfo,
@@ -417,6 +415,10 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
@@ -451,6 +453,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .withServer(create.getServer())
         .withTarget(create.getTarget())
         .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

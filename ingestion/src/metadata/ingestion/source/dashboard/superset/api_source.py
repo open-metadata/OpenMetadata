@@ -91,12 +91,12 @@ class SupersetAPISource(SupersetSourceMixin):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -123,19 +123,30 @@ class SupersetAPISource(SupersetSourceMixin):
     ) -> Iterable[Either[CreateChartRequest]]:
         """Method to fetch charts linked to dashboard"""
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if not chart_json:
-                logger.warning(f"chart details for id: {chart_id} not found, skipped")
-                continue
-            chart = CreateChartRequest(
-                name=chart_json.id,
-                displayName=chart_json.slice_name,
-                description=chart_json.description,
-                chartType=get_standard_chart_type(chart_json.viz_type),
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
-            )
-            yield Either(right=chart)
+            try:
+                chart_json = self.all_charts.get(chart_id)
+                if not chart_json:
+                    logger.warning(
+                        f"chart details for id: {chart_id} not found, skipped"
+                    )
+                    continue
+                chart = CreateChartRequest(
+                    name=chart_json.id,
+                    displayName=chart_json.slice_name,
+                    description=chart_json.description,
+                    chartType=get_standard_chart_type(chart_json.viz_type),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
+                    service=self.context.dashboard_service,
+                )
+                yield Either(right=chart)
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name=chart_json.id,
+                        error=f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def _get_datasource_fqn(
         self, datasource_id: str, db_service_entity: DatabaseService
@@ -166,7 +177,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         service_name=db_service_entity.name.__root__,
                     )
                 return dataset_fqn
-        except KeyError as err:
+        except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
@@ -201,11 +212,12 @@ class SupersetAPISource(SupersetSourceMixin):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=datasource_json.id,
                         displayName=datasource_json.result.table_name,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                         columns=self.get_column_info(datasource_json.result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

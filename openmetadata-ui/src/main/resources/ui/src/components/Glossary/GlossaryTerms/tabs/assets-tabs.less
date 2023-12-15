@@ -71,3 +71,35 @@
     padding: 2px 6px;
   }
 }
+
+.assets-tab-container {
+  .explore-search-card {
+    .service-icon {
+      height: 16px;
+    }
+  }
+}
+
+.asset-tab-delete-notification {
+  position: sticky;
+  &.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  pointer-events: none;
+  border-radius: 10px;
+  background: #292929;
+  height: 64px;
+  width: 350px;
+  bottom: 64px;
+  opacity: 0;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity ease-in 0.1s;
+
+  & > div {
+    padding: 15px 20px;
+  }
+}

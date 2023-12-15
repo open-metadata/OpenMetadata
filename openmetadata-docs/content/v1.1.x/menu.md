@@ -190,6 +190,159 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
+
+  - category: How-to Guides
+    url: /how-to-guides
+    color: violet-70
+    icon: openmetadata
+
+  - category: How-to Guides / Quick Start Guide for Admins
+    url: /how-to-guides/quick-start-guide-for-admins
+  - category: How-to Guides / Quick Start Guide for Admins / How to Ingest Metadata
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata
+  - category: How-to Guides / Quick Start Guide for Admins / How to Ingest Metadata / How to Delete a Service Connection 
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata/delete-service-connection
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users / Team Structure in OpenMetadata
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/team-structure-openmetadata
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add a Team
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-team
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Invite Users to OpenMetadata
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/invite-users
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add Users to Teams
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users
+  - category: How-to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Change the Team Type
+    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
+  - category: How-to Guides / Quick Start Guide for Admins / Admin Guide for Roles and Policies
+    url: /how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies
+  - category: How-to Guides / Quick Start Guide for Admins / Admin Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
+    url: /how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies/authorization
+  - category: How-to Guides / Quick Start Guide for Admins / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
+    url: /how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies/use-cases
+  - category: How-to Guides / Quick Start Guide for Admins / CLI Ingestion with basic auth
+    url: /how-to-guides/quick-start-guide-for-admins/cli-ingestion-with-basic-auth
+  - category: How-to Guides / Quick Start Guide for Admins / How to add a custom property to an entity
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-add-custom-property-to-an-entity
+  - category: How-to Guides / Quick Start Guide for Admins / How to add Custom Logo
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-add-custom-logo
+  - category: How-to Guides / Quick Start Guide for Admins / How to Add Language Support
+    url: /how-to-guides/quick-start-guide-for-admins/how-to-add-language-support
+  - category: How-to Guides / Quick Start Guide for Admins / Bots
+    url: /how-to-guides/quick-start-guide-for-admins/bots
+    
+  - category: How-to Guides / User Guide for Data Stewards
+    url: /how-to-guides/user-guide-for-data-stewards
+  - category: How-to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
+    url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Tabs
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tabs
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Description using Markdown
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/description
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Request for Description
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Assign or Change Data Ownership
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Tags
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tags
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Request for Tags
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Glossary Terms
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Versioning
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/versions
+  - category: How-to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Delete a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/delete
+
+  - category: How-to Guides / Data Discovery
+    url: /how-to-guides/data-discovery
+  - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
+    url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
+    url: /how-to-guides/data-discovery/preview
+  - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
+    url: /how-to-guides/data-discovery/details
+  - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
+    url: /how-to-guides/data-discovery/advanced
+
+  - category: How-to Guides / Data Collaboration
+    url: /how-to-guides/data-collaboration
+  - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
+    url: /how-to-guides/data-collaboration/activity-feeds
+  - category: How-to Guides / Data Collaboration / How to Request for Description
+    url: /how-to-guides/data-collaboration/request-description
+  - category: How-to Guides / Data Collaboration / How to Request for Tags
+    url: /how-to-guides/data-collaboration/request-tags
+  - category: How-to Guides / Data Collaboration / Overview of Announcements
+    url: /how-to-guides/data-collaboration/announcements
+  - category: How-to Guides / Data Collaboration / How to Create an Announcement
+    url: /how-to-guides/data-collaboration/add-announcement
+
+  - category: How-to Guides / Data Quality and Profiler
+    url: /how-to-guides/data-quality-profiler
+  - category: How-to Guides / Data Quality and Profiler / Profiler and Data Quality Tab
+    url: /how-to-guides/data-quality-profiler/tab
+  - category: How-to Guides / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
+    url: /how-to-guides/data-quality-profiler/test
+  - category: How-to Guides / Data Quality and Profiler / How to Set Alerts for Test Case Fails
+    url: /how-to-guides/data-quality-profiler/alerts
+
+  - category: How-to Guides / Data Lineage
+    url: /how-to-guides/data-lineage
+  - category: How-to Guides / Data Lineage / How to Deploy a Lineage Workflow
+    url: /how-to-guides/data-lineage/workflow
+  - category: How-to Guides / Data Lineage / Explore the Lineage View
+    url: /how-to-guides/data-lineage/explore
+  - category: How-to Guides / Data Lineage / How Column-Level Lineage Works
+    url: /how-to-guides/data-lineage/column
+  - category: How-to Guides / Data Lineage / How to Manually Add or Edit Lineage
+    url: /how-to-guides/data-lineage/manual
+
+  - category: How-to Guides / Data Insights
+    url: /how-to-guides/data-insights
+  - category: How-to Guides / Data Insights / What is Tiering
+    url: /how-to-guides/data-insights/tiering
+  - category: How-to Guides / Data Insights / Set Up Data Insights Ingestion
+    url: /how-to-guides/data-insights/ingestion
+  - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
+    url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Data Insights Report
+    url: /how-to-guides/data-insights/report
+  - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
+    url: /how-to-guides/data-insights/data-culture
+
+  - category: How-to Guides / Data Governance
+    url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Glossary and Classification
+    url: /how-to-guides/data-governance/glossary-classification
+  - category: How-to Guides / Data Governance / Glossary and Classification / What is a Glossary
+    url: /how-to-guides/data-governance/glossary-classification/glossary
+  - category: How-to Guides / Data Governance / Glossary and Classification / What is Classification
+    url: /how-to-guides/data-governance/glossary-classification/classification
+  - category: How-to Guides / Data Governance / Glossary and Classification / What are Tiers
+    url: /how-to-guides/data-governance/glossary-classification/tiers
+  - category: How-to Guides / Data Governance / Glossary and Classification / How to Setup a Glossary
+    url: /how-to-guides/data-governance/glossary-classification/setup-glossary
+  - category: How-to Guides / Data Governance / Glossary and Classification / How to Create Glossary Terms
+    url: /how-to-guides/data-governance/glossary-classification/glossary-terms
+  - category: How-to Guides / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
+    url: /how-to-guides/data-governance/glossary-classification/import-glossary
+  - category: How-to Guides / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
+    url: /how-to-guides/data-governance/glossary-classification/assets
+  - category: How-to Guides / Data Governance / Glossary and Classification / How to Classify Data Assets
+    url: /how-to-guides/data-governance/glossary-classification/classify-assets
+  - category: How-to Guides / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
+    url: /how-to-guides/data-governance/glossary-classification/best-practices
   
   - category: Releases
     url: /releases
@@ -567,156 +720,6 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-  - category: How to Guides
-    url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
-
-  - category: How to Guides / Quick Start Guide for Admins
-    url: /how-to-guides/quick-start-guide-for-admins
-  - category: How to Guides / Quick Start Guide for Admins / How to Ingest Metadata
-    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata
-  - category: How to Guides / Quick Start Guide for Admins / How to Ingest Metadata / How to Delete a Service Connection 
-    url: /how-to-guides/quick-start-guide-for-admins/how-to-ingest-metadata/delete-service-connection
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / Team Structure in OpenMetadata
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/team-structure-openmetadata
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add a Team
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-team
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Invite Users to OpenMetadata
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/invite-users
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Add Users to Teams
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users
-  - category: How to Guides / Quick Start Guide for Admins / Manage Teams and Users / How to Change the Team Type
-    url: /how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type
-  - category: How to Guides / Admin Guide for Roles and Policies
-    url: /how-to-guides/admin-guide-roles-policies
-  - category: How to Guides / Admin Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
-    url: /how-to-guides/admin-guide-roles-policies/authorization
-  - category: How to Guides / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
-    url: /how-to-guides/admin-guide-roles-policies/use-cases
-  - category: How to Guides / User Guide for Data Stewards
-    url: /how-to-guides/user-guide-for-data-stewards
-  - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
-    url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Tabs
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tabs
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Description using Markdown
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/description
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Request for Description
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Assign or Change Data Ownership
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Tags
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tags
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Request for Tags
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Glossary Terms
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Versioning
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/versions
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Delete a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/delete
-  - category: How to Guides / The Six Pillars of OpenMetadata
-    url: /how-to-guides/openmetadata
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery
-    url: /how-to-guides/openmetadata/data-discovery
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / How to Discover Assets of Interest
-    url: /how-to-guides/openmetadata/data-discovery/discover
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Get a Quick Glance of the Data Assets
-    url: /how-to-guides/openmetadata/data-discovery/preview
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Detailed View of the Data Assets
-    url: /how-to-guides/openmetadata/data-discovery/details
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Add Complex Queries using Advanced Search
-    url: /how-to-guides/openmetadata/data-discovery/advanced
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration
-    url: /how-to-guides/openmetadata/data-collaboration
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / Understanding Activity Feeds
-    url: /how-to-guides/openmetadata/data-collaboration/activity-feeds
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Request for Description
-    url: /how-to-guides/openmetadata/data-collaboration/request-description
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Request for Tags
-    url: /how-to-guides/openmetadata/data-collaboration/request-tags
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / Overview of Announcements
-    url: /how-to-guides/openmetadata/data-collaboration/announcements
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Create an Announcement
-    url: /how-to-guides/openmetadata/data-collaboration/add-announcement
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler
-    url: /how-to-guides/openmetadata/data-quality-profiler
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / Profiler and Data Quality Tab
-    url: /how-to-guides/openmetadata/data-quality-profiler/tab
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
-    url: /how-to-guides/openmetadata/data-quality-profiler/test
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / How to Set Alerts for Test Case Fails
-    url: /how-to-guides/openmetadata/data-quality-profiler/alerts
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage
-    url: /how-to-guides/openmetadata/data-lineage
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Deploy a Lineage Workflow
-    url: /how-to-guides/openmetadata/data-lineage/workflow
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / Explore the Lineage View
-    url: /how-to-guides/openmetadata/data-lineage/explore
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How Column-Level Lineage Works
-    url: /how-to-guides/openmetadata/data-lineage/column
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Manually Add or Edit Lineage
-    url: /how-to-guides/openmetadata/data-lineage/manual
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights
-    url: /how-to-guides/openmetadata/data-insights
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / What is Tiering
-    url: /how-to-guides/openmetadata/data-insights/tiering
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Set Up Data Insights Ingestion
-    url: /how-to-guides/openmetadata/data-insights/ingestion
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Key Performance Indicators (KPI)
-    url: /how-to-guides/openmetadata/data-insights/kpi
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Data Insights Report
-    url: /how-to-guides/openmetadata/data-insights/report
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / How to Transform the Data Culture of Your Company
-    url: /how-to-guides/openmetadata/data-insights/data-culture
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance
-    url: /how-to-guides/openmetadata/data-governance
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is a Glossary
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is Classification
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classification
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What are Tiers
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/tiers
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Setup a Glossary
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/setup-glossary
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Create Glossary Terms
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary-terms
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/import-glossary
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/assets
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Classify Data Assets
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/classify-assets
-  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
-    url: /how-to-guides/openmetadata/data-governance/glossary-classification/best-practices
-  - category: How to Guides / CLI Ingestion with basic auth
-    url: /how-to-guides/cli-ingestion-with-basic-auth
-  - category: How to Guides / Feature configurations
-    url: /how-to-guides/feature-configurations
-  - category: How to Guides / Feature configurations / Bots
-    url: /how-to-guides/feature-configurations/bots
-  - category: How to Guides / How to add a custom property to an entity
-    url: /how-to-guides/how-to-add-custom-property-to-an-entity
-  - category: How to Guides / How to add Custom Logo
-    url: /how-to-guides/how-to-add-custom-logo
-  - category: How to Guides / How to Add Language Support
-    url: /how-to-guides/how-to-add-language-support
 
   - category: Features
     url: /features

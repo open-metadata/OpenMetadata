@@ -15,6 +15,7 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
+from copy import deepcopy
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 import jsonpatch
@@ -25,6 +26,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -34,7 +36,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
-from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
@@ -43,6 +45,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     PatchPath,
 )
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.deprecation import deprecated
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -78,25 +81,28 @@ def update_column_tags(
 
 
 def update_column_description(
-    columns: List[Column], column_fqn: str, description: str, force: bool = False
+    columns: List[Column],
+    column_descriptions: List[ColumnDescription],
+    force: bool = False,
 ) -> None:
     """
     Inplace update for the incoming column list
     """
+    col_dict = {col.column_fqn: col.description for col in column_descriptions}
     for col in columns:
-        if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
+        desc_column = col_dict.get(col.fullyQualifiedName.__root__)
+        if desc_column:
             if col.description and not force:
                 logger.warning(
-                    f"The entity with id [{model_str(column_fqn)}] already has a description."
+                    f"The entity with id [{model_str(col.fullyQualifiedName)}] already has a description."
                     " To overwrite it, set `force` to True."
                 )
-                break
+                continue
 
-            col.description = description
-            break
+            col.description = desc_column.__root__
 
         if col.children:
-            update_column_description(col.children, column_fqn, description, force)
+            update_column_description(col.children, column_descriptions, force)
 
 
 class OMetaPatchMixin(OMetaPatchMixinBase):
@@ -108,7 +114,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     client: REST
 
-    def patch(self, entity: Type[T], source: T, destination: T) -> Optional[T]:
+    def patch(
+        self,
+        entity: Type[T],
+        source: T,
+        destination: T,
+        allowed_fields: Optional[Dict] = None,
+        restrict_update_fields: Optional[List] = None,
+    ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
         generate a JSON Patch and apply it.
@@ -117,22 +130,59 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             entity (T): Entity Type
             source: Source payload which is current state of the source in OpenMetadata
             destination: payload with changes applied to the source.
+            allowed_fields: List of field names to filter from source and destination models
+            restrict_update_fields: List of field names which will only support add operation
 
         Returns
             Updated Entity
         """
         try:
-            # Get the difference between source and destination
-            patch = jsonpatch.make_patch(
-                json.loads(source.json(exclude_unset=True, exclude_none=True)),
-                json.loads(destination.json(exclude_unset=True, exclude_none=True)),
-            )
+            # remove change descriptions from entities
+            if source.changeDescription is not None:
+                source.changeDescription = None
+            if destination.changeDescription is not None:
+                destination.changeDescription = None
 
+            # Get the difference between source and destination
+            if allowed_fields:
+                patch = jsonpatch.make_patch(
+                    json.loads(
+                        source.json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=allowed_fields,
+                        )
+                    ),
+                    json.loads(
+                        destination.json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=allowed_fields,
+                        )
+                    ),
+                )
+            else:
+                patch = jsonpatch.make_patch(
+                    json.loads(source.json(exclude_unset=True, exclude_none=True)),
+                    json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+                )
             if not patch:
                 logger.debug(
                     "Nothing to update when running the patch. Are you passing `force=True`?"
                 )
                 return None
+
+            # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
+            # we will remove the other operations for replace, remove from here
+            if restrict_update_fields:
+                patch.patch = [
+                    patch_ops
+                    for patch_ops in patch.patch
+                    if self._determine_restricted_operation(
+                        patch_ops=patch_ops,
+                        restrict_update_fields=restrict_update_fields,
+                    )
+                ]
 
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
@@ -147,6 +197,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
 
         return None
+
+    def _determine_restricted_operation(
+        self, patch_ops: Dict, restrict_update_fields: Optional[List] = None
+    ) -> bool:
+        """
+        Only retain add operation for restrict_update_fields fields
+        """
+        path = patch_ops.get("path")
+        op = patch_ops.get("op")
+        for field in restrict_update_fields or []:
+            if field in path and op != PatchOperation.ADD.value:
+                return False
+        return True
 
     def patch_description(
         self,
@@ -341,12 +404,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             return None
 
-        source.owner = instance.owner
-
-        destination = source.copy(deep=True)
+        destination = deepcopy(instance)
         destination.owner = owner
 
-        return self.patch(entity=entity, source=source, destination=destination)
+        return self.patch(entity=entity, source=instance, destination=destination)
 
     def patch_column_tags(
         self,
@@ -389,6 +450,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         return patched_entity
 
+    @deprecated(message="Use metadata.patch_column_tags instead", release="1.3.1")
     def patch_column_tag(
         self,
         table: Table,
@@ -399,15 +461,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         ] = PatchOperation.ADD,
     ) -> Optional[T]:
         """Will be deprecated in 1.3"""
-        logger.warning(
-            "patch_column_tag will be deprecated in 1.3. Use `patch_column_tags` instead."
-        )
         return self.patch_column_tags(
             table=table,
             column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
             operation=operation,
         )
 
+    @deprecated(
+        message="Use metadata.patch_column_descriptions instead", release="1.3.1"
+    )
     def patch_column_description(
         self,
         table: Table,
@@ -426,24 +488,48 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
+        return self.patch_column_descriptions(
+            table=table,
+            column_descriptions=[
+                ColumnDescription(column_fqn=column_fqn, description=description)
+            ],
+            force=force,
+        )
+
+    def patch_column_descriptions(
+        self,
+        table: Table,
+        column_descriptions: List[ColumnDescription],
+        force: bool = False,
+    ) -> Optional[T]:
+        """Given an Table , Column Descriptions, JSON PATCH the description of the column
+
+        Args
+            src_table: origin Table object
+            column_descriptions: List of ColumnDescription object
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
         instance: Optional[Table] = self._fetch_entity_if_exists(
             entity=Table, entity_id=table.id
         )
 
-        if not instance:
+        if not instance or not column_descriptions:
             return None
 
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
         destination = table.copy(deep=True)
-        update_column_description(destination.columns, column_fqn, description, force)
+        update_column_description(destination.columns, column_descriptions, force)
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
         if patched_entity is None:
             logger.debug(
                 f"Empty PATCH result. Either everything is up to date or "
-                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
+                f"columns are not matching for [{table.fullyQualifiedName.__root__}]"
             )
 
         return patched_entity
@@ -485,7 +571,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
-    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> None:
+    def patch_life_cycle(
+        self, entity: Entity, life_cycle: LifeCycle
+    ) -> Optional[Entity]:
         """
         Patch life cycle data for a entity
 
@@ -495,9 +583,27 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         try:
             destination = entity.copy(deep=True)
             destination.lifeCycle = life_cycle
-            self.patch(entity=type(entity), source=entity, destination=destination)
+            return self.patch(
+                entity=type(entity), source=entity, destination=destination
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
             )
+            return None
+
+    def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
+        """Patch domain data for an Entity"""
+        try:
+            destination: Entity = entity.copy(deep=True)
+            destination.domain = EntityReference(id=domain.id, type="domain")
+            return self.patch(
+                entity=type(entity), source=entity, destination=destination
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to Patch Domain for {entity.fullyQualifiedName.__root__}: {exc}"
+            )
+            return None

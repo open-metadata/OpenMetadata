@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts";
+  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {
@@ -125,7 +125,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(type = "string", example = "ElasticSearchWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -242,7 +242,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "SearchIndex for instance {id} and version {version} is " + "not found")
+            description = "SearchIndex for instance {id} and version {version} is not found")
       })
   public SearchIndex getVersion(
       @Context UriInfo uriInfo,
@@ -291,9 +291,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -445,8 +443,12 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -466,10 +468,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -495,6 +501,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
         .withFields(create.getFields())
         .withSearchIndexSettings(create.getSearchIndexSettings())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

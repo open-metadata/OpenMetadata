@@ -27,12 +27,8 @@ import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import AnnouncementCard from '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import Voting from '../../../components/Voting/Voting.component';
@@ -41,6 +37,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
@@ -49,19 +46,22 @@ import {
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import {
-  getCurrentUserId,
-  getEntityDetailLink,
-} from '../../../utils/CommonUtils';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.component';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -128,8 +128,11 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
   afterDomainUpdateAction,
+  onProfilerSettingUpdate,
+  onUpdateRetentionPeriod,
 }: DataAssetsHeaderProps) => {
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -140,7 +143,10 @@ export const DataAssetsHeader = ({
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
-        <img className="h-9" src={serviceTypeLogo(dataAsset.serviceType)} />
+        <img
+          className="h-9"
+          src={serviceUtilClassBase.getServiceTypeLogo(dataAsset.serviceType)}
+        />
       ) : null,
     [dataAsset]
   );
@@ -184,7 +190,7 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
@@ -311,6 +317,16 @@ export const DataAssetsHeader = ({
     onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
+  const handleOpenAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(true),
+    []
+  );
+
+  const handleCloseAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(false),
+    []
+  );
+
   const { editDomainPermission, editOwnerPermission, editTierPermission } =
     useMemo(
       () => ({
@@ -366,7 +382,7 @@ export const DataAssetsHeader = ({
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space>
+                  <Space data-testid="header-tier-container">
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {getEntityName(tier)}
@@ -390,6 +406,14 @@ export const DataAssetsHeader = ({
                     )}
                   </Space>
                 </TierCard>
+
+                {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
+                  <RetentionPeriod
+                    retentionPeriod={(dataAsset as Table).retentionPeriod}
+                    onUpdate={onUpdateRetentionPeriod}
+                  />
+                )}
+
                 {extraInfo}
               </div>
             </Col>
@@ -465,10 +489,11 @@ export const DataAssetsHeader = ({
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
-                      ? () => setIsAnnouncementDrawer(true)
+                      ? handleOpenAnnouncementDrawer
                       : undefined
                   }
                   onEditDisplayName={onDisplayNameUpdate}
+                  onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
                 />
               </ButtonGroup>
@@ -478,7 +503,7 @@ export const DataAssetsHeader = ({
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
-                  onClick={() => setIsAnnouncementDrawer(true)}
+                  onClick={handleOpenAnnouncementDrawer}
                 />
               )}
             </div>
@@ -493,7 +518,7 @@ export const DataAssetsHeader = ({
           entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
-          onClose={() => setIsAnnouncementDrawer(false)}
+          onClose={handleCloseAnnouncementDrawer}
         />
       )}
     </>

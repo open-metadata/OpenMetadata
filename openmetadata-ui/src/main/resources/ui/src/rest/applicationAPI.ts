@@ -12,19 +12,20 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps';
 
 type AppListParams = ListParams & {
   offset?: number;
+  startTs?: number;
+  endTs?: number;
 };
 
 export const getApplicationList = async (params?: ListParams) => {
@@ -38,19 +39,16 @@ export const getApplicationList = async (params?: ListParams) => {
 export const installApplication = (
   data: CreateAppRequest
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/install`, data);
+  return APIClient.post(`${BASE_URL}`, data);
 };
 
 export const getApplicationByName = async (
   appName: string,
-  arrQueryFields: string | string[]
+  params?: AppListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${appName}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<App>(url);
+  const response = await APIClient.get<App>(`${BASE_URL}/name/${appName}`, {
+    params,
+  });
 
   return response.data;
 };
@@ -60,7 +58,7 @@ export const getApplicationRuns = async (
   params?: AppListParams
 ) => {
   const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `${BASE_URL}/name/${appName}/runs`,
+    `${BASE_URL}/name/${appName}/status`,
     {
       params,
     }
@@ -71,7 +69,7 @@ export const getApplicationRuns = async (
 
 export const getLatestApplicationRuns = async (appName: string) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${appName}/runs/latest`
+    `${BASE_URL}/name/${appName}/logs`
   );
 
   return response.data;
@@ -103,4 +101,20 @@ export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
 
 export const deployApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/deploy/${appName}`);
+};
+
+export const configureApp = (
+  appName: string,
+  data: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/configure/${appName}`, data);
+};
+
+export const restoreApp = async (id: string) => {
+  const response = await APIClient.put<RestoreRequestType, AxiosResponse<App>>(
+    `${BASE_URL}/restore`,
+    { id }
+  );
+
+  return response.data;
 };

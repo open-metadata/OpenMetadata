@@ -24,7 +24,7 @@ BIGQUERY_STATEMENT = textwrap.dedent(
    end_time,
    query as query_text,
    null as schema_name,
-   total_slot_ms/1000 as duration
+   total_slot_ms as duration
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}
@@ -38,7 +38,8 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
 )
 
 BIGQUERY_TEST_STATEMENT = textwrap.dedent(
-    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT limit 1"""
+    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT 
+    where creation_time > '{creation_date}' limit 1"""
 )
 
 
@@ -81,7 +82,7 @@ WITH SP_HISTORY AS (
     user_email as user_name
   FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
   WHERE statement_type = 'SCRIPT'
-    AND start_time >= '{start_date}'
+    AND creation_time >= '{start_date}'
     AND job_type = "QUERY"
     AND state = "DONE"
     AND error_result is NULL
@@ -102,7 +103,7 @@ Q_HISTORY AS (
   WHERE statement_type <> 'SCRIPT'
     AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    AND start_time >= '{start_date}' 
+    AND creation_time >= '{start_date}'
     AND job_type = "QUERY"
     AND state = "DONE"
     AND error_result is NULL

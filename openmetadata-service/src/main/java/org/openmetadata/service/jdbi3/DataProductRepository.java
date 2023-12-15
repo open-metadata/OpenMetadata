@@ -19,12 +19,18 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -46,13 +52,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public DataProduct setFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+  public void setFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
   }
 
   @Override
-  public DataProduct clearFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
+  public void clearFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
   }
 
   private List<EntityReference> getAssets(DataProduct entity) {
@@ -86,9 +92,32 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return new DataProductUpdater(original, updated, operation);
   }
 
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+  }
+
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
+    super.restorePatchAttributes(original, updated);
     updated.withDomain(original.getDomain()); // Domain can't be changed
+  }
+
+  @Override
+  protected void postUpdate(DataProduct original, DataProduct updated) {
+    super.postUpdate(original, updated);
+    Map<String, EntityReference> assetsMap = new HashMap<>();
+    listOrEmpty(original.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    listOrEmpty(updated.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    for (EntityReference assetRef : assetsMap.values()) {
+      EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
+      searchRepository.updateEntity(asset);
+    }
   }
 
   public class DataProductUpdater extends EntityUpdater {
@@ -105,6 +134,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateAssets() {
       List<EntityReference> origToRefs = listOrEmpty(original.getAssets());
       List<EntityReference> updatedToRefs = listOrEmpty(updated.getAssets());
+      origToRefs.sort(EntityUtil.compareEntityReference);
+      updatedToRefs.sort(EntityUtil.compareEntityReference);
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
 
@@ -119,8 +150,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (EntityReference asset : added) {
         addRelationship(original.getId(), asset.getId(), DATA_PRODUCT, asset.getType(), Relationship.HAS, false);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
     }
   }
 }

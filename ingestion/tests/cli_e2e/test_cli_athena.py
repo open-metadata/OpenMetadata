@@ -60,7 +60,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
         return 7
 
     def inserted_rows_count(self) -> int:
-        return 100
+        return 50
 
     def view_column_lineage_count(self) -> int:
         pass
@@ -87,7 +87,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 3
+        return 4
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -95,15 +95,15 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 26
+        return 29
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 4
+        return 6
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
         pass

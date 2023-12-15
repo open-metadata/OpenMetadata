@@ -1,5 +1,6 @@
 {
   "name": "SearchIndexingApplication",
+  "displayName": "Search Indexing",
   "appConfiguration": {
     "entities": [
       "table",
@@ -34,7 +35,7 @@
       "storedProcedure",
       "dataProduct"
     ],
-    "recreateIndex": "false",
+    "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   },

@@ -167,7 +167,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
-      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -275,7 +275,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                 @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "IngestionPipeline for instance {id} and version  " + "{version} is not found")
+            description = "IngestionPipeline for instance {id} and version  {version} is not found")
       })
   public IngestionPipeline getVersion(
       @Context UriInfo uriInfo,
@@ -371,9 +371,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
