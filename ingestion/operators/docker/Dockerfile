@@ -3,7 +3,7 @@ FROM python:3.10-bullseye
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
-# Remove expired mysql keys and add new key/s to the trusted key store
+# Remove expired mysql keys
 RUN rm /etc/apt/sources.list.d/mysql.list
 
 # Install Dependencies (listed in alphabetical order)
