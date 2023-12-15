@@ -55,7 +55,6 @@ function PipelineSummary({
       getFormattedEntityData(
         SummaryEntityType.TASK,
         entityDetails.tasks,
-        undefined,
         highlights
       ),
     [entityDetails]

@@ -105,7 +105,6 @@ function TopicSummary({
       getFormattedEntityData(
         SummaryEntityType.SCHEMAFIELD,
         topicDetails.messageSchema?.schemaFields,
-        undefined,
         highlights
       ),
     [topicDetails]

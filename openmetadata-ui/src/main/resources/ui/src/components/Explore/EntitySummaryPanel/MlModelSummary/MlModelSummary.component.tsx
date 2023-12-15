@@ -60,7 +60,6 @@ function MlModelSummary({
       getFormattedEntityData(
         SummaryEntityType.MLFEATURE,
         entityDetails.mlFeatures,
-        undefined,
         highlights
       ),
     [entityDetails]

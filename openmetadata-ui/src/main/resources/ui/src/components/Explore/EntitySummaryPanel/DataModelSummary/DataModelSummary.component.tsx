@@ -52,13 +52,7 @@ const DataModelSummary = ({
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.COLUMN,
-        columns,
-        undefined,
-        highlights
-      ),
+    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns, highlights),
     [columns, dataModelDetails]
   );
 

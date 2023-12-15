@@ -177,8 +177,8 @@ function TableSummary({
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
         tableDetails.columns,
-        tableDetails.tableConstraints,
-        highlights
+        highlights,
+        tableDetails.tableConstraints
       ),
     [tableDetails]
   );

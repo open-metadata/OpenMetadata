@@ -98,8 +98,8 @@ export const getSortedTagsWithHighlight = ({
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
-  tableConstraints?: TableConstraint[],
-  highlights?: SearchedDataProps['data'][number]['highlight']
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -145,8 +145,8 @@ export const getFormattedEntityData = (
         children: getFormattedEntityData(
           entityType,
           listItem.children,
-          undefined,
-          highlights
+          highlights,
+          tableConstraints
         ),
       };
 

@@ -51,7 +51,6 @@ function ContainerSummary({
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
         (entityDetails as Container).dataModel?.columns,
-        undefined,
         highlights
       ),
     [entityDetails]

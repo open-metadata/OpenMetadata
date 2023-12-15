@@ -52,13 +52,7 @@ function SearchIndexSummary({
   const { fields } = searchIndexDetails;
 
   const formattedFieldsData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.FIELD,
-        fields,
-        undefined,
-        highlights
-      ),
+    () => getFormattedEntityData(SummaryEntityType.FIELD, fields, highlights),
     [fields, searchIndexDetails]
   );
 
