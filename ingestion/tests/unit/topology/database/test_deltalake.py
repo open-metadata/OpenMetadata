@@ -13,7 +13,9 @@ Test Deltalake using the topology
 
 Here we don't need to patch, as we can just create our own metastore
 """
+import platform
 import shutil
+import unittest
 from datetime import date, datetime
 from unittest import TestCase
 
@@ -100,6 +102,10 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 )
 
 
+@unittest.skipUnless(
+    platform.python_version() < "3.11",
+    reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
+)
 class DeltaLakeUnitTest(TestCase):
     """
     Add method validations from Deltalake ingestion
