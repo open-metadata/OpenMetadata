@@ -21,7 +21,7 @@ AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=google
-AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs]
+AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs, http://{your openmetadata domain}/api/v1/config/jwks] # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY=https://accounts.google.com
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Google SSO Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback

@@ -35,8 +35,9 @@ jobs:
   py-run-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        py-version: ['3.8', '3.9', '3.10']
+        py-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
