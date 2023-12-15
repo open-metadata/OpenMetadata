@@ -36,16 +36,18 @@ class SASClient:
         self.enable_dataflows = config.dataflows
         self.custom_filter_dataflows = config.dataflowsCustomFilter
 
-    def list_datatables(self):
-        logger.debug(f"filter for datatables are: enable datatables - {self.enable_datatables}, "
-                     f"custom filter - {self.custom_filter_datatables}")
-        # For now the entities we'll work with are tables in dataTables
-        endpoint = (f"/catalog/search?indices=datasets&q="
-                    f"{self.custom_filter_datatables if str(self.custom_filter_datatables) != 'None' else '*'}")
-        response = self.client.get(endpoint)
-        if "error" in response.keys():
-            raise APIError(response["error"])
-        return response["items"]
+    def check_connection(self):
+        check_list = []
+        if self.enable_datatables:
+            check_list.append('datasets')
+        if self.enable_reports:
+            check_list.append('reports')
+        if self.enable_dataflows:
+            check_list.append('dataflows')
+
+        for asset in check_list:
+            self.list_assets(asset)
+        return
 
     def get_instance(self, instanceId):
         endpoint = f"catalog/instances/{instanceId}"
@@ -60,22 +62,21 @@ class SASClient:
     def get_information_catalog_link(self, instance_id):
         return f"{self.config.serverHost}/SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
 
-    def list_reports(self):
-        logger.debug(f"filter for reports are: enable reports - {self.enable_reports}, "
-                     f"custom filter - {self.custom_filter_reports}")
-        endpoint = (f"catalog/search?indices=reports&q="
-                    f"{self.custom_filter_reports if str(self.custom_filter_reports) != 'None' else '*'}")
-        headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
-        response = self.client._request("GET", path=endpoint, headers=headers)
-        if "error" in response.keys():
-            raise APIError(response["error"])
-        return response["items"]
+    def list_assets(self, assets):
+        if assets == 'datasets':
+            enable_asset = self.enable_datatables
+            asset_filter = self.custom_filter_datatables
+        elif assets == 'reports':
+            enable_asset = self.enable_reports
+            asset_filter = self.custom_filter_reports
+        elif assets == 'dataflows':
+            enable_asset = self.enable_dataflows
+            asset_filter = self.custom_filter_dataflows
 
-    def list_data_flows(self):
-        logger.debug(f"filter for reports are: enable reports - {self.enable_dataflows}, "
-                     f"custom filter - {self.custom_filter_dataflows}")
-        endpoint = (f"catalog/search?indices=dataflows&q="
-                    f"{self.custom_filter_dataflows if str(self.custom_filter_dataflows) != 'None' else '*'}")
+        logger.debug(f"Configuration for {assets}: enable {assets} - {enable_asset}, "
+                     f"custom {assets} filter - {asset_filter}")
+        endpoint = (f"/catalog/search?indices={assets}&q="
+                    f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=1000")
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client._request("GET", path=endpoint, headers=headers)
         if "error" in response.keys():
@@ -93,7 +94,6 @@ class SASClient:
         headers = {
             "Content-type": "application/vnd.sas.metadata.instance.query+json",
             "Accept": "application/json",
-            # 'x-sas-links': "none"
         }
         logger.info(f"{query}")
         response = self.client._request(

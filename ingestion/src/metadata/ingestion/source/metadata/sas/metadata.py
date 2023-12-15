@@ -4,8 +4,9 @@ import re
 import time
 
 import traceback
-from metadata.utils.logger import ingestion_logger
+from typing import Iterable, List
 from requests.exceptions import HTTPError
+from metadata.utils.logger import ingestion_logger
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -64,7 +65,6 @@ from metadata.ingestion.source.metadata.sas.extension_attr import (
 )
 from metadata.utils import fqn
 from metadata.ingestion.api.models import Either, StackTraceError
-from typing import Iterable, List
 
 logger = ingestion_logger()
 
@@ -90,7 +90,7 @@ class SasSource(Source):
         self.db_service_name = None
         self.db_name = None
         self.db_schema_name = None
-        self.table_fqns = None
+        self.table_fqns = []
 
         self.dashboard_service_name = None
         self.chart_names = None
@@ -113,27 +113,24 @@ class SasSource(Source):
         pass
 
     def _iter(self) -> Iterable[Either[Entity]]:
-        self.table_fqns = []
-        # create tables from sas dataTables
-        table_entities = self.sas_client.list_datatables()
-        # list_of_names = []
+        # create tables from sas dataSets
         if self.sas_client.enable_datatables:
+            table_entities = self.sas_client.list_assets('datasets')
             for table in table_entities:
                 # populate the table entity
                 yield from self.create_table_entity(table)
 
         if self.sas_client.enable_reports:
-            report_entities = self.sas_client.list_reports()
+            report_entities = self.sas_client.list_assets('reports')
             yield from self.create_dashboard_service("SAS_reports")
             for report in report_entities:
                 self.table_fqns = []
-
-                # There isn't a schema for creating report entities, maybe this will work instead
                 logger.info(f"Ingesting report: {report}")
                 report_id = report["id"]
-                report_instance = self.sas_client.get_instance(report_id)  # get detailed report entity
-                report_resource = report_instance["resourceId"]  # get report entity instance
-                report_resource_id = report_resource[report_resource.rindex("/") + 1:]  # get report id
+                # get detailed report entity
+                report_instance = self.sas_client.get_instance(report_id)
+                report_resource = report_instance["resourceId"]
+                report_resource_id = report_resource[report_resource.rindex("/") + 1:]
 
                 # get the tables that are related to the reports
                 report_tables = self.get_report_tables(report_resource_id)
@@ -147,15 +144,19 @@ class SasSource(Source):
                 yield from self.create_report_entity(report_instance)
 
         if self.sas_client.enable_dataflows:
-            data_flow_entities = self.sas_client.list_data_flows()
+            data_flow_entities = self.sas_client.list_assets('dataflows')
             yield from self.create_dashboard_service("SAS_dataFlows")
             for data_flow in data_flow_entities:
                 self.table_fqns = []
+                logger.info(f"Ingesting dataflow: {data_flow}")
                 data_flow_instance = self.sas_client.get_instance(data_flow["id"])
                 input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
                 output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
                 input_asset_ids = []
                 output_asset_ids = []
+                if not data_flow_instance.get("relationships"):
+                    continue
+
                 for rel in data_flow_instance["relationships"]:
                     if rel["definitionId"] == input_asset_definition:
                         input_asset_ids.append(rel["endpointId"])
@@ -196,7 +197,7 @@ class SasSource(Source):
         return db_service_entity
 
     def create_database_alt(self, db):
-        # We find the name of the mock DB service
+        # Find the name of the mock DB service
         # Use the link to the parent of the resourceId of the datastore itself, and use its name
         # Then the db service name will be the provider id
         data_store_endpoint = db["resourceId"][1:]
@@ -245,7 +246,6 @@ class SasSource(Source):
 
     def create_database_schema(self, table):
         try:
-            # 'dataTables/dataSources/cas~fs~cas-shared-default~fs~Public/tables/RANDOM_COLS_TARGET'
             context = table["resourceId"].split("/")[3]
 
             provider = context.split("~")[0]
@@ -254,8 +254,8 @@ class SasSource(Source):
 
             db_service = self.create_database_service(provider)
             database = CreateDatabaseRequest(
-                name=self.db_name,  # cas_shared_default
-                # displayName=self.db_name,  # cas_shared_default
+                name=self.db_name,
+                displayName=self.db_name,
                 service=db_service.fullyQualifiedName,
             )
             database = self.metadata.create_or_update(data=database)
@@ -267,8 +267,8 @@ class SasSource(Source):
             return db_schema_entity
 
         except HTTPError as _:
-            # We find the "database" entity in Information Catalog
-            # We first see if the table is a member of the library through the relationships attribute
+            # Find the "database" entity in Information Catalog
+            # First see if the table is a member of the library through the relationships attribute
             # Or we could use views to query the dataStores
             data_store_data_sets = "4b114f6e-1c2a-4060-9184-6809a612f27b"
             data_store_id = None
@@ -279,7 +279,7 @@ class SasSource(Source):
                 break
 
             if data_store_id is None:
-                # log error since we are exclusively working with tables in dataTables
+                # log error due to exclude amount of work with tables in dataTables
                 logger.error("Data store id should not be none")
                 return None
 
@@ -325,6 +325,8 @@ class SasSource(Source):
         table_id = table["id"]
         table_url = self.sas_client.get_information_catalog_link(table_id)
         table_name = table_id
+        global table_entity
+        global table_fqn
 
         try:
             # get all the entities related to table id using views
@@ -334,9 +336,11 @@ class SasSource(Source):
             }
             views_data = json.dumps(views_query)
             views = self.sas_client.get_views(views_data)
-            entities = views['entities']
+            if not views.get('entities'):  # if the resource is not a table
+                return
 
-            # find casTable in entities
+            # find datatable in entities
+            entities = views["entities"]
             table_entity_instance = list(filter(lambda x: "Table" in x["type"], entities))[0]
             logger.info(f"table entity: {table_entity_instance}")
 
@@ -498,7 +502,6 @@ class SasSource(Source):
                     table_name=table_name,
                 )
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                # self.table_fqns.append(table_fqn)
 
                 # create lineage between the table and its source
                 if "sourceName" in table_extension and table_extension["sourceName"] != "":
@@ -643,7 +646,7 @@ class SasSource(Source):
                     self.sas_client.load_table(table_uri + "/state?value=loaded")
 
             except HTTPError as e:
-                # append http error to table description if can't be found
+                # append http error to table description if it can't be found
                 logger.error(f"table_uri: {table_uri}")
                 self.report_description.append(str(e))
                 name_index = table_uri.rindex("/")
@@ -671,7 +674,7 @@ class SasSource(Source):
             report_resource = report["resourceId"]
             report_url = self.sas_client.get_report_link("report", report_resource)
             report_request = CreateDashboardRequest(
-                name=report_name,
+                name=report_id,
                 displayName=report_name,
                 sourceUrl=report_url,
                 charts=self.chart_names,
@@ -684,7 +687,7 @@ class SasSource(Source):
                 self.metadata,
                 entity_type=Dashboard,
                 service_name=self.dashboard_service_name,
-                dashboard_name=report_name,
+                dashboard_name=report_id,
             )
 
             dashboard_entity = self.metadata.get_by_name(
@@ -709,7 +712,6 @@ class SasSource(Source):
             )
 
     def create_data_flow_entity(self, data_flow, input_fqns, output_fqns):
-        print(input_fqns, output_fqns)
         data_flow_id = data_flow["id"]
         data_flow_resource = data_flow["resourceId"]
 
@@ -718,7 +720,8 @@ class SasSource(Source):
                 "dataFlow", data_flow_resource
             )
             data_flow_request = CreateDashboardRequest(
-                name=data_flow["name"],
+                name=data_flow_id,
+                displayName=data_flow["name"],
                 service=self.dashboard_service_name,
                 sourceUrl=data_flow_url,
             )
@@ -728,21 +731,17 @@ class SasSource(Source):
                 self.metadata,
                 entity_type=Dashboard,
                 service_name=self.dashboard_service_name,
-                dashboard_name=data_flow["name"],
+                dashboard_name=data_flow_id,
             )
 
             dashboard_entity = self.metadata.get_by_name(
                 entity=Dashboard, fqn=dashboard_fqn
             )
 
-            input_entities = []
-            output_entities = []
-            for input_entity in input_fqns:
-                input_entity = self.metadata.get_by_name(entity=Table, fqn=input_entity)
-                input_entities.append(input_entity)
-            for output_entity in output_fqns:
-                output_entity = self.metadata.get_by_name(entity=Table, fqn=output_entity)
-                output_entities.append(output_entity)
+            input_entities = [self.metadata.get_by_name(entity=Table, fqn=input_entity)
+                              for input_entity in input_fqns]
+            output_entities = [self.metadata.get_by_name(entity=Table, fqn=output_entity)
+                               for output_entity in output_fqns]
 
             for entity in input_entities:
                 yield self.create_lineage_request(
