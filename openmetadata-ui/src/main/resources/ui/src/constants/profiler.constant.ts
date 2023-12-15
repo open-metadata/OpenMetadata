@@ -417,3 +417,11 @@ export const TEST_CASE_STATUS_OPTION = [
     value: value,
   })),
 ];
+
+export const INITIAL_COLUMN_METRICS_VALUE = {
+  countMetrics: INITIAL_COUNT_METRIC_VALUE,
+  proportionMetrics: INITIAL_PROPORTION_METRIC_VALUE,
+  mathMetrics: INITIAL_MATH_METRIC_VALUE,
+  sumMetrics: INITIAL_SUM_METRIC_VALUE,
+  quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};
