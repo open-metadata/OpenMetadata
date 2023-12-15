@@ -1757,3 +1757,35 @@ export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
     return QueryVoteType.unVoted;
   }
 };
+
+export const highlightEntityNameAndDescription = (
+  entity: SearchedDataProps['data'][number]['_source'],
+  highlight: SearchedDataProps['data'][number]['highlight']
+): SearchedDataProps['data'][number]['_source'] => {
+  let entityDescription = entity.description ?? '';
+  const descHighlights = highlight?.description || [];
+
+  if (descHighlights.length > 0) {
+    const matchTextArr = descHighlights.map((val: string) =>
+      val.replace(/<\/?span(.*?)>/g, '')
+    );
+
+    matchTextArr.forEach((text: string, i: number) => {
+      entityDescription = entityDescription.replace(text, descHighlights[i]);
+    });
+  }
+
+  let entityDisplayName = getEntityName(entity);
+  if (!isUndefined(highlight)) {
+    entityDisplayName =
+      highlight?.displayName?.join(' ') ||
+      highlight?.name?.join(' ') ||
+      entityDisplayName;
+  }
+
+  return {
+    ...entity,
+    displayName: entityDisplayName,
+    description: entityDescription,
+  };
+};

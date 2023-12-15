@@ -45,6 +45,7 @@ import {
   QueryFieldValueInterface,
 } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
+import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import {
   ExploreProps,
@@ -211,7 +212,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
+      handleSummaryPanelDisplay(
+        highlightEntityNameAndDescription(
+          searchResults?.hits?.hits[0]._source,
+          searchResults?.hits?.hits[0].highlight
+        )
+      );
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
