@@ -16,7 +16,6 @@ package org.openmetadata.service.clients.pipeline.airflow;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,11 +23,8 @@ import java.net.http.HttpResponse;
 import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -165,7 +161,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
-      String triggerUrl =  buildURI("trigger").build().toString();
+      String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
       response = post(triggerUrl, requestPayload.toString());
@@ -241,8 +237,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       URIBuilder uri = buildURI("status");
       uri.addParameter(DAG_ID, ingestionPipeline.getName());
       uri.addParameter("only_queued", "true");
-      response =
-          getRequestAuthenticatedForJsonContent(uri.build().toString());
+      response = getRequestAuthenticatedForJsonContent(uri.build().toString());
       if (response.statusCode() == 200) {
         return JsonUtils.readObjects(response.body(), PipelineStatus.class);
       }
@@ -402,8 +397,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     uri.addParameter(DAG_ID, ingestionPipeline.getName());
     uri.addParameter("task_id", taskId);
     try {
-      response =
-          getRequestAuthenticatedForJsonContent(uri.build().toString());
+      response = getRequestAuthenticatedForJsonContent(uri.build().toString());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
@@ -420,16 +414,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
       pathInternal.add(path);
       return new URIBuilder(String.valueOf(serviceURL)).setPathSegments(pathInternal);
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage(String.format("Failed to built request URI for path [%s].", path), e.getMessage());
+      throw PipelineServiceClientException.byMessage(
+          String.format("Failed to built request URI for path [%s].", path), e.getMessage());
     }
   }
 
-  private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url) throws IOException, InterruptedException {
+  private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url)
+      throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(url).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url) throws IOException, InterruptedException {
+  private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url)
+      throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
