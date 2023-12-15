@@ -36,7 +36,6 @@ export const uuid = () => Cypress._.random(0, 1e6);
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
-const ADMIN = 'admin';
 const RETRIES_COUNT = 4;
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -788,10 +787,12 @@ export const deleteSoftDeletedUser = (username) => {
 };
 
 export const toastNotification = (msg, closeToast = true) => {
-  cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
+  cy.get('.Toastify__toast-body')
+    .should('be.visible')
+    .should('contain.text', msg);
   cy.wait(200);
   if (closeToast) {
-    cy.get('.Toastify__close-button').should('be.visible').click();
+    cy.get('.Toastify__close-button').click();
   }
 };
 

@@ -13,23 +13,24 @@
 import { visitEntityDetailsPage } from '../../common/common';
 import { createEntityTable } from '../../common/EntityUtils';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
-import EntityClass from './EntityClass';
+import EntityClass, { EntityType } from './EntityClass';
 
 class TableClass extends EntityClass {
   tableName: string;
 
   constructor() {
     const tableName = `cypress-table-${Date.now()}`;
-    super(tableName, {});
+    super(tableName, DATABASE_SERVICE.entity, EntityType.Table);
 
     this.tableName = tableName;
+    this.name = 'Table';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
       term: this.tableName,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: 'tables',
+      entity: this.endPoint,
       dataTestId: null,
       entityFqn: null,
       entityType: null,
@@ -42,7 +43,7 @@ class TableClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = Object.values(data)[0].oidcIdToken as string;
 
       createEntityTable({
         token,

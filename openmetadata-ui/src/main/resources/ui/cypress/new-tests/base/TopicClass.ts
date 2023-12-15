@@ -12,24 +12,25 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { MESSAGING_SERVICE } from '../../constants/EntityConstant';
-import EntityClass from './EntityClass';
+import {
+  MESSAGING_SERVICE,
+  TOPIC_DETAILS,
+} from '../../constants/EntityConstant';
+import EntityClass, { EntityType } from './EntityClass';
 
 class TopicClass extends EntityClass {
-  tableName: string;
-
   constructor() {
-    const tableName = `cypress-topic-${Date.now()}`;
-    super(tableName, {});
+    const topicName = `cypress-topic-${Date.now()}`;
+    super(topicName, TOPIC_DETAILS, EntityType.Topic);
 
-    this.tableName = tableName;
+    this.name = 'Topic';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
-      term: MESSAGING_SERVICE.entity.name,
+      term: this.entityName,
       serviceName: MESSAGING_SERVICE.service.name,
-      entity: 'topics',
+      entity: this.endPoint,
       dataTestId: null,
       entityFqn: null,
       entityType: null,
@@ -46,6 +47,7 @@ class TopicClass extends EntityClass {
 
       createSingleLevelEntity({
         ...MESSAGING_SERVICE,
+        entity: { ...MESSAGING_SERVICE.entity, name: this.entityName },
         token: token,
       });
     });

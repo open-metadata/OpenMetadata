@@ -11,16 +11,58 @@
  *  limitations under the License.
  */
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { addOwner } from '../../common/common';
+
+import {
+  createAnnouncement as createAnnouncementUtil,
+  createInactiveAnnouncement as createInactiveAnnouncementUtil,
+  deleteAnnoucement,
+} from '../../common/Utils/Annoucement';
+import {
+  addDomainToEntity,
+  removeDomainFromEntity,
+} from '../../common/Utils/Domain';
+import {
+  deleteEntity,
+  hardDeleteEntity as hardDeleteEntityUtil,
+  restoreEntity as restoreEntityUtil,
+  updateDisplayNameForEntity,
+} from '../../common/Utils/Entity';
+import {
+  assignGlossaryTerm,
+  removeGlossaryTerm,
+  udpateGlossaryTerm,
+} from '../../common/Utils/Glossary';
+import {
+  addOwner,
+  addRemoveAsOwner,
+  addTeamAsOwner,
+  removeOwner,
+} from '../../common/Utils/Owner';
+import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
+import { addTier, removeTier } from '../../common/Utils/Tier';
+
+export enum EntityType {
+  Table = 'tables',
+  Topic = 'topics',
+  Dashboard = 'dashboard',
+  Domain = 'domains',
+}
 
 class EntityClass {
-  tableName: string;
+  entityName: string;
   token: Cypress.Storable;
   entityDetails: unknown;
+  endPoint: EntityType;
+  protected name: string;
 
-  constructor(tableName: string, entityDetails: unknown) {
-    this.tableName = tableName;
+  constructor(
+    entityName: string,
+    entityDetails: unknown,
+    endPoint: EntityType
+  ) {
+    this.entityName = entityName;
     this.entityDetails = entityDetails;
+    this.endPoint = endPoint;
   }
 
   async setToken() {
@@ -40,36 +82,58 @@ class EntityClass {
 
   // Visit entity
 
-  visitEntity() {
-    // visitEntityDetailsPage(fqn);
-  }
+  visitEntity() {}
 
   // Navigate to entity
 
   // Domain
 
-  assignDomain() {}
+  assignDomain(domainName: string) {
+    addDomainToEntity(domainName);
+  }
 
-  updateDomain() {}
+  updateDomain(domainName: string) {
+    addDomainToEntity(domainName);
+  }
 
-  removeDomain() {}
+  removeDomain(domainName: string) {
+    removeDomainFromEntity(domainName);
+  }
 
   // Owner
 
-  assignOwner(ownerName: string, entity: string) {
-    addOwner(ownerName, entity);
+  assignOwner(ownerName: string) {
+    addOwner(ownerName);
   }
-  updateOwner() {}
-  removeOwner() {}
-  assignTeamOwner() {}
-  updateTeamOwner() {}
-  removeTeamOwner() {}
+  updateOwner(ownerName: string) {
+    addOwner(ownerName);
+  }
+  removeOwner(ownerName: string) {
+    removeOwner(ownerName);
+  }
+
+  // Team as Owner
+  assignTeamOwner(teamName: string) {
+    addTeamAsOwner(teamName);
+  }
+  updateTeamOwner(teamName: string) {
+    addTeamAsOwner(teamName);
+  }
+  removeTeamOwner(teamName: string) {
+    addRemoveAsOwner(teamName);
+  }
 
   // Tier
 
-  assignTier() {}
-  updateTier() {}
-  removeTier() {}
+  assignTier(tier: string) {
+    addTier(tier);
+  }
+  updateTier(tier: string) {
+    addTier(tier);
+  }
+  removeTier() {
+    removeTier();
+  }
 
   // Description
 
@@ -77,36 +141,76 @@ class EntityClass {
 
   // Tags
 
-  assignTags() {}
-  updateTags() {}
-  removeTags() {}
+  assignTags() {
+    assignTags('PersonalData.Personal', this.endPoint);
+  }
+  updateTags() {
+    udpateTags('PII.None', this.endPoint);
+  }
+  removeTags() {
+    removeTags(['PersonalData.Personal', 'PII.None'], this.endPoint);
+  }
 
   // Glossary
 
-  assignGlossary() {}
-  updateGlossary() {}
-  removeGlossary() {}
+  assignGlossary() {
+    assignGlossaryTerm('business glossary.Location', this.endPoint);
+  }
+  updateGlossary() {
+    udpateGlossaryTerm('business glossary.DateTime', this.endPoint);
+  }
+  removeGlossary() {
+    removeGlossaryTerm(
+      ['business glossary.Location', 'business glossary.DateTime'],
+      this.endPoint
+    );
+  }
 
   // Rename
 
-  renameEntity() {}
+  renameEntity() {
+    updateDisplayNameForEntity(`Cypress ${this.name} updated`, this.endPoint);
+  }
 
   // Delete
 
-  softDeleteEntity() {}
-  hardDeleteEntity() {}
+  softDeleteEntity() {
+    deleteEntity(this.entityName, this.endPoint);
+  }
+
+  restoreEntity() {
+    restoreEntityUtil(this.entityName);
+  }
+
+  hardDeleteEntity() {
+    hardDeleteEntityUtil(this.entityName, this.endPoint);
+  }
 
   // Announcement
 
-  createAnnouncement() {}
-  updateAnnouncement() {}
-  removeAnnouncement() {}
+  createAnnouncement() {
+    createAnnouncementUtil({
+      title: 'Cypress annocement',
+      description: 'Cypress annocement description',
+    });
+  }
+
+  removeAnnouncement() {
+    deleteAnnoucement();
+  }
 
   // Inactive Announcement
 
-  createInactiveAnnouncement() {}
-  updateInactiveAnnouncement() {}
-  removeInactiveAnnouncement() {}
+  createInactiveAnnouncement() {
+    createInactiveAnnouncementUtil({
+      title: 'Inactive Cypress annocement',
+      description: 'Inactive Cypress annocement description',
+    });
+  }
+
+  removeInactiveAnnouncement() {
+    deleteAnnoucement();
+  }
 
   // Custom property
 

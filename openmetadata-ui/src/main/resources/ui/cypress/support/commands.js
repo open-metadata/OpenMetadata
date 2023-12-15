@@ -78,7 +78,6 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
-  interceptURL('GET', '/api/v1/feed*', 'feed');
   interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
   cy.get('[data-testid="whats-new-alert-card"]')

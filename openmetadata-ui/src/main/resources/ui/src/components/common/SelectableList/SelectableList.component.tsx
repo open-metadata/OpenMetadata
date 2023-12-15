@@ -241,7 +241,7 @@ export const SelectableList = ({
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
           searchBarDataTestId={searchBarDataTestId}
-          searchValue={searchText}
+          //   searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearch}
         />
