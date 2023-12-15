@@ -61,13 +61,13 @@ describe('Ingestion Workflow tests', () => {
     expect(usageSchema).toBeDefined();
   });
 
-  it('should getSchemaByWorkflowType return an empty object for an unknown workflow type', () => {
+  it('should getSchemaByWorkflowType return a default object with for an unknown workflow type', () => {
     const unknownSchema = getSchemaByWorkflowType(
       'unknown-type' as WorkflowType,
       ServiceCategory.PIPELINE_SERVICES
     );
 
-    expect(unknownSchema).toEqual({});
+    expect(unknownSchema).toHaveProperty('properties.displayName');
   });
 
   it('should getSchemaByWorkflowType include display Name for each schema', () => {
