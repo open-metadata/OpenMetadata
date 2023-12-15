@@ -71,10 +71,10 @@ const getTitle = ({
 };
 
 export const getSortedTagsWithHighlight = ({
-  sortTagsBasedOnGivenArr,
+  sortTagsBasedOnGivenTagFQNs,
   tags,
 }: {
-  sortTagsBasedOnGivenArr: string[];
+  sortTagsBasedOnGivenTagFQNs: string[];
   tags?: TagLabel[];
 }): (TagLabel | HighlightedTagLabel)[] => {
   const ColumnDataTags: {
@@ -83,7 +83,7 @@ export const getSortedTagsWithHighlight = ({
   } = { tagForSort: [], remainingTags: [] };
 
   tags?.reduce((acc, tag) => {
-    if (sortTagsBasedOnGivenArr.includes(tag.tagFQN)) {
+    if (sortTagsBasedOnGivenTagFQNs.includes(tag.tagFQN)) {
       acc.tagForSort.push({ ...tag, isHighlighted: true });
     } else {
       acc.remainingTags.push(tag);
@@ -166,7 +166,7 @@ export const getFormattedEntityData = (
       ) {
         if (isTagHighlightsPresentInListItemTags) {
           listItemModifiedData.tags = getSortedTagsWithHighlight({
-            sortTagsBasedOnGivenArr: tagHighlights,
+            sortTagsBasedOnGivenTagFQNs: tagHighlights,
             tags: listItem.tags,
           });
         }

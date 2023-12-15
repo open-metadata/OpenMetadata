@@ -249,7 +249,7 @@ function TableSummary({
             tags ??
             getSortedTagsWithHighlight({
               tags: tableDetails.tags,
-              sortTagsBasedOnGivenArr: get(highlights, 'tag.name'),
+              sortTagsBasedOnGivenTagFQNs: get(highlights, 'tag.name', []),
             }) ??
             []
           }

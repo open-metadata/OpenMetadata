@@ -75,7 +75,7 @@ function ContainerSummary({
           tags={
             getSortedTagsWithHighlight({
               tags: entityDetails.tags,
-              sortTagsBasedOnGivenArr: get(highlights, 'tag.name'),
+              sortTagsBasedOnGivenTagFQNs: get(highlights, 'tag.name', []),
             }) ?? []
           }
         />
