@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SummaryEntityType } from '../enums/EntitySummary.enum';
-
-export const SummaryListHighlightKeysMap = {
-  [SummaryEntityType.COLUMN]: [
-    'columns.name',
-    'columns.children.name',
-    'synonyms',
-    'dataModel.columns.name',
-    'dataModel.columns.description',
-    'dataModel.columns.children.name',
-  ],
-  [SummaryEntityType.FIELD]: [], // not found any key in ElasticSearchClient.java file
-  [SummaryEntityType.CHART]: ['charts.name', 'charts.description'],
-  [SummaryEntityType.TASK]: ['tasks.name', 'tasks.description'],
-  [SummaryEntityType.MLFEATURE]: ['mlFeatures.name', 'mlFeatures.description'],
-  [SummaryEntityType.SCHEMAFIELD]: [], // not found any key in ElasticSearchClient.java file
-};
+export const SummaryListHighlightKeys = [
+  'columns.name',
+  'columns.children.name',
+  'synonyms',
+  'dataModel.columns.name',
+  'dataModel.columns.description',
+  'dataModel.columns.children.name',
+  'charts.name',
+  'charts.description',
+  'tasks.name',
+  'tasks.description',
+  'mlFeatures.name',
+  'mlFeatures.description',
+];

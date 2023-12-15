@@ -19,7 +19,7 @@ import { SearchedDataProps } from '../../src/components/SearchedData/SearchedDat
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { SummaryListHighlightKeysMap } from '../constants/EntitySummaryPanelUtils.constant';
+import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
@@ -95,95 +95,6 @@ export const getSortedTagsWithHighlight = ({
   return [...ColumnDataTags.tagForSort, ...ColumnDataTags.remainingTags];
 };
 
-// sort and highlight summary list based on tags and global search
-const sortAndHighlightSummaryList = (
-  listHighlights: string[],
-  entityType: SummaryEntityType,
-  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
-  tableConstraints?: TableConstraint[],
-  highlights?: SearchedDataProps['data'][number]['highlights']
-) => {
-  const tagHighlights = get(highlights, 'tag.name', []);
-
-  const listHighlightsMap: { [key: string]: number } = {};
-  listHighlights?.reduce((acc, colHighlight, index) => {
-    acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
-
-    return acc;
-  }, listHighlightsMap);
-
-  const EntityData = {
-    entityWithSortOption: [] as BasicEntityInfo[],
-    entityWithoutSortOption: [] as BasicEntityInfo[],
-  };
-
-  entityInfo?.reduce((acc, listItem) => {
-    const listData = {
-      name: listItem.name,
-      title: getTitle({
-        content: getTitleName(listItem),
-        sourceUrl: listItem.sourceUrl,
-      }),
-      type: listItem.dataType ?? listItem.chatType ?? listItem.taskType,
-      tags: listItem.tags,
-      description: listItem.description,
-      ...(entityType === SummaryEntityType.COLUMN && {
-        columnConstraint: listItem.constraint,
-        tableConstraints: tableConstraints,
-      }),
-      ...(entityType === SummaryEntityType.MLFEATURE && {
-        algorithm: listItem.featureAlgorithm,
-      }),
-      children: getFormattedEntityData(
-        entityType,
-        listItem.children,
-        undefined,
-        highlights
-      ),
-    };
-
-    const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
-      tagHighlights?.includes(tag.tagFQN)
-    );
-
-    if (
-      isTagHighlightsPresentInListItemTags ||
-      !isUndefined(listHighlightsMap[listItem.name ?? '']) ||
-      !isUndefined(listHighlightsMap[listItem.description ?? ''])
-    ) {
-      listData.tags = getSortedTagsWithHighlight({
-        sortTagsBasedOnGivenArr: tagHighlights,
-        tags: listItem.tags,
-      });
-
-      if (!isUndefined(listHighlightsMap[listItem.name ?? ''])) {
-        listData.title = getTitle({
-          content: stringToHTML(
-            listHighlights[listHighlightsMap[listItem.name]]
-          ),
-          sourceUrl: listItem.sourceUrl,
-        });
-      }
-
-      if (!isUndefined(listHighlightsMap[listItem.description ?? ''])) {
-        listData.description =
-          listHighlights[listHighlightsMap[listItem.description]];
-      }
-
-      acc.entityWithSortOption.push(listData);
-    } else {
-      acc.entityWithoutSortOption.push(listData);
-    }
-
-    return acc;
-  }, EntityData);
-
-  return [
-    ...EntityData.entityWithSortOption,
-    ...EntityData.entityWithoutSortOption,
-  ];
-};
-
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
@@ -194,20 +105,93 @@ export const getFormattedEntityData = (
     return [];
   }
 
+  // sort and highlights list items based on tags and global search highlights data
   if (Object.values(SummaryEntityType).includes(entityType)) {
+    const tagHighlights = get(highlights, 'tag.name', []);
     const listHighlights: string[] = [];
+    const listHighlightsMap: { [key: string]: number } = {};
+    const SummaryListData = {
+      listItemWithSortOption: [] as BasicEntityInfo[],
+      listItemWithoutSortOption: [] as BasicEntityInfo[],
+    };
 
-    SummaryListHighlightKeysMap[entityType]?.forEach((highlightKey) => {
+    SummaryListHighlightKeys.forEach((highlightKey) => {
       listHighlights.push(...get(highlights, highlightKey, []));
     });
 
-    return sortAndHighlightSummaryList(
-      listHighlights,
-      entityType,
-      entityInfo,
-      tableConstraints,
-      highlights
-    );
+    listHighlights?.reduce((acc, colHighlight, index) => {
+      acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
+
+      return acc;
+    }, listHighlightsMap);
+
+    entityInfo?.reduce((acc, listItem) => {
+      const listItemModifiedData = {
+        name: listItem.name,
+        title: getTitle({
+          content: getTitleName(listItem),
+          sourceUrl: listItem.sourceUrl,
+        }),
+        type: listItem.dataType ?? listItem.chatType ?? listItem.taskType,
+        tags: listItem.tags,
+        description: listItem.description,
+        ...(entityType === SummaryEntityType.COLUMN && {
+          columnConstraint: listItem.constraint,
+          tableConstraints: tableConstraints,
+        }),
+        ...(entityType === SummaryEntityType.MLFEATURE && {
+          algorithm: listItem.featureAlgorithm,
+        }),
+        children: getFormattedEntityData(
+          entityType,
+          listItem.children,
+          undefined,
+          highlights
+        ),
+      };
+
+      const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
+        tagHighlights?.includes(tag.tagFQN)
+      );
+
+      if (
+        isTagHighlightsPresentInListItemTags ||
+        !isUndefined(listHighlightsMap[listItem.name ?? '']) ||
+        !isUndefined(listHighlightsMap[listItem.description ?? ''])
+      ) {
+        if (isTagHighlightsPresentInListItemTags) {
+          listItemModifiedData.tags = getSortedTagsWithHighlight({
+            sortTagsBasedOnGivenArr: tagHighlights,
+            tags: listItem.tags,
+          });
+        }
+
+        if (!isUndefined(listHighlightsMap[listItem.name ?? ''])) {
+          listItemModifiedData.title = getTitle({
+            content: stringToHTML(
+              listHighlights[listHighlightsMap[listItem.name]]
+            ),
+            sourceUrl: listItem.sourceUrl,
+          });
+        }
+
+        if (!isUndefined(listHighlightsMap[listItem.description ?? ''])) {
+          listItemModifiedData.description =
+            listHighlights[listHighlightsMap[listItem.description]];
+        }
+
+        acc.listItemWithSortOption.push(listItemModifiedData);
+      } else {
+        acc.listItemWithoutSortOption.push(listItemModifiedData);
+      }
+
+      return acc;
+    }, SummaryListData);
+
+    return [
+      ...SummaryListData.listItemWithSortOption,
+      ...SummaryListData.listItemWithoutSortOption,
+    ];
   } else {
     return [];
   }
