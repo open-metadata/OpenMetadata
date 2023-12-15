@@ -14,7 +14,7 @@ Postgres usage module
 import traceback
 from datetime import datetime
 
-from pyparsing import Iterable
+from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.connections import get_connection
