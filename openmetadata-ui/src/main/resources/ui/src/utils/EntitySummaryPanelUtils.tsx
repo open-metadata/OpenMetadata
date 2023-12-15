@@ -182,9 +182,11 @@ export const getFormattedEntityData = (
           listItemModifiedData.description =
             listHighlights[highlightedListItemDescriptionIndex];
         }
-      }
 
-      acc.listItemWithSortOption.push(listItemModifiedData);
+        acc.listItemWithSortOption.push(listItemModifiedData);
+      } else {
+        acc.listItemWithoutSortOption.push(listItemModifiedData);
+      }
 
       return acc;
     }, SummaryListData);
