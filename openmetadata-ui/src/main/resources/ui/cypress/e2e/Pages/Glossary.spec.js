@@ -664,7 +664,9 @@ const checkTagsSortingAndHighlighting = ({ termFQN }) => {
     .first()
     .as('firstTag');
 
-  cy.get('@firstTag').get(`[data-testid="tag-${termFQN}"]`).should('exist');
+  cy.get('@firstTag').within(() => {
+    cy.get(`[data-testid="tag-${termFQN}"]`).should('exist');
+  });
   cy.get('@firstTag').should('have.class', 'tag-highlight');
 };
 
@@ -673,17 +675,17 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
     .as('summaryList')
     .scrollIntoView();
 
-  cy.get('@summaryList')
-    .get('[data-testid="summary-list-item"]')
-    .first()
-    .as('firstSummaryListItem');
+  cy.get('@summaryList').within(() => {
+    cy.get('[data-testid="summary-list-item"]')
+      .first()
+      .within(() => {
+        cy.get('[data-testid="entity-title"]')
+          .first() // checking for first entity title as collapse type will have more then 1 entity-title present
+          .should('have.text', columnName);
 
-  cy.get('@firstSummaryListItem')
-    .get('[data-testid="entity-title"]')
-    .first()
-    .should('have.text', columnName);
-
-  checkTagsSortingAndHighlighting({ termFQN });
+        checkTagsSortingAndHighlighting({ termFQN });
+      });
+  });
 };
 
 describe('Prerequisites', () => {
