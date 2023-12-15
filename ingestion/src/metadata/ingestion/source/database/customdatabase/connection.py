@@ -29,7 +29,7 @@ def test_connection(
     service_connection: CustomDatabaseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
-    test_fn = {"CheckAccess": client.list_datatables}
+    test_fn = {"CheckAccess": client.check_connection}
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
