@@ -136,7 +136,7 @@ class OMetaCustomAttributeTest(TestCase):
             hard_delete=True,
         )
 
-    def test_create_custom_property(self):
+    def create_custom_property(self):
         """
         Test to create the custom property
         """
@@ -181,6 +181,10 @@ class OMetaCustomAttributeTest(TestCase):
         """
         Test to add the extension/custom property to the table
         """
+
+        # create the custom properties
+        self.create_custom_property()
+
         extensions = {
             "DataQuality": '<div><p><b>Last evaluation:</b> 07/24/2023<br><b>Interval: </b>30 days <br><b>Next run:</b> 08/23/2023, 10:44:21<br><b>Measurement unit:</b> percent [%]</p><br><table><tbody><tr><th>Metric</th><th>Target</th><th>Latest result</th></tr><tr><td><p class="text-success">Completeness</p></td><td>90%</td><td><div class="bar fabric" style="width: 93%;"><strong>93%</strong></div></td></tr><tr><td><p class="text-success">Integrity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-warning">Timeliness</p></td><td>90%</td><td><div class="bar fabric" style="width: 56%;"><strong>56%</strong></div></td></tr><tr><td><p class="text-success">Uniqueness</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-success">Validity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr></tbody></table><h3>Overall score of the table is: 89%</h3><hr style="border-width: 5px;"></div>',
             "TableSize": "250 MB",
@@ -202,6 +206,9 @@ class OMetaCustomAttributeTest(TestCase):
         """
         Test to add the extension/custom property to the schema
         """
+
+        # create the custom properties
+        self.create_custom_property()
 
         extensions = {"SchemaAge": 3}
 
