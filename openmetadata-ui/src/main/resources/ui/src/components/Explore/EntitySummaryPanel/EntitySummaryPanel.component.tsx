@@ -228,6 +228,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as DatabaseService}
+            highlights={highlights}
             type={ExplorePageTabs.DATABASE_SERVICE}
           />
         );
@@ -235,6 +236,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MessagingService}
+            highlights={highlights}
             type={ExplorePageTabs.MESSAGING_SERVICE}
           />
         );
@@ -242,6 +244,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as DashboardService}
+            highlights={highlights}
             type={ExplorePageTabs.DASHBOARD_SERVICE}
           />
         );
@@ -249,6 +252,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as PipelineService}
+            highlights={highlights}
             type={ExplorePageTabs.PIPELINE_SERVICE}
           />
         );
@@ -257,6 +261,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MlmodelService}
+            highlights={highlights}
             type={ExplorePageTabs.ML_MODEL_SERVICE}
           />
         );
@@ -265,6 +270,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as StorageService}
+            highlights={highlights}
             type={ExplorePageTabs.STORAGE_SERVICE}
           />
         );
@@ -273,6 +279,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as SearchService}
+            highlights={highlights}
             type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
           />
         );
