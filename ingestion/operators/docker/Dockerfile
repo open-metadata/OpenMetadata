@@ -4,8 +4,7 @@ RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
 # Remove expired mysql keys and add new key/s to the trusted key store
-RUN rm /etc/apt/sources.list.d/mysql.list
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C && gpg --export "B7B3B788A8D3785C" > "/etc/apt/trusted.gpg.d/mysql.gpg"
+RUN rm /etc/apt/sources.list.d/mysql.list && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C && gpg --export "B7B3B788A8D3785C" > "/etc/apt/trusted.gpg.d/mysql.gpg"
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get -qq update \
