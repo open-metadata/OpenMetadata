@@ -12,10 +12,14 @@
 name: Java Checkstyle
 
 on:
-  pull_request_target:
+  # Trigger analysis when pushing in master or pull requests, and when creating
+  # a pull request.
+  push:
     branches:
       - main
-      - '0.[0-9]+.[0-9]+'
+      - "0.[0-9]+.[0-9]+"
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
