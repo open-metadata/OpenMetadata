@@ -218,7 +218,10 @@ export default function EntitySummaryPanel({
 
       case EntityType.DATABASE_SCHEMA:
         return (
-          <DatabaseSchemaSummary entityDetails={entity as DatabaseSchema} />
+          <DatabaseSchemaSummary
+            entityDetails={entity as DatabaseSchema}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DATABASE_SERVICE:
