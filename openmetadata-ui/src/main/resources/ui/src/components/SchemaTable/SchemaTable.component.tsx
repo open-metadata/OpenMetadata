@@ -314,8 +314,8 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-full">
-              <div className="d-inline-flex">
+            <div className="d-inline-flex flex-column hover-icon-group">
+              <div className="inline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,

@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import Loader from '../../Loader/Loader';
-import './modal-with-markdown-editor.less';
 import {
   EditorContentRef,
   ModalWithMarkdownEditorProps,
