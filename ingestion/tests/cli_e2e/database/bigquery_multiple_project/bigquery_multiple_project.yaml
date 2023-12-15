@@ -21,6 +21,10 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      schemaFilterPattern:
+        includes:
+        - do_not_touch
+        - exclude_me
 sink:
   type: metadata-rest
   config: {}
