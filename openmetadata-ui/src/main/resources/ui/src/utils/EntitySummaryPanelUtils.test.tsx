@@ -30,7 +30,6 @@ describe('EntitySummaryPanelUtils tests', () => {
     const resultFormattedData = getFormattedEntityData(
       SummaryEntityType.COLUMN,
       mockEntityDataWithoutNesting,
-      undefined,
       highlights
     );
 
