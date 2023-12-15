@@ -99,7 +99,11 @@ function SearchIndexSummary({
                 tags ??
                 getSortedTagsWithHighlight({
                   tags: entityDetails.tags,
-                  sortTagsBasedOnGivenTagFQNs: get(highlights, 'tag.name', []),
+                  sortTagsBasedOnGivenTagFQNs: get(
+                    highlights,
+                    'tag.name',
+                    [] as string[]
+                  ),
                 }) ??
                 []
               }

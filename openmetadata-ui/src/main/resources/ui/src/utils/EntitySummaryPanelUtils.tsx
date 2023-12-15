@@ -49,7 +49,7 @@ const getTitle = ({
   sourceUrl,
 }: {
   content: string | JSX.Element | JSX.Element[];
-  sourceUrl: string;
+  sourceUrl: string | undefined;
 }) => {
   return sourceUrl ? (
     <Link target="_blank" to={{ pathname: sourceUrl }}>
@@ -107,7 +107,7 @@ export const getFormattedEntityData = (
 
   // sort and highlights list items based on tags and global search highlights data
   if (Object.values(SummaryEntityType).includes(entityType)) {
-    const tagHighlights = get(highlights, 'tag.name', []);
+    const tagHighlights = get(highlights, 'tag.name', [] as string[]);
     const listHighlights: string[] = [];
     const listHighlightsMap: { [key: string]: number } = {};
     const SummaryListData = {
@@ -130,21 +130,24 @@ export const getFormattedEntityData = (
         name: listItem.name || '',
         title: getTitle({
           content: getTitleName(listItem),
-          sourceUrl: listItem.sourceUrl,
+          sourceUrl: (listItem as Chart | Task).sourceUrl,
         }),
-        type: listItem.dataType ?? listItem.chatType ?? listItem.taskType,
+        type:
+          (listItem as Column | Field | MlFeature).dataType ??
+          (listItem as Chart).chartType ??
+          (listItem as Task).taskType,
         tags: listItem.tags,
         description: listItem.description,
         ...(entityType === SummaryEntityType.COLUMN && {
-          columnConstraint: listItem.constraint,
+          columnConstraint: (listItem as Column).constraint,
           tableConstraints: tableConstraints,
         }),
         ...(entityType === SummaryEntityType.MLFEATURE && {
-          algorithm: listItem.featureAlgorithm,
+          algorithm: (listItem as MlFeature).featureAlgorithm,
         }),
         children: getFormattedEntityData(
           entityType,
-          listItem.children,
+          (listItem as Column | Field).children,
           highlights,
           tableConstraints
         ),
@@ -174,7 +177,7 @@ export const getFormattedEntityData = (
         if (!isUndefined(highlightedListItemNameIndex)) {
           listItemModifiedData.title = getTitle({
             content: stringToHTML(listHighlights[highlightedListItemNameIndex]),
-            sourceUrl: listItem.sourceUrl,
+            sourceUrl: (listItem as Chart | Task).sourceUrl,
           });
         }
 
