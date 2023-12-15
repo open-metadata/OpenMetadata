@@ -43,7 +43,7 @@ interface DashboardSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
-  highlights?: SearchedDataProps['data'][number]['highlights'];
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function DashboardSummary({

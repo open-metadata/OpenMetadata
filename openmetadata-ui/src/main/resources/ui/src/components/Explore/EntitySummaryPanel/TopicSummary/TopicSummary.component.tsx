@@ -42,7 +42,7 @@ interface TopicSummaryProps {
   componentType?: string;
   tags?: TagLabel[];
   isLoading?: boolean;
-  highlights?: SearchedDataProps['data'][number]['highlights'];
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function TopicSummary({
