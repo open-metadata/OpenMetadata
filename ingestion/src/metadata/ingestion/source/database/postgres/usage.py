@@ -13,7 +13,6 @@ Postgres usage module
 """
 import traceback
 from datetime import datetime
-
 from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
