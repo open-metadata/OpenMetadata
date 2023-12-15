@@ -176,7 +176,7 @@ plugins: Dict[str, Set[str]] = {
         "s3fs==0.4.2",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0"},
+    "deltalake": {"delta-spark~=3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},

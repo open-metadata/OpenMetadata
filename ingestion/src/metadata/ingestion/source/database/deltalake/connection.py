@@ -44,7 +44,7 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
         # Download delta-core jars when creating the SparkSession
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
+        .config("spark.jars.packages", "io.delta:delta-core_2.13:2.4.0")
     )
 
     # Check that the attribute exists and is properly informed
