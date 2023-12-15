@@ -1,6 +1,5 @@
 <div align="center">
-<img alt="Logo" src="https://github.com/open-metadata/OpenMetadata/assets/40225091/e794ced8-7220-4393-8efc-3faf93bfb503" width="49%">
-    
+    <img alt="Logo" src="https://github.com/open-metadata/OpenMetadata/assets/40225091/e794ced8-7220-4393-8efc-3faf93bfb503" width="49%">
   <hr />
 </div>
   </p>
@@ -8,7 +7,6 @@
   
 ![Commit Activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata?style=for-the-badge)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg?style=for-the-badge)](https://github.com/open-metadata/OpenMetadata/releases)
-
 ![Maven Build](https://img.shields.io/github/actions/workflow/status/open-metadata/OpenMetadata/maven-build.yml?logo=github)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata)
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
@@ -26,7 +24,7 @@
 - [Contributors](#contributors)
 - [License](#license)
 
-# What is OpenMetadata?
+## What is OpenMetadata?
 [OpenMetadata](https://open-metadata.org/) is an all-in-one platform for **data discovery, data lineage, data quality, observability, governance, and team collaboration**. It is one of the fastest growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services, OpenMetadata enables **end-to-end metadata management**, giving you the freedom to **unlock the value of your data assets**.
 <div align="center">
 <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/ebfb4ec5-f0a2-4d58-8ce5-a082b5cf0f76" width=800>
@@ -43,15 +41,14 @@ OpenMetadata consists of four main components:
 - OpenMetadata is an open source project that welcomes contributions from the community.
 
 ## Features
-![Data Insights](https://github.com/open-metadata/OpenMetadata/assets/40225091/b143b53c-66f4-482d-8f78-8d97440509a0)
-![Data Governance](https://github.com/open-metadata/OpenMetadata/assets/40225091/cd3aec27-18f6-47d0-8550-5f03a72cada5)
-![Data Quality](https://github.com/open-metadata/OpenMetadata/assets/40225091/c22fe391-f83c-4235-9ade-46421a71a020)
-![Data Discovery](https://github.com/open-metadata/OpenMetadata/assets/40225091/3638363e-356d-403f-8a65-6cacaa0a8e47)
-![Data Collaboration](https://github.com/open-metadata/OpenMetadata/assets/40225091/4b645808-85d9-43ca-b4d4-9acceec295ee)
 
-
-
-![](https://docs.open-metadata.org/images/v1.2/features/all-your-data-in-one-place.gif)
+<div align='center'>    
+<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/4b645808-85d9-43ca-b4d4-9acceec295ee" width="75%">
+<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/b143b53c-66f4-482d-8f78-8d97440509a0" width="49%">
+<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/c333183f-ce20-4c9d-898f-cc971e5da846" width="49%">
+<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/3638363e-356d-403f-8a65-6cacaa0a8e47" width="49%">
+<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/cd3aec27-18f6-47d0-8550-5f03a72cada5" width="49%">
+</div>
 
 ## Try our Sandbox
 
@@ -80,6 +77,12 @@ We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTR
 Don't want to miss anything? Give the project a ⭐ 🚀 
 
 A HUGE THANK YOU to all our supporters!
+
+<a href="https://github.com/open-metadata/OpenMetadata/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=open-metadata/OpenMetadata&max=4000&columns=30" />
+</a>
+
+[![Stargazers of @open-metadata/OpenMetadata repo](http://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
 
 [![Stargazers repo roster for @open-metadata/OpenMetadata](https://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
 
