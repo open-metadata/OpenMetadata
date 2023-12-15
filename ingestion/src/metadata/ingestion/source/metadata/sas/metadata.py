@@ -517,6 +517,7 @@ class SasSource(Source):
                     )
                     logger.debug(f"source_table_fqn for sourceTable is {source_table_fqn}")
                     source_table_entity = self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
+                    target_table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
 
                     # process to create lineage if source table doesn't exist
                     if not source_table_entity:
@@ -530,9 +531,10 @@ class SasSource(Source):
                     source_table_entity = self.metadata.get_by_name(
                         entity=Table, fqn=source_table_fqn
                     )
+
                     if source_table_entity:
                         yield from self.create_table_lineage(
-                            source_table_entity, table_entity
+                            source_table_entity, target_table_entity
                         )
 
                 # update the description
