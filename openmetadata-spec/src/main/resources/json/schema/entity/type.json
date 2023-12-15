@@ -10,7 +10,7 @@
     "entityName": {
       "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
       "type": "string",
-      "pattern": "^(?U)[\\w]+$"
+      "pattern": "(?U)^[\\w]+$"
     },
     "category": {
       "description": "Metadata category to which a type belongs to.",
