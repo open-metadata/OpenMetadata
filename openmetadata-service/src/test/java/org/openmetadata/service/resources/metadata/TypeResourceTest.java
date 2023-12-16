@@ -54,7 +54,8 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
+public class
+TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   public TypeResourceTest() {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
@@ -73,7 +74,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     // Names can't start with capital letter, can't have space, hyphen, apostrophe
     String[] tests = {"a bc", "a-bc", "a'b"};
 
-    String error = "[name must match \"^(?U)[\\w]+$\"]";
+    String error = "[name must match \"(?U)^[\\w]+$\"]";
     CreateType create = createRequest("placeHolder", "", "", null);
     for (String test : tests) {
       LOG.info("Testing with the name {}", test);

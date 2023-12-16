@@ -993,7 +993,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w\\-.]+$\"\"]")};
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"(?U)^[\\w\\-.]+$\"\"]")};
     assertRows(result, expectedRows);
 
     // Invalid team
