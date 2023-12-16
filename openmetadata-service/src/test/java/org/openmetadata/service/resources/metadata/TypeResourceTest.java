@@ -54,8 +54,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class
-TypeResourceTest extends EntityResourceTest<Type, CreateType> {
+public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   public TypeResourceTest() {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
