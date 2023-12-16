@@ -151,7 +151,7 @@ class TestAirflow(TestCase):
             owners=None,
         )
 
-        self.assertEquals(
+        self.assertEqual(
             dag.tasks[0].inlets,
             [
                 {
@@ -162,7 +162,7 @@ class TestAirflow(TestCase):
                 }
             ],
         )
-        self.assertEquals(
+        self.assertEqual(
             dag.tasks[1].outlets,
             [
                 {
@@ -178,10 +178,10 @@ class TestAirflow(TestCase):
         """
 
         pipeline_data = {"schedule_interval": None}
-        self.assertEquals(get_schedule_interval(pipeline_data), None)
+        self.assertEqual(get_schedule_interval(pipeline_data), None)
 
         pipeline_data = {"schedule_interval": {"__var": 86400.0, "__type": "timedelta"}}
-        self.assertEquals(get_schedule_interval(pipeline_data), "1 day, 0:00:00")
+        self.assertEqual(get_schedule_interval(pipeline_data), "1 day, 0:00:00")
 
         pipeline_data = {
             "timetable": {
@@ -189,7 +189,7 @@ class TestAirflow(TestCase):
                 "__var": {},
             }
         }
-        self.assertEquals(get_schedule_interval(pipeline_data), "@once")
+        self.assertEqual(get_schedule_interval(pipeline_data), "@once")
 
         pipeline_data = {
             "timetable": {
@@ -197,4 +197,4 @@ class TestAirflow(TestCase):
                 "__var": {"expression": "*/2 * * * *", "timezone": "UTC"},
             }
         }
-        self.assertEquals(get_schedule_interval(pipeline_data), "*/2 * * * *")
+        self.assertEqual(get_schedule_interval(pipeline_data), "*/2 * * * *")

@@ -13,9 +13,7 @@ Test Deltalake using the topology
 
 Here we don't need to patch, as we can just create our own metastore
 """
-import platform
 import shutil
-import unittest
 from datetime import date, datetime
 from unittest import TestCase
 
