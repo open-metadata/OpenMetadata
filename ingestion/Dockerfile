@@ -2,10 +2,6 @@ FROM apache/airflow:2.6.3-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
-
-# Remove expired mysql keys
-RUN rm /etc/apt/sources.list.d/mysql.list
-
 # Install Dependencies (listed in alphabetical order)
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update \
