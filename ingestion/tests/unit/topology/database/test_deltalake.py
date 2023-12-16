@@ -102,10 +102,10 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 )
 
 
-@unittest.skipUnless(
-    platform.python_version() < "3.11",
-    reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
-)
+# @unittest.skipUnless(
+#     platform.python_version() < "3.11",
+#     reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
+# )
 class DeltaLakeUnitTest(TestCase):
     """
     Add method validations from Deltalake ingestion
