@@ -25,7 +25,6 @@ import {
 import { ColumnProfile } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../rest/tableAPI';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateColumnProfilerMetrics,

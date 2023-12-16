@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Select, Space, Typography } from 'antd';
+import { Select, SelectProps, Space, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
@@ -22,7 +23,11 @@ import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 
-interface Props {
+interface Props
+  extends Omit<
+    SelectProps<Option[], DefaultOptionType>,
+    'onChange' | 'onSearch' | 'value' | 'options'
+  > {
   options: Option[];
   value: Option[];
   onSearch: (value: string) => void;
@@ -38,16 +43,20 @@ const Assignees: FC<Props> = ({
   options,
   disabled,
   isSingleSelect = false,
+  ...rest
 }) => {
-  const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {
-    const newValues = (isArray(newOptions) ? newOptions : [newOptions]).map(
-      (option) => ({
-        label: option['data-label'],
-        value: option.value,
-        type: option.type,
-        name: option.name,
-      })
-    );
+  const handleOnChange = (
+    _values: Option[],
+    newOptions: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    const newValues = isUndefined(newOptions)
+      ? newOptions
+      : (isArray(newOptions) ? newOptions : [newOptions]).map((option) => ({
+          label: option['data-label'],
+          value: option.value,
+          type: option.type,
+          name: option.name,
+        }));
 
     onChange(newValues as Option[]);
   };
@@ -111,6 +120,7 @@ const Assignees: FC<Props> = ({
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
       onSearch={debounce(onSearch, 300)}
+      {...rest}
     />
   );
 };

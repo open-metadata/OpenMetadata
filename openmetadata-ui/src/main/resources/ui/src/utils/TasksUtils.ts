@@ -193,7 +193,7 @@ export const fetchOptions = (
     .then((res) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       const suggestOptions = hits.map((hit) => ({
-        label: hit._source.name ?? hit._source.displayName,
+        label: getEntityName(hit._source),
         value: hit._id,
         type: hit._source.entityType,
         name: hit._source.name,

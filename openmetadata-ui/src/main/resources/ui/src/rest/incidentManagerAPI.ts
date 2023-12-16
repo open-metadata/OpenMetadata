@@ -20,11 +20,14 @@ import APIClient from './index';
 
 const testCaseIncidentUrl = '/dataQuality/testCases/testCaseIncidentStatus';
 
-interface TestCaseIncidentStatusParams extends ListParams {
+export type TestCaseIncidentStatusParams = ListParams & {
   startTs: number;
   endTs: number;
   latest?: boolean;
-}
+  testCaseResolutionStatusType?: string;
+  assignee?: string;
+  testCaseFQN?: string;
+};
 
 export const getListTestCaseIncidentStatus = async ({
   limit = 10,
