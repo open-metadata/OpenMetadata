@@ -4,14 +4,16 @@
 </div>
   </p>
 <div align="center">
+
     
+# Empower Your Data Journey with OpenMetadata
+        
 ![Commit Activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata?style=for-the-badge)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg?style=for-the-badge)](https://github.com/open-metadata/OpenMetadata/releases)
 
 
-
-# Discover and Unlock Your Data Potential with OpenMetadata
 </div>
+
 - [What is OpenMetadata?](#what-is-openmetadata)
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
@@ -47,18 +49,28 @@ OpenMetadata consists of four main components:
 <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/cd3aec27-18f6-47d0-8550-5f03a72cada5" width="49%">
 </div>
 
-Some of the key features of OpenMetadata are:
+## Some of the key features of OpenMetadata are:
 
 - **Data Discovery**: This feature enables you to find and explore data assets and metadata entities using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
+
 - **Data Collaboration**: This feature enables you to communicate and cooperate with other users and teams on data assets and metadata entities. You can get event notifications, send alerts, add announcements, create tasks, and use conversation threads.
+  
 - **Data Quality and Profiler**: This feature enables you to measure and monitor the quality and characteristics of your data assets. You can define and run data quality tests, group them into test suites, and view the results in an interactive dashboard.
+  
 - **Data Lineage**: This feature enables you to track and visualize the origin and transformation of your data assets. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
+  
 - **Data Governance**: This feature enables you to enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms.
+  
 - **Data Documentation**: This feature enables you to document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations, and generate data dictionaries and data catalogs.
+  
 - **Data Observability**: This feature enables you to monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
+  
 - **Data Security**: This feature enables you to secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on, and define roles and policies for access control.
+  
 - **Webhooks**: This feature enables you to integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications, and integrate with Slack, Microsoft Teams, and Google Chat.
+  
 - **Connectors**: This feature enables you to ingest metadata from various sources and tools using connectors. OpenMetadata supports about 55 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+
 
 ## Try our Sandbox
 
@@ -71,7 +83,7 @@ Get up and running in a few minutes. See the OpenMetadata documentation for [ins
 
 Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
 
-Join [our Slack Community](https://slack.open-metadata.org/) to get in touch with us, want to chat, need help, or want to discuss about a new feature requirement.
+Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us, want to chat, need help, or want to discuss about a new feature requirement.
 
 Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
 
