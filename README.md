@@ -4,9 +4,12 @@
 </div>
   </p>
 <div align="center">
+    
 ![Commit Activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata?style=for-the-badge)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg?style=for-the-badge)](https://github.com/open-metadata/OpenMetadata/releases)
 </div>
+
+
 
 - [What is OpenMetadata?](#what-is-openmetadata)
 - [Features](#features)
