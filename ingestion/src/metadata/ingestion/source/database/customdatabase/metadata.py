@@ -61,9 +61,7 @@ class SASDB(Source):
 
     def test_connection(self) -> None:
         test_connection_fn = get_connection(self.service_connection)
-        test_connection_fn(
-            self.metadata, self.sas_client, self.service_connection
-        )
+        test_connection_fn(self.metadata, self.sas_client, self.service_connection)
 
     def close(self):
         pass

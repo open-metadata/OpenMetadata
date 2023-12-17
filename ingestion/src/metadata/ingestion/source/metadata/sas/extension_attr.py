@@ -78,7 +78,6 @@ TABLE_CUSTOM_ATTR = [
         "description": "The CAS port for the library for this table.",
         "propertyType": {"id": "189dc756-717d-4630-8478-e2ffb8866b0f", "type": "type"},
     },
-
     # CAS Table attributes
     {
         "name": "sourceName",

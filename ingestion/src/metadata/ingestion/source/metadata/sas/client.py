@@ -39,11 +39,11 @@ class SASClient:
     def check_connection(self):
         check_list = []
         if self.enable_datatables:
-            check_list.append('datasets')
+            check_list.append("datasets")
         if self.enable_reports:
-            check_list.append('reports')
+            check_list.append("reports")
         if self.enable_dataflows:
-            check_list.append('dataflows')
+            check_list.append("dataflows")
 
         for asset in check_list:
             self.list_assets(asset)
@@ -63,20 +63,24 @@ class SASClient:
         return f"{self.config.serverHost}/SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
 
     def list_assets(self, assets):
-        if assets == 'datasets':
+        if assets == "datasets":
             enable_asset = self.enable_datatables
             asset_filter = self.custom_filter_datatables
-        elif assets == 'reports':
+        elif assets == "reports":
             enable_asset = self.enable_reports
             asset_filter = self.custom_filter_reports
-        elif assets == 'dataflows':
+        elif assets == "dataflows":
             enable_asset = self.enable_dataflows
             asset_filter = self.custom_filter_dataflows
 
-        logger.debug(f"Configuration for {assets}: enable {assets} - {enable_asset}, "
-                     f"custom {assets} filter - {asset_filter}")
-        endpoint = (f"/catalog/search?indices={assets}&q="
-                    f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=1000")
+        logger.debug(
+            f"Configuration for {assets}: enable {assets} - {enable_asset}, "
+            f"custom {assets} filter - {asset_filter}"
+        )
+        endpoint = (
+            f"/catalog/search?indices={assets}&q="
+            f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=1000"
+        )
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client._request("GET", path=endpoint, headers=headers)
         if "error" in response.keys():
