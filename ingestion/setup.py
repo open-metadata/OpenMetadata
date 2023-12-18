@@ -13,7 +13,7 @@
 Python Dependencies
 """
 
-from typing import Dict, Set, List
+from typing import Dict, List, Set
 
 from setuptools import setup
 
@@ -328,6 +328,8 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
-        "slim": filter_requirements({"airflow", "db2", "great-expectations", "deltalake", "sklearn"})
+        "slim": filter_requirements(
+            {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
+        ),
     },
 )
