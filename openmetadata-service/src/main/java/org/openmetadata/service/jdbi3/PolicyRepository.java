@@ -49,7 +49,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
   public PolicyRepository() {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, Entity.getCollectionDAO().policyDAO(), "", "");
+    super(
+        PolicyResource.COLLECTION_PATH,
+        POLICY,
+        Policy.class,
+        Entity.getCollectionDAO().policyDAO(),
+        "",
+        "");
   }
 
   @Override
@@ -129,19 +135,26 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return containsAllResources ? new ArrayList<>(List.of(ALL_RESOURCES)) : resources;
   }
 
-  public static List<MetadataOperation> filterRedundantOperations(List<MetadataOperation> operations) {
-    // If VIEW_ALL is in the operation list, remove all the other specific view operations that are redundant
+  public static List<MetadataOperation> filterRedundantOperations(
+      List<MetadataOperation> operations) {
+    // If VIEW_ALL is in the operation list, remove all the other specific view operations that are
+    // redundant
     boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
     if (containsViewAll) {
       operations =
-          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).collect(Collectors.toList());
+          operations.stream()
+              .filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o))
+              .collect(Collectors.toList());
     }
 
-    // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are redundant
+    // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are
+    // redundant
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
     if (containsEditAll) {
       operations =
-          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).collect(Collectors.toList());
+          operations.stream()
+              .filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o))
+              .collect(Collectors.toList());
     }
     return operations;
   }
@@ -162,10 +175,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
       // Check if the Rules have unique names
       if (!nullOrEmpty(updatedRules)) {
-        Set<String> ruleNames = updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
+        Set<String> ruleNames =
+            updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
 
         if (ruleNames.size() != updatedRules.size()) {
-          throw new BadRequestException("Policy contains duplicate Rules. Please use unique name for Rules.");
+          throw new BadRequestException(
+              "Policy contains duplicate Rules. Please use unique name for Rules.");
         }
       }
 
@@ -177,7 +192,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
       // Record changes based on updatedRule
       for (Rule updated : updatedRules) {
-        Rule stored = origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
+        Rule stored =
+            origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New Rule added
           continue;
         }

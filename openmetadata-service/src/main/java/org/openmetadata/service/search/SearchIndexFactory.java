@@ -154,6 +154,7 @@ public class SearchIndexFactory {
   }
 
   protected SearchIndex buildExternalIndexes(String entityType, Object entity) {
-    throw new IllegalArgumentException(String.format("Entity Type [%s] is not valid for Index Factory", entityType));
+    throw new IllegalArgumentException(
+        String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
 }

@@ -7,7 +7,8 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.EntitiesDescriptionAggregator;
 
 public class ElasticSearchEntitiesDescriptionAggregator
-    extends EntitiesDescriptionAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends EntitiesDescriptionAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchEntitiesDescriptionAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -19,12 +20,14 @@ public class ElasticSearchEntitiesDescriptionAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation bucket) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation bucket) {
     return bucket.getBuckets();
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityBuckets(MultiBucketsAggregation.Bucket timestampBucket) {
+  protected MultiBucketsAggregation getEntityBuckets(
+      MultiBucketsAggregation.Bucket timestampBucket) {
     return timestampBucket.getAggregations().get(ENTITY_TYPE);
   }
 

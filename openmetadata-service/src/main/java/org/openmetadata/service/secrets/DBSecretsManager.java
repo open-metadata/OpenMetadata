@@ -18,7 +18,8 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 public class DBSecretsManager extends SecretsManager {
   private static DBSecretsManager instance;
 
-  private DBSecretsManager(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
+  private DBSecretsManager(
+      SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
     super(secretsManagerProvider, secretsConfig);
   }
 

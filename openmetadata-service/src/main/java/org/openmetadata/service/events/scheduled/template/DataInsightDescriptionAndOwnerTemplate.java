@@ -61,7 +61,10 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.completeMessage =
         String.format(
             "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
-            getMetricTypeMessage(metricType), color, percentChange, getKpiCriteriaMessage(metricType, criteria));
+            getMetricTypeMessage(metricType),
+            color,
+            percentChange,
+            getKpiCriteriaMessage(metricType, criteria));
   }
 
   private String getMetricTypeMessage(MetricType metricType) {
