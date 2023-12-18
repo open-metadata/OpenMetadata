@@ -1,4 +1,4 @@
-FROM apache/airflow:2.6.3-python3.10
+FROM apache/airflow:2.7.3-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -110,7 +110,7 @@ RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xarg
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
-# while authrenticating connection with the airflow, psycopg2 solves this error 
+# while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
