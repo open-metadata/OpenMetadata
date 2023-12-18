@@ -40,9 +40,8 @@ public class PasswordEntityMasker extends EntityMasker {
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     if (connectionConfig != null) {
       try {
-        Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
         Object convertedConnectionConfig =
-            ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
@@ -106,10 +105,10 @@ public class PasswordEntityMasker extends EntityMasker {
       ServiceType serviceType) {
     if (originalConnectionConfig != null && connectionConfig != null) {
       try {
-        Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-        Object toUnmaskConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+        Object toUnmaskConfig =
+            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
         Object originalConvertedConfig =
-            ClassConverterFactory.getConverter(clazz).convert(originalConnectionConfig);
+            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);

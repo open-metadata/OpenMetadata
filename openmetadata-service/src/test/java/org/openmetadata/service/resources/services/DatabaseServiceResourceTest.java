@@ -192,7 +192,9 @@ public class DatabaseServiceResourceTest
                 createRequest(test).withDescription(null).withConnection(dbConn),
                 ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake. Did the Fernet Key change?]");
+        String.format(
+            "Failed to convert [%s] to type [Snowflake]. Review the connection.",
+            getEntityName(test)));
     DatabaseService service =
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
@@ -208,7 +210,7 @@ public class DatabaseServiceResourceTest
     assertResponseContains(
         () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to unmask connection instance of Snowflake].");
+        "Failed to load the connection of type [Snowflake]. Did migrations run properly?");
   }
 
   @Test

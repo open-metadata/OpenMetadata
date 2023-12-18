@@ -50,7 +50,7 @@ import org.apache.commons.io.IOUtils;
 @Slf4j
 public final class CommonUtil {
 
-  private static final List<String> jarNameFilter = List.of("openmetadata", "collate");
+  private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
 
   private CommonUtil() {}
 
@@ -60,7 +60,7 @@ public final class CommonUtil {
     String classPath = System.getProperty("java.class.path", ".");
     List<String> classPathElements =
         Arrays.stream(classPath.split(File.pathSeparator))
-            .filter(jarName -> jarNameFilter.stream().anyMatch(jarName.toLowerCase()::contains))
+            .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
             .toList();
 
     for (String element : classPathElements) {
@@ -71,6 +71,14 @@ public final class CommonUtil {
               : getResourcesFromJarFile(file, pattern));
     }
     return resources;
+  }
+
+  /** Check if any given object falls under OM, or Collate packages */
+  public static Boolean isOpenMetadataObject(Object obj) {
+    return obj != null
+        && JAR_NAME_FILTER.stream()
+            .anyMatch(
+                Arrays.stream(obj.getClass().getPackageName().split("\\.")).toList()::contains);
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {

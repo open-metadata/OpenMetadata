@@ -15,7 +15,6 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
@@ -23,13 +22,14 @@ import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
+import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
-  private AWSSSMSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
-    super(MANAGED_AWS_SSM, config, clusterPrefix);
+  private AWSSSMSecretsManager(SecretsConfig secretsConfig) {
+    super(MANAGED_AWS_SSM, secretsConfig);
   }
 
   @Override
@@ -64,6 +64,10 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
             .value(parameterValue)
             .overwrite(overwrite)
             .type(ParameterType.SECURE_STRING)
+            .tags(
+                SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
+                    .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
+                    .toList())
             .build();
     this.ssmClient.putParameter(putParameterRequest);
   }
@@ -82,9 +86,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     this.ssmClient.deleteParameter(deleteParameterRequest);
   }
 
-  public static AWSSSMSecretsManager getInstance(
-      SecretsManagerConfiguration config, String clusterPrefix) {
-    if (instance == null) instance = new AWSSSMSecretsManager(config, clusterPrefix);
+  public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {
+    if (instance == null) instance = new AWSSSMSecretsManager(secretsConfig);
     return instance;
   }
 

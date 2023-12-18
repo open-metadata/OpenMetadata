@@ -29,12 +29,16 @@ public class SecretsManagerFactory {
     if (secretsManager != null) {
       return secretsManager;
     }
+    SecretsManager.SecretsConfig secretsConfig =
+        new SecretsManager.SecretsConfig(
+            clusterName, config.getPrefix(), config.getTags(), config.getParameters());
     SecretsManagerProvider secretsManagerProvider =
         config != null && config.getSecretsManager() != null
             ? config.getSecretsManager()
-            : SecretsManagerProvider.NOOP;
+            : SecretsManagerProvider.DB;
+
     switch (secretsManagerProvider) {
-      case NOOP:
+      case DB:
       case AWS_SSM:
       case AWS:
         /*
@@ -46,22 +50,20 @@ public class SecretsManagerFactory {
         If for example we want to set the AWS SSM (non-managed) we configure
         the server as `secretsManager: aws-ssm` and set the Airflow env vars
         to connect to AWS SSM as specified in the docs:
-        https://docs.open-metadata.org/v1.0.0/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+        https://docs.open-metadata.org/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
         */
-        secretsManager = NoopSecretsManager.getInstance(clusterName, secretsManagerProvider);
+        secretsManager = DBSecretsManager.getInstance(secretsConfig);
         break;
       case MANAGED_AWS:
-        secretsManager = AWSSecretsManager.getInstance(config, clusterName);
+        secretsManager = AWSSecretsManager.getInstance(secretsConfig);
         break;
       case MANAGED_AWS_SSM:
-        secretsManager = AWSSSMSecretsManager.getInstance(config, clusterName);
+        secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
         break;
       case IN_MEMORY:
-        secretsManager = InMemorySecretsManager.getInstance(clusterName);
+        secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
         break;
       default:
-        throw new IllegalArgumentException(
-            "Not implemented secret manager store: " + secretsManagerProvider);
     }
     return secretsManager;
   }

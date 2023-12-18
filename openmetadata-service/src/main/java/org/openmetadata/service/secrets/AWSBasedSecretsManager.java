@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets;
 
 import org.apache.logging.log4j.util.Strings;
-import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -28,22 +27,25 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
   public static final String REGION = "region";
 
   protected AWSBasedSecretsManager(
-      SecretsManagerProvider awsProvider,
-      SecretsManagerConfiguration config,
-      String clusterPrefix) {
-    super(awsProvider, clusterPrefix, 100);
+      SecretsManagerProvider awsProvider, SecretsConfig secretsConfig) {
+    super(awsProvider, secretsConfig, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
-    if (config != null
-        && config.getParameters() != null
+    if (secretsConfig != null
+        && secretsConfig.parameters() != null
         && !Strings.isBlank(
-            (String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, ""))) {
+            (String)
+                secretsConfig.parameters().getAdditionalProperties().getOrDefault(REGION, ""))) {
       String region =
-          (String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, "");
+          (String) secretsConfig.parameters().getAdditionalProperties().getOrDefault(REGION, "");
       String accessKeyId =
-          (String) config.getParameters().getAdditionalProperties().getOrDefault(ACCESS_KEY_ID, "");
+          (String)
+              secretsConfig.parameters().getAdditionalProperties().getOrDefault(ACCESS_KEY_ID, "");
       String secretAccessKey =
           (String)
-              config.getParameters().getAdditionalProperties().getOrDefault(SECRET_ACCESS_KEY, "");
+              secretsConfig
+                  .parameters()
+                  .getAdditionalProperties()
+                  .getOrDefault(SECRET_ACCESS_KEY, "");
       AwsCredentialsProvider credentialsProvider;
       if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
         credentialsProvider = DefaultCredentialsProvider.create();

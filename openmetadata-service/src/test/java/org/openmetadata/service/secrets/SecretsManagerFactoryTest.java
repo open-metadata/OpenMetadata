@@ -36,22 +36,22 @@ public class SecretsManagerFactoryTest {
   void testDefaultIsCreatedIfNullConfig() {
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof NoopSecretsManager);
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof NoopSecretsManager);
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
-    config.setSecretsManager(SecretsManagerProvider.NOOP);
+    config.setSecretsManager(SecretsManagerProvider.DB);
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof NoopSecretsManager);
+            instanceof DBSecretsManager);
   }
 
   @Test
@@ -59,7 +59,7 @@ public class SecretsManagerFactoryTest {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof NoopSecretsManager);
+            instanceof DBSecretsManager);
   }
 
   @Test
@@ -75,7 +75,7 @@ public class SecretsManagerFactoryTest {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof NoopSecretsManager);
+            instanceof DBSecretsManager);
   }
 
   @Test
