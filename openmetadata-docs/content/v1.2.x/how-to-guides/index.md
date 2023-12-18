@@ -1,17 +1,11 @@
 ---
-title: How to Guides
+title: How-to Guides
 slug: /how-to-guides
 ---
 
-# How to Guides
+# How-to Guides
 
-The How to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities. 
-
-# Overview of OpenMetadata
-
-## What is OpenMetadata?
-
-OpenMetadata is a **unified platform for discovery, observability, and governance** powered by a central metadata repository, in-depth lineage, and seamless team collaboration. It is one of the fastest-growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Based on Open Metadata Standards and APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
+The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.
 
 ## Features in OpenMetadata
 
@@ -93,7 +87,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Enhance organizational **[Data Culture](/how-to-guides/data-insights)** to gain crucial insights to drive innovation.
 
-- Define your **[Glossary](/how-to-guides/data-governance/glossary-classification)** to build a common understanding of terms within your organization.
+- Define your **[Glossary](/how-to-guides/data-governance/glossary)** to build a common understanding of terms within your organization.
 
 - Implement **[Data Governance](/how-to-guides/data-governance)** to maintain data integrity, security, and compliance.
 
