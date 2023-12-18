@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createCustomProperty.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateCustomPropertyRequest",
+  "description": "Create Custom Property Model entity request",
+  "type": "object",
+  "definitions": {
+    "propertyType": {
+      "description": "Property Type",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Property type",
+          "type": "string",
+          "default": "type"
+        },
+        "id": {
+          "description": "Unique identifier of this instance.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      }
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Custom Property model.",
+      "$ref": "../../entity/data/container.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of the Container instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "propertyType": {
+      "description": "Property Type",
+      "$ref": "#/definitions/propertyType"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

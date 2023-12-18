@@ -40,8 +40,8 @@ logger = ingestion_logger()
 def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
-    tag_description: Optional[str],
-    classification_description: Optional[str],
+    tag_description: Optional[str] = None,
+    classification_description: Optional[str] = None,
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
