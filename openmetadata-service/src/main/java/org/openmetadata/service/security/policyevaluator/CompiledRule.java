@@ -18,7 +18,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 /** This class is used in a single threaded model and hence does not have concurrency support */
 @Slf4j
@@ -55,10 +54,8 @@ public class CompiledRule extends Rule {
     }
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
-    SimpleEvaluationContext evaluationContext =
-        SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
     try {
-      expression.getValue(evaluationContext, clz);
+      expression.getValue(ruleEvaluator,  clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
@@ -219,9 +216,7 @@ public class CompiledRule extends Rule {
       return true;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
-    SimpleEvaluationContext evaluationContext =
-        SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
-    return Boolean.TRUE.equals(expr.getValue(evaluationContext, Boolean.class));
+    return Boolean.TRUE.equals(expr.getValue(ruleEvaluator, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {
