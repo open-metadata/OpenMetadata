@@ -12,11 +12,7 @@ import os
 from unittest import TestCase, mock
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    AuthProvider,
     OpenMetadataConnection,
-)
-from metadata.generated.schema.security.client.googleSSOClientConfig import (
-    GoogleSSOClientConfig,
 )
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -52,16 +48,7 @@ class OMetaSecretManagerTest(TestCase):
 
     def test_ometa_with_local_secret_manager(self):
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
-        assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
-
-    def test_ometa_with_local_secret_manager_with_google_auth(self):
-        self.local_server_config.authProvider = AuthProvider.google
-        self.local_server_config.securityConfig = GoogleSSOClientConfig(
-            secretKey="/fake/path"
-        )
-        self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
+        assert type(self.metadata.secrets_manager_client) is DBSecretsManager
         assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
 
     @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
