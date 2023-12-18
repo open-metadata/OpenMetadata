@@ -1,0 +1,85 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/AlationConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "AlationConnection",
+    "description": "Alation Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.metadata.AlationConnection",
+    "definitions": {
+      "alationType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Alation"],
+        "default": "Alation"
+      }
+    },
+    "properties": {
+      "type": {
+        "description": "Service Type",
+        "$ref": "#/definitions/alationType",
+        "default": "Alation"
+      },
+      "hostPort": {
+        "description": "Host and port of the Alation service.",
+        "title": "Host and Port",
+        "type": "string",
+        "format": "uri",
+        "expose": true
+      },
+      "authType": {
+        "mask": true,
+        "title": "Authentication type for Alation",
+        "description": "Types of methods used to authenticate to the alation instance",
+        "oneOf": [
+          {
+            "$ref": "../../../../security/credentials/basicAuth.json"
+          },
+          {
+            "$ref": "../../../../security/credentials/apiAccessTokenAuth.json"
+          }
+        ]
+      },
+      "projectName": {
+        "title": "Project Name",
+        "description": "Project name to create the refreshToken. Can be anything",
+        "type": "string",
+        "default": "AlationAPI"
+      },
+      "paginationLimit": {
+        "title": "Pagination Limit",
+        "description": "Pagination limit used for Alation APIs pagination",
+        "type": "integer",
+        "default": 10
+      },
+      "includeUndeployedDatasources": {
+        "title": "Include Undeployed Datasources",
+        "description": "Specifies if undeployed datasources should be included while ingesting.",
+        "type": "boolean",
+        "default": false
+      },
+      "includeHiddenDatasources": {
+        "title": "Include Hidden Datasources",
+        "description": "Specifies if hidden datasources should be included while ingesting.",
+        "type": "boolean",
+        "default": false
+      },
+      "alationTagClassificationName": {
+        "title": "Alation Tags Classification Name",
+        "description": "Custom OpenMetadata Classification name for alation tags.",
+        "type": "string",
+        "default": "alationTags"
+      },
+      "connectionOptions": {
+        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+      },
+      "connectionArguments": {
+        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+      },
+      "supportsMetadataExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "required": ["hostPort", "authType"],
+    "additionalProperties": false
+  }
+  

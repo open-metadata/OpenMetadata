@@ -1,0 +1,14 @@
+{
+    "name": "Alation",
+    "displayName": "Alation Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the Alation APIs are reachable with the given credentials.",
+            "errorMessage": "Failed to connect to Alation, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}
