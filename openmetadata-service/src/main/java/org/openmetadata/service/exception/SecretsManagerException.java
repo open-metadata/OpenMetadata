@@ -24,6 +24,10 @@ public class SecretsManagerException extends WebServiceException {
     super(Response.Status.INTERNAL_SERVER_ERROR, message);
   }
 
+  public SecretsManagerException(Response.Status status, String message) {
+    super(status.getStatusCode(), message);
+  }
+
   public static SecretsManagerException byMessage(String secretManager, String connectionType, String errorMessage) {
     return new SecretsManagerException(buildMessageByName(secretManager, connectionType, errorMessage));
   }
