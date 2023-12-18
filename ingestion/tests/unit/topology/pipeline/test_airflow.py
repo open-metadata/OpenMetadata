@@ -178,7 +178,7 @@ class TestAirflow(TestCase):
         """
 
         pipeline_data = {"schedule_interval": None}
-        self.assertEqual(get_schedule_interval(pipeline_data), None)
+        self.assertIsNone(get_schedule_interval(pipeline_data))
 
         pipeline_data = {"schedule_interval": {"__var": 86400.0, "__type": "timedelta"}}
         self.assertEqual(get_schedule_interval(pipeline_data), "1 day, 0:00:00")
