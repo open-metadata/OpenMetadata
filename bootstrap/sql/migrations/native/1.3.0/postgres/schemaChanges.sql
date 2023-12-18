@@ -49,3 +49,13 @@ SET json = jsonb_set(
 WHERE serviceType = 'Airflow'
 AND json #>> '{connection,config,connection,type}' = 'Mssql';
 
+-- Rename NOOP Secret Manager to DB
+update metadata_service_entity
+set json = jsonb_set(
+  json #- '{connection,config,secretsManagerProvider}',
+  '{connection,config,secretsManagerProvider}',
+  '"db"',
+  true
+)
+where name = 'OpenMetadata'
+  and json #>> '{connection,config,secretsManagerProvider}' = 'noop';
