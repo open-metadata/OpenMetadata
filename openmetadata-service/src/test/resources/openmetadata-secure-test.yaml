@@ -112,7 +112,7 @@ migrationConfiguration:
 #  port: 0
 
 secretsManagerConfiguration:
-  secretsManager: noop
+  secretsManager: db
 
 
 health:

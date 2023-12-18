@@ -278,7 +278,9 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-noop} # Possible values are "noop", "aws", "aws-ssm"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws", "managed-aws-ssm"
+  prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
+  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource, e.g., in AWS. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
   parameters:
     region: ${OM_SM_REGION:-""}

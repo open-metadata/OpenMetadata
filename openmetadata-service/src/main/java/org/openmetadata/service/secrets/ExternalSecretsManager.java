@@ -22,8 +22,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
-      SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
-    super(secretsManagerProvider, clusterPrefix);
+      SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig, long waitTimeBetweenCalls) {
+    super(secretsManagerProvider, secretsConfig);
     waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }
 

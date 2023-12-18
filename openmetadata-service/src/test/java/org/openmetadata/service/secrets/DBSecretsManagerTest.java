@@ -20,6 +20,7 @@ import static org.openmetadata.schema.api.services.CreateDatabaseService.Databas
 import static org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType.Sklearn;
 import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,15 +36,17 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
-public class NoopSecretsManagerTest {
+public class DBSecretsManagerTest {
 
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
-  private static NoopSecretsManager secretsManager;
+  private static DBSecretsManager secretsManager;
 
   @BeforeAll
   static void setUp() {
-    secretsManager = NoopSecretsManager.getInstance("openmetadata", SecretsManagerProvider.NOOP);
+    secretsManager =
+        DBSecretsManager.getInstance(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
@@ -83,7 +86,7 @@ public class NoopSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(SecretsManagerProvider.NOOP, secretsManager.getSecretsManagerProvider());
+    assertEquals(SecretsManagerProvider.DB, secretsManager.getSecretsManagerProvider());
   }
 
   private void testEncryptServiceConnection() {

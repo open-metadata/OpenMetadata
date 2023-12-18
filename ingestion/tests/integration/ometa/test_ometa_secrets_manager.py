@@ -30,7 +30,7 @@ from metadata.ingestion.ometa.auth_provider import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.singleton import Singleton
 
 
@@ -55,7 +55,7 @@ class OMetaSecretManagerTest(TestCase):
 
     def test_ometa_with_local_secret_manager(self):
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
+        assert type(self.metadata.secrets_manager_client) is DBSecretsManager
         assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
 
     def test_ometa_with_local_secret_manager_with_google_auth(self):
@@ -64,7 +64,7 @@ class OMetaSecretManagerTest(TestCase):
             secretKey="/fake/path"
         )
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
+        assert type(self.metadata.secrets_manager_client) is DBSecretsManager
         assert type(self.metadata._auth_provider) is GoogleAuthenticationProvider
 
     @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)

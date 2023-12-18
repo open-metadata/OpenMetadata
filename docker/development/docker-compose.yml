@@ -148,7 +148,7 @@ services:
       FERNET_KEY: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
       #secretsManagerConfiguration
-      SECRET_MANAGER: ${SECRET_MANAGER:-noop}
+      SECRET_MANAGER: ${SECRET_MANAGER:-db}
       #parameters:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
@@ -296,7 +296,7 @@ services:
       FERNET_KEY: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
       #secretsManagerConfiguration
-      SECRET_MANAGER: ${SECRET_MANAGER:-noop}
+      SECRET_MANAGER: ${SECRET_MANAGER:-db}
       #parameters:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}

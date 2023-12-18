@@ -38,3 +38,14 @@ SET json = jsonb_set(
 	to_jsonb(false)
 )
 where name = 'DataInsightsApplication';
+
+-- Rename NOOP Secret Manager to DB
+update metadata_service_entity
+set json = jsonb_set(
+  json #- '{connection,config,secretsManagerProvider}',
+  '{connection,config,secretsManagerProvider}',
+  '"db"',
+  true
+)
+where name = 'OpenMetadata'
+  and json #>> '{connection,config,secretsManagerProvider}' = 'noop';

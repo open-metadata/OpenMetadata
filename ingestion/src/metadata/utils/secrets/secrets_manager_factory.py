@@ -23,7 +23,7 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.client.loader import secrets_manager_client_loader
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.singleton import Singleton
 
@@ -85,9 +85,9 @@ class SecretsManagerFactory(metaclass=Singleton):
         """
         if (
             secrets_manager_provider is None
-            or secrets_manager_provider == SecretsManagerProvider.noop
+            or secrets_manager_provider == SecretsManagerProvider.db
         ):
-            return NoopSecretsManager()
+            return DBSecretsManager()
         if secrets_manager_provider in (
             SecretsManagerProvider.aws,
             SecretsManagerProvider.managed_aws,

@@ -155,7 +155,7 @@ public class PipelineServiceResourceTest extends ServiceResourceTest<PipelineSer
             createEntity(
                 createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow. Did the Fernet Key change?]");
+        String.format("Failed to convert [%s] to type [Airflow]. Review the connection.", getEntityName(test)));
   }
 
   @Test
