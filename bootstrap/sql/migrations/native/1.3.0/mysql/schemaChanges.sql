@@ -31,3 +31,9 @@ set json = JSON_INSERT(
   false
 )
 where name = 'DataInsightsApplication';
+
+-- Rename NOOP Secret Manager to DB
+update metadata_service_entity
+set json = JSON_REPLACE(json, '$.connection.config.secretsManagerProvider', 'db')
+where name = 'OpenMetadata'
+  and JSON_EXTRACT(json, '$.connection.config.secretsManagerProvider') = 'noop';
