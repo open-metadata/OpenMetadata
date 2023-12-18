@@ -63,7 +63,11 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     postReportData(reportData, ADMIN_AUTH_HEADERS);
 
     ResultList<ReportData> reportDataList =
-        getReportData("2022-10-10", "2022-10-12", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+        getReportData(
+            "2022-10-10",
+            "2022-10-12",
+            ReportData.ReportDataType.ENTITY_REPORT_DATA,
+            ADMIN_AUTH_HEADERS);
 
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
@@ -115,7 +119,10 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ResultList<ReportData> reportDataList =
         getReportData(
-            "2022-10-10", "2022-10-12", ReportData.ReportDataType.ENTITY_REPORT_DATA, INGESTION_BOT_AUTH_HEADERS);
+            "2022-10-10",
+            "2022-10-12",
+            ReportData.ReportDataType.ENTITY_REPORT_DATA,
+            INGESTION_BOT_AUTH_HEADERS);
 
     assertNotEquals(0, reportDataList.getData().size());
   }
@@ -158,7 +165,11 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     // check we have our data
     ResultList<ReportData> entityReportDataList =
-        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+        getReportData(
+            "2022-10-15",
+            "2022-10-16",
+            ReportData.ReportDataType.ENTITY_REPORT_DATA,
+            ADMIN_AUTH_HEADERS);
     ResultList<ReportData> webAnalyticsReportDataList =
         getReportData(
             "2022-10-15",
@@ -178,9 +189,14 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     }
 
     // delete the entity report data and check that it has been deleted
-    deleteReportData(ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-15", ADMIN_AUTH_HEADERS);
+    deleteReportData(
+        ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-15", ADMIN_AUTH_HEADERS);
     entityReportDataList =
-        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+        getReportData(
+            "2022-10-15",
+            "2022-10-16",
+            ReportData.ReportDataType.ENTITY_REPORT_DATA,
+            ADMIN_AUTH_HEADERS);
     assertEquals(0, entityReportDataList.getData().size());
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       // Check document has been deleted from elasticsearch
@@ -196,13 +212,17 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
   }
 
-  public void postReportData(ReportData reportData, Map<String, String> authHeader) throws HttpResponseException {
+  public void postReportData(ReportData reportData, Map<String, String> authHeader)
+      throws HttpResponseException {
     WebTarget target = getResource(collectionName);
     TestUtils.post(target, reportData, ReportData.class, 200, authHeader);
   }
 
   public ResultList<ReportData> getReportData(
-      String startDate, String endDate, ReportData.ReportDataType reportDataType, Map<String, String> authHeader)
+      String startDate,
+      String endDate,
+      ReportData.ReportDataType reportDataType,
+      Map<String, String> authHeader)
       throws HttpResponseException, ParseException {
     WebTarget target = getResource(collectionName);
     target = target.queryParam("startTs", TestUtils.dateToTimestamp(startDate));
@@ -231,7 +251,8 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     return new ObjectMapper().readTree(response.getEntity().getContent());
   }
 
-  private void assertDocumentCountEquals(String query, String index, Integer count) throws IOException {
+  private void assertDocumentCountEquals(String query, String index, Integer count)
+      throws IOException {
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();
     assertEquals(count, docCount);

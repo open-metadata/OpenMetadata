@@ -42,7 +42,10 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   @Override
   void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.secretsClient =
-        SecretsManagerClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
+        SecretsManagerClient.builder()
+            .region(Region.of(region))
+            .credentialsProvider(staticCredentialsProvider)
+            .build();
   }
 
   @Override
@@ -69,17 +72,20 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
 
   @Override
   public String getSecret(String secretName) {
-    GetSecretValueRequest getSecretValueRequest = GetSecretValueRequest.builder().secretId(secretName).build();
+    GetSecretValueRequest getSecretValueRequest =
+        GetSecretValueRequest.builder().secretId(secretName).build();
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
   }
 
   @Override
   protected void deleteSecretInternal(String secretName) {
-    DeleteSecretRequest deleteSecretRequest = DeleteSecretRequest.builder().secretId(secretName).build();
+    DeleteSecretRequest deleteSecretRequest =
+        DeleteSecretRequest.builder().secretId(secretName).build();
     this.secretsClient.deleteSecret(deleteSecretRequest);
   }
 
-  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
+  public static AWSSecretsManager getInstance(
+      SecretsManagerConfiguration config, String clusterPrefix) {
     if (instance == null) {
       instance = new AWSSecretsManager(config, clusterPrefix);
     }

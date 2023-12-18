@@ -22,7 +22,8 @@ public class NoopSecretsManager extends SecretsManager {
     super(secretsManagerProvider, clusterPrefix);
   }
 
-  public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+  public static NoopSecretsManager getInstance(
+      String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
     if (instance == null) {
       instance = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
     }

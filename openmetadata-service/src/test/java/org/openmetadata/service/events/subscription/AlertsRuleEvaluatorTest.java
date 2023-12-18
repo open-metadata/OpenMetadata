@@ -45,7 +45,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType("alert");
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(evaluateExpression("matchAnySource('alert')", evaluationContext));
     assertFalse(evaluateExpression("matchAnySource('bot')", evaluationContext));
   }
@@ -55,7 +58,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Create Table Entity
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create =
-        tableResourceTest.createRequest(test).withColumns(columns).withOwner(EntityResourceTest.USER1_REF);
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(columns)
+            .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create a change Event with the Entity Table
@@ -65,9 +71,13 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Owner Name Present in list and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(
-        evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", evaluationContext));
+        evaluateExpression(
+            "matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", evaluationContext));
     assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", evaluationContext));
   }
 
@@ -85,7 +95,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Entity Fqn in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     String fqn = createdTable.getFullyQualifiedName();
     assertTrue(evaluateExpression("matchAnyEntityFqn('" + fqn + "')", evaluationContext));
     assertFalse(evaluateExpression("matchAnyEntityFqn('testFQN1')", evaluationContext));
@@ -105,10 +118,14 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Entity Id in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     String id = createdTable.getId().toString();
     assertTrue(evaluateExpression("matchAnyEntityId('" + id + "')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", evaluationContext));
+    assertFalse(
+        evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", evaluationContext));
   }
 
   @Test
@@ -119,7 +136,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Check if eventType present in list or absent from the list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(evaluateExpression("matchAnyEventType('entityCreated')", evaluationContext));
     assertFalse(evaluateExpression("matchAnyEventType('entityUpdated')", evaluationContext));
   }
@@ -142,7 +162,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test If Test Result status matches in list and if status not matches
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(evaluateExpression("matchTestResult('Success')", evaluationContext));
     assertFalse(evaluateExpression("matchTestResult('Failed')", evaluationContext));
   }
@@ -155,7 +178,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test if the username is in list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(evaluateExpression("matchUpdatedBy('test')", evaluationContext));
     assertFalse(evaluateExpression("matchUpdatedBy('test1')", evaluationContext));
   }
@@ -172,7 +198,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test if the updated field matches from the list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(alertsRuleEvaluator).build();
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
     assertTrue(evaluateExpression("matchAnyFieldChange('test')", evaluationContext));
     assertFalse(evaluateExpression("matchAnyFieldChange('temp')", evaluationContext));
   }

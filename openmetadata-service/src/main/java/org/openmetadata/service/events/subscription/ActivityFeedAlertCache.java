@@ -37,7 +37,8 @@ public class ActivityFeedAlertCache {
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
     @Override
     public EventSubscription load(@CheckForNull String alertName) {
-      EventSubscription alert = Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
+      EventSubscription alert =
+          Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
       LOG.debug("Loaded Alert {}", alert);
       return alert;
     }

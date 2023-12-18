@@ -24,12 +24,15 @@ public class SecretsManagerFactory {
   private SecretsManagerFactory() {}
 
   /** Expected to be called only once when the Application starts */
-  public static SecretsManager createSecretsManager(SecretsManagerConfiguration config, String clusterName) {
+  public static SecretsManager createSecretsManager(
+      SecretsManagerConfiguration config, String clusterName) {
     if (secretsManager != null) {
       return secretsManager;
     }
     SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.NOOP;
+        config != null && config.getSecretsManager() != null
+            ? config.getSecretsManager()
+            : SecretsManagerProvider.NOOP;
     switch (secretsManagerProvider) {
       case NOOP:
       case AWS_SSM:
@@ -57,7 +60,8 @@ public class SecretsManagerFactory {
         secretsManager = InMemorySecretsManager.getInstance(clusterName);
         break;
       default:
-        throw new IllegalArgumentException("Not implemented secret manager store: " + secretsManagerProvider);
+        throw new IllegalArgumentException(
+            "Not implemented secret manager store: " + secretsManagerProvider);
     }
     return secretsManager;
   }

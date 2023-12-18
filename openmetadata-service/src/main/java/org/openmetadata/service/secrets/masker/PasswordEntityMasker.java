@@ -36,25 +36,30 @@ public class PasswordEntityMasker extends EntityMasker {
 
   protected PasswordEntityMasker() {}
 
-  public Object maskServiceConnectionConfig(Object connectionConfig, String connectionType, ServiceType serviceType) {
+  public Object maskServiceConnectionConfig(
+      Object connectionConfig, String connectionType, ServiceType serviceType) {
     if (connectionConfig != null) {
       try {
         Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-        Object convertedConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+        Object convertedConnectionConfig =
+            ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
-        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, true);
+        String message =
+            SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, true);
         if (message != null) {
           throw new EntityMaskException(message);
         }
-        throw new EntityMaskException(String.format("Failed to mask connection instance of %s", connectionType));
+        throw new EntityMaskException(
+            String.format("Failed to mask connection instance of %s", connectionType));
       }
     }
     return null;
   }
 
-  public void maskAuthenticationMechanism(String name, AuthenticationMechanism authenticationMechanism) {
+  public void maskAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
@@ -72,7 +77,8 @@ public class PasswordEntityMasker extends EntityMasker {
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {
         throw new EntityMaskException(
-            String.format("Failed to mask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+            String.format(
+                "Failed to mask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
       }
     }
   }
@@ -80,11 +86,13 @@ public class PasswordEntityMasker extends EntityMasker {
   @Override
   public Workflow maskWorkflow(Workflow workflow) {
     if (workflow != null) {
-      Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+      Workflow workflowConverted =
+          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       try {
         maskPasswordFields(workflowConverted);
       } catch (Exception e) {
-        throw new EntityMaskException(String.format("Failed to mask workflow instance [%s]", workflow.getName()));
+        throw new EntityMaskException(
+            String.format("Failed to mask workflow instance [%s]", workflow.getName()));
       }
       return workflowConverted;
     }
@@ -92,22 +100,28 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   public Object unmaskServiceConnectionConfig(
-      Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType) {
+      Object connectionConfig,
+      Object originalConnectionConfig,
+      String connectionType,
+      ServiceType serviceType) {
     if (originalConnectionConfig != null && connectionConfig != null) {
       try {
         Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
         Object toUnmaskConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
-        Object originalConvertedConfig = ClassConverterFactory.getConverter(clazz).convert(originalConnectionConfig);
+        Object originalConvertedConfig =
+            ClassConverterFactory.getConverter(clazz).convert(originalConnectionConfig);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
       } catch (Exception e) {
-        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
+        String message =
+            SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
         if (message != null) {
           throw new EntityMaskException(message);
         }
-        throw new EntityMaskException(String.format("Failed to unmask connection instance of %s", connectionType));
+        throw new EntityMaskException(
+            String.format("Failed to unmask connection instance of %s", connectionType));
       }
     }
     return connectionConfig;
@@ -124,7 +138,8 @@ public class PasswordEntityMasker extends EntityMasker {
         unmaskPasswordFields(ingestionPipeline, NEW_KEY, passwordsMap);
       } catch (Exception e) {
         throw new EntityMaskException(
-            String.format("Failed to unmask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+            String.format(
+                "Failed to unmask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
       }
     }
   }
@@ -141,7 +156,8 @@ public class PasswordEntityMasker extends EntityMasker {
         buildPasswordsMap(originalAuthenticationMechanism, NEW_KEY, passwordsMap);
         unmaskPasswordFields(authenticationMechanism, NEW_KEY, passwordsMap);
       } catch (Exception e) {
-        throw new EntityMaskException(String.format("Failed to unmask auth mechanism instance [%s]", name));
+        throw new EntityMaskException(
+            String.format("Failed to unmask auth mechanism instance [%s]", name));
       }
     }
   }
@@ -149,7 +165,8 @@ public class PasswordEntityMasker extends EntityMasker {
   @Override
   public Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow) {
     if (workflow != null && originalWorkflow != null) {
-      Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+      Workflow workflowConverted =
+          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       Workflow origWorkflowConverted =
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(originalWorkflow);
       try {
@@ -158,7 +175,8 @@ public class PasswordEntityMasker extends EntityMasker {
         unmaskPasswordFields(workflowConverted, NEW_KEY, passwordsMap);
         return workflowConverted;
       } catch (Exception e) {
-        throw new EntityMaskException(String.format("Failed to unmask workflow instance [%s]", workflow.getName()));
+        throw new EntityMaskException(
+            String.format("Failed to unmask workflow instance [%s]", workflow.getName()));
       }
     }
     return workflow;
@@ -188,7 +206,8 @@ public class PasswordEntityMasker extends EntityMasker {
     }
   }
 
-  private void unmaskPasswordFields(Object toUnmaskObject, String key, Map<String, String> passwordsMap) {
+  private void unmaskPasswordFields(
+      Object toUnmaskObject, String key, Map<String, String> passwordsMap) {
     if (!DO_NOT_MASK_CLASSES.contains(toUnmaskObject.getClass())) {
       // for each get method
       Arrays.stream(toUnmaskObject.getClass().getMethods())

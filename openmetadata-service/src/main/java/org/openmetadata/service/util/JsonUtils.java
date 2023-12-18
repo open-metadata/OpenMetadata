@@ -67,7 +67,8 @@ public final class JsonUtils {
   private static final ObjectMapper OBJECT_MAPPER;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
-  private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
+  private static final JsonSchemaFactory schemaFactory =
+      JsonSchemaFactory.getInstance(VersionFlag.V7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON";
 
   static {
@@ -188,30 +189,36 @@ public final class JsonUtils {
     // -----------------------------------------------------------
     // JSON patch modification 1 - Reorder the operations
     // -----------------------------------------------------------
-    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the following operation:
+    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the
+    // following operation:
     // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
     // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
     // {"op":"remove","path":"/tags/1"}
     // {"op":"remove","path":"/tags/2"}
     // Removes second array element in a 3 array field /tags/1
-    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the second element and
-    // now array of length 2 and there is no third element to remove. The patch operation fails with "array index not
+    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the
+    // second element and
+    // now array of length 2 and there is no third element to remove. The patch operation fails with
+    // "array index not
     // found error".
     //
     // The same applies to add operation as well. Example, the following operation:
     // {"op":"add","path":"/tags/2"}
     // {"op":"add","path":"/tags/1"}
-    // It will try to add element in index 2 before adding element in index 1 and the patch operation fails with
+    // It will try to add element in index 2 before adding element in index 1 and the patch
+    // operation fails with
     // "contains no element for index 1" error.
     //
-    // Reverse sorting the remove operations and sorting all the other operations including "add" by "path" fields
+    // Reverse sorting the remove operations and sorting all the other operations including "add" by
+    // "path" fields
     // before applying the patch as a workaround.
     //
     // ---------------------------------------------------------------------
     // JSON patch modification 2 - Ignore operations related to href patch
     // ---------------------------------------------------------------------
     // Another important modification to patch operation:
-    // Ignore all the patch operations related to the href path as href path is read only and is auto generated
+    // Ignore all the patch operations related to the href path as href path is read only and is
+    // auto generated
     // by removing those operations from patch operation array
     //
     JsonArray array = patch.toJsonArray();
@@ -344,7 +351,8 @@ public final class JsonUtils {
     try {
       jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/entity/.*\\.json$");
     } catch (IOException e) {
-      throw new UnhandledServerException("Failed to read JSON resources at .*json/schema/entity", e);
+      throw new UnhandledServerException(
+          "Failed to read JSON resources at .*json/schema/entity", e);
     }
     for (String jsonSchema : jsonSchemas) {
       try {
@@ -368,7 +376,8 @@ public final class JsonUtils {
     try {
       node =
           OBJECT_MAPPER.readTree(
-              Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+              Objects.requireNonNull(
+                  JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
     } catch (IOException e) {
       throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
@@ -410,7 +419,8 @@ public final class JsonUtils {
     try {
       node =
           OBJECT_MAPPER.readTree(
-              Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+              Objects.requireNonNull(
+                  JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
     } catch (IOException e) {
       throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
@@ -493,10 +503,18 @@ public final class JsonUtils {
     try {
       ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
       JsonNode obj1sorted =
-          mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));
+          mapper
+              .reader()
+              .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+              .readTree(pojoToJson(obj1));
       JsonNode obj2sorted =
-          mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj2));
-      return OBJECT_MAPPER.writeValueAsString(obj1sorted).equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
+          mapper
+              .reader()
+              .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+              .readTree(pojoToJson(obj2));
+      return OBJECT_MAPPER
+          .writeValueAsString(obj1sorted)
+          .equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }

@@ -52,7 +52,8 @@ public class AbstractNativeApplication implements NativeApplication {
   private @Getter App app;
   protected SearchRepository searchRepository;
   private final @Getter CronMapper cronMapper = CronMapper.fromQuartzToUnix();
-  private final @Getter CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
+  private final @Getter CronParser cronParser =
+      new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -66,9 +67,11 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void install() {
-    if (app.getAppType() == AppType.Internal && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getAppType() == AppType.Internal
+        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       scheduleInternal();
-    } else if (app.getAppType() == AppType.External && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    } else if (app.getAppType() == AppType.External
+        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       scheduleExternal();
     }
   }
@@ -101,21 +104,28 @@ public class AbstractNativeApplication implements NativeApplication {
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
     } catch (EntityNotFoundException ex) {
-      ApplicationConfig config = JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
+      ApplicationConfig config =
+          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
 
-  private void bindExistingIngestionToApplication(IngestionPipelineRepository ingestionPipelineRepository) {
+  private void bindExistingIngestionToApplication(
+      IngestionPipelineRepository ingestionPipelineRepository) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline storedPipeline =
-        ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
+        ingestionPipelineRepository.getByName(
+            null, fqn, ingestionPipelineRepository.getFields("id"));
 
     // Init Application Code for Some Initialization
     List<CollectionDAO.EntityRelationshipRecord> records =
         collectionDAO
             .relationshipDAO()
-            .findTo(this.getApp().getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
+            .findTo(
+                this.getApp().getId(),
+                Entity.APPLICATION,
+                Relationship.HAS.ordinal(),
+                Entity.INGESTION_PIPELINE);
 
     if (records.isEmpty()) {
       // Add Ingestion Pipeline to Application
@@ -139,7 +149,8 @@ public class AbstractNativeApplication implements NativeApplication {
             .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
             .getEntityReference();
 
-    Cron quartzCron = this.getCronParser().parse(this.getApp().getAppSchedule().getCronExpression());
+    Cron quartzCron =
+        this.getCronParser().parse(this.getApp().getAppSchedule().getCronExpression());
 
     CreateIngestionPipeline createPipelineRequest =
         new CreateIngestionPipeline()
@@ -154,12 +165,14 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(config)))
             .withAirflowConfig(
-                new AirflowConfig().withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))
+                new AirflowConfig()
+                    .withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))
             .withService(service);
 
     // Get Pipeline
     IngestionPipeline ingestionPipeline =
-        getIngestionPipeline(createPipelineRequest, String.format("%sBot", this.getApp().getName()), "admin")
+        getIngestionPipeline(
+                createPipelineRequest, String.format("%sBot", this.getApp().getName()), "admin")
             .withProvider(ProviderType.USER);
     ingestionPipelineRepository.setFullyQualifiedName(ingestionPipeline);
     ingestionPipelineRepository.initializeEntity(ingestionPipeline);
@@ -193,9 +206,11 @@ public class AbstractNativeApplication implements NativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
     App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
-    CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
+    CollectionDAO dao =
+        (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
     SearchRepository searchRepositoryForJob =
-        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+        (SearchRepository)
+            jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
     // Initialise the Application
     this.init(jobApp, dao, searchRepositoryForJob);
 
@@ -212,11 +227,13 @@ public class AbstractNativeApplication implements NativeApplication {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botName, String user) {
+  protected IngestionPipeline getIngestionPipeline(
+      CreateIngestionPipeline create, String botName, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
+        new OpenMetadataConnectionBuilder(
+                ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
             .build();
     return ingestionPipelineRepository
         .copy(new IngestionPipeline(), create, user)
@@ -228,8 +245,10 @@ public class AbstractNativeApplication implements NativeApplication {
         .withService(create.getService());
   }
 
-  private OmAppJobListener getJobListener(JobExecutionContext jobExecutionContext) throws SchedulerException {
-    return (OmAppJobListener) jobExecutionContext.getScheduler().getListenerManager().getJobListener(JOB_LISTENER_NAME);
+  private OmAppJobListener getJobListener(JobExecutionContext jobExecutionContext)
+      throws SchedulerException {
+    return (OmAppJobListener)
+        jobExecutionContext.getScheduler().getListenerManager().getJobListener(JOB_LISTENER_NAME);
   }
 
   @SneakyThrows
@@ -239,7 +258,8 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @SneakyThrows
-  protected void pushAppStatusUpdates(JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
+  protected void pushAppStatusUpdates(
+      JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
     listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
   }

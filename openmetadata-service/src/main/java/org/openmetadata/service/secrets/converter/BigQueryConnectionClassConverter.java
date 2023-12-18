@@ -27,7 +27,8 @@ public class BigQueryConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    BigQueryConnection bigQueryConnection = (BigQueryConnection) JsonUtils.convertValue(object, this.clazz);
+    BigQueryConnection bigQueryConnection =
+        (BigQueryConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(bigQueryConnection.getCredentials(), List.of(GCPCredentials.class))
         .ifPresent(obj -> bigQueryConnection.setCredentials((GCPCredentials) obj));

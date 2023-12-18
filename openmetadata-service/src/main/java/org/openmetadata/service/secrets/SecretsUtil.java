@@ -38,7 +38,11 @@ public final class SecretsUtil {
   }
 
   public static String buildExceptionMessageConnection(
-      String exceptionMessage, String type, String firstAction, String secondAction, boolean isFirstAction) {
+      String exceptionMessage,
+      String type,
+      String firstAction,
+      String secondAction,
+      boolean isFirstAction) {
     return buildExceptionMessageUnrecognizedField(
         "Failed to "
             + (isFirstAction ? firstAction : secondAction)
@@ -50,11 +54,13 @@ public final class SecretsUtil {
         type);
   }
 
-  public static String buildExceptionMessageConnection(String exceptionMessage, String type, boolean encrypt) {
+  public static String buildExceptionMessageConnection(
+      String exceptionMessage, String type, boolean encrypt) {
     return buildExceptionMessageConnection(exceptionMessage, type, "encrypt", "decrypt", encrypt);
   }
 
-  public static String buildExceptionMessageConnectionMask(String exceptionMessage, String type, boolean mask) {
+  public static String buildExceptionMessageConnectionMask(
+      String exceptionMessage, String type, boolean mask) {
     return buildExceptionMessageConnection(exceptionMessage, type, "mask", "unmask", mask);
   }
 }

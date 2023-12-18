@@ -28,26 +28,34 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
   public static final String REGION = "region";
 
   protected AWSBasedSecretsManager(
-      SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
+      SecretsManagerProvider awsProvider,
+      SecretsManagerConfiguration config,
+      String clusterPrefix) {
     super(awsProvider, clusterPrefix, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null
         && config.getParameters() != null
-        && !Strings.isBlank((String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, ""))) {
-      String region = (String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, "");
-      String accessKeyId = (String) config.getParameters().getAdditionalProperties().getOrDefault(ACCESS_KEY_ID, "");
+        && !Strings.isBlank(
+            (String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, ""))) {
+      String region =
+          (String) config.getParameters().getAdditionalProperties().getOrDefault(REGION, "");
+      String accessKeyId =
+          (String) config.getParameters().getAdditionalProperties().getOrDefault(ACCESS_KEY_ID, "");
       String secretAccessKey =
-          (String) config.getParameters().getAdditionalProperties().getOrDefault(SECRET_ACCESS_KEY, "");
+          (String)
+              config.getParameters().getAdditionalProperties().getOrDefault(SECRET_ACCESS_KEY, "");
       AwsCredentialsProvider credentialsProvider;
       if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
         credentialsProvider = DefaultCredentialsProvider.create();
       } else {
         credentialsProvider =
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKeyId, secretAccessKey));
       }
       initClientWithCredentials(region, credentialsProvider);
     } else {
-      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials loaded from the
+      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials
+      // loaded from the
       // DefaultCredentialsProvider
       initClientWithoutCredentials();
     }
@@ -55,5 +63,6 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
 
   abstract void initClientWithoutCredentials();
 
-  abstract void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider);
+  abstract void initClientWithCredentials(
+      String region, AwsCredentialsProvider staticCredentialsProvider);
 }

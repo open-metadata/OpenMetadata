@@ -96,7 +96,10 @@ public abstract class ServiceEntityRepository<
     if (service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
           .deleteSecretsFromServiceConnectionConfig(
-              service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
+              service.getConnection().getConfig(),
+              service.getServiceType().value(),
+              service.getName(),
+              serviceType);
     }
   }
 

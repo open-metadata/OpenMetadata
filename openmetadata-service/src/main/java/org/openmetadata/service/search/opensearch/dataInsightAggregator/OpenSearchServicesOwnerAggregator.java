@@ -7,7 +7,8 @@ import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchServicesOwnerAggregator
-    extends ServicesOwnerAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends ServicesOwnerAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
   public OpenSearchServicesOwnerAggregator(Aggregations aggregations) {
     super(aggregations);
   }
@@ -33,7 +34,8 @@ public class OpenSearchServicesOwnerAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

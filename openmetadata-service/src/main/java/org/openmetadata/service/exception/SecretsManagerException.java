@@ -24,11 +24,14 @@ public class SecretsManagerException extends WebServiceException {
     super(Response.Status.INTERNAL_SERVER_ERROR, message);
   }
 
-  public static SecretsManagerException byMessage(String secretManager, String connectionType, String errorMessage) {
-    return new SecretsManagerException(buildMessageByName(secretManager, connectionType, errorMessage));
+  public static SecretsManagerException byMessage(
+      String secretManager, String connectionType, String errorMessage) {
+    return new SecretsManagerException(
+        buildMessageByName(secretManager, connectionType, errorMessage));
   }
 
-  private static String buildMessageByName(String secretManager, String secretName, String errorMessage) {
+  private static String buildMessageByName(
+      String secretManager, String secretName, String errorMessage) {
     return String.format(BY_NAME_MESSAGE, secretManager, secretName, errorMessage);
   }
 }

@@ -26,7 +26,7 @@ repos:
     hooks:
       - id: google-style-java
         name: Google Java Code Style for Java
-        description: Formats code in Google's Java codestyle with 120 line length.
+        description: Formats code in Google's Java codestyle with 100 line length.
         entry: scripts/format-code.sh
         language: script
         files: \.java$

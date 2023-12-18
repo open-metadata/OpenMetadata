@@ -54,7 +54,8 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   String getSecret(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {
-      throw new SecretsManagerException(String.format("Key [%s] not found in in-memory secrets manager", secretName));
+      throw new SecretsManagerException(
+          String.format("Key [%s] not found in in-memory secrets manager", secretName));
     }
     return value;
   }
