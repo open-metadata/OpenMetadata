@@ -367,6 +367,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -396,6 +397,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
+    authorizer.authorizeAdmin(securityContext);
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -469,6 +471,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("eventSubscriptionName")
           String name) {
+    authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return repository.getStatusForEventSubscription(sub.getId());
   }
@@ -494,6 +497,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return repository.getStatusForEventSubscription(id);
   }
 
@@ -505,6 +509,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
   public List<Function> listEventSubscriptionFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
   }
 
@@ -516,6 +521,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
   public ResultList<SubscriptionResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return new ResultList<>(EventsSubscriptionRegistry.listResourceDescriptors());
   }
 
@@ -534,6 +540,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Context SecurityContext securityContext,
       @Parameter(description = "Expression to validate", schema = @Schema(type = "string")) @PathParam("expression")
           String expression) {
+    authorizer.authorizeAdmin(securityContext);
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
