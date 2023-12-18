@@ -20,8 +20,9 @@ import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.subscription.gchat.GChatMessage;
+import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
@@ -69,6 +70,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
     GChatMessage.Card card = new GChatMessage.Card();
     GChatMessage.Section section = new GChatMessage.Section();
+    EntityInterface entityInterface = getEntity(event);
     if (event.getEntity() != null) {
       String headerTemplate = "%s posted on %s %s";
       String headerText =
@@ -76,16 +78,16 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
               headerTemplate,
               event.getUserName(),
               event.getEntityType(),
-              this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+              this.buildEntityUrl(event.getEntityType(), entityInterface));
       gChatMessage.setText(headerText);
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
       String cardHeaderText =
-          String.format(headerTemplate, event.getUserName(), event.getEntityType(), (getEntity(event)).getName());
+          String.format(headerTemplate, event.getUserName(), event.getEntityType(), entityInterface.getName());
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+        getFormattedMessages(this, event.getChangeDescription(), entityInterface);
     List<GChatMessage.Widget> widgets = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       GChatMessage.Widget widget = new GChatMessage.Widget();

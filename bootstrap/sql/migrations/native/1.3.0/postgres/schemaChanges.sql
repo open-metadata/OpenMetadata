@@ -39,6 +39,23 @@ SET json = jsonb_set(
 )
 where name = 'DataInsightsApplication';
 
+-- Update Change Event Table
+ALTER TABLE change_event ADD COLUMN offset SERIAL PRIMARY KEY;
+
+-- Add new table for event subscription extensions
+CREATE TABLE IF NOT EXISTS event_subscription_extension (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json jsonb NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
+    UNIQUE(id, extension)
+);
+
+DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
+
+ALTER TABLE event_subscription_extension ADD COLUMN offset SERIAL;
+
 -- Rename NOOP Secret Manager to DB
 update metadata_service_entity
 set json = jsonb_set(

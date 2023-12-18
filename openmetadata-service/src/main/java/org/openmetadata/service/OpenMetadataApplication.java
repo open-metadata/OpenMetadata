@@ -71,8 +71,8 @@ import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
-import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
@@ -480,8 +480,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
-      ReportsHandler.shutDown();
       AppScheduler.shutDown();
+      EventSubscriptionScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

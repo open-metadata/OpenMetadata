@@ -42,7 +42,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -192,22 +192,19 @@ public class SubscriptionUtil {
   }
 
   public static List<Invocation.Builder> getTargetsForWebhook(
-      SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
-      Client client,
-      CollectionDAO daoCollection,
-      ChangeEvent event) {
+      SubscriptionAction action, CreateEventSubscription.SubscriptionType type, Client client, ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =
-        buildReceiversListFromActions(action, type, daoCollection, entityInterface.getId(), event.getEntityType());
+        buildReceiversListFromActions(
+            action, type, Entity.getCollectionDAO(), entityInterface.getId(), event.getEntityType());
     for (String url : receiversUrls) {
       targets.add(client.target(url).request());
     }
     return targets;
   }
 
-  public static void postWebhookMessage(SubscriptionPublisher publisher, Invocation.Builder target, Object message)
+  public static void postWebhookMessage(AbstractEventConsumer publisher, Invocation.Builder target, Object message)
       throws InterruptedException {
     long attemptTime = System.currentTimeMillis();
     Response response = target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
@@ -223,7 +220,7 @@ public class SubscriptionUtil {
       // 4xx, 5xx response retry delivering events after timeout
       publisher.setNextBackOff();
       publisher.setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-      Thread.sleep(publisher.getCurrentBackOff());
+      Thread.sleep(publisher.getCurrentBackoffTime());
     } else if (response.getStatus() == 200) {
       publisher.setSuccessStatus(System.currentTimeMillis());
     }

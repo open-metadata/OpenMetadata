@@ -72,7 +72,6 @@ public class ChangeEventHandler implements EventHandler {
               changeEvent.getEntityId(),
               changeEvent.getEventType(),
               changeEvent.getEntityType());
-          EventPubSub.publish(changeEvent);
           if (changeEvent.getEntity() != null) {
             Object entity = changeEvent.getEntity();
             changeEvent = copyChangeEvent(changeEvent);

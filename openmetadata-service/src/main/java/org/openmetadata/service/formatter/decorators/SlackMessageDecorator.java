@@ -20,11 +20,12 @@ import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.slack.SlackAttachment;
-import org.openmetadata.service.events.subscription.slack.SlackMessage;
+import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
+import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
@@ -69,6 +70,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public SlackMessage buildMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
+    EntityInterface entityInterface = getEntity(event);
     if (event.getEntity() != null) {
       String eventType;
       if (event.getEntity() instanceof TestCase) {
@@ -84,15 +86,12 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       } else {
         headerTxt = "%s posted on " + eventType + " %s";
         headerText =
-            String.format(
-                headerTxt,
-                event.getUserName(),
-                this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+            String.format(headerTxt, event.getUserName(), this.buildEntityUrl(event.getEntityType(), entityInterface));
       }
       slackMessage.setText(headerText);
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+        getFormattedMessages(this, event.getChangeDescription(), entityInterface);
     List<SlackAttachment> attachmentList = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();

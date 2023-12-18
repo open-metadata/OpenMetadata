@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.events.subscription.gchat;
+package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.G_CHAT_WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
@@ -23,34 +23,30 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.GChatMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.JsonUtils;
+import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class GChatPublisher extends SubscriptionPublisher {
+public class GChatPublisher extends AbstractEventConsumer {
   private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator = new GChatMessageDecorator();
-  private final Webhook webhook;
+  private Webhook webhook;
   private Invocation.Builder target;
-  private final Client client;
-  private final CollectionDAO daoCollection;
+  private Client client;
 
-  public GChatPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub);
-    if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
-      this.daoCollection = dao;
-      this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
+  @Override
+  protected void doInit(JobExecutionContext context) {
+    if (eventSubscription.getSubscriptionType() == G_CHAT_WEBHOOK) {
+      this.webhook = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
 
       // Build Client
-      client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
+      client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
 
       // Build Target
       if (webhook.getEndpoint() != null) {
@@ -65,23 +61,11 @@ public class GChatPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  protected void onStartDelegate() {
-    LOG.info("GChat Webhook publisher started");
-  }
-
-  @Override
-  protected void onShutdownDelegate() {
-    if (null != client) {
-      client.close();
-    }
-  }
-
-  @Override
-  protected void sendAlert(EventResource.EventList list) {
-    for (ChangeEvent event : list.getData()) {
+  public void sendAlert(List<ChangeEvent> changeEvents) {
+    for (ChangeEvent event : changeEvents) {
       try {
         GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, daoCollection, event);
+        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
         if (target != null) {
           targets.add(target);
         }
@@ -93,6 +77,13 @@ public class GChatPublisher extends SubscriptionPublisher {
         LOG.error(message);
         throw new EventPublisherException(message);
       }
+    }
+  }
+
+  @Override
+  public void stop() {
+    if (null != client) {
+      client.close();
     }
   }
 }

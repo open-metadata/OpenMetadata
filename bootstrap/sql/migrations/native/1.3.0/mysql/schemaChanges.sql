@@ -32,6 +32,24 @@ set json = JSON_INSERT(
 )
 where name = 'DataInsightsApplication';
 
+-- Update Change Event Table
+ALTER TABLE change_event ADD COLUMN offset INT AUTO_INCREMENT PRIMARY KEY;
+
+-- Add new table for event subscription extensions
+CREATE TABLE IF NOT EXISTS event_subscription_extension (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    jsonSchema VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
+	timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    UNIQUE(id, extension)
+);
+
+DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
+
+ALTER TABLE event_subscription_extension ADD COLUMN offset INT AUTO_INCREMENT;
+
+
 -- Rename NOOP Secret Manager to DB
 update metadata_service_entity
 set json = JSON_REPLACE(json, '$.connection.config.secretsManagerProvider', 'db')

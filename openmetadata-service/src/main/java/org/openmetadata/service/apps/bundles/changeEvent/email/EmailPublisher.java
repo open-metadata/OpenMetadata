@@ -11,58 +11,49 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.events.subscription.email;
+package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.EMAIL;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
-import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class EmailPublisher extends SubscriptionPublisher {
+public class EmailPublisher extends AbstractEventConsumer {
   private final MessageDecorator<EmailMessage> emailDecorator = new EmailMessageDecorator();
-  private final EmailAlertConfig emailAlertConfig;
-  private final CollectionDAO daoCollection;
+  private EmailAlertConfig emailAlertConfig;
+  private CollectionDAO daoCollection;
 
-  public EmailPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub);
-    if (eventSub.getSubscriptionType() == EMAIL) {
-      this.emailAlertConfig = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), EmailAlertConfig.class);
-      this.daoCollection = dao;
+  @Override
+  protected void doInit(JobExecutionContext context) {
+    if (eventSubscription.getSubscriptionType() == EMAIL) {
+      this.emailAlertConfig = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), EmailAlertConfig.class);
+      this.daoCollection = Entity.getCollectionDAO();
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
     }
   }
 
   @Override
-  public void onStartDelegate() {
-    LOG.info("Email Publisher Started");
-  }
-
-  @Override
-  public void onShutdownDelegate() {
-    LOG.info("Email Publisher Stopped");
-  }
-
-  @Override
-  public void sendAlert(EventResource.EventList list) {
-    for (ChangeEvent event : list.getData()) {
+  public void sendAlert(List<ChangeEvent> changeEvents) {
+    for (ChangeEvent event : changeEvents) {
       try {
         Set<String> receivers = buildReceiversList(event);
         EmailMessage emailMessage = emailDecorator.buildMessage(event);
@@ -87,5 +78,10 @@ public class EmailPublisher extends SubscriptionPublisher {
         buildReceiversListFromActions(
             emailAlertConfig, EMAIL, daoCollection, entityInterface.getId(), changeEvent.getEntityType()));
     return receiverList;
+  }
+
+  @Override
+  public void stop() {
+    LOG.info("Email Publisher Stopped");
   }
 }

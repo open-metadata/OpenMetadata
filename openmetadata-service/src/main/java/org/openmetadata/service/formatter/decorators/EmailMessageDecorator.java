@@ -20,9 +20,10 @@ import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.email.EmailMessage;
+import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
@@ -66,16 +67,17 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   public EmailMessage buildMessage(ChangeEvent event) {
     EmailMessage emailMessage = new EmailMessage();
     emailMessage.setUserName(event.getUserName());
+    EntityInterface entityInterface = getEntity(event);
     if (event.getEntity() != null) {
       emailMessage.setUpdatedBy(event.getUserName());
       if (event.getEntityType().equals(Entity.QUERY)) {
         emailMessage.setEntityUrl(Entity.QUERY);
       } else {
-        emailMessage.setEntityUrl(this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+        emailMessage.setEntityUrl(this.buildEntityUrl(event.getEntityType(), entityInterface));
       }
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+        getFormattedMessages(this, event.getChangeDescription(), entityInterface);
     List<String> changeMessage = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       changeMessage.add(entry.getValue());

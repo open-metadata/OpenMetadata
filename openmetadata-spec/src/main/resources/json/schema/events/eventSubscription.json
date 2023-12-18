@@ -16,7 +16,7 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["ChangeEvent", "DataInsightReport", "Task/Conversation/Announcement"],
+      "enum": ["ChangeEvent", "Task/Conversation/Announcement"],
       "default": "ChangeEvent"
     },
     "subscriptionType": {
@@ -243,6 +243,11 @@
     },
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"
+    },
+    "retries": {
+        "description": "Number of times to retry callback on failure. (Default 3).",
+        "type": "integer",
+        "default": 3
     }
   },
   "required": ["id", "name", "alertType", "subscriptionType"],
