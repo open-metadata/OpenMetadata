@@ -36,7 +36,8 @@ public class JsonPatchUtils {
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
       MetadataOperation metadataOperation = getMetadataOperation(jsonValue);
       if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
-        return listOf(MetadataOperation.EDIT_ALL); // No need to process each individual edit operation
+        return listOf(
+            MetadataOperation.EDIT_ALL); // No need to process each individual edit operation
       }
       uniqueValues.add(metadataOperation);
     }
@@ -59,6 +60,7 @@ public class JsonPatchUtils {
       }
     }
     LOG.warn("Failed to find specific operation for patch path {}", path);
-    return MetadataOperation.EDIT_ALL; // If path is not mapped to any edit field, then return edit all
+    return MetadataOperation
+        .EDIT_ALL; // If path is not mapped to any edit field, then return edit all
   }
 }

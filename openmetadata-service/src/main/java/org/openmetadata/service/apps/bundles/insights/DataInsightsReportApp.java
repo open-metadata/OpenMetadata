@@ -68,24 +68,28 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     SearchRepository searchRepository =
-        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+        (SearchRepository)
+            jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
     App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     AppSchedule scheduleConfiguration = app.getAppSchedule();
-    long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
+    long scheduleTime =
+        currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
       DataInsightsReportAppConfig insightAlertConfig =
           JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
-        sendToAdmins(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
+        sendToAdmins(
+            searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
       }
 
       // Send to Teams
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
-        sendReportsToTeams(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
+        sendReportsToTeams(
+            searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
@@ -94,8 +98,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private void sendReportsToTeams(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
-    PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
+      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      throws IOException {
+    PaginatedEntitiesSource teamReader =
+        new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
       for (Team team : resultList.getData()) {
@@ -112,13 +118,17 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createTotalAssetTemplate(
+                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createDescriptionTemplate(
+                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createOwnershipTemplate(
+                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createTierTemplate(
+                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           EmailUtil.sendDataInsightEmailNotificationToUser(
               emails,
               totalAssetTemplate,
@@ -128,23 +138,30 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
               EmailUtil.getDataInsightReportSubject(),
               EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
         } catch (Exception ex) {
-          LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
+          LOG.error(
+              "[DataInsightReport] Failed for Team: {}, Reason : {}",
+              team.getName(),
+              ex.getMessage());
         }
       }
     }
   }
 
-  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
+  private void sendToAdmins(
+      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
     try {
       // Build Insights Report
       DataInsightTotalAssetTemplate totalAssetTemplate =
-          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createTotalAssetTemplate(
+              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createDescriptionTemplate(
+              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createOwnershipTemplate(
+              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate tierTemplate =
           createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       EmailUtil.sendDataInsightEmailNotificationToUser(
@@ -162,7 +179,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private List<Kpi> getAvailableKpi() {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
-    return repository.listAll(repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
+    return repository.listAll(
+        repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
   }
 
   private KpiResult getKpiResult(String fqn) {
@@ -176,7 +194,11 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Get total Assets Data
     TreeMap<Long, List<Object>> dateWithDataMap =
         searchClient.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TYPE, ENTITY_REPORT_DATA_INDEX.value());
+            team,
+            scheduleTime,
+            currentTime,
+            TOTAL_ENTITIES_BY_TYPE,
+            ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
 
       List<TotalEntitiesByType> first =
@@ -199,7 +221,11 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchClient searchClient,
+      String team,
+      Long scheduleTime,
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -248,7 +274,11 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchClient searchClient,
+      String team,
+      Long scheduleTime,
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -298,13 +328,21 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchClient searchClient,
+      String team,
+      Long scheduleTime,
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     TreeMap<Long, List<Object>> dateWithDataMap =
         searchClient.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TIER, ENTITY_REPORT_DATA_INDEX.value());
+            team,
+            scheduleTime,
+            currentTime,
+            TOTAL_ENTITIES_BY_TIER,
+            ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.lastEntry() != null) {
       List<TotalEntitiesByTier> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
@@ -342,7 +380,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return data;
   }
 
-  private Double getTotalEntityFromDescriptionList(List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
+  private Double getTotalEntityFromDescriptionList(
+      List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
     Double totalCount = 0D;
     for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
@@ -351,7 +390,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return totalCount;
   }
 
-  private Double getCompletedDescriptionCount(List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
+  private Double getCompletedDescriptionCount(
+      List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
     Double completedDescriptions = 0D;
     for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
@@ -360,7 +400,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return completedDescriptions;
   }
 
-  private Double getTotalEntityFromOwnerList(List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
+  private Double getTotalEntityFromOwnerList(
+      List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
     Double totalCount = 0D;
     for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
@@ -369,7 +410,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return totalCount;
   }
 
-  private Double getCompletedOwnershipCount(List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
+  private Double getCompletedOwnershipCount(
+      List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
     Double hasOwner = 0D;
     for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
@@ -402,7 +444,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     String targetKpi = KPI_NOT_SET;
 
     if (isKpiAvailable) {
-      targetKpi = String.valueOf(Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+      targetKpi =
+          String.valueOf(
+              Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();
@@ -432,7 +476,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         null);
   }
 
-  private long getTimeFromSchedule(AppSchedule appSchedule, JobExecutionContext jobExecutionContext) {
+  private long getTimeFromSchedule(
+      AppSchedule appSchedule, JobExecutionContext jobExecutionContext) {
     AppSchedule.ScheduleTimeline timeline = appSchedule.getScheduleType();
     switch (timeline) {
       case HOURLY:
@@ -447,7 +492,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         if (jobExecutionContext.getTrigger() != null) {
           Trigger triggerQrz = jobExecutionContext.getTrigger();
           Date previousFire =
-              triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+              triggerQrz.getPreviousFireTime() == null
+                  ? triggerQrz.getStartTime()
+                  : triggerQrz.getPreviousFireTime();
           return previousFire.toInstant().toEpochMilli();
         }
         return 86400000L;
@@ -469,9 +516,12 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         return 30;
       case CUSTOM:
         if (!CommonUtil.nullOrEmpty(appSchedule.getCronExpression())) {
-          Trigger triggerQrz = CronScheduleBuilder.cronSchedule(appSchedule.getCronExpression()).build();
+          Trigger triggerQrz =
+              CronScheduleBuilder.cronSchedule(appSchedule.getCronExpression()).build();
           Date previousFire =
-              triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+              triggerQrz.getPreviousFireTime() == null
+                  ? triggerQrz.getStartTime()
+                  : triggerQrz.getPreviousFireTime();
           Date nextFire = triggerQrz.getFireTimeAfter(previousFire);
           Period period =
               Period.between(

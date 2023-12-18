@@ -14,7 +14,8 @@ import org.openmetadata.sdk.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
-  public MockPipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  public MockPipelineServiceClient(
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);
   }
 
@@ -66,7 +67,8 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
+  public Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after) {
     return null;
   }
 

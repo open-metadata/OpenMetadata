@@ -21,7 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 
 @Slf4j
-public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
+public class MlModelServiceRepository
+    extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
   public MlModelServiceRepository() {

@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 
-public abstract class TotalEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class TotalEntitiesAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   protected TotalEntitiesAggregator(A aggregations) {
@@ -38,7 +39,8 @@ public abstract class TotalEntitiesAggregator<A, B, M, S> implements DataInsight
     double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
     for (Object o : data) {
       TotalEntitiesByType totalEntitiesByType = (TotalEntitiesByType) o;
-      totalEntitiesByType.withEntityCountFraction(totalEntitiesByType.getEntityCount() / totalEntities);
+      totalEntitiesByType.withEntityCountFraction(
+          totalEntitiesByType.getEntityCount() / totalEntities);
     }
 
     return data;

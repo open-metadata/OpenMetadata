@@ -22,7 +22,9 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `ElasticSearchConnection` object. */
 public class ElasticSearchConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(ESBasicAuth.class, ESAPIAuth.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(ESBasicAuth.class, ESAPIAuth.class);
+
   //
   public ElasticSearchConnectionClassConverter() {
     super(ElasticSearchConnection.class);

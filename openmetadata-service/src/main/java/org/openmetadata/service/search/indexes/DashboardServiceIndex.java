@@ -25,7 +25,8 @@ public class DashboardServiceIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
+    suggest.add(
+        SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
     doc.put(
         "fqnParts",
         getFQNParts(

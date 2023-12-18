@@ -25,7 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 @WebServlet("/api/v1/push/feed/*")
 public class FeedServlet extends HttpServlet {
   @Override
-  protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
+  protected void service(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
     try {
       WebSocketManager.getInstance()
           .getEngineIoServer()
@@ -39,7 +40,9 @@ public class FeedServlet extends HttpServlet {
               response);
     } catch (Exception ex) {
       LOG.error("[FeedServlet] Error Encountered : {}", ex.getMessage());
-      response.getWriter().println(String.format("[FeedServlet] Error Encountered : %s", ex.getMessage()));
+      response
+          .getWriter()
+          .println(String.format("[FeedServlet] Error Encountered : %s", ex.getMessage()));
     }
   }
 }

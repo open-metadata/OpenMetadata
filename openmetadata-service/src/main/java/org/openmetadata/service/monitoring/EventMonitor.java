@@ -24,7 +24,9 @@ public abstract class EventMonitor {
   @Getter private final EventMonitorConfiguration eventMonitorConfiguration;
 
   protected EventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+      EventMonitorProvider eventMonitorProvider,
+      EventMonitorConfiguration config,
+      String clusterPrefix) {
     this.eventMonitoringProvider = eventMonitorProvider;
     this.clusterPrefix = clusterPrefix;
     this.eventMonitorConfiguration = config;

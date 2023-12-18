@@ -50,7 +50,8 @@ public class KpiFormatter implements EntityFormatter {
               messageFormatter.getBold(),
               messageFormatter.getBold());
       KpiTarget target = result.getTargetResult().get(0);
-      return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
+      return String.format(
+          format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
     }
     String format = String.format("KpiResult %s is updated.", messageFormatter.getBold());
     return String.format(format, kpiName);

@@ -45,23 +45,27 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
-    super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
+    super(
+        Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create database with different optional fields
-    CreateDatabase create = createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
+    CreateDatabase create =
+        createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
+    String expectedFQN =
+        FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
   @Test
   void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = createRequest(test).withService(null);
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
   }
 
   @Test
@@ -72,7 +76,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Create database for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+      createAndCheckEntity(
+          createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
 
       // List databases by filtering on service name and ensure right databases in the response
       Map<String, String> queryParams = new HashMap<>();
@@ -86,12 +91,15 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public Database validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
+  public Database validateGetWithDifferentFields(Database database, boolean byName)
+      throws HttpResponseException {
     // Add a schema if it already does not exist
     if (nullOrEmpty(database.getDatabaseSchemas())) {
       DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
       CreateDatabaseSchema create =
-          databaseSchemaResourceTest.createRequest("schema", "", "", null).withDatabase(getFqn(database));
+          databaseSchemaResourceTest
+              .createRequest("schema", "", "", null)
+              .withDatabase(getFqn(database));
       databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
@@ -102,7 +110,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     assertListNull(
-        database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
+        database.getOwner(),
+        database.getDatabaseSchemas(),
+        database.getUsageSummary(),
+        database.getLocation());
 
     fields = "owner,databaseSchemas,usageSummary,location,tags";
     database =
@@ -134,7 +145,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public void validateCreatedEntity(Database database, CreateDatabase createRequest, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Database database, CreateDatabase createRequest, Map<String, String> authHeaders) {
     // Validate service
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
@@ -144,10 +156,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.build(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
+        updated.getFullyQualifiedName());
   }
 
   @Override

@@ -52,7 +52,8 @@ public class SamlSettingsHolder {
 
   public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
-    SamlSSOClientConfig samlConfig = catalogApplicationConfig.getAuthenticationConfiguration().getSamlConfiguration();
+    SamlSSOClientConfig samlConfig =
+        catalogApplicationConfig.getAuthenticationConfiguration().getSamlConfiguration();
     tokenValidity = samlConfig.getSecurity().getTokenValidity();
     domain = catalogApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
     if (samlData == null) {
@@ -66,7 +67,9 @@ public class SamlSettingsHolder {
 
     // SP Info
     samlData.put(SettingsBuilder.SP_ENTITYID_PROPERTY_KEY, samlConfig.getSp().getEntityId());
-    samlData.put(SettingsBuilder.SP_ASSERTION_CONSUMER_SERVICE_URL_PROPERTY_KEY, samlConfig.getSp().getAcs());
+    samlData.put(
+        SettingsBuilder.SP_ASSERTION_CONSUMER_SERVICE_URL_PROPERTY_KEY,
+        samlConfig.getSp().getAcs());
     samlData.put(
         SettingsBuilder.SP_ASSERTION_CONSUMER_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST");
@@ -78,28 +81,41 @@ public class SamlSettingsHolder {
 
     // Idp Info
     samlData.put(SettingsBuilder.IDP_ENTITYID_PROPERTY_KEY, samlConfig.getIdp().getEntityId());
-    samlData.put(SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_URL_PROPERTY_KEY, samlConfig.getIdp().getSsoLoginUrl());
+    samlData.put(
+        SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_URL_PROPERTY_KEY,
+        samlConfig.getIdp().getSsoLoginUrl());
     samlData.put(
         SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
     samlData.put(
         SettingsBuilder.IDP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
-    samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, samlConfig.getIdp().getIdpX509Certificate());
+    samlData.put(
+        SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, samlConfig.getIdp().getIdpX509Certificate());
 
     // Security Settings
     SamlSecurityConfig securityConfig = samlConfig.getSecurity();
     samlData.put(SettingsBuilder.STRICT_PROPERTY_KEY, securityConfig.getStrictMode());
-    samlData.put(SettingsBuilder.SECURITY_NAMEID_ENCRYPTED, securityConfig.getSendEncryptedNameId());
-    samlData.put(SettingsBuilder.SECURITY_AUTHREQUEST_SIGNED, securityConfig.getSendSignedAuthRequest());
-    samlData.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, securityConfig.getWantMessagesSigned());
-    samlData.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, securityConfig.getWantAssertionsSigned());
+    samlData.put(
+        SettingsBuilder.SECURITY_NAMEID_ENCRYPTED, securityConfig.getSendEncryptedNameId());
+    samlData.put(
+        SettingsBuilder.SECURITY_AUTHREQUEST_SIGNED, securityConfig.getSendSignedAuthRequest());
+    samlData.put(
+        SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, securityConfig.getWantMessagesSigned());
+    samlData.put(
+        SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, securityConfig.getWantAssertionsSigned());
     samlData.put(SettingsBuilder.SECURITY_SIGN_METADATA, securityConfig.getSignSpMetadata());
-    samlData.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_ENCRYPTED, securityConfig.getWantAssertionEncrypted());
-    samlData.put(SettingsBuilder.SECURITY_WANT_NAMEID_ENCRYPTED, securityConfig.getWantNameIdEncrypted());
+    samlData.put(
+        SettingsBuilder.SECURITY_WANT_ASSERTIONS_ENCRYPTED,
+        securityConfig.getWantAssertionEncrypted());
+    samlData.put(
+        SettingsBuilder.SECURITY_WANT_NAMEID_ENCRYPTED, securityConfig.getWantNameIdEncrypted());
     samlData.put(SettingsBuilder.SECURITY_REQUESTED_AUTHNCONTEXTCOMPARISON, "exact");
-    samlData.put(SettingsBuilder.SECURITY_SIGNATURE_ALGORITHM, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
-    samlData.put(SettingsBuilder.SECURITY_DIGEST_ALGORITHM, "http://www.w3.org/2001/04/xmlenc#sha256");
+    samlData.put(
+        SettingsBuilder.SECURITY_SIGNATURE_ALGORITHM,
+        "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
+    samlData.put(
+        SettingsBuilder.SECURITY_DIGEST_ALGORITHM, "http://www.w3.org/2001/04/xmlenc#sha256");
     if (securityConfig.getSendSignedAuthRequest()
         || securityConfig.getWantAssertionEncrypted()
         || Boolean.TRUE.equals(securityConfig.getWantNameIdEncrypted())) {
@@ -115,8 +131,10 @@ public class SamlSettingsHolder {
         samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
       } else if (!CommonUtil.nullOrEmpty(samlConfig.getSp().getSpX509Certificate())
           || !CommonUtil.nullOrEmpty(samlConfig.getSp().getSpPrivateKey())) {
-        samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, samlConfig.getSp().getSpPrivateKey());
-        samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, samlConfig.getSp().getSpX509Certificate());
+        samlData.put(
+            SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, samlConfig.getSp().getSpPrivateKey());
+        samlData.put(
+            SettingsBuilder.SP_X509CERT_PROPERTY_KEY, samlConfig.getSp().getSpX509Certificate());
       } else {
         throw new IllegalArgumentException(
             "Either Specify (KeyStoreFilePath, KeyStoreAlias and KeyStorePassword) or (Sp X509 Certificate and Private Key) as one of both is mandatory.");

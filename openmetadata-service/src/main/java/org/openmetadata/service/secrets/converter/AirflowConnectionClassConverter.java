@@ -39,7 +39,8 @@ public class AirflowConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    AirflowConnection airflowConnection = (AirflowConnection) JsonUtils.convertValue(object, this.clazz);
+    AirflowConnection airflowConnection =
+        (AirflowConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(airflowConnection.getConnection(), CONNECTION_CLASSES)
         .ifPresent(airflowConnection::setConnection);

@@ -40,7 +40,10 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   @Override
   void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.ssmClient =
-        SsmClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
+        SsmClient.builder()
+            .region(Region.of(region))
+            .credentialsProvider(staticCredentialsProvider)
+            .build();
   }
 
   @Override
@@ -71,13 +74,15 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
 
   @Override
   public String getSecret(String secretName) {
-    GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).withDecryption(true).build();
+    GetParameterRequest parameterRequest =
+        GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
   }
 
   @Override
   protected void deleteSecretInternal(String secretName) {
-    DeleteParameterRequest deleteParameterRequest = DeleteParameterRequest.builder().name(secretName).build();
+    DeleteParameterRequest deleteParameterRequest =
+        DeleteParameterRequest.builder().name(secretName).build();
     this.ssmClient.deleteParameter(deleteParameterRequest);
   }
 

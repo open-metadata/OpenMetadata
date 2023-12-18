@@ -5,7 +5,8 @@ import os.org.apache.lucene.search.TotalHits;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
 
-public class OpenSearchUnusedAssetsAggregator extends UnusedAssetsAggregator<SearchHits, SearchHit, TotalHits> {
+public class OpenSearchUnusedAssetsAggregator
+    extends UnusedAssetsAggregator<SearchHits, SearchHit, TotalHits> {
   public OpenSearchUnusedAssetsAggregator(SearchHits hits) {
     super(hits);
   }

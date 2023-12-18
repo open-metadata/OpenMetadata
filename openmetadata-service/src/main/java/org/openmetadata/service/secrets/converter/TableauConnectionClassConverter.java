@@ -7,7 +7,8 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TableauConnectionClassConverter extends ClassConverter {
-  private static final List<Class<?>> CONNECTION_CLASSES = List.of(BasicAuth.class, AccessTokenAuth.class);
+  private static final List<Class<?>> CONNECTION_CLASSES =
+      List.of(BasicAuth.class, AccessTokenAuth.class);
 
   public TableauConnectionClassConverter() {
     super(TableauConnection.class);
@@ -15,9 +16,11 @@ public class TableauConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    TableauConnection tableauConnection = (TableauConnection) JsonUtils.convertValue(object, this.clazz);
+    TableauConnection tableauConnection =
+        (TableauConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(tableauConnection.getAuthType(), CONNECTION_CLASSES).ifPresent(tableauConnection::setAuthType);
+    tryToConvertOrFail(tableauConnection.getAuthType(), CONNECTION_CLASSES)
+        .ifPresent(tableauConnection::setAuthType);
 
     return tableauConnection;
   }

@@ -47,7 +47,8 @@ public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider
   public String authToken() {
     base64Credentials =
         Base64.getEncoder()
-            .encodeToString((securityConfig.getClientId() + ":" + securityConfig.getClientSecret()).getBytes());
+            .encodeToString(
+                (securityConfig.getClientId() + ":" + securityConfig.getClientSecret()).getBytes());
     return base64Credentials;
   }
 

@@ -39,7 +39,8 @@ public class SSOAuthMechanismClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    SSOAuthMechanism ssoAuthMechanism = (SSOAuthMechanism) JsonUtils.convertValue(object, this.clazz);
+    SSOAuthMechanism ssoAuthMechanism =
+        (SSOAuthMechanism) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(ssoAuthMechanism.getAuthConfig(), AUTH_CONFIG_CLASSES)
         .ifPresent(ssoAuthMechanism::setAuthConfig);

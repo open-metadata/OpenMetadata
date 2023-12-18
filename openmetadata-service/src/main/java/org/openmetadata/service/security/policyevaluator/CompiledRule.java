@@ -18,7 +18,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 /** This class is used in a single threaded model and hence does not have concurrency support */
 @Slf4j
@@ -43,7 +42,8 @@ public class CompiledRule extends Rule {
     try {
       return EXPRESSION_PARSER.parseExpression(condition);
     } catch (Exception exception) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.failedToParse(exception.getMessage()));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.failedToParse(exception.getMessage()));
     }
   }
 
@@ -54,12 +54,12 @@ public class CompiledRule extends Rule {
     }
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
-    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     try {
-      expression.getValue(evaluationContext, clz);
+      expression.getValue(ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
-      String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      String message =
+          exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
       throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
     }
   }
@@ -124,27 +124,31 @@ public class CompiledRule extends Rule {
     Iterator<MetadataOperation> iterator = operationContext.getOperations().listIterator();
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
-      if (matchOperation(operation) && matchExpression(policyContext, subjectContext, resourceContext)) {
+      if (matchOperation(operation)
+          && matchExpression(policyContext, subjectContext, resourceContext)) {
         LOG.debug("operation {} allowed", operation);
         iterator.remove();
       }
     }
   }
 
-  public void evaluatePermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
+  public void evaluatePermission(
+      Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
     for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
       evaluatePermission(resourcePermission.getResource(), resourcePermission, policyContext);
     }
   }
 
-  public void evaluatePermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
+  public void evaluatePermission(
+      String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
     if (!matchResource(resource)) {
       return;
     }
     Access access = getAccess();
     // Walk through all the operations in the rule and set permissions
     for (Permission permission : resourcePermission.getPermissions()) {
-      if (matchOperation(permission.getOperation()) && overrideAccess(access, permission.getAccess())) {
+      if (matchOperation(permission.getOperation())
+          && overrideAccess(access, permission.getAccess())) {
         permission
             .withAccess(access)
             .withRole(policyContext.getRoleName())
@@ -181,7 +185,8 @@ public class CompiledRule extends Rule {
   }
 
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES) || getResources().contains(resource));
+    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES)
+        || getResources().contains(resource));
   }
 
   private boolean matchOperation(MetadataOperation operation) {
@@ -189,11 +194,13 @@ public class CompiledRule extends Rule {
       LOG.debug("matched all operations");
       return true; // Match all operations
     }
-    if (getOperations().contains(MetadataOperation.EDIT_ALL) && OperationContext.isEditOperation(operation)) {
+    if (getOperations().contains(MetadataOperation.EDIT_ALL)
+        && OperationContext.isEditOperation(operation)) {
       LOG.debug("matched editAll operations");
       return true;
     }
-    if (getOperations().contains(MetadataOperation.VIEW_ALL) && OperationContext.isViewOperation(operation)) {
+    if (getOperations().contains(MetadataOperation.VIEW_ALL)
+        && OperationContext.isViewOperation(operation)) {
       LOG.debug("matched viewAll operations");
       return true;
     }
@@ -201,14 +208,15 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchExpression(
-      PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
     Expression expr = getExpression();
     if (expr == null) {
       return true;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
-    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    return Boolean.TRUE.equals(expr.getValue(evaluationContext, Boolean.class));
+    return Boolean.TRUE.equals(expr.getValue(ruleEvaluator, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {

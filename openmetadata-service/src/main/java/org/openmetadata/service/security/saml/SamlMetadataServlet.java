@@ -39,7 +39,10 @@ public class SamlMetadataServlet extends HttpServlet {
     } else {
       resp.setContentType("text/html; charset=UTF-8");
       for (String error : errors) {
-        LOG.error("[SamlMetadataServlet] Errors in getting Metadata : {} : Errors : {}", metadata, errors);
+        LOG.error(
+            "[SamlMetadataServlet] Errors in getting Metadata : {} : Errors : {}",
+            metadata,
+            errors);
         resp.getOutputStream().println("<p>" + error + "</p>");
       }
     }

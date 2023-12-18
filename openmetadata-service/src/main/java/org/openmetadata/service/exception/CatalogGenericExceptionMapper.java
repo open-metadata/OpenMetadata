@@ -48,7 +48,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return getResponse(BadRequestException.of().getResponse(), ex);
     } else if (ex instanceof UnableToExecuteStatementException) {
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
-          || ex.getCause() instanceof PSQLException && ex.getCause().getMessage().contains("duplicate")) {
+          || ex.getCause() instanceof PSQLException
+              && ex.getCause().getMessage().contains("duplicate")) {
         return getResponse(CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
       }
     } else if (ex instanceof EntityNotFoundException) {
@@ -94,7 +95,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
 
   private void logUnhandledException(Throwable ex) {
     String errMessage =
-        String.format("Got exception: [%s] / message [%s]", ex.getClass().getSimpleName(), ex.getMessage());
+        String.format(
+            "Got exception: [%s] / message [%s]", ex.getClass().getSimpleName(), ex.getMessage());
     StackTraceElement elem = findFirstResourceCallFromCallStack(ex.getStackTrace());
     String resourceClassName = null;
     if (elem != null) {

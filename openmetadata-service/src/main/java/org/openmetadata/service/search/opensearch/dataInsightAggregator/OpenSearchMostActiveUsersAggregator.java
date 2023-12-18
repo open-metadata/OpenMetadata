@@ -8,7 +8,8 @@ import os.org.opensearch.search.aggregations.metrics.Max;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchMostActiveUsersAggregator
-    extends MostActiveUsersAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
+    extends MostActiveUsersAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
 
   public OpenSearchMostActiveUsersAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -40,7 +41,8 @@ public class OpenSearchMostActiveUsersAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

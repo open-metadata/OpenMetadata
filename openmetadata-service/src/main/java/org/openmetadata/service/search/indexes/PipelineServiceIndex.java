@@ -25,7 +25,8 @@ public class PipelineServiceIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(pipelineService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(pipelineService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(pipelineService.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.PIPELINE_SERVICE);
     doc.put(

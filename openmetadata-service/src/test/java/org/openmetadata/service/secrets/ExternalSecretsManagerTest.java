@@ -68,20 +68,28 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptDecryptDatabaseServiceConnectionConfig() {
     String password = "openmetadata-test";
-    MysqlConnection expectedConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(password));
-    Map<String, Map<String, String>> mysqlConnection = Map.of("authType", Map.of("password", password));
+    MysqlConnection expectedConnection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(password));
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", password));
 
     // Ensure encrypted service connection config encrypts the password
     MysqlConnection actualConnection =
         (MysqlConnection)
-            secretsManager.encryptServiceConnectionConfig(mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE);
-    assertNotEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+            secretsManager.encryptServiceConnectionConfig(
+                mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE);
+    assertNotEquals(
+        password,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // Decrypt the encrypted password and validate
     actualConnection =
         (MysqlConnection)
-            secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+            secretsManager.decryptServiceConnectionConfig(
+                mysqlConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(
+        password,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
     assertEquals(expectedConnection, actualConnection);
   }
 
@@ -93,7 +101,9 @@ public abstract class ExternalSecretsManagerTest {
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.SSO)
             .withConfig(
-                new SSOAuthMechanism().withAuthConfig(config).withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
+                new SSOAuthMechanism()
+                    .withAuthConfig(config)
+                    .withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
 
     AuthenticationMechanism actualAuthMechanism =
         JsonUtils.convertValue(expectedAuthMechanism, AuthenticationMechanism.class);
@@ -112,7 +122,8 @@ public abstract class ExternalSecretsManagerTest {
     String secretKey =
         "secret:/openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource"
             + "/dbtsecurityconfig/awssecretaccesskey";
-    AWSCredentials credentials = new AWSCredentials().withAwsSecretAccessKey(secretKey).withAwsRegion("eu-west-1");
+    AWSCredentials credentials =
+        new AWSCredentials().withAwsSecretAccessKey(secretKey).withAwsRegion("eu-west-1");
     DbtS3Config config = new DbtS3Config().withDbtSecurityConfig(credentials);
     DbtPipeline dbtPipeline = new DbtPipeline().withDbtConfigSource(config);
     SourceConfig sourceConfig = new SourceConfig().withConfig(dbtPipeline);
@@ -120,7 +131,8 @@ public abstract class ExternalSecretsManagerTest {
         new IngestionPipeline()
             .withName("my-pipeline")
             .withPipelineType(PipelineType.DBT)
-            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+            .withService(
+                new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
             .withSourceConfig(sourceConfig);
 
     IngestionPipeline actualIngestionPipeline =
@@ -138,19 +150,25 @@ public abstract class ExternalSecretsManagerTest {
 
   @Test
   void testEncryptDecryptWorkflow() {
-    String password = "secret:/openmetadata/workflow/my-workflow/request/connection/config/password";
+    String password =
+        "secret:/openmetadata/workflow/my-workflow/request/connection/config/password";
     String secretKey = "secret:/openmetadata/serverconnection/securityconfig/secretkey";
     OpenMetadataConnection connection =
-        new OpenMetadataConnection().withSecurityConfig(new GoogleSSOClientConfig().withSecretKey(secretKey));
+        new OpenMetadataConnection()
+            .withSecurityConfig(new GoogleSSOClientConfig().withSecretKey(secretKey));
     DatabaseConnection dbConnection =
-        new DatabaseConnection().withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
+        new DatabaseConnection()
+            .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
     TestServiceConnectionRequest testRequest =
         new TestServiceConnectionRequest()
             .withConnection(dbConnection)
             .withServiceType(ServiceType.DATABASE)
             .withConnectionType("Mysql");
     Workflow expectedWorkflow =
-        new Workflow().withName("my-workflow").withOpenMetadataServerConnection(connection).withRequest(testRequest);
+        new Workflow()
+            .withName("my-workflow")
+            .withOpenMetadataServerConnection(connection)
+            .withRequest(testRequest);
     Workflow actualWorkflow = JsonUtils.convertValue(expectedWorkflow, Workflow.class);
 
     // Encrypt the workflow and ensure password and secrete key are encrypted
@@ -168,7 +186,8 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testExceptionConnection() {
     Map<String, Object> mysqlConnection =
-        Map.of("username1", "openmetadata-test", "authType", Map.of("password", "openmetadata-test"));
+        Map.of(
+            "username1", "openmetadata-test", "authType", Map.of("password", "openmetadata-test"));
     InvalidServiceConnectionException thrown =
         Assertions.assertThrows(
             InvalidServiceConnectionException.class,
@@ -182,7 +201,9 @@ public abstract class ExternalSecretsManagerTest {
     thrown =
         Assertions.assertThrows(
             InvalidServiceConnectionException.class,
-            () -> secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE));
+            () ->
+                secretsManager.decryptServiceConnectionConfig(
+                    mysqlConnection, Mysql.value(), ServiceType.DATABASE));
 
     Assertions.assertEquals(
         "Failed to decrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
@@ -199,18 +220,23 @@ public abstract class ExternalSecretsManagerTest {
   protected abstract SecretsManagerProvider expectedSecretManagerProvider();
 
   private String getPrivateKey(AuthenticationMechanism authMechanism) {
-    return ((OktaSSOClientConfig) ((SSOAuthMechanism) authMechanism.getConfig()).getAuthConfig()).getPrivateKey();
+    return ((OktaSSOClientConfig) ((SSOAuthMechanism) authMechanism.getConfig()).getAuthConfig())
+        .getPrivateKey();
   }
 
   private String getAwsSecretAccessKey(IngestionPipeline ingestionPipeline) {
-    DbtPipeline expectedDbtPipeline = ((DbtPipeline) ingestionPipeline.getSourceConfig().getConfig());
-    return ((DbtS3Config) expectedDbtPipeline.getDbtConfigSource()).getDbtSecurityConfig().getAwsSecretAccessKey();
+    DbtPipeline expectedDbtPipeline =
+        ((DbtPipeline) ingestionPipeline.getSourceConfig().getConfig());
+    return ((DbtS3Config) expectedDbtPipeline.getDbtConfigSource())
+        .getDbtSecurityConfig()
+        .getAwsSecretAccessKey();
   }
 
   private String getPassword(Workflow workflow) {
     return JsonUtils.convertValue(
             ((MysqlConnection)
-                    ((DatabaseConnection) ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
+                    ((DatabaseConnection)
+                            ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
                         .getConfig())
                 .getAuthType(),
             basicAuth.class)
@@ -218,7 +244,8 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   private String getSecretKey(Workflow expectedWorkflow) {
-    return ((GoogleSSOClientConfig) (expectedWorkflow.getOpenMetadataServerConnection()).getSecurityConfig())
+    return ((GoogleSSOClientConfig)
+            (expectedWorkflow.getOpenMetadataServerConnection()).getSecurityConfig())
         .getSecretKey();
   }
 }

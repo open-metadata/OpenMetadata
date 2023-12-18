@@ -28,7 +28,8 @@ public class PipelineIndex implements SearchIndex {
     List<SearchSuggest> taskSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
-    serviceSuggest.add(SearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
     if (pipeline.getTasks() != null) {
       for (Task task : pipeline.getTasks()) {
         taskSuggest.add(SearchSuggest.builder().input(task.getName()).weight(5).build());
@@ -36,7 +37,9 @@ public class PipelineIndex implements SearchIndex {
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
-    doc.put("displayName", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
+    doc.put(
+        "displayName",
+        pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("followers", SearchIndexUtils.parseFollowers(pipeline.getFollowers()));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());

@@ -29,7 +29,8 @@ import org.openmetadata.schema.entity.teams.User;
 public class TokenUtil {
   private TokenUtil() {}
 
-  public static TokenInterface createNewTokenWithDefaults(UUID userId, UUID tokenId, TokenType type) {
+  public static TokenInterface createNewTokenWithDefaults(
+      UUID userId, UUID tokenId, TokenType type) {
     switch (type) {
       case EMAIL_VERIFICATION:
         return getEmailVerificationToken(userId, tokenId);

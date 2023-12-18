@@ -81,7 +81,8 @@ public class EventPubSub {
     }
   }
 
-  public static BatchEventProcessor<ChangeEventHolder> addEventHandler(EventHandler<ChangeEventHolder> eventHandler) {
+  public static BatchEventProcessor<ChangeEventHolder> addEventHandler(
+      EventHandler<ChangeEventHolder> eventHandler) {
     BatchEventProcessor<ChangeEventHolder> processor =
         new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
     processor.setExceptionHandler(new DefaultExceptionHandler());
@@ -102,7 +103,8 @@ public class EventPubSub {
 
   public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
     @Override
-    public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
+    public void handleEventException(
+        Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
       LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
       throw new EventPublisherException(
           throwable.getMessage()); // Throw runtime exception to stop the event handler thread

@@ -96,7 +96,10 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "List of personas",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PersonaList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PersonaList.class)))
       })
   public ResultList<Persona> list(
       @Context UriInfo uriInfo,
@@ -106,19 +109,25 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of personas returned. (1 to 1000000, default = 10)")
+      @Parameter(
+              description = "Limit the number of personas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of personas before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of personas before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of personas after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of personas after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return super.listInternal(uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
   }
 
   @GET
@@ -131,12 +140,17 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "List of persona versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -151,13 +165,18 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The Persona",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Persona.class))),
         @ApiResponse(responseCode = "404", description = "Persona for instance {id} is not found")
       })
   public Persona get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -183,13 +202,18 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The Persona",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Persona.class))),
         @ApiResponse(responseCode = "404", description = "Persona for instance {name} is not found")
       })
   public Persona getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -214,13 +238,20 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "Persona",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
-        @ApiResponse(responseCode = "404", description = "Persona for instance {id} and version {version} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Persona.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Persona for instance {id} and version {version} is not found")
       })
   public Persona getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Personas version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -238,10 +269,14 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The Persona.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Persona.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
     Persona persona = getPersona(cp, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, persona);
   }
@@ -255,7 +290,10 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The Persona.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Persona.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -271,17 +309,24 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       operationId = "patchPersona",
       summary = "Update a Persona",
       description = "Update an existing persona with JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -299,7 +344,9 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -316,7 +363,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, false, true);
   }

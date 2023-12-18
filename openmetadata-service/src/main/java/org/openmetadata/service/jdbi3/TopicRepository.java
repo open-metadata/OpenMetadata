@@ -64,13 +64,20 @@ import org.openmetadata.service.util.JsonUtils;
 public class TopicRepository extends EntityRepository<Topic> {
 
   public TopicRepository() {
-    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, Entity.getCollectionDAO().topicDAO(), "", "");
+    super(
+        TopicResource.COLLECTION_PATH,
+        Entity.TOPIC,
+        Topic.class,
+        Entity.getCollectionDAO().topicDAO(),
+        "",
+        "");
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Topic topic) {
-    topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
+    topic.setFullyQualifiedName(
+        FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
@@ -136,7 +143,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
-      addRelationship(service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
+      addRelationship(
+          service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
       topic.setService(service);
     }
   }
@@ -147,14 +155,18 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(topic.getId(), "topic.sampleData"), TopicSampleData.class);
+            daoCollection.entityExtensionDAO().getExtension(topic.getId(), "topic.sampleData"),
+            TopicSampleData.class);
     topic.setSampleData(sampleData);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
 
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
       populateEntityFieldTags(
-          entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(), true);
+          entityType,
+          topic.getMessageSchema().getSchemaFields(),
+          topic.getFullyQualifiedName(),
+          true);
       topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
@@ -254,7 +266,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     List<TagLabel> allTags = new ArrayList<>();
     Topic topic = (Topic) entity;
     EntityUtil.mergeTags(allTags, topic.getTags());
-    List<Field> schemaFields = topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
+    List<Field> schemaFields =
+        topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
     for (Field schemaField : listOrEmpty(schemaFields)) {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
@@ -284,7 +297,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessageSchemaDescriptionWorkflow(ThreadContext threadContext) {
       super(threadContext);
       schemaField =
-          getSchemaField((Topic) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+          getSchemaField(
+              (Topic) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -300,7 +314,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessageSchemaTagWorkflow(ThreadContext threadContext) {
       super(threadContext);
       schemaField =
-          getSchemaField((Topic) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+          getSchemaField(
+              (Topic) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -316,7 +331,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (schemaName.contains(".")) {
       String fieldNameWithoutQuotes = schemaName.substring(1, schemaName.length() - 1);
       schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      childrenSchemaName =
+          fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
     }
     Field schemaField = null;
     for (Field field : topic.getMessageSchema().getSchemaFields()) {
@@ -329,7 +345,8 @@ public class TopicRepository extends EntityRepository<Topic> {
       schemaField = getChildSchemaField(schemaField.getChildren(), childrenSchemaName);
     }
     if (schemaField == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("schema", schemaName));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldName("schema", schemaName));
     }
     return schemaField;
   }
@@ -376,27 +393,38 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
-      recordChange("minimumInSyncReplicas", original.getMinimumInSyncReplicas(), updated.getMinimumInSyncReplicas());
+      recordChange(
+          "maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
+      recordChange(
+          "minimumInSyncReplicas",
+          original.getMinimumInSyncReplicas(),
+          updated.getMinimumInSyncReplicas());
       // Partitions is a required field. Cannot be null.
       if (updated.getPartitions() != null) {
         recordChange("partitions", original.getPartitions(), updated.getPartitions());
       }
-      recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
+      recordChange(
+          "replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
       if (updated.getMessageSchema() != null) {
         recordChange(
             "messageSchema.schemaText",
-            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaText(),
+            original.getMessageSchema() == null
+                ? null
+                : original.getMessageSchema().getSchemaText(),
             updated.getMessageSchema().getSchemaText());
         recordChange(
             "messageSchema.schemaType",
-            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaType(),
+            original.getMessageSchema() == null
+                ? null
+                : original.getMessageSchema().getSchemaType(),
             updated.getMessageSchema().getSchemaType());
         updateSchemaFields(
             "messageSchema.schemaFields",
-            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaFields(),
+            original.getMessageSchema() == null
+                ? null
+                : original.getMessageSchema().getSchemaFields(),
             updated.getMessageSchema().getSchemaFields(),
             EntityUtil.schemaFieldMatch);
       }
@@ -419,10 +447,14 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     private void updateSchemaFields(
-        String fieldName, List<Field> origFields, List<Field> updatedFields, BiPredicate<Field, Field> fieldMatch) {
+        String fieldName,
+        List<Field> origFields,
+        List<Field> updatedFields,
+        BiPredicate<Field, Field> fieldMatch) {
       List<Field> deletedFields = new ArrayList<>();
       List<Field> addedFields = new ArrayList<>();
-      recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
+      recordListChange(
+          fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
       // carry forward tags and description if deletedFields matches added field
       Map<String, Field> addedFieldMap =
           addedFields.stream().collect(Collectors.toMap(Field::getName, Function.identity()));
@@ -440,7 +472,9 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
 
       // Delete tags related to deleted fields
-      deletedFields.forEach(deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+      deletedFields.forEach(
+          deleted ->
+              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
 
       // Add tags related to newly added fields
       for (Field added : addedFields) {
@@ -450,7 +484,8 @@ public class TopicRepository extends EntityRepository<Topic> {
       // Carry forward the user generated metadata from existing fields to new fields
       for (Field updated : updatedFields) {
         // Find stored field matching name, data type and ordinal position
-        Field stored = origFields.stream().filter(c -> fieldMatch.test(c, updated)).findAny().orElse(null);
+        Field stored =
+            origFields.stream().filter(c -> fieldMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New field added
           continue;
         }
@@ -466,7 +501,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
-          updateSchemaFields(childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+          updateSchemaFields(
+              childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
         }
       }
 

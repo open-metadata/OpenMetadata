@@ -33,7 +33,11 @@ public class DashboardDataModelIndex implements ColumnIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardDataModel.getName()).weight(10).build());
-    suggest.add(SearchSuggest.builder().input(dashboardDataModel.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder()
+            .input(dashboardDataModel.getFullyQualifiedName())
+            .weight(5)
+            .build());
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
@@ -49,10 +53,13 @@ public class DashboardDataModelIndex implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
+    ParseTags parseTags =
+        new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("tags", flattenedTagList);
     doc.put("column_suggest", columnSuggest);
     doc.put("suggest", suggest);

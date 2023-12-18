@@ -46,17 +46,21 @@ public abstract class ServiceEntityResource<
 
   private final ServiceType serviceType;
 
-  protected ServiceEntityResource(String entityType, Authorizer authorizer, ServiceType serviceType) {
+  protected ServiceEntityResource(
+      String entityType, Authorizer authorizer, ServiceType serviceType) {
     super(entityType, authorizer);
     this.serviceType = serviceType;
-    serviceEntityRepository = (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
+    serviceEntityRepository =
+        (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
     if (service.getConnection() != null) {
       service
           .getConnection()
-          .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
+          .setConfig(
+              retrieveServiceConnectionConfig(
+                  service, authorizer.shouldMaskPasswords(securityContext)));
     }
     return service;
   }
@@ -74,7 +78,8 @@ public abstract class ServiceEntityResource<
     return config;
   }
 
-  protected ResultList<T> decryptOrNullify(SecurityContext securityContext, ResultList<T> services) {
+  protected ResultList<T> decryptOrNullify(
+      SecurityContext securityContext, ResultList<T> services) {
     listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
     return services;
   }
@@ -82,7 +87,8 @@ public abstract class ServiceEntityResource<
   protected T unmask(T service) {
     // TODO move this functionality to repository
     repository.setFullyQualifiedName(service);
-    T originalService = repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
+    T originalService =
+        repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
       if (originalService != null && originalService.getConnection() != null) {
@@ -97,12 +103,14 @@ public abstract class ServiceEntityResource<
       }
       return service;
     } catch (Exception e) {
-      String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
+      String message =
+          SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
       if (message != null) {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to unmask connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to unmask connection instance of %s", connectionType));
     }
   }
 
@@ -121,10 +129,12 @@ public abstract class ServiceEntityResource<
       String after) {
     ListFilter filter = new ListFilter(include);
     if (!nullOrEmpty(domain)) {
-      EntityReference domainReference = Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
       filter.addQueryParam("domainId", domainReference.getId().toString());
     }
-    ResultList<T> services = listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<T> services =
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, services));
   }
 }

@@ -57,7 +57,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class DashboardDataModelResourceTest extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
+public class DashboardDataModelResourceTest
+    extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
 
   public DashboardDataModelResourceTest() {
     super(
@@ -99,7 +100,8 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
-    CreateDashboardDataModel create = createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    CreateDashboardDataModel create =
+        createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -116,7 +118,8 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
     // Apply mutually exclusive tags to a dataModel's nested column
     CreateDashboardDataModel createDashboardDataModel1 = createRequest(testInfo, 1);
-    Column nestedColumns = getColumn("testNested", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Column nestedColumns =
+        getColumn("testNested", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Column column1 = getColumn("test", STRUCT, null).withChildren(List.of(nestedColumns));
     createDashboardDataModel1.setColumns(listOf(column1));
     assertResponse(
@@ -130,7 +133,8 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
     List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
-    CreateDashboardDataModel create = createRequest(getEntityName(test)).withColumns(invalidTagColumns);
+    CreateDashboardDataModel create =
+        createRequest(getEntityName(test)).withColumns(invalidTagColumns);
 
     // Entity can't be created with PUT or POST
     assertResponse(
@@ -170,7 +174,9 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
     // Create a dashboard service with owner data consumer
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create dashboard data model under it
@@ -181,21 +187,26 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   @Override
   @Execution(ExecutionMode.CONCURRENT)
-  public DashboardDataModel validateGetWithDifferentFields(DashboardDataModel dashboardDataModel, boolean byName)
-      throws HttpResponseException {
+  public DashboardDataModel validateGetWithDifferentFields(
+      DashboardDataModel dashboardDataModel, boolean byName) throws HttpResponseException {
     String fields = "";
     dashboardDataModel =
         byName
-            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(
+                dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
-    assertListNull(dashboardDataModel.getOwner(), dashboardDataModel.getFollowers(), dashboardDataModel.getTags());
+    assertListNull(
+        dashboardDataModel.getOwner(),
+        dashboardDataModel.getFollowers(),
+        dashboardDataModel.getTags());
 
     // .../datamodels?fields=owner
     fields = "owner,followers,tags";
     dashboardDataModel =
         byName
-            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(
+                dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
@@ -225,7 +236,9 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   @Override
   public void validateCreatedEntity(
-      DashboardDataModel dashboardDataModel, CreateDashboardDataModel createRequest, Map<String, String> authHeaders) {
+      DashboardDataModel dashboardDataModel,
+      CreateDashboardDataModel createRequest,
+      Map<String, String> authHeaders) {
     assertNotNull(dashboardDataModel.getServiceType());
     assertReference(createRequest.getService(), dashboardDataModel.getService());
     assertEquals(createRequest.getSql(), dashboardDataModel.getSql());

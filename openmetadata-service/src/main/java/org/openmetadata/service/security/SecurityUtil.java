@@ -46,7 +46,8 @@ public final class SecurityUtil {
     if (authHeaders == null) {
       return null;
     }
-    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
+    String principal =
+        authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
     return principal == null ? null : principal.split("@")[0];
   }
 

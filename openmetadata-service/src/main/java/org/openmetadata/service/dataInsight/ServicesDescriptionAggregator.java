@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescription;
 
-public abstract class ServicesDescriptionAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class ServicesDescriptionAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   protected ServicesDescriptionAggregator(A aggregations) {
@@ -22,7 +23,8 @@ public abstract class ServicesDescriptionAggregator<A, B, M, S> implements DataI
       M serviceBuckets = getServiceBuckets(timestampBucket);
       for (B serviceBucket : getBuckets(serviceBuckets)) {
         String serviceName = getKeyAsString(serviceBucket);
-        S sumCompletedDescriptions = getSumAggregations(serviceBucket, COMPLETED_DESCRIPTION_FRACTION);
+        S sumCompletedDescriptions =
+            getSumAggregations(serviceBucket, COMPLETED_DESCRIPTION_FRACTION);
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
 
         data.add(
@@ -31,7 +33,8 @@ public abstract class ServicesDescriptionAggregator<A, B, M, S> implements DataI
                 .withServiceName(serviceName)
                 .withEntityCount(getValue(sumEntityCount))
                 .withCompletedDescription(getValue(sumCompletedDescriptions))
-                .withCompletedDescriptionFraction(getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
+                .withCompletedDescriptionFraction(
+                    getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
       }
     }
     return data;

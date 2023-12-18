@@ -35,8 +35,8 @@ public class PipelineServiceStatusJobHandler {
 
   private static PipelineServiceStatusJobHandler instance;
 
-  private PipelineServiceStatusJobHandler(PipelineServiceClientConfiguration config, String clusterName)
-      throws SchedulerException {
+  private PipelineServiceStatusJobHandler(
+      PipelineServiceClientConfiguration config, String clusterName) throws SchedulerException {
     this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
@@ -45,7 +45,8 @@ public class PipelineServiceStatusJobHandler {
     this.scheduler.start();
   }
 
-  public static PipelineServiceStatusJobHandler create(PipelineServiceClientConfiguration config, String clusterName) {
+  public static PipelineServiceStatusJobHandler create(
+      PipelineServiceClientConfiguration config, String clusterName) {
     if (instance != null) return instance;
 
     try {
@@ -73,12 +74,16 @@ public class PipelineServiceStatusJobHandler {
   private Trigger getTrigger() {
     return TriggerBuilder.newTrigger()
         .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(healthCheckInterval).repeatForever())
+        .withSchedule(
+            SimpleScheduleBuilder.simpleSchedule()
+                .withIntervalInSeconds(healthCheckInterval)
+                .repeatForever())
         .build();
   }
 
   public void addPipelineServiceStatusJob() {
-    // Only register the job to listen to the status if the Pipeline Service Client is indeed enabled
+    // Only register the job to listen to the status if the Pipeline Service Client is indeed
+    // enabled
     if (config.getEnabled().equals(Boolean.TRUE)) {
       try {
         JobDetail jobDetail = jobBuilder();

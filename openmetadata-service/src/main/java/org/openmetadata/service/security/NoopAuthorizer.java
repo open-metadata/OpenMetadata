@@ -45,7 +45,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resource) {
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, String resource) {
     return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
   }
 
@@ -57,7 +58,9 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     /* Always authorize */
   }
 

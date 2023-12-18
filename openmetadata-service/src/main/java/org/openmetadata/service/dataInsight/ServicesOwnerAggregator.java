@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithOwner;
 
-public abstract class ServicesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class ServicesOwnerAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   protected final A aggregations;
 
   protected ServicesOwnerAggregator(A aggregations) {

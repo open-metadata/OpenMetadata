@@ -27,7 +27,8 @@ public class MaskedAnnotator extends AbstractAnnotator {
 
   /** Add {@link MaskedField} annotation property fields */
   @Override
-  public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
+  public void propertyField(
+      JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
     if (propertyNode.get("mask") != null && propertyNode.get("mask").asBoolean()) {
       field.annotate(MaskedField.class);
@@ -60,7 +61,9 @@ public class MaskedAnnotator extends AbstractAnnotator {
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
       if (outerClass.fields().containsKey(propertyName)
           && outerClass.fields().get(propertyName).annotations().stream()
-              .anyMatch(annotation -> MaskedField.class.getName().equals(getAnnotationClassName(annotation)))) {
+              .anyMatch(
+                  annotation ->
+                      MaskedField.class.getName().equals(getAnnotationClassName(annotation)))) {
         jMethod.annotate(MaskedField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {

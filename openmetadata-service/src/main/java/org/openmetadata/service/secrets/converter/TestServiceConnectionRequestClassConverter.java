@@ -52,19 +52,25 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
     try {
       Class<?> clazz =
           ReflectionUtil.createConnectionConfigClass(
-              testServiceConnectionRequest.getConnectionType(), testServiceConnectionRequest.getServiceType());
+              testServiceConnectionRequest.getConnectionType(),
+              testServiceConnectionRequest.getServiceType());
 
       tryToConvertOrFail(testServiceConnectionRequest.getConnection(), CONNECTION_CLASSES)
           .ifPresent(testServiceConnectionRequest::setConnection);
 
       Object newConnectionConfig =
           ClassConverterFactory.getConverter(clazz)
-              .convert(((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).getConfig());
-      ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).setConfig(newConnectionConfig);
+              .convert(
+                  ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection())
+                      .getConfig());
+      ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection())
+          .setConfig(newConnectionConfig);
     } catch (Exception e) {
       throw InvalidServiceConnectionException.byMessage(
           testServiceConnectionRequest.getConnectionType(),
-          String.format("Failed to convert class instance of %s", testServiceConnectionRequest.getConnectionType()));
+          String.format(
+              "Failed to convert class instance of %s",
+              testServiceConnectionRequest.getConnectionType()));
     }
 
     return testServiceConnectionRequest;

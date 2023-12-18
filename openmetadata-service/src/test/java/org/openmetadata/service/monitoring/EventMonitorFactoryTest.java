@@ -41,6 +41,8 @@ public class EventMonitorFactoryTest {
   @Test
   void testIsCreatedItCloudwatchEventMonitor() {
     config.setEventMonitor(EventMonitorProvider.CLOUDWATCH);
-    assertTrue(EventMonitorFactory.createEventMonitor(config, CLUSTER_NAME) instanceof CloudwatchEventMonitor);
+    assertTrue(
+        EventMonitorFactory.createEventMonitor(config, CLUSTER_NAME)
+            instanceof CloudwatchEventMonitor);
   }
 }

@@ -19,11 +19,14 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void fixExecutableTestSuiteFQN(CollectionDAO collectionDAO) {
-    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     List<TestSuite> testSuites =
-        testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testSuiteRepository.listAll(
+            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
-      if (Boolean.TRUE.equals(suite.getExecutable()) && suite.getExecutableEntityReference() != null) {
+      if (Boolean.TRUE.equals(suite.getExecutable())
+          && suite.getExecutableEntityReference() != null) {
         String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
         String suiteFQN = tableFQN + ".testSuite";
         suite.setName(suiteFQN);

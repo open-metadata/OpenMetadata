@@ -29,14 +29,18 @@ public abstract class EntityMasker {
   public abstract Object maskServiceConnectionConfig(
       Object connectionConfig, String connectionType, ServiceType serviceType);
 
-  public abstract void maskAuthenticationMechanism(String name, AuthenticationMechanism authenticationMechanism);
+  public abstract void maskAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism);
 
   public abstract void maskIngestionPipeline(IngestionPipeline ingestionPipeline);
 
   public abstract Workflow maskWorkflow(Workflow workflow);
 
   public abstract Object unmaskServiceConnectionConfig(
-      Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType);
+      Object connectionConfig,
+      Object originalConnectionConfig,
+      String connectionType,
+      ServiceType serviceType);
 
   public abstract void unmaskIngestionPipeline(
       IngestionPipeline ingestionPipeline, IngestionPipeline originalIngestionPipeline);

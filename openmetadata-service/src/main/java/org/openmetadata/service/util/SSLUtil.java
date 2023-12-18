@@ -16,8 +16,8 @@ import org.apache.http.ssl.SSLContexts;
 
 public class SSLUtil {
 
-  public static SSLContext createSSLContext(String truststorePath, String trustStorePassword, String client)
-      throws KeyStoreException {
+  public static SSLContext createSSLContext(
+      String truststorePath, String trustStorePassword, String client) throws KeyStoreException {
 
     if (truststorePath != null
         && !truststorePath.isEmpty()
@@ -34,7 +34,8 @@ public class SSLUtil {
           | CertificateException
           | KeyStoreException
           | KeyManagementException e) {
-        throw new RuntimeException(String.format("Failed to create SSLContext for [%s]", client), e);
+        throw new RuntimeException(
+            String.format("Failed to create SSLContext for [%s]", client), e);
       }
     }
     return null;

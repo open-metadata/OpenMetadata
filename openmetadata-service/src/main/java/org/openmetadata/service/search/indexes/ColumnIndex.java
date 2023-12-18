@@ -10,8 +10,10 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public interface ColumnIndex extends SearchIndex {
-  default void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
+  default void parseColumns(
+      List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
+    Optional<String> optParentColumn =
+        Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
     List<TagLabel> tags = new ArrayList<>();
     for (Column col : columns) {
       String columnName = col.getName();
@@ -22,7 +24,8 @@ public interface ColumnIndex extends SearchIndex {
         tags = col.getTags();
       }
 
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
+      FlattenColumn flattenColumn =
+          FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
 
       if (!tags.isEmpty()) {
         flattenColumn.setTags(tags);

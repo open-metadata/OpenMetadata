@@ -25,7 +25,8 @@ public class StoredProcedureIndex implements SearchIndex {
     Map<String, Object> doc = JsonUtils.getMap(storedProcedure);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(storedProcedure.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(storedProcedure.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(storedProcedure.getName()).weight(10).build());
     doc.put(
         "fqnParts",
@@ -34,7 +35,8 @@ public class StoredProcedureIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORED_PROCEDURE);
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
+    ParseTags parseTags =
+        new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(storedProcedure.getOwner()));

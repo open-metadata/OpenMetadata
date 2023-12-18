@@ -45,7 +45,8 @@ public final class ParallelStreamUtil {
     }
   }
 
-  public static <T> T executeWithTimeout(int timeoutInSeconds, Supplier<T> supplier, Executor executor) {
+  public static <T> T executeWithTimeout(
+      int timeoutInSeconds, Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     LOG.debug("execute start");
 

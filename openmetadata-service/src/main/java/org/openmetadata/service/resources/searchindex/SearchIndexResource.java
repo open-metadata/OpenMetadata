@@ -68,7 +68,8 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/searchIndexes")
 @Tag(
     name = "SearchIndex",
-    description = "A `SearchIndex` is a index mapping for indexing documents in a `Search Service`.")
+    description =
+        "A `SearchIndex` is a index mapping for indexing documents in a `Search Service`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "searchIndexes")
@@ -110,7 +111,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
             responseCode = "200",
             description = "List of SearchIndexes",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndexList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndexList.class)))
       })
   public ResultList<SearchIndex> list(
       @Context UriInfo uriInfo,
@@ -125,16 +128,21 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(type = "string", example = "ElasticSearchWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
+      @Parameter(
+              description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of SearchIndexes before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of SearchIndexes before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of SearchIndexes after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of SearchIndexes after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -144,7 +152,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -157,12 +166,17 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "List of SearchIndex versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -175,12 +189,19 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {id} is not found")
       })
   public SearchIndex get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -206,12 +227,19 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {fqn} is not found")
       })
   public SearchIndex getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the SearchIndex",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -239,7 +267,10 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class))),
         @ApiResponse(
             responseCode = "404",
             description = "SearchIndex for instance {id} and version {version} is not found")
@@ -247,7 +278,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   public SearchIndex getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "SearchIndex version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -265,11 +298,16 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchIndex create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateSearchIndex create) {
     SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, searchIndex);
   }
@@ -280,18 +318,25 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       operationId = "patchSearchIndex",
       summary = "Update a SearchIndex",
       description = "Update an existing SearchIndex using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -305,10 +350,15 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "The updated SearchIndex ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchIndex create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateSearchIndex create) {
     SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
@@ -323,14 +373,20 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class))),
       })
   public SearchIndex addSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Valid SearchIndexSampleData sampleData) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     SearchIndex searchIndex = repository.addSampleData(id, sampleData);
     return addHref(uriInfo, searchIndex);
@@ -346,13 +402,19 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "Successfully obtained the SampleData for SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class)))
       })
   public SearchIndex getSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
@@ -371,15 +433,27 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -391,13 +465,20 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
     return repository
@@ -415,15 +496,21 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -434,7 +521,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       description = "Delete a SearchIndex by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -443,11 +532,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -459,7 +551,9 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       description = "Delete a SearchIndex by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -468,11 +562,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the SearchIndex",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
@@ -488,10 +585,15 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the SearchIndex. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchIndex.class)))
       })
   public Response restoreSearchIndex(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

@@ -51,7 +51,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
+    database.setFullyQualifiedName(
+        FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Override
@@ -71,7 +72,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
-    addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
+    addRelationship(
+        service.getId(),
+        database.getId(),
+        service.getType(),
+        Entity.DATABASE,
+        Relationship.CONTAINS);
   }
 
   private List<EntityReference> getSchemas(Database database) {
@@ -103,7 +109,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public void clearFields(Database database, Fields fields) {
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
     database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
@@ -117,7 +124,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public EntityRepository<Database>.EntityUpdater getUpdater(Database original, Database updated, Operation operation) {
+  public EntityRepository<Database>.EntityUpdater getUpdater(
+      Database original, Database updated, Operation operation) {
     return new DatabaseUpdater(original, updated, operation);
   }
 
@@ -127,12 +135,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setServiceType(service.getServiceType());
   }
 
-  public Database addDatabaseProfilerConfig(UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
+  public Database addDatabaseProfilerConfig(
+      UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
     // Validate the request content
     Database database = find(databaseId, Include.NON_DELETED);
-    if (databaseProfilerConfig.getProfileSampleType() != null && databaseProfilerConfig.getProfileSample() != null) {
+    if (databaseProfilerConfig.getProfileSampleType() != null
+        && databaseProfilerConfig.getProfileSample() != null) {
       EntityUtil.validateProfileSample(
-          databaseProfilerConfig.getProfileSampleType().toString(), databaseProfilerConfig.getProfileSample());
+          databaseProfilerConfig.getProfileSampleType().toString(),
+          databaseProfilerConfig.getProfileSample());
     }
 
     daoCollection
@@ -148,7 +159,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public DatabaseProfilerConfig getDatabaseProfilerConfig(Database database) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(database.getId(), DATABASE_PROFILER_CONFIG_EXTENSION),
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(database.getId(), DATABASE_PROFILER_CONFIG_EXTENSION),
         DatabaseProfilerConfig.class);
   }
 

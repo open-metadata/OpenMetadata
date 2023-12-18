@@ -33,7 +33,8 @@ public class TagFormatter extends DefaultFieldFormatter {
         this.getMessageDecorator().httpAddMarker()
             + this.getFieldNewValue()
             + this.getMessageDecorator().httpAddMarker();
-    if (this.getEntityLink().getArrayFieldName() != null && this.getEntityLink().getArrayFieldValue() != null) {
+    if (this.getEntityLink().getArrayFieldName() != null
+        && this.getEntityLink().getArrayFieldValue() != null) {
       message =
           String.format(
               ("Added "
@@ -49,14 +50,18 @@ public class TagFormatter extends DefaultFieldFormatter {
 
     } else {
       message =
-          String.format(("Added " + this.getMessageDecorator().getBold() + ": %s"), this.getFieldChangeName(), message);
+          String.format(
+              ("Added " + this.getMessageDecorator().getBold() + ": %s"),
+              this.getFieldChangeName(),
+              message);
     }
     String spanAdd = this.getMessageDecorator().getAddMarker();
     String spanAddClose = this.getMessageDecorator().getAddMarkerClose();
     if (message != null) {
       message =
           this.getMessageDecorator()
-              .replaceMarkers(message, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
+              .replaceMarkers(
+                  message, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     }
     return message;
   }
@@ -78,12 +83,15 @@ public class TagFormatter extends DefaultFieldFormatter {
 
     diff =
         this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
+            .replaceMarkers(
+                diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     diff =
         this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
+            .replaceMarkers(
+                diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
     String message;
-    if (this.getEntityLink().getArrayFieldName() != null && this.getEntityLink().getArrayFieldValue() != null) {
+    if (this.getEntityLink().getArrayFieldName() != null
+        && this.getEntityLink().getArrayFieldValue() != null) {
       message =
           String.format(
               ("Updated "
@@ -99,7 +107,10 @@ public class TagFormatter extends DefaultFieldFormatter {
 
     } else {
       message =
-          String.format(("Updated " + this.getMessageDecorator().getBold() + ": %s"), this.getFieldChangeName(), diff);
+          String.format(
+              ("Updated " + this.getMessageDecorator().getBold() + ": %s"),
+              this.getFieldChangeName(),
+              diff);
     }
     return String.format(message, this.getFieldChangeName());
   }
@@ -110,7 +121,8 @@ public class TagFormatter extends DefaultFieldFormatter {
         this.getMessageDecorator().httpRemoveMarker()
             + this.getFieldOldValue()
             + this.getMessageDecorator().httpRemoveMarker();
-    if (this.getEntityLink().getArrayFieldName() != null && this.getEntityLink().getArrayFieldValue() != null) {
+    if (this.getEntityLink().getArrayFieldName() != null
+        && this.getEntityLink().getArrayFieldValue() != null) {
       message =
           String.format(
               ("Deleted "
@@ -127,14 +139,17 @@ public class TagFormatter extends DefaultFieldFormatter {
     } else {
       message =
           String.format(
-              ("Deleted " + this.getMessageDecorator().getBold() + ": %s"), this.getFieldChangeName(), message);
+              ("Deleted " + this.getMessageDecorator().getBold() + ": %s"),
+              this.getFieldChangeName(),
+              message);
     }
     String spanAdd = this.getMessageDecorator().getRemoveMarker();
     String spanAddClose = this.getMessageDecorator().getRemoveMarkerClose();
     if (message != null) {
       message =
           this.getMessageDecorator()
-              .replaceMarkers(message, this.getMessageDecorator().httpRemoveMarker(), spanAdd, spanAddClose);
+              .replaceMarkers(
+                  message, this.getMessageDecorator().httpRemoveMarker(), spanAdd, spanAddClose);
     }
     return message;
   }

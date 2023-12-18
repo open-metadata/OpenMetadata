@@ -28,7 +28,8 @@ public class NoopFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
 
   public NoopFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {}
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");

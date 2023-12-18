@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 
-public abstract class DailyActiveUsersAggregator<A, H, B> implements DataInsightAggregatorInterface {
+public abstract class DailyActiveUsersAggregator<A, H, B>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   public DailyActiveUsersAggregator(A aggregations) {

@@ -8,7 +8,8 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
 
 public class ElasticSearchMostActiveUsersAggregator
-    extends MostActiveUsersAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
+    extends MostActiveUsersAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
 
   public ElasticSearchMostActiveUsersAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -40,7 +41,8 @@ public class ElasticSearchMostActiveUsersAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

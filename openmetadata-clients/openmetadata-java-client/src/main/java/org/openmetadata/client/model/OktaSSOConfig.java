@@ -21,8 +21,10 @@ import lombok.Setter;
 public class OktaSSOConfig {
   /** Okta Client ID for the service application. (Required) */
   @Getter @Setter private String clientId;
+
   /** Okta Client Secret for the API service application. (Required) */
   @Getter @Setter private String clientSecret;
+
   /** Okta Authorization Server Url. (Required) */
   @Getter private String authorizationServerURL;
 

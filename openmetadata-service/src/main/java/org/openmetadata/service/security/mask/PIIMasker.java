@@ -51,12 +51,15 @@ public class PIIMasker {
 
     // If the table itself is marked as PII, mask all the sample data
     if (hasPiiSensitiveTag(table)) {
-      columnsPositionToBeMasked = IntStream.range(0, table.getColumns().size()).boxed().collect(Collectors.toList());
+      columnsPositionToBeMasked =
+          IntStream.range(0, table.getColumns().size()).boxed().collect(Collectors.toList());
     } else {
       // Otherwise, mask only the PII columns
       columnsPositionToBeMasked =
           table.getColumns().stream()
-              .collect(Collectors.toMap(Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
+              .collect(
+                  Collectors.toMap(
+                      Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
               .entrySet()
               .stream()
               .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
@@ -74,7 +77,8 @@ public class PIIMasker {
 
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+        position ->
+            sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
 
     table.setSampleData(sampleData);
     return table;
@@ -144,23 +148,32 @@ public class PIIMasker {
         testCases.getData().stream()
             .map(
                 testCase -> {
-                  MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                  MessageParser.EntityLink testCaseLink =
+                      MessageParser.EntityLink.parse(testCase.getEntityLink());
                   Table table =
                       Entity.getEntityByName(
-                          Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags,columns", Include.NON_DELETED);
+                          Entity.TABLE,
+                          testCaseLink.getEntityFQN(),
+                          "owner,tags,columns",
+                          Include.NON_DELETED);
 
                   // Ignore table tests
                   if (testCaseLink.getFieldName() == null) return testCase;
 
                   Optional<Column> referencedColumn =
                       table.getColumns().stream()
-                          .filter(col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                          .filter(
+                              col ->
+                                  testCaseLink
+                                      .getFullyQualifiedFieldValue()
+                                      .equals(col.getFullyQualifiedName()))
                           .findFirst();
 
                   if (referencedColumn.isPresent()) {
                     Column col = referencedColumn.get();
                     // We need the table owner to know if we can authorize the access
-                    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                    boolean authorizePII =
+                        authorizer.authorizePII(securityContext, table.getOwner());
                     if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
                     return testCase;
                   }
@@ -209,17 +222,21 @@ public class PIIMasker {
   }
 
   private static boolean hasPiiSensitiveTag(SearchIndex searchIndex) {
-    return searchIndex.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
+    return searchIndex.getTags().stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   /*
   Check if the Topic is flagged as PII or any of its fields
   */
   private static boolean hasPiiSensitiveTag(Topic topic) {
-    if (topic.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals)) return true;
+    if (topic.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals))
+      return true;
 
     Set<TagLabel> fieldTags = new HashSet<>();
-    List<Field> schemaFields = topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
+    List<Field> schemaFields =
+        topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
     for (Field schemaField : listOrEmpty(schemaFields)) {
       fieldTags.addAll(getAllFieldTags(schemaField));
     }
@@ -227,7 +244,8 @@ public class PIIMasker {
     return fieldTags.stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
-  private static List<Object> maskSampleDataRow(List<Object> row, List<Integer> columnsPositionToBeMasked) {
+  private static List<Object> maskSampleDataRow(
+      List<Object> row, List<Integer> columnsPositionToBeMasked) {
     columnsPositionToBeMasked.forEach(position -> row.set(position, MASKED_VALUE));
     return row;
   }

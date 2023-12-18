@@ -47,5 +47,6 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  AccessTokenResponse getAccessToken(@Param("grant_type") String grantType, @Param("scope") String scope);
+  AccessTokenResponse getAccessToken(
+      @Param("grant_type") String grantType, @Param("scope") String scope);
 }

@@ -29,7 +29,8 @@ public interface AuthenticatorHandler {
 
   void checkIfLoginBlocked(String userName);
 
-  void recordFailedLoginAttempt(String providedIdentity, User user) throws TemplateException, IOException;
+  void recordFailedLoginAttempt(String providedIdentity, User user)
+      throws TemplateException, IOException;
 
   void validatePassword(String providedIdentity, User storedUser, String reqPassword)
       throws TemplateException, IOException;
@@ -52,16 +53,18 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
+  default void sendPasswordResetLink(
+      UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+  }
+
+  default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req) throws IOException {
+  default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req)
+      throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -74,7 +77,11 @@ public interface AuthenticatorHandler {
   }
 
   default void sendInviteMailToUser(
-      UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
+      UriInfo uriInfo,
+      User user,
+      String subject,
+      CreateUser.CreatePasswordType requestType,
+      String pwd)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
@@ -84,7 +91,11 @@ public interface AuthenticatorHandler {
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), expireInSeconds, false, ServiceTokenType.OM_USER);
+                storedUser.getName(),
+                storedUser.getEmail(),
+                expireInSeconds,
+                false,
+                ServiceTokenType.OM_USER);
 
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");

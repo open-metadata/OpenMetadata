@@ -67,11 +67,15 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
             responseCode = "200",
             description = "List of report data",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDataResultList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportDataResultList.class)))
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @QueryParam("reportDataType")
           ReportDataType reportDataType,
@@ -87,7 +91,8 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
           @NonNull
           @QueryParam("endTs")
           Long endTs) {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getReportData(reportDataType, startTs, endTs);
@@ -102,14 +107,23 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
         @ApiResponse(
             responseCode = "200",
             description = "Successfully added reportData.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
       })
   public Response addReportData(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData) {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid ReportData reportData) {
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return create(reportData, ReportDataRepository.REPORT_DATA_EXTENSION, reportData.getReportDataType().toString());
+    return create(
+        reportData,
+        ReportDataRepository.REPORT_DATA_EXTENSION,
+        reportData.getReportDataType().toString());
   }
 
   @DELETE
@@ -122,12 +136,17 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted report data.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
       })
   public Response deleteReportData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @PathParam("reportDataType")
           ReportDataType reportDataType,
@@ -135,7 +154,8 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
           @NonNull
           @PathParam("date")
           String date) {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.deleteReportDataAtDate(reportDataType, date);
@@ -152,16 +172,22 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted previous report data.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
       })
   public Response deletePreviousReportData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @PathParam("reportDataType")
           ReportDataType reportDataType) {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.deleteReportData(reportDataType);

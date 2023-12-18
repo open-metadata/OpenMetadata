@@ -29,12 +29,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class MetricsRepository extends EntityRepository<Metrics> {
   public MetricsRepository() {
     super(
-        MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, Entity.getCollectionDAO().metricsDAO(), "", "");
+        MetricsResource.COLLECTION_PATH,
+        Entity.METRICS,
+        Metrics.class,
+        Entity.getCollectionDAO().metricsDAO(),
+        "",
+        "");
   }
 
   @Override
   public void setFullyQualifiedName(Metrics metrics) {
-    metrics.setFullyQualifiedName(FullyQualifiedName.add(metrics.getService().getName(), metrics.getName()));
+    metrics.setFullyQualifiedName(
+        FullyQualifiedName.add(metrics.getService().getName(), metrics.getName()));
   }
 
   @Override
@@ -70,7 +76,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void storeRelationships(Metrics metrics) {
     EntityReference service = metrics.getService();
-    addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
+    addRelationship(
+        service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
   }
 
   private EntityReference getService(EntityReference service) { // Get service by service ID
@@ -78,6 +85,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
       return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
+        CatalogExceptionMessage.invalidServiceEntity(
+            service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
   }
 }

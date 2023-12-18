@@ -27,7 +27,8 @@ public class TagIndex implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            tag.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            tag.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {

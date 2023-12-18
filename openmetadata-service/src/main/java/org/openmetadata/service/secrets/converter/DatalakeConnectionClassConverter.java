@@ -32,7 +32,8 @@ public class DatalakeConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    DatalakeConnection datalakeConnection = (DatalakeConnection) JsonUtils.convertValue(object, this.clazz);
+    DatalakeConnection datalakeConnection =
+        (DatalakeConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(datalakeConnection.getConfigSource(), CONFIG_SOURCE_CLASSES)
         .ifPresent(datalakeConnection::setConfigSource);

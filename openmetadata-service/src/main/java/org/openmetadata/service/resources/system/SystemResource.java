@@ -80,9 +80,13 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingsList.class)))
       })
-  public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public ResultList<Settings> list(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.listAllConfigs();
   }
@@ -97,12 +101,16 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
       })
   public Settings getSettingByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.getConfigWithKey(name);
@@ -118,10 +126,15 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
       })
   public Response createOrUpdateSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.createOrUpdate(settingName);
   }
@@ -136,9 +149,13 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "EmailTest",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
       })
-  public Response sendTestEmail(@Context UriInfo uriInfo, @Context SecurityContext securityContext, String email)
+  public Response sendTestEmail(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String email)
       throws TemplateException, IOException {
     authorizer.authorizeAdmin(securityContext);
     EmailUtil.sendTestEmail(email);
@@ -151,19 +168,25 @@ public class SystemResource {
       operationId = "patchSetting",
       summary = "Patch a setting",
       description = "Update an existing Setting using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Key of the Setting", schema = @Schema(type = "string")) @PathParam("settingName")
+      @Parameter(description = "Key of the Setting", schema = @Schema(type = "string"))
+          @PathParam("settingName")
           String settingName,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.patchSetting(settingName, patch);
@@ -179,12 +202,16 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
       })
   public Response restoreDefaultEmailSetting(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("settingName")
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
+          @PathParam("settingName")
           String name) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.createOrUpdate(
@@ -203,7 +230,10 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of Entities Count",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntitiesCount.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntitiesCount.class)))
       })
   public EntitiesCount listEntitiesCount(
       @Context UriInfo uriInfo,
@@ -227,7 +257,10 @@ public class SystemResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of Services Count",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ServicesCount.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ServicesCount.class)))
       })
   public ServicesCount listServicesCount(
       @Context UriInfo uriInfo,

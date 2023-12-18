@@ -36,10 +36,14 @@ class PolicyRepositoryTest {
             MetadataOperation.EDIT_TESTS,
             MetadataOperation.EDIT_TAGS,
             MetadataOperation.DELETE);
-    List<MetadataOperation> filteredOperations = PolicyRepository.filterRedundantOperations(operations);
+    List<MetadataOperation> filteredOperations =
+        PolicyRepository.filterRedundantOperations(operations);
     assertEquals(
         listOf(
-            MetadataOperation.CREATE, MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_ALL, MetadataOperation.DELETE),
+            MetadataOperation.CREATE,
+            MetadataOperation.VIEW_ALL,
+            MetadataOperation.EDIT_ALL,
+            MetadataOperation.DELETE),
         filteredOperations);
 
     // Ensure operations are returned unfiltered when ALL operations do not exist

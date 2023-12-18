@@ -54,9 +54,13 @@ public class TestCaseFormatter implements EntityFormatter {
       return String.format(format, testCaseName, getStatusMessage(result.getTestCaseStatus()));
     }
     String format =
-        String.format("Test Case %s is updated in %s", messageFormatter.getBold(), messageFormatter.getBold());
+        String.format(
+            "Test Case %s is updated in %s",
+            messageFormatter.getBold(), messageFormatter.getBold());
     return String.format(
-        format, testCaseName, MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+        format,
+        testCaseName,
+        MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
   }
 
   private String getStatusMessage(TestCaseStatus status) {

@@ -36,7 +36,8 @@ public class Auth0AuthenticationProvider implements AuthenticationProvider {
   public Auth0AuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.AUTH_0)) {
       LOG.error("Required type to invoke is Auth0 for Auth0Authentication Provider");
-      throw new RuntimeException("Required type to invoke is Auth0 for Auth0Authentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is Auth0 for Auth0Authentication Provider");
     }
 
     Auth0SSOClientConfig securityConfig = (Auth0SSOClientConfig) iConfig.getSecurityConfig();
@@ -48,7 +49,8 @@ public class Auth0AuthenticationProvider implements AuthenticationProvider {
 
     ApiClient auth0SSO = new ApiClient();
     auth0SSO.setBasePath("https://" + securityConfig.getDomain());
-    Auth0AccessTokenRequestInterceptor interceptor = new Auth0AccessTokenRequestInterceptor(securityConfig);
+    Auth0AccessTokenRequestInterceptor interceptor =
+        new Auth0AccessTokenRequestInterceptor(securityConfig);
     auth0SSO.addAuthorization("0AuthToken", interceptor);
     auth0SSOClient = auth0SSO.buildClient(Auth0AccessTokenApi.class);
   }
@@ -62,7 +64,8 @@ public class Auth0AuthenticationProvider implements AuthenticationProvider {
   public String authToken() {
     AccessTokenResponse resp = auth0SSOClient.getAccessToken();
     generatedAuthToken = resp.getAccessToken();
-    expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
+    expirationTimeMillis =
+        Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
     return generatedAuthToken;
   }
 

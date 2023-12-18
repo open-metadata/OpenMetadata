@@ -49,7 +49,8 @@ public final class UserUtil {
     // Private constructor for util class
   }
 
-  public static void addUsers(AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
+  public static void addUsers(
+      AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
       for (String username : adminUsers) {
         createOrUpdateUser(authProvider, username, domain, isAdmin);
@@ -59,7 +60,8 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
+  private static void createOrUpdateUser(
+      AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {
@@ -69,7 +71,8 @@ public final class UserUtil {
 
       // Fetch Original User, is available
       User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
-      if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
+      if (Boolean.FALSE.equals(originalUser.getIsBot())
+          && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
         // Update Auth Mechanism if not present, and send mail to the user
@@ -177,7 +180,8 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
-    AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
+    AuthenticationMechanism authMechanism =
+        originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
     if (authMechanism == null) {
       authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
@@ -188,7 +192,8 @@ public final class UserUtil {
     return addOrUpdateUser(user);
   }
 
-  private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
+  private static JWTAuthMechanism buildJWTAuthMechanism(
+      OpenMetadataJWTClientConfig jwtClientConfig, User user) {
     return Objects.isNull(jwtClientConfig) || nullOrEmpty(jwtClientConfig.getJwtToken())
         ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
         : new JWTAuthMechanism()
@@ -196,14 +201,17 @@ public final class UserUtil {
             .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
   }
 
-  private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
+  private static AuthenticationMechanism buildAuthMechanism(
+      AuthenticationMechanism.AuthType authType, Object config) {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
   private static User retrieveWithAuthMechanism(User user) {
-    EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    EntityRepository<User> userRepository =
+        (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      return userRepository.getByName(null, user.getName(), new Fields(Set.of("authenticationMechanism")));
+      return userRepository.getByName(
+          null, user.getName(), new Fields(Set.of("authenticationMechanism")));
     } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;

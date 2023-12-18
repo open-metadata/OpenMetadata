@@ -45,25 +45,31 @@ public class CsvUtilTest {
 
     // Add entity reference
     expectedRecord.add(null);
-    assertEquals(expectedRecord, CsvUtil.addEntityReference(actualRecord, null)); // Null entity reference
+    assertEquals(
+        expectedRecord, CsvUtil.addEntityReference(actualRecord, null)); // Null entity reference
 
     expectedRecord.add("fqn");
     assertEquals(
-        expectedRecord, CsvUtil.addEntityReference(actualRecord, new EntityReference().withFullyQualifiedName("fqn")));
+        expectedRecord,
+        CsvUtil.addEntityReference(
+            actualRecord, new EntityReference().withFullyQualifiedName("fqn")));
 
     // Add entity references
     expectedRecord.add(null);
-    assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, null)); // Null entity references
+    assertEquals(
+        expectedRecord, CsvUtil.addEntityReferences(actualRecord, null)); // Null entity references
 
     expectedRecord.add("fqn1;fqn2");
     List<EntityReference> refs =
         listOf(
-            new EntityReference().withFullyQualifiedName("fqn1"), new EntityReference().withFullyQualifiedName("fqn2"));
+            new EntityReference().withFullyQualifiedName("fqn1"),
+            new EntityReference().withFullyQualifiedName("fqn2"));
     assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, refs));
 
     // Add tag labels
     expectedRecord.add(null);
-    assertEquals(expectedRecord, CsvUtil.addTagLabels(actualRecord, null)); // Null entity references
+    assertEquals(
+        expectedRecord, CsvUtil.addTagLabels(actualRecord, null)); // Null entity references
 
     expectedRecord.add("t1;t2");
     List<TagLabel> tags = listOf(new TagLabel().withTagFQN("t1"), new TagLabel().withTagFQN("t2"));
@@ -75,7 +81,9 @@ public class CsvUtilTest {
     List<String> expectedCsvRecords = listOf(expectedCsv.split(CsvUtil.LINE_SEPARATOR));
     List<String> actualCsvRecords = listOf(actualCsv.split(CsvUtil.LINE_SEPARATOR));
     assertEquals(
-        expectedCsvRecords.size(), actualCsvRecords.size(), "Expected " + expectedCsv + " actual " + actualCsv);
+        expectedCsvRecords.size(),
+        actualCsvRecords.size(),
+        "Expected " + expectedCsv + " actual " + actualCsv);
     Collections.sort(expectedCsvRecords);
     Collections.sort(actualCsvRecords);
     for (int i = 0; i < expectedCsvRecords.size(); i++) {

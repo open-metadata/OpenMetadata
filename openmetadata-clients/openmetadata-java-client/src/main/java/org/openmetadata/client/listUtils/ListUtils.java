@@ -13,7 +13,10 @@ public class ListUtils {
   private ListUtils() {}
 
   public static ArrayList<Object> listResults(Object client, String methodName, Class<?> className)
-      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, InstantiationException {
+      throws NoSuchMethodException,
+          InvocationTargetException,
+          IllegalAccessException,
+          InstantiationException {
     Map<String, Object> data = new HashMap<>();
     Object classInstance = className.getDeclaredConstructor().newInstance();
     ArrayList<Object> arrayList = new ArrayList<>();

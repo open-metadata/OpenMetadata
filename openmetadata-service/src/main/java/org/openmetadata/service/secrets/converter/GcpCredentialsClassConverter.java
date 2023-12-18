@@ -31,7 +31,8 @@ public class GcpCredentialsClassConverter extends ClassConverter {
   public Object convert(Object object) {
     GCPCredentials gcpCredentials = (GCPCredentials) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(gcpCredentials.getGcpConfig(), CONNECTION_CLASSES).ifPresent(gcpCredentials::setGcpConfig);
+    tryToConvert(gcpCredentials.getGcpConfig(), CONNECTION_CLASSES)
+        .ifPresent(gcpCredentials::setGcpConfig);
 
     return gcpCredentials;
   }

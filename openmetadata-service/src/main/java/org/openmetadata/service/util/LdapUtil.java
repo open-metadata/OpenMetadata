@@ -39,7 +39,8 @@ public class LdapUtil {
       case CUSTOM_TRUST_STORE:
         CustomTrustManagerConfig customTrustManagerConfig =
             JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getCustomTrustManagerConfig(), CustomTrustManagerConfig.class);
+                ldapConfiguration.getTrustStoreConfig().getCustomTrustManagerConfig(),
+                CustomTrustManagerConfig.class);
         x509TrustManager =
             new TrustStoreTrustManager(
                 customTrustManagerConfig.getTrustStoreFilePath(),
@@ -51,21 +52,25 @@ public class LdapUtil {
         break;
       case HOST_NAME:
         HostNameConfig hostNameConfig =
-            JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig().getHostNameConfig(), HostNameConfig.class);
+            JsonUtils.convertValue(
+                ldapConfiguration.getTrustStoreConfig().getHostNameConfig(), HostNameConfig.class);
         x509TrustManager =
-            new HostNameTrustManager(hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
+            new HostNameTrustManager(
+                hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
         break;
       case JVM_DEFAULT:
         JVMDefaultConfig jvmDefaultConfig =
             JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getJvmDefaultConfig(), JVMDefaultConfig.class);
+                ldapConfiguration.getTrustStoreConfig().getJvmDefaultConfig(),
+                JVMDefaultConfig.class);
         x509TrustManager = JVMDefaultTrustManager.getInstance();
         sslSocketVerifier = hostNameVerifier(jvmDefaultConfig.getVerifyHostname());
         connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
         break;
       case TRUST_ALL:
         TrustAllConfig trustAllConfig =
-            JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(), TrustAllConfig.class);
+            JsonUtils.convertValue(
+                ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(), TrustAllConfig.class);
         x509TrustManager = new TrustAllTrustManager(trustAllConfig.getExamineValidityDates());
         break;
       default:
@@ -75,6 +80,8 @@ public class LdapUtil {
   }
 
   private SSLSocketVerifier hostNameVerifier(boolean verifyHostName) {
-    return verifyHostName ? new HostNameSSLSocketVerifier(true) : TrustAllSSLSocketVerifier.getInstance();
+    return verifyHostName
+        ? new HostNameSSLSocketVerifier(true)
+        : TrustAllSSLSocketVerifier.getInstance();
   }
 }

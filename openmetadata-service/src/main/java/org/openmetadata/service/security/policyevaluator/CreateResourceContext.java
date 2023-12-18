@@ -38,7 +38,9 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   @Override
   public List<TagLabel> getTags() {
-    return parentEntity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), parentEntity);
+    return parentEntity == null
+        ? Collections.emptyList()
+        : Entity.getEntityTags(getResource(), parentEntity);
   }
 
   @Override

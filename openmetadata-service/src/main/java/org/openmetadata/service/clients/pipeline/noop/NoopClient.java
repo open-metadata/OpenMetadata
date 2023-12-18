@@ -82,7 +82,8 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
+  public Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after) {
     return null;
   }
 

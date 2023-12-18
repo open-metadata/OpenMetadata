@@ -27,7 +27,8 @@ public class ExposedAnnotator extends AbstractAnnotator {
 
   /** Add {@link ExposedField} annotation property fields */
   @Override
-  public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
+  public void propertyField(
+      JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
     if (propertyNode.get("expose") != null && propertyNode.get("expose").asBoolean()) {
       field.annotate(ExposedField.class);
@@ -60,7 +61,9 @@ public class ExposedAnnotator extends AbstractAnnotator {
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
       if (outerClass.fields().containsKey(propertyName)
           && outerClass.fields().get(propertyName).annotations().stream()
-              .anyMatch(annotation -> ExposedField.class.getName().equals(getAnnotationClassName(annotation)))) {
+              .anyMatch(
+                  annotation ->
+                      ExposedField.class.getName().equals(getAnnotationClassName(annotation)))) {
         jMethod.annotate(ExposedField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {

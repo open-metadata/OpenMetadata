@@ -20,7 +20,8 @@ public class MigrationContext {
   public MigrationContext(String version, List<MigrationOps> migrationOps, Handle handle) {
     this.version = version;
     this.migrationOps =
-        Stream.concat(migrationOps.stream(), CommonMigrationOps.getCommonOps().stream()).collect(Collectors.toList());
+        Stream.concat(migrationOps.stream(), CommonMigrationOps.getCommonOps().stream())
+            .collect(Collectors.toList());
     this.handle = handle;
   }
 

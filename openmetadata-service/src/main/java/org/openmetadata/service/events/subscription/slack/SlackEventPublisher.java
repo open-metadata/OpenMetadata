@@ -80,7 +80,8 @@ public class SlackEventPublisher extends SubscriptionPublisher {
     for (ChangeEvent event : list.getData()) {
       try {
         SlackMessage slackMessage = slackMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, daoCollection, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, daoCollection, event);
         if (target != null) {
           targets.add(target);
         }

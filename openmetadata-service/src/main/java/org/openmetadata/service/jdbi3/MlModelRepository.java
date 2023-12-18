@@ -70,7 +70,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         .filter(c -> c.getName().equals(featureName))
         .findFirst()
         .orElseThrow(
-            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("mlFeature", featureName)));
+            () ->
+                new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidFieldName("mlFeature", featureName)));
   }
 
   @Override
@@ -85,7 +87,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
-    mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    mlModel.setDashboard(
+        fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
@@ -112,7 +115,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
+            s.setFullyQualifiedName(
+                FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }
@@ -175,14 +179,19 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void storeRelationships(MlModel mlModel) {
     EntityReference service = mlModel.getService();
-    addRelationship(service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
+    addRelationship(
+        service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
 
     setDashboard(mlModel, mlModel.getDashboard());
 
     if (mlModel.getDashboard() != null) {
       // Add relationship from MlModel --- uses ---> Dashboard
       addRelationship(
-          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+          mlModel.getId(),
+          mlModel.getDashboard().getId(),
+          Entity.MLMODEL,
+          Entity.DASHBOARD,
+          Relationship.USES);
     }
 
     setMlFeatureSourcesLineage(mlModel);
@@ -265,7 +274,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     MlFeatureDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       MlModel mlModel = (MlModel) threadContext.getAboutEntity();
-      mlFeature = findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
+      mlFeature =
+          findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -281,7 +291,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     MlFeatureTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       MlModel mlModel = (MlModel) threadContext.getAboutEntity();
-      mlFeature = findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
+      mlFeature =
+          findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -299,13 +310,19 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private EntityReference getDashboard(MlModel mlModel) {
-    return mlModel == null ? null : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
+    return mlModel == null
+        ? null
+        : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {
     if (dashboard != null) {
       addRelationship(
-          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+          mlModel.getId(),
+          mlModel.getDashboard().getId(),
+          Entity.MLMODEL,
+          Entity.DASHBOARD,
+          Relationship.USES);
     }
   }
 
@@ -369,7 +386,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateServer(MlModel origModel, MlModel updatedModel) {
-      // Updating the server can break current integrations to the ML services or enable new integrations
+      // Updating the server can break current integrations to the ML services or enable new
+      // integrations
       if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
         // Mark the EntityUpdater version change to major
         majorVersionChange = true;
@@ -396,7 +414,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Add relationship from model -- uses --> dashboard
         if (updatedDashboard != null) {
           addRelationship(
-              updatedModel.getId(), updatedDashboard.getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+              updatedModel.getId(),
+              updatedDashboard.getId(),
+              Entity.MLMODEL,
+              Entity.DASHBOARD,
+              Relationship.USES);
         }
       }
     }

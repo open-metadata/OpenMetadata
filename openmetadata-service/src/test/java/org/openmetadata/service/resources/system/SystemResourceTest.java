@@ -76,7 +76,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
@@ -113,7 +114,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Create Service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessagingService = messagingServiceResourceTest.createRequest(test);
+    CreateMessagingService createMessagingService =
+        messagingServiceResourceTest.createRequest(test);
     messagingServiceResourceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
 
     // Create User
@@ -158,9 +160,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
     Assertions.assertEquals(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
     Assertions.assertEquals(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
-    Assertions.assertEquals(beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
+    Assertions.assertEquals(
+        beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
     Assertions.assertEquals(beforeCount.getGlossaryCount() + 1, afterCount.getGlossaryCount());
-    Assertions.assertEquals(beforeCount.getGlossaryTermCount() + 1, afterCount.getGlossaryTermCount());
+    Assertions.assertEquals(
+        beforeCount.getGlossaryTermCount() + 1, afterCount.getGlossaryTermCount());
   }
 
   @Test
@@ -192,21 +196,30 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     smtpSettings.setUsername(test.getDisplayName());
     smtpSettings.setEmailingEntity(test.getDisplayName());
 
-    updateSystemConfig(new Settings().withConfigType(SettingsType.EMAIL_CONFIGURATION).withConfigValue(smtpSettings));
+    updateSystemConfig(
+        new Settings()
+            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+            .withConfigValue(smtpSettings));
     SmtpSettings updateEmailSettings =
-        JsonUtils.convertValue(getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
+        JsonUtils.convertValue(
+            getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
     Assertions.assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
     Assertions.assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
 
     // Test Custom Logo Update
     LogoConfiguration updateConfigReq =
-        new LogoConfiguration().withCustomLogoUrlPath("http://test.com").withCustomMonogramUrlPath("http://test.com");
+        new LogoConfiguration()
+            .withCustomLogoUrlPath("http://test.com")
+            .withCustomMonogramUrlPath("http://test.com");
     // Update Custom Logo Settings
     updateSystemConfig(
-        new Settings().withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION).withConfigValue(updateConfigReq));
+        new Settings()
+            .withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION)
+            .withConfigValue(updateConfigReq));
     LogoConfiguration updatedConfig =
         JsonUtils.convertValue(
-            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(), LogoConfiguration.class);
+            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(),
+            LogoConfiguration.class);
     Assertions.assertEquals(updateConfigReq, updatedConfig);
   }
 
@@ -222,12 +235,14 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Create Messaging Service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessagingService = messagingServiceResourceTest.createRequest(test);
+    CreateMessagingService createMessagingService =
+        messagingServiceResourceTest.createRequest(test);
     messagingServiceResourceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
 
     // Create Dashboard Service
     DashboardServiceResourceTest dashboardServiceResourceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService = dashboardServiceResourceTest.createRequest(test);
+    CreateDashboardService createDashboardService =
+        dashboardServiceResourceTest.createRequest(test);
     dashboardServiceResourceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Create Pipeline Service
@@ -247,11 +262,16 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Get count after creating services and ensure it increased by 1
     ServicesCount afterCount = getServicesCount();
-    Assertions.assertEquals(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
-    Assertions.assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
-    Assertions.assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
-    Assertions.assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
-    Assertions.assertEquals(beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
+    Assertions.assertEquals(
+        beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
+    Assertions.assertEquals(
+        beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
+    Assertions.assertEquals(
+        beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
+    Assertions.assertEquals(
+        beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
+    Assertions.assertEquals(
+        beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
   }
 
   @Test
@@ -270,7 +290,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
                     .withConfig(
                         new SSOAuthMechanism()
                             .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
-                            .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/fake/path/secret.json"))));
+                            .withAuthConfig(
+                                new GoogleSSOClientConfig()
+                                    .withSecretKey("/fake/path/secret.json"))));
     userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     int afterUserCount = getEntitiesCount().getUserCount();

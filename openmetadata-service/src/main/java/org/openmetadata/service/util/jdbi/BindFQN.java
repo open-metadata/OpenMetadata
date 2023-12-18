@@ -23,7 +23,12 @@ public @interface BindFQN {
   class Factory implements SqlStatementCustomizerFactory {
     @Override
     public SqlStatementParameterCustomizer createForParameter(
-        Annotation annotation, Class<?> sqlObjectType, Method method, Parameter param, int index, Type type) {
+        Annotation annotation,
+        Class<?> sqlObjectType,
+        Method method,
+        Parameter param,
+        int index,
+        Type type) {
       BindFQN bind = (BindFQN) annotation;
       return (stmt, arg) -> {
         String fqn = (String) arg;

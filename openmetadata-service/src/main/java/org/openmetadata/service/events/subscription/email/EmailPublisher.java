@@ -43,7 +43,8 @@ public class EmailPublisher extends SubscriptionPublisher {
   public EmailPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub);
     if (eventSub.getSubscriptionType() == EMAIL) {
-      this.emailAlertConfig = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), EmailAlertConfig.class);
+      this.emailAlertConfig =
+          JsonUtils.convertValue(eventSub.getSubscriptionConfig(), EmailAlertConfig.class);
       this.daoCollection = dao;
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
@@ -72,7 +73,8 @@ public class EmailPublisher extends SubscriptionPublisher {
         setSuccessStatus(System.currentTimeMillis());
       } catch (Exception e) {
         setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
         LOG.error(message);
         throw new EventPublisherException(message);
       }
@@ -85,7 +87,11 @@ public class EmailPublisher extends SubscriptionPublisher {
     EntityInterface entityInterface = getEntity(changeEvent);
     receiverList.addAll(
         buildReceiversListFromActions(
-            emailAlertConfig, EMAIL, daoCollection, entityInterface.getId(), changeEvent.getEntityType()));
+            emailAlertConfig,
+            EMAIL,
+            daoCollection,
+            entityInterface.getId(),
+            changeEvent.getEntityType()));
     return receiverList;
   }
 }

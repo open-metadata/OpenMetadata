@@ -47,14 +47,17 @@ public final class FeedUtils {
     switch (changeEvent.getEventType()) {
       case ENTITY_CREATED:
         message =
-            String.format("Created **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+            String.format(
+                "Created **%s**: `%s`",
+                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_UPDATED:
         return getThreads(entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
       case ENTITY_SOFT_DELETED:
         message =
             String.format(
-                "Soft deleted **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+                "Soft deleted **%s**: `%s`",
+                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_DELETED:
         message =
@@ -77,7 +80,8 @@ public final class FeedUtils {
     List<Thread> threads = new ArrayList<>();
 
     MessageDecorator<FeedMessage> feedFormatter = new FeedMessageDecorator();
-    Map<MessageParser.EntityLink, String> messages = getFormattedMessages(feedFormatter, changeDescription, entity);
+    Map<MessageParser.EntityLink, String> messages =
+        getFormattedMessages(feedFormatter, changeDescription, entity);
 
     // Create an automated thread
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {

@@ -20,7 +20,8 @@ public final class EventMonitorFactory {
     /* Cannot be constructed. */
   }
 
-  public static EventMonitor createEventMonitor(EventMonitorConfiguration config, String clusterName) {
+  public static EventMonitor createEventMonitor(
+      EventMonitorConfiguration config, String clusterName) {
 
     EventMonitorProvider eventMonitorProvider = config != null ? config.getEventMonitor() : null;
 

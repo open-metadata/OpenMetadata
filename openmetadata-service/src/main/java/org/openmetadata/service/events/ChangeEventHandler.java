@@ -50,7 +50,8 @@ public class ChangeEventHandler implements EventHandler {
   }
 
   @SneakyThrows
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
@@ -58,11 +59,13 @@ public class ChangeEventHandler implements EventHandler {
       CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
       FeedRepository feedRepository = new FeedRepository();
-      if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
+      if (responseContext.getEntity() != null
+          && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);
       } else {
-        ChangeEvent changeEvent = getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
+        ChangeEvent changeEvent =
+            getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
         if (changeEvent != null) {
           // Always set the Change Event Username as context Principal, the one creating the CE
           changeEvent.setUserName(loggedInUserName);
@@ -117,7 +120,8 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface, CollectionDAO collectionDAO) {
+  private void deleteAllConversationsRelatedToEntity(
+      EntityInterface entityInterface, CollectionDAO collectionDAO) {
     String entityId = entityInterface.getId().toString();
     List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
     for (String threadId : threadIds) {

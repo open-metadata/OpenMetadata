@@ -57,7 +57,9 @@ public class CloudWatchEventMonitorTest {
           .withId(UUID.randomUUID())
           .withPipelineType(PipelineType.METADATA)
           .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
+          .withAirflowConfig(
+              new AirflowConfig()
+                  .withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
   private ChangeEvent buildChangeEvent(EventType eventType) {
     return new ChangeEvent()
@@ -85,7 +87,8 @@ public class CloudWatchEventMonitorTest {
             put("secretAccessKey", "asdf1234");
           }
         });
-    eventMonitor = new CloudwatchEventMonitor(EventMonitorProvider.CLOUDWATCH, config, CLUSTER_NAME);
+    eventMonitor =
+        new CloudwatchEventMonitor(EventMonitorProvider.CLOUDWATCH, config, CLUSTER_NAME);
   }
 
   @Test
@@ -145,7 +148,8 @@ public class CloudWatchEventMonitorTest {
                     new FieldChange()
                         .withName("pipelineStatus")
                         .withOldValue(null)
-                        .withNewValue(new PipelineStatus().withPipelineState(PipelineStatusType.RUNNING)))));
+                        .withNewValue(
+                            new PipelineStatus().withPipelineState(PipelineStatusType.RUNNING)))));
 
     List<PutMetricDataRequest> metricRequests = eventMonitor.buildMetricRequest(event);
 

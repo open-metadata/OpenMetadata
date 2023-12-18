@@ -89,7 +89,10 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "List of metrics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MetricsList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetricsList.class)))
       })
   public ResultList<Metrics> list(
       @Context UriInfo uriInfo,
@@ -100,14 +103,19 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           @QueryParam("fields")
           String fieldsParam,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of metrics before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of metrics before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of metrics after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
     ListFilter filter = new ListFilter();
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -120,13 +128,17 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The metrics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
       })
   public Metrics get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -151,10 +163,14 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The metric",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
   }
@@ -169,15 +185,21 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @Override
@@ -190,7 +212,10 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "The metric",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(

@@ -111,8 +111,10 @@ public class TagLabelUtil {
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
-      List<TagLabel> derivedTags = Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
+    if (tagLabel.getSource()
+        == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
+      List<TagLabel> derivedTags =
+          Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
       return derivedTags;
     }
@@ -132,7 +134,8 @@ public class TagLabelUtil {
       String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
       TagLabel stored = map.put(parentFqn, tagLabel);
       if (stored != null && TagLabelUtil.mutuallyExclusive(tagLabel)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
       }
     }
   }
@@ -164,13 +167,16 @@ public class TagLabelUtil {
         errorMessage.append(
             String.format(
                 "Asset %s has a tag %s which is mutually exclusive with the one of the glossary tags %s. %n",
-                assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+                assetFqn,
+                converTagLabelArrayToString(tempList),
+                converTagLabelArrayToString(glossaryTags)));
       }
     }
 
     if (validateSubFields) {
       // Check SubFields Tags
-      Set<TagLabel> subFieldTags = filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+      Set<TagLabel> subFieldTags =
+          filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
       List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
       tempList.addAll(glossaryTags);
       try {
@@ -180,7 +186,9 @@ public class TagLabelUtil {
         errorMessage.append(
             String.format(
                 "Asset %s has a Subfield Column/Schema/Field containing tags %s which is mutually exclusive with the one of the glossary tags %s",
-                assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+                assetFqn,
+                converTagLabelArrayToString(tempList),
+                converTagLabelArrayToString(glossaryTags)));
       }
     }
 
@@ -191,6 +199,7 @@ public class TagLabelUtil {
   }
 
   public static String converTagLabelArrayToString(List<TagLabel> tags) {
-    return String.format("[%s]", tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", ")));
+    return String.format(
+        "[%s]", tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", ")));
   }
 }

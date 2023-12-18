@@ -36,7 +36,8 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
   public OktaAuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.OKTA)) {
       LOG.error("Required type to invoke is OKTA for OKTA Authentication Provider");
-      throw new RuntimeException("Required type to invoke is OKTA for OKTA Authentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is OKTA for OKTA Authentication Provider");
     }
 
     OktaSSOConfig securityConfig = (OktaSSOConfig) iConfig.getSecurityConfig();
@@ -49,7 +50,8 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
     // Setup Access Token Setting
     ApiClient oktaSSO = new ApiClient();
     oktaSSO.setBasePath(securityConfig.getAuthorizationServerURL());
-    OktaAccessTokenRequestInterceptor interceptor = new OktaAccessTokenRequestInterceptor(securityConfig);
+    OktaAccessTokenRequestInterceptor interceptor =
+        new OktaAccessTokenRequestInterceptor(securityConfig);
     oktaSSO.addAuthorization("OAuthToken", interceptor);
     oktaSSOClient = oktaSSO.buildClient(OktaAccessTokenApi.class);
   }
@@ -63,7 +65,8 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
   public String authToken() {
     AccessTokenResponse resp = oktaSSOClient.getAccessToken("client_credentials", "test");
     generatedAuthToken = resp.getAccessToken();
-    expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
+    expirationTimeMillis =
+        Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
     return generatedAuthToken;
   }
 

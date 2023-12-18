@@ -57,7 +57,8 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/queries")
 @Tag(
     name = "Queries",
-    description = "A `Query` entity represents a SQL query associated with data assets it is run against.")
+    description =
+        "A `Query` entity represents a SQL query associated with data assets it is run against.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
@@ -112,10 +113,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "UUID of the entity for which to list the Queries", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "UUID of the entity for which to list the Queries",
+              schema = @Schema(type = "UUID"))
           @QueryParam("entityId")
           UUID entityId,
-      @Parameter(description = "Filter Queries by service Fully Qualified Name", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Filter Queries by service Fully Qualified Name",
+              schema = @Schema(type = "string"))
           @QueryParam("service")
           String service,
       @Parameter(description = "Limit the number queries returned. (1 to 1000000, default = 10)")
@@ -124,10 +129,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of queries before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of queries after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
     ListFilter filter = new ListFilter(null);
@@ -136,7 +145,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     }
     filter.addQueryParam("service", service);
     ResultList<Query> queries =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 
@@ -150,13 +160,17 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "query",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class))),
         @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
       })
   public Query getQueryById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -175,13 +189,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "query",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class))),
         @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
       })
   public Query getQueryByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the query", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(
+              description = "Fully qualified name of the query",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -201,12 +221,16 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of query versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
+      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -220,13 +244,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "query",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
-        @ApiResponse(responseCode = "404", description = "query for instance {id} and version {version} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "query for instance {id} and version {version} is not found")
       })
   public Query getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Query Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Query version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -251,7 +281,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateQuery create) {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, query);
   }
@@ -260,16 +292,22 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @Operation(
       operationId = "createOrUpdateQuery",
       summary = "Create or update a query",
-      description = "Create a query, if it does not exist. If a query already exists, update the query.",
+      description =
+          "Create a query, if it does not exist. If a query already exists, update the query.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The query",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateQuery create) {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, query);
   }
@@ -280,18 +318,24 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       operationId = "patchQuery",
       summary = "Update a query",
       description = "Update an existing query using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -306,15 +350,24 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -327,15 +380,21 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -348,16 +407,24 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -370,16 +437,23 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class)))
       })
   public Response addQueryUsage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid List<EntityReference> entityIds) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
+    return repository
+        .addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
+        .toResponse();
   }
 
   @PUT
@@ -392,16 +466,23 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class)))
       })
   public Response addQueryUsers(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid List<String> userFqnList) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.addQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
+    return repository
+        .addQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList)
+        .toResponse();
   }
 
   @PUT
@@ -414,14 +495,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class)))
       })
   public Response addQueryUsedBy(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid List<String> usedByList) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return repository
         .addQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
@@ -438,14 +524,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class)))
       })
   public Response removeQueryUsedIn(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid List<EntityReference> entityIds) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return repository
         .removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
@@ -462,10 +553,15 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Query ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Query.class)))
       })
   public Response restoreQuery(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -482,7 +578,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -499,7 +596,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the location",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, true);

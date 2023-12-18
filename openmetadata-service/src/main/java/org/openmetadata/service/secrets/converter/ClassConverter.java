@@ -60,7 +60,8 @@ public abstract class ClassConverter {
                           String.format(
                               "Cannot convert [%s] due to missing converter implementation.",
                               object.getClass().getSimpleName())));
-      return Optional.of(ClassConverterFactory.getConverter(converted.getClass()).convert(converted));
+      return Optional.of(
+          ClassConverterFactory.getConverter(converted.getClass()).convert(converted));
     }
     return Optional.empty();
   }
@@ -74,7 +75,9 @@ public abstract class ClassConverter {
               .filter(Objects::nonNull)
               .findFirst();
       if (converted.isPresent()) {
-        return Optional.of(ClassConverterFactory.getConverter(converted.get().getClass()).convert(converted.get()));
+        return Optional.of(
+            ClassConverterFactory.getConverter(converted.get().getClass())
+                .convert(converted.get()));
       }
     }
     return object == null ? Optional.empty() : Optional.of(object);

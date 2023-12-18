@@ -98,7 +98,8 @@ public class SearchServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SearchServiceResource.SearchServiceList.class)))
+                    schema =
+                        @Schema(implementation = SearchServiceResource.SearchServiceList.class)))
       })
   public ResultList<SearchService> list(
       @Context UriInfo uriInfo,
@@ -108,14 +109,20 @@ public class SearchServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of search services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of search services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of search services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of search services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -124,7 +131,8 @@ public class SearchServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -137,8 +145,13 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "search service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
-        @ApiResponse(responseCode = "404", description = "search service for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "search service for instance {id} is not found")
       })
   public SearchService get(
       @Context UriInfo uriInfo,
@@ -169,8 +182,13 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "search service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
-        @ApiResponse(responseCode = "404", description = "search service for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "search service for instance {id} is not found")
       })
   public SearchService getByName(
       @Context UriInfo uriInfo,
@@ -188,7 +206,8 @@ public class SearchServiceResource
           @DefaultValue("non-deleted")
           Include include) {
     SearchService searchService =
-        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+        getByNameInternal(
+            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, searchService);
   }
 
@@ -202,12 +221,17 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the service",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class)))
       })
   public SearchService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -225,12 +249,17 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of search service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "search service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
+      @Parameter(description = "search service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -238,7 +267,8 @@ public class SearchServiceResource
             .map(
                 json -> {
                   try {
-                    SearchService searchService = JsonUtils.readValue((String) json, SearchService.class);
+                    SearchService searchService =
+                        JsonUtils.readValue((String) json, SearchService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, searchService));
                   } catch (Exception e) {
                     return json;
@@ -259,15 +289,21 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "search service",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Object store service for instance {id} and version {version} is not found")
+            description =
+                "Object store service for instance {id} and version {version} is not found")
       })
   public SearchService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "search service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "search service Id", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "search service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -286,11 +322,16 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Search service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchService create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateSearchService create) {
     SearchService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
@@ -306,11 +347,16 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Object store service instance",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchService update) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateSearchService update) {
     SearchService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
@@ -323,7 +369,10 @@ public class SearchServiceResource
       operationId = "patchSearchService",
       summary = "Update an search service",
       description = "Update an existing search service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
@@ -334,7 +383,9 @@ public class SearchServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -344,15 +395,19 @@ public class SearchServiceResource
   @Operation(
       operationId = "deleteSearchService",
       summary = "Delete an search service",
-      description = "Delete an search services. If containers belong the service, it can't be deleted.",
+      description =
+          "Delete an search services. If containers belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchService service for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -360,7 +415,8 @@ public class SearchServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the search service", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the search service", schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -373,12 +429,15 @@ public class SearchServiceResource
       description = "Delete an SearchService by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchService for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchService for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -386,9 +445,11 @@ public class SearchServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the SearchService", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(description = "Name of the SearchService", schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
+    return deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
   @PUT
@@ -401,10 +462,15 @@ public class SearchServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the SearchService.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchService.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchService.class)))
       })
   public Response restoreSearchService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

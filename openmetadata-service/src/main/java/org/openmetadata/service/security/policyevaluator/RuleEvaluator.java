@@ -31,7 +31,9 @@ public class RuleEvaluator {
   }
 
   public RuleEvaluator(
-      PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
     this.policyContext = policyContext;
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
@@ -70,7 +72,9 @@ public class RuleEvaluator {
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
-      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+      examples = {
+        "matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"
+      })
   @SuppressWarnings("ununsed")
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
@@ -83,9 +87,13 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
+    LOG.debug(
+        "matchAllTags {} resourceTags {}",
+        Arrays.toString(tagFQNs),
+        Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
-      TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+      TagLabel found =
+          tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found == null) {
         return false;
       }
@@ -96,8 +104,11 @@ public class RuleEvaluator {
   @Function(
       name = "matchAnyTag",
       input = "List of comma separated tag or glossary fully qualified names",
-      description = "Returns true if the entity being accessed has at least one of the tags given as input",
-      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+      description =
+          "Returns true if the entity being accessed has at least one of the tags given as input",
+      examples = {
+        "matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"
+      })
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
@@ -110,9 +121,13 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
+    LOG.debug(
+        "matchAnyTag {} resourceTags {}",
+        Arrays.toString(tagFQNs),
+        Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
-      TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+      TagLabel found =
+          tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found != null) {
         return true;
       }
@@ -145,7 +160,8 @@ public class RuleEvaluator {
   @Function(
       name = "inAnyTeam",
       input = "List of comma separated team names",
-      description = "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
+      description =
+          "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
       examples = {"inAnyTeam('marketing')"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean inAnyTeam(String... teams) {
@@ -160,10 +176,12 @@ public class RuleEvaluator {
     }
     for (String team : teams) {
       if (subjectContext.isUserUnderTeam(team)) {
-        LOG.debug("inAnyTeam - User {} is under the team {}", subjectContext.getUser().getName(), team);
+        LOG.debug(
+            "inAnyTeam - User {} is under the team {}", subjectContext.getUser().getName(), team);
         return true;
       }
-      LOG.debug("inAnyTeam - User {} is not under the team {}", subjectContext.getUser().getName(), team);
+      LOG.debug(
+          "inAnyTeam - User {} is not under the team {}", subjectContext.getUser().getName(), team);
     }
     return false;
   }

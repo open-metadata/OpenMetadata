@@ -32,7 +32,8 @@ public class SupersetConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    SupersetConnection supersetConnection = (SupersetConnection) JsonUtils.convertValue(object, this.clazz);
+    SupersetConnection supersetConnection =
+        (SupersetConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(supersetConnection.getConnection(), CONNECTION_CLASSES)
         .ifPresent(supersetConnection::setConnection);

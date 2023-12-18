@@ -7,7 +7,8 @@ import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchEntitiesDescriptionAggregator
-    extends EntitiesDescriptionAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends EntitiesDescriptionAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public OpenSearchEntitiesDescriptionAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -19,12 +20,14 @@ public class OpenSearchEntitiesDescriptionAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation bucket) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation bucket) {
     return bucket.getBuckets();
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityBuckets(MultiBucketsAggregation.Bucket timestampBucket) {
+  protected MultiBucketsAggregation getEntityBuckets(
+      MultiBucketsAggregation.Bucket timestampBucket) {
     return timestampBucket.getAggregations().get(ENTITY_TYPE);
   }
 

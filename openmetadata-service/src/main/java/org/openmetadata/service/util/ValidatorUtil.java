@@ -25,6 +25,8 @@ public class ValidatorUtil {
     return violations.isEmpty()
         ? null
         : Arrays.toString(
-            violations.stream().map(v -> String.format("%s %s", v.getPropertyPath(), v.getMessage())).toArray());
+            violations.stream()
+                .map(v -> String.format("%s %s", v.getPropertyPath(), v.getMessage()))
+                .toArray());
   }
 }

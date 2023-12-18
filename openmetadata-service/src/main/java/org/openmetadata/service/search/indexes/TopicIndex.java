@@ -22,7 +22,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements SearchIndex {
-  final List<String> excludeTopicFields = List.of("sampleData", "changeDescription", "messageSchema");
+  final List<String> excludeTopicFields =
+      List.of("sampleData", "changeDescription", "messageSchema");
   final Topic topic;
 
   public TopicIndex(Topic topic) {
@@ -38,7 +39,8 @@ public class TopicIndex implements SearchIndex {
     List<String> fieldsWithChildrenName = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
-    serviceSuggest.add(SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
     SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
 
     if (topic.getMessageSchema() != null
@@ -60,8 +62,11 @@ public class TopicIndex implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    doc.put("displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    doc.put(
+        "displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(topic.getFollowers()));
@@ -74,7 +79,8 @@ public class TopicIndex implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            topic.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("owner", getEntityWithDisplayName(topic.getOwner()));
     doc.put("service", getEntityWithDisplayName(topic.getService()));
     doc.put("domain", getEntityWithDisplayName(topic.getDomain()));
@@ -83,7 +89,8 @@ public class TopicIndex implements SearchIndex {
 
   private void parseSchemaFields(
       List<Field> fields, List<FlattenSchemaField> flattenSchemaFields, String parentSchemaField) {
-    Optional<String> optParentField = Optional.ofNullable(parentSchemaField).filter(Predicate.not(String::isEmpty));
+    Optional<String> optParentField =
+        Optional.ofNullable(parentSchemaField).filter(Predicate.not(String::isEmpty));
     List<TagLabel> tags = new ArrayList<>();
     for (Field field : fields) {
       String fieldName = field.getName();

@@ -27,9 +27,11 @@ public class PasswordAnnotator extends AbstractAnnotator {
 
   /** Add {@link PasswordField} annotation property fields */
   @Override
-  public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
+  public void propertyField(
+      JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
-    if (propertyNode.get("format") != null && "password".equals(propertyNode.get("format").asText())) {
+    if (propertyNode.get("format") != null
+        && "password".equals(propertyNode.get("format").asText())) {
       field.annotate(PasswordField.class);
     }
   }
@@ -60,7 +62,9 @@ public class PasswordAnnotator extends AbstractAnnotator {
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
       if (outerClass.fields().containsKey(propertyName)
           && outerClass.fields().get(propertyName).annotations().stream()
-              .anyMatch(annotation -> PasswordField.class.getName().equals(getAnnotationClassName(annotation)))) {
+              .anyMatch(
+                  annotation ->
+                      PasswordField.class.getName().equals(getAnnotationClassName(annotation)))) {
         jMethod.annotate(PasswordField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {

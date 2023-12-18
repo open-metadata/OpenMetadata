@@ -24,14 +24,18 @@ public class SecretsManagerFactory {
   private SecretsManagerFactory() {}
 
   /** Expected to be called only once when the Application starts */
-  public static SecretsManager createSecretsManager(SecretsManagerConfiguration config, String clusterName) {
+  public static SecretsManager createSecretsManager(
+      SecretsManagerConfiguration config, String clusterName) {
     if (secretsManager != null) {
       return secretsManager;
     }
     SecretsManager.SecretsConfig secretsConfig =
-        new SecretsManager.SecretsConfig(clusterName, config.getPrefix(), config.getTags(), config.getParameters());
+        new SecretsManager.SecretsConfig(
+            clusterName, config.getPrefix(), config.getTags(), config.getParameters());
     SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.DB;
+        config != null && config.getSecretsManager() != null
+            ? config.getSecretsManager()
+            : SecretsManagerProvider.DB;
 
     switch (secretsManagerProvider) {
       case DB:

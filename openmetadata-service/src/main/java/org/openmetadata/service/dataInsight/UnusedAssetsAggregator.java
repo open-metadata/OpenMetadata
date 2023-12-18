@@ -11,7 +11,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implements DataInsightAggregatorInterface {
+public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T>
+    implements DataInsightAggregatorInterface {
   private final H hits;
 
   protected UnusedAssetsAggregator(H hits) {
@@ -21,7 +22,10 @@ public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implem
   @Override
   public DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType) {
     List<Object> data = this.aggregate();
-    return new DataInsightChartResult().withData(data).withChartType(chartType).withTotal(computeTotalHits(hits));
+    return new DataInsightChartResult()
+        .withData(data)
+        .withChartType(chartType)
+        .withTotal(computeTotalHits(hits));
   }
 
   @Override
@@ -32,12 +36,16 @@ public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implem
       try {
         Object dataObject = getDataFromSource(hit);
         RawCostAnalysisReportData rawCostAnalysisReportData =
-            JsonUtils.readValue(mapper.writeValueAsString(dataObject), RawCostAnalysisReportData.class);
+            JsonUtils.readValue(
+                mapper.writeValueAsString(dataObject), RawCostAnalysisReportData.class);
         EntityReference entityReference = rawCostAnalysisReportData.getEntity();
         Long lastAccessed = rawCostAnalysisReportData.getLifeCycle().getAccessed().getTimestamp();
         Double sizeInByte = rawCostAnalysisReportData.getSizeInByte();
         UnusedAssets unusedAssets =
-            new UnusedAssets().withEntity(entityReference).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
+            new UnusedAssets()
+                .withEntity(entityReference)
+                .withLastAccessedAt(lastAccessed)
+                .withSizeInBytes(sizeInByte);
         data.add(unusedAssets);
       } catch (Exception e) {
         LOG.error("Error while parsing hits for UnusedData chart from ES", e);

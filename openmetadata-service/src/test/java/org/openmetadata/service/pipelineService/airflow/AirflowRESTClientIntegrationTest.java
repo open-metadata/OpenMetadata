@@ -47,16 +47,20 @@ class AirflowRESTClientIntegrationTest {
           .withId(UUID.randomUUID())
           .withPipelineType(PipelineType.METADATA)
           .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
+          .withAirflowConfig(
+              new AirflowConfig()
+                  .withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
-  @RegisterExtension private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
+  @RegisterExtension
+  private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
 
   AirflowRESTClient airflowRESTClient;
 
   @BeforeEach
   void setUp() throws URISyntaxException, KeyStoreException {
 
-    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        new PipelineServiceClientConfiguration();
     pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
     pipelineServiceClientConfiguration.setApiEndpoint(HttpServerExtension.getUriFor("").toString());
 
@@ -103,7 +107,9 @@ class AirflowRESTClientIntegrationTest {
 
     Map<String, MockResponse> pathResponses = new HashMap<>();
     pathResponses.put(
-        "/api/v1/openmetadata/last_dag_logs?dag_id=" + DAG_NAME + "&task_id=ingestion_task&after=after",
+        "/api/v1/openmetadata/last_dag_logs?dag_id="
+            + DAG_NAME
+            + "&task_id=ingestion_task&after=after",
         new MockResponse(jsonResponse, "application/json", lastDagLogStatusCode));
 
     httpServerExtension.registerHandler(URI_TO_HANDLE_REQUEST, new JsonHandler(pathResponses));

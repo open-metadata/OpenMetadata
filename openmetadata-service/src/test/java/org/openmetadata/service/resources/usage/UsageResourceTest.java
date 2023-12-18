@@ -114,7 +114,8 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   void put_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
     assertResponse(
-        () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
+        () ->
+            reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityRepositoryNotFound(invalidEntityType));
   }
@@ -170,7 +171,8 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> testValidUsageByName(test, POST, TEST_AUTH_HEADERS),
         Status.FORBIDDEN,
-        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
+        CatalogExceptionMessage.permissionNotAllowed(
+            TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
   }
 
   @Test
@@ -188,19 +190,24 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> testValidUsageByName(test, PUT, TEST_AUTH_HEADERS),
         Status.FORBIDDEN,
-        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
+        CatalogExceptionMessage.permissionNotAllowed(
+            TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
   }
 
   @SneakyThrows
   void testValidUsageByName(TestInfo test, String methodType, Map<String, String> authHeaders) {
     TableResourceTest tableResourceTest = new TableResourceTest();
-    Table table = tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
-    reportUsageByNameAndCheckPut(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, authHeaders);
+    Table table =
+        tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    DailyCount usageReport =
+        usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
+    reportUsageByNameAndCheckPut(
+        TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, authHeaders);
     // a put request updates the data again
     if (methodType.equals(PUT)) {
       reportUsageByNamePut(TABLE, table.getFullyQualifiedName(), usageReport, authHeaders);
-      checkUsageByName(usageReport.getDate(), TABLE, table.getFullyQualifiedName(), 200, 200, 200, authHeaders);
+      checkUsageByName(
+          usageReport.getDate(), TABLE, table.getFullyQualifiedName(), 200, 200, 200, authHeaders);
     }
   }
 
@@ -211,7 +218,8 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
     // For 100 tables send usage report for last 30 days
     // This test checks if the daily, rolling weekly and monthly usage count is correct.
-    // This test also checks if the daily, rolling weekly and monthly usage percentile rank is correct.
+    // This test also checks if the daily, rolling weekly and monthly usage percentile rank is
+    // correct.
 
     // Publish usage for DAYS_OF_USAGE number of days starting from today
     String today = RestUtil.DATE_FORMAT.format(new Date()); // today
@@ -238,7 +246,8 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
         // Report usage
         int weeklyCount = Math.min(day + 1, 7) * usageCount; // Expected cumulative weekly count
         int monthlyCount = Math.min(day + 1, 30) * usageCount; // Expected cumulative monthly count
-        reportUsageAndCheckPut(TABLE, id, usageReport, weeklyCount, monthlyCount, ADMIN_AUTH_HEADERS);
+        reportUsageAndCheckPut(
+            TABLE, id, usageReport, weeklyCount, monthlyCount, ADMIN_AUTH_HEADERS);
 
         // Database has cumulative count of all the table usage
         databaseDailyCount += usageCount;
@@ -280,10 +289,14 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
       // For each day check percentile
       for (int tableIndex = 0; tableIndex < TABLES.size(); tableIndex++) {
         int expectedPercentile = 100 * (tableIndex) / TABLES.size();
-        EntityUsage usage = getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, ADMIN_AUTH_HEADERS);
-        assertEquals(expectedPercentile, usage.getUsage().get(0).getDailyStats().getPercentileRank());
-        assertEquals(expectedPercentile, usage.getUsage().get(0).getWeeklyStats().getPercentileRank());
-        assertEquals(expectedPercentile, usage.getUsage().get(0).getMonthlyStats().getPercentileRank());
+        EntityUsage usage =
+            getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, ADMIN_AUTH_HEADERS);
+        assertEquals(
+            expectedPercentile, usage.getUsage().get(0).getDailyStats().getPercentileRank());
+        assertEquals(
+            expectedPercentile, usage.getUsage().get(0).getWeeklyStats().getPercentileRank());
+        assertEquals(
+            expectedPercentile, usage.getUsage().get(0).getMonthlyStats().getPercentileRank());
       }
     }
 
@@ -315,14 +328,22 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     getAndCheckUsage(TABLE, tableId, date, 5, 4, ADMIN_AUTH_HEADERS);
 
     // Ensure GET .../tables/{id}?fields=usageSummary returns the latest usage
-    date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
-    EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
-    Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", ADMIN_AUTH_HEADERS);
+    date =
+        getDateStringByOffset(
+            RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
+    EntityUsage usage =
+        getUsage(TABLE, tableId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    Table table =
+        new TableResourceTest()
+            .getEntity(TABLES.get(0).getId(), "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
-    usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
-    Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", ADMIN_AUTH_HEADERS);
+    usage =
+        getUsage(
+            Entity.DATABASE, databaseId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    Database database =
+        new DatabaseResourceTest().getEntity(databaseId, "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
 
@@ -333,20 +354,33 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public void reportUsageByNameAndCheckPut(
-      String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      String entity,
+      String fqn,
+      DailyCount usage,
+      int weeklyCount,
+      int monthlyCount,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsageByNamePut(entity, fqn, usage, authHeaders);
-    checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
+    checkUsageByName(
+        usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
   public void reportUsageAndCheckPut(
-      String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      String entity,
+      UUID id,
+      DailyCount usage,
+      int weeklyCount,
+      int monthlyCount,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsagePut(entity, id, usage, authHeaders);
-    checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
+    checkUsage(
+        usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsageByNamePut(
+      String entity, String name, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("usage/").path(entity).path("/name/").path(name);
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
@@ -358,7 +392,8 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     TestUtils.post(target, usage, authHeaders);
   }
 
-  public void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsagePut(
+      String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
@@ -371,7 +406,12 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public void getAndCheckUsage(
-      String entity, UUID id, String date, Integer days, int expectedRecords, Map<String, String> authHeaders)
+      String entity,
+      UUID id,
+      String date,
+      Integer days,
+      int expectedRecords,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, days, authHeaders);
     assertEquals(expectedRecords, usage.getUsage().size());
@@ -383,12 +423,14 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     return getUsage(getResource("usage/" + entity + "/name/").path(fqn), date, days, authHeaders);
   }
 
-  public EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
+  public EntityUsage getUsage(
+      String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
     return getUsage(getResource("usage/" + entity + "/" + id), date, days, authHeaders);
   }
 
-  public EntityUsage getUsage(WebTarget target, String date, Integer days, Map<String, String> authHeaders)
+  public EntityUsage getUsage(
+      WebTarget target, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
     target = date != null ? target.queryParam("date", date) : target;
     target = days != null ? target.queryParam("days", days) : target;
@@ -423,7 +465,12 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public static void checkUsage(
-      EntityUsage usage, String date, String entity, int dailyCount, int weeklyCount, int monthlyCount) {
+      EntityUsage usage,
+      String date,
+      String entity,
+      int dailyCount,
+      int weeklyCount,
+      int monthlyCount) {
     assertEquals(entity, usage.getEntity().getType());
     UsageDetails usageDetails = usage.getUsage().get(0);
     assertEquals(date, usageDetails.getDate());

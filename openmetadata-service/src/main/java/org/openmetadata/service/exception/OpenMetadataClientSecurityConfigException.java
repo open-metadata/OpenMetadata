@@ -16,10 +16,12 @@ public class OpenMetadataClientSecurityConfigException extends WebServiceExcepti
 
   public static OpenMetadataClientSecurityConfigException byMessage(
       String name, String errorMessage, Response.Status status) {
-    return new OpenMetadataClientSecurityConfigException(status, buildMessageByName(name, errorMessage));
+    return new OpenMetadataClientSecurityConfigException(
+        status, buildMessageByName(name, errorMessage));
   }
 
-  public static OpenMetadataClientSecurityConfigException byMessage(String name, String errorMessage) {
+  public static OpenMetadataClientSecurityConfigException byMessage(
+      String name, String errorMessage) {
     return new OpenMetadataClientSecurityConfigException(
         Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }

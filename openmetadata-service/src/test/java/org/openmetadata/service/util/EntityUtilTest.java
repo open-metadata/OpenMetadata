@@ -9,7 +9,10 @@ import org.openmetadata.schema.entity.data.Table;
 class EntityUtilTest {
   @Test
   void test_isDescriptionRequired() {
-    assertFalse(EntityUtil.isDescriptionRequired(Table.class)); // Table entity does not require description
-    assertTrue(EntityUtil.isDescriptionRequired(GlossaryTerm.class)); // GlossaryTerm entity requires description
+    assertFalse(
+        EntityUtil.isDescriptionRequired(Table.class)); // Table entity does not require description
+    assertTrue(
+        EntityUtil.isDescriptionRequired(
+            GlossaryTerm.class)); // GlossaryTerm entity requires description
   }
 }

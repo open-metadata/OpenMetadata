@@ -63,11 +63,13 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/dashboard/datamodels")
 @Tag(
     name = "Dashboard Data Models",
-    description = "`Data Models` are the schemas used to build dashboards, charts, or other data assets.")
+    description =
+        "`Data Models` are the schemas used to build dashboards, charts, or other data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "datamodels")
-public class DashboardDataModelResource extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
+public class DashboardDataModelResource
+    extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
   protected static final String FIELDS = "owner,tags,followers,domain,sourceHash";
 
@@ -116,7 +118,9 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number dashboardDataModel returned. (1 to 1000000, default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number dashboardDataModel returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -139,7 +143,8 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -152,12 +157,16 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard datamodel versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -173,13 +182,16 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
             responseCode = "200",
             description = "The dashboard datamodel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class))),
         @ApiResponse(responseCode = "404", description = "DataModel for instance {id} is not found")
       })
   public DashboardDataModel get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -206,12 +218,18 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
             responseCode = "200",
             description = "The dashboard datamodel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class))),
-        @ApiResponse(responseCode = "404", description = "DataModel for instance {fqn} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataModel for instance {fqn} is not found")
       })
   public DashboardDataModel getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the dashboard datamodel", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the dashboard datamodel",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -240,7 +258,9 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
             responseCode = "200",
             description = "dashboard datamodel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class))),
         @ApiResponse(
             responseCode = "404",
             description = "DataModel for instance {id} and version {version} is not found")
@@ -248,7 +268,8 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   public DashboardDataModel getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "DataModel version number in the form `major`.`minor`",
@@ -268,12 +289,17 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
             responseCode = "200",
             description = "The dashboard datamodel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create) {
-    DashboardDataModel dashboardDataModel = getDataModel(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardDataModel create) {
+    DashboardDataModel dashboardDataModel =
+        getDataModel(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
   }
 
@@ -283,19 +309,25 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
       operationId = "patchDataModel",
       summary = "Update a dashboard datamodel",
       description = "Update an existing dashboard datamodel using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -304,17 +336,23 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "createOrUpdateDataModel",
       summary = "Create or update dashboard datamodel",
-      description = "Create a dashboard datamodel, it it does not exist or update an existing dashboard datamodel.",
+      description =
+          "Create a dashboard datamodel, it it does not exist or update an existing dashboard datamodel.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The updated dashboard datamodel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardDataModel create) {
-    DashboardDataModel dashboardDataModel = getDataModel(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardDataModel create) {
+    DashboardDataModel dashboardDataModel =
+        getDataModel(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
 
@@ -331,9 +369,16 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -345,11 +390,17 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -362,15 +413,21 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -390,11 +447,14 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -406,7 +466,9 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
       description = "Delete a data model by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DataModel for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataModel for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -415,11 +477,14 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Fully qualified name of the data model", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the data model",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
@@ -436,10 +501,14 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
             responseCode = "200",
             description = "Successfully restored the data model",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardDataModel.class)))
       })
   public Response restoreDataModel(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

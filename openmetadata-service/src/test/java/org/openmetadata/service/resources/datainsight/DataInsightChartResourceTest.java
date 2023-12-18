@@ -39,7 +39,8 @@ import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
-public class DataInsightChartResourceTest extends EntityResourceTest<DataInsightChart, CreateDataInsightChart> {
+public class DataInsightChartResourceTest
+    extends EntityResourceTest<DataInsightChart, CreateDataInsightChart> {
   public DataInsightChartResourceTest() {
     super(
         DATA_INSIGHT_CHART,
@@ -76,7 +77,8 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
 
     Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(
+            DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
 
     rules.add(
         new Rule()
@@ -92,7 +94,9 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
             .withOwner(USER1_REF);
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
     CreateRole createRole =
-        roleResourceTest.createRequest("denyDataInsightViewRole").withPolicies(EntityUtil.toFQNs(List.of(policy)));
+        roleResourceTest
+            .createRequest("denyDataInsightViewRole")
+            .withPolicies(EntityUtil.toFQNs(List.of(policy)));
     Role denyDataInsightViewRole = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     User userForDataInsight =
@@ -114,13 +118,19 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
    * handled correctly in the request for a restricted user.
    *  */
   public void getDataInsightData(
-      String username, String roleName, String policyName, String ruleName, boolean shouldThrowException)
+      String username,
+      String roleName,
+      String policyName,
+      String ruleName,
+      boolean shouldThrowException)
       throws ParseException {
     Map<String, String> authHeaders = authHeaders(username + "@open-metadata.org");
     WebTarget target = getCollection().path("/aggregate");
 
     target =
-        target.queryParam("dataInsightChartName", DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES);
+        target.queryParam(
+            "dataInsightChartName",
+            DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES);
     target = target.queryParam("dataReportIndex", "web_analytic_entity_view_report_data_index");
     target = target.queryParam("startTs", TestUtils.dateToTimestamp("2023-03-21"));
     target = target.queryParam("endTs", TestUtils.dateToTimestamp("2023-03-22"));
@@ -144,13 +154,16 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
 
   @Override
   public void validateCreatedEntity(
-      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders) {
+      DataInsightChart createdEntity,
+      CreateDataInsightChart request,
+      Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
     assertEquals(expected.getDescription(), updated.getDescription());

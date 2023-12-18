@@ -33,10 +33,12 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     AppMarketPlaceResourceTest appMarketPlaceResourceTest = new AppMarketPlaceResourceTest();
     AppMarketPlaceDefinition appMarketPlaceDefinition;
     try {
-      appMarketPlaceDefinition = appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
+      appMarketPlaceDefinition =
+          appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
       CreateAppMarketPlaceDefinitionReq req = appMarketPlaceResourceTest.createRequest(name);
-      appMarketPlaceDefinition = appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
+      appMarketPlaceDefinition =
+          appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
     // Create Request
     return new CreateApp()
@@ -53,7 +55,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Override
-  public void validateCreatedEntity(App createdEntity, CreateApp request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      App createdEntity, CreateApp request, Map<String, String> authHeaders)
       throws HttpResponseException {}
 
   @Override
@@ -61,7 +64,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       throws HttpResponseException {}
 
   @Override
-  public App validateGetWithDifferentFields(App entity, boolean byName) throws HttpResponseException {
+  public App validateGetWithDifferentFields(App entity, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     entity =
         byName

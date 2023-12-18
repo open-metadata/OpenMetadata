@@ -36,7 +36,8 @@ public class TypeRegistry {
   protected static final Map<String, CustomProperty> CUSTOM_PROPERTIES = new ConcurrentHashMap<>();
 
   /** Custom property map (fully qualified customPropertyName) to (jsonSchema) */
-  protected static final Map<String, JsonSchema> CUSTOM_PROPERTY_SCHEMAS = new ConcurrentHashMap<>();
+  protected static final Map<String, JsonSchema> CUSTOM_PROPERTY_SCHEMAS =
+      new ConcurrentHashMap<>();
 
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
@@ -63,11 +64,13 @@ public class TypeRegistry {
     // TODO cleanup custom properties
   }
 
-  private void addCustomProperty(String entityType, String propertyName, CustomProperty customProperty) {
+  private void addCustomProperty(
+      String entityType, String propertyName, CustomProperty customProperty) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
-    JsonSchema jsonSchema = JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
+    JsonSchema jsonSchema =
+        JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
     CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
     LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
   }
@@ -82,7 +85,8 @@ public class TypeRegistry {
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       if (TYPES.get(property.getPropertyType().getName()) == null) {
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getName()));
+            CatalogExceptionMessage.entityNotFound(
+                Entity.TYPE, property.getPropertyType().getName()));
       }
     }
   }

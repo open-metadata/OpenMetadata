@@ -38,7 +38,8 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   private final EntityLink entityLink;
   private final UUID id;
   private final String name;
-  private EntityInterface entity; // Will be lazily initialized to the entity that has this test case
+  private EntityInterface
+      entity; // Will be lazily initialized to the entity that has this test case
 
   @Override
   public String getResource() {
@@ -85,7 +86,8 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
     }
-    return entityRepository.getByName(null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
+    return entityRepository.getByName(
+        null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
   }
 
   private static EntityInterface resolveEntityById(UUID id) {
