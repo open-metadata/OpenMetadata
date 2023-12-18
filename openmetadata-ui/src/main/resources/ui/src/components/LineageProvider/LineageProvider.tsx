@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
@@ -34,13 +34,19 @@ import {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { ZOOM_VALUE } from '../../constants/Lineage.constants';
+import {
+  ELEMENT_DELETE_STATE,
+  ZOOM_VALUE,
+} from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
 } from '../../enums/entity.enum';
-import { EntitiesEdge } from '../../generated/api/lineage/addLineage';
+import {
+  AddLineage,
+  EntitiesEdge,
+} from '../../generated/api/lineage/addLineage';
 import {
   ColumnLineage,
   EntityReference,
@@ -52,17 +58,26 @@ import {
   getAllTracedNodes,
   getClassifiedEdge,
   getLayoutedElements,
+  getLoadingStatusValue,
+  getModalBodyText,
+  getNewLineageConnectionDetails,
   getUniqueFlowElements,
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
-import { createEdges, createNodes } from '../../utils/LineageV1Utils';
+import {
+  createEdges,
+  createNodes,
+  getColumnLineageData,
+} from '../../utils/LineageV1Utils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../Entity/EntityInfoDrawer/EntityInfoDrawer.component';
+import AddPipeLineModal from '../Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
   EdgeData,
+  ElementLoadingState,
   LineageConfig,
 } from '../Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../Entity/EntityLineage/EntityLineageSidebar.component';
@@ -91,6 +106,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     {} as SourceType
   );
   const [selectedColumn, setSelectedColumn] = useState<string>('');
+  const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
@@ -99,6 +115,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edges: [],
     entity: {} as EntityReference,
   });
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [deletionState, setDeletionState] = useState<{
+    loading: boolean;
+    status: ElementLoadingState;
+  }>(ELEMENT_DELETE_STATE);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(false);
@@ -233,7 +254,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
-  const removeEdgeHandler = (edge: Edge, confirmDelete: boolean) => {
+  const removeEdgeHandler = async (
+    edge: Edge,
+    confirmDelete: boolean
+  ): Promise<void> => {
     if (confirmDelete && entityLineage) {
       const { data, id } = edge;
       const edgeData: EdgeData = {
@@ -242,14 +266,56 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         toEntity: data.edge.toEntity.type,
         toId: data.edge.toEntity.id,
       };
-      removeLineageHandler(edgeData);
-      setEdges((prevEdges) => {
-        return prevEdges.filter((edge) => {
-          const isRemovedEdge = edge.id === id;
 
-          return !isRemovedEdge;
-        });
+      await removeLineageHandler(edgeData);
+      setEdges((prevEdges) => {
+        return prevEdges.filter((e) => e.id !== id);
       });
+    }
+  };
+
+  const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
+    if (confirmDelete && entityLineage) {
+      const { data, id } = edge;
+      const selectedEdge: AddLineage = {
+        edge: {
+          fromEntity: {
+            id: data.edge.fromEntity.id,
+            type: data.edge.fromEntity.type,
+          },
+          toEntity: {
+            id: data.edge.toEntity.id,
+            type: data.edge.toEntity.type,
+          },
+        },
+      };
+
+      const updatedCols = getColumnLineageData(data.edge.columns, edge);
+
+      await addLineageHandler(selectedEdge);
+      setEntityLineage((prev) => {
+        return {
+          ...prev,
+          edges: (prev.edges ?? []).map((obj) => {
+            if (
+              obj.fromEntity.id === data.edge.fromEntity.id &&
+              obj.toEntity.id === data.edge.toEntity.id
+            ) {
+              return {
+                ...obj,
+                columns: updatedCols,
+              };
+            }
+
+            return obj;
+          }),
+        };
+      });
+
+      setEdges((pre) => {
+        return pre.filter((e) => e.id !== id);
+      });
+      setShowDeleteModal(false);
     }
   };
 
@@ -418,6 +484,24 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     });
   };
 
+  const onRemove = useCallback(async () => {
+    try {
+      setDeletionState({ ...ELEMENT_DELETE_STATE, loading: true });
+
+      if (selectedEdge?.data?.isColumnLineage) {
+        await removeColumnEdge(selectedEdge, true);
+      } else {
+        await removeEdgeHandler(selectedEdge as Edge, true);
+      }
+
+      setShowDeleteModal(false);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setDeletionState((pre) => ({ ...pre, status: 'initial' }));
+    }
+  }, [selectedEdge, setShowDeleteModal]);
+
   const onConnect = useCallback(
     (params: Edge | Connection) => {
       if (!entityLineage) {
@@ -541,6 +625,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [selectedNode, entityLineage, nodes]
   );
 
+  const onAddPipelineClick = useCallback(() => {
+    setShowAddEdgeModal(true);
+  }, []);
+
+  const handleModalCancel = useCallback(() => {
+    setShowAddEdgeModal(false);
+    setSelectedEdge({} as Edge);
+  }, []);
+
   const onEntitySelect = (selectedEntity: EntityReference, nodeId: string) => {
     const isExistingNode = nodes.some(
       (n) =>
@@ -583,15 +676,96 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const onAddPipelineModalSave = useCallback(
+    async (pipelineData?: EntityReference) => {
+      if (!selectedEdge || !entityLineage) {
+        return;
+      }
+
+      setStatus('waiting');
+      setLoading(true);
+
+      const { source, target } = selectedEdge.data;
+      const existingEdge = (entityLineage.edges ?? []).find(
+        (ed) => ed.fromEntity === source && ed.toEntity === target
+      );
+
+      let edgeIndex = -1;
+      if (existingEdge) {
+        edgeIndex = (entityLineage.edges ?? []).indexOf(existingEdge);
+
+        if (pipelineData) {
+          existingEdge.pipeline = pipelineData;
+        }
+      }
+
+      const { newEdge, updatedLineageDetails } = getNewLineageConnectionDetails(
+        selectedEdge,
+        pipelineData
+      );
+
+      try {
+        await addLineageHandler(newEdge);
+
+        setStatus('success');
+        setLoading(false);
+
+        setEntityLineage((pre) => {
+          if (!selectedEdge.data || !pre) {
+            return pre;
+          }
+
+          const newEdges = [...(pre.edges ?? [])];
+
+          if (newEdges[edgeIndex]) {
+            newEdges[edgeIndex] = existingEdge as EdgeDetails;
+          }
+
+          const newData = {
+            ...pre,
+            edges: newEdges,
+          };
+
+          return newData;
+        });
+
+        setEdges((pre) =>
+          pre.map((edge) => {
+            if (edge.id === selectedEdge.id) {
+              return {
+                ...edge,
+                animated: true,
+                data: {
+                  edge: {
+                    ...edge.data.edge,
+                    pipeline: updatedLineageDetails.pipeline,
+                  },
+                },
+              };
+            }
+
+            return edge;
+          })
+        );
+      } catch (error) {
+        setLoading(false);
+      } finally {
+        setStatus('initial');
+        handleModalCancel();
+      }
+    },
+    [selectedEdge, entityLineage]
+  );
+
+  const onColumnEdgeRemove = useCallback(() => {
+    setShowDeleteModal(true);
+  }, []);
+
   useEffect(() => {
     if (entityFqn) {
       fetchLineageData(entityFqn, lineageConfig);
     }
   }, [lineageConfig, entityFqn, queryFilter]);
-
-  useEffect(() => {
-    // filter out the unsaved nodes
-  }, []);
 
   const activityFeedContextValues = useMemo(() => {
     return {
@@ -628,8 +802,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       removeNodeHandler,
       onNodeClick,
       onEdgeClick,
+      onColumnEdgeRemove,
       onLineageConfigUpdate,
       onLineageEditClick,
+      onAddPipelineClick,
     };
   }, [
     isDrawerOpen,
@@ -665,8 +841,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     removeNodeHandler,
     onNodeClick,
     onEdgeClick,
+    onColumnEdgeRemove,
     onLineageConfigUpdate,
     onLineageEditClick,
+    onAddPipelineClick,
   ]);
 
   return (
@@ -695,6 +873,36 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             onCancel={() => setIsDrawerOpen(false)}
           />
         ))}
+
+      {showDeleteModal && (
+        <Modal
+          maskClosable={false}
+          okText={getLoadingStatusValue(
+            t('label.confirm'),
+            deletionState.loading,
+            deletionState.status
+          )}
+          open={showDeleteModal}
+          title={t('message.remove-lineage-edge')}
+          onCancel={() => {
+            setShowDeleteModal(false);
+          }}
+          onOk={onRemove}>
+          {getModalBodyText(selectedEdge as Edge)}
+        </Modal>
+      )}
+      {showAddEdgeModal && (
+        <AddPipeLineModal
+          selectedEdge={selectedEdge}
+          showAddEdgeModal={showAddEdgeModal}
+          onModalCancel={handleModalCancel}
+          onRemoveEdgeClick={() => {
+            setShowDeleteModal(true);
+            setShowAddEdgeModal(false);
+          }}
+          onSave={onAddPipelineModalSave}
+        />
+      )}
     </LineageContext.Provider>
   );
 };

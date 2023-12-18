@@ -21,6 +21,7 @@ import dagre from 'dagre';
 import { isNil, isUndefined } from 'lodash';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { NODE_HEIGHT, NODE_WIDTH } from '../constants/Lineage.constants';
+import { ColumnLineage } from '../generated/type/entityLineage';
 
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   const hasUpstream = data.some((edge: EdgeDetails) => edge.toEntity.id === id);
@@ -176,4 +177,30 @@ export const createEdges = (nodes: EntityReference[], edges: EdgeDetails[]) => {
   });
 
   return lineageEdgesV1;
+};
+
+export const getColumnLineageData = (
+  columnsData: ColumnLineage[],
+  data: Edge
+) => {
+  const columnsLineage = columnsData?.reduce((col, curr) => {
+    if (curr.toColumn === data.data?.targetHandle) {
+      const newCol = {
+        ...curr,
+        fromColumns:
+          curr.fromColumns?.filter(
+            (column) => column !== data.data?.sourceHandle
+          ) ?? [],
+      };
+      if (newCol.fromColumns?.length) {
+        return [...col, newCol];
+      } else {
+        return col;
+      }
+    }
+
+    return [...col, curr];
+  }, [] as ColumnLineage[]);
+
+  return columnsLineage;
 };

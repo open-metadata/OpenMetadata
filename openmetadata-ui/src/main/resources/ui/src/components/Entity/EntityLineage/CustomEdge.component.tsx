@@ -62,11 +62,16 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { onEdgeClick, addPipelineClick, edge, isColumnLineage, ...rest } =
-    data;
+  const { edge, isColumnLineage, ...rest } = data;
   const offset = 4;
 
-  const { tracedNodes, tracedColumns } = useLineageProvider();
+  const {
+    tracedNodes,
+    tracedColumns,
+    isEditMode,
+    onAddPipelineClick,
+    onColumnEdgeRemove,
+  } = useLineageProvider();
 
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
@@ -146,7 +151,7 @@ export const CustomEdge = ({
     return false;
   }, [isColumnLineage, data]);
 
-  const isSelectedEditMode = selected && data.isEditMode;
+  const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
 
   const getInvisiblePath = (path: string) => {
@@ -170,10 +175,7 @@ export const CustomEdge = ({
             className="flex-center custom-edge-pipeline-button"
             data-testid={dataTestId}
             icon={icon}
-            onClick={(event) =>
-              data.isEditMode &&
-              data.addPipelineClick?.(event, rest as CustomEdgeData)
-            }
+            onClick={() => isEditMode && onAddPipelineClick()}
           />
         </LineageEdgeIcon>
       );
@@ -237,11 +239,11 @@ export const CustomEdge = ({
         )}
       {isColumnLineageAllowed &&
         isSelectedEditMode &&
-        getEditLineageIcon('add-pipeline', true, addPipelineClick)}
+        getEditLineageIcon('add-pipeline', true, onAddPipelineClick)}
       {!isColumnLineageAllowed &&
         isSelectedEditMode &&
         isSelected &&
-        getEditLineageIcon('delete-button', false, onEdgeClick)}
+        getEditLineageIcon('delete-button', false, onColumnEdgeRemove)}
       {!isColumnLineageAllowed &&
         data.columnFunctionValue &&
         data.isExpanded &&

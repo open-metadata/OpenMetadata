@@ -62,6 +62,7 @@ import {
   SelectedNode,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import Loader from '../components/Loader/Loader';
 import {
   getContainerDetailPath,
@@ -461,36 +462,34 @@ export const getLayoutedElements = (
   return { node: uNode, edge: edgesRequired };
 };
 
-export const getModalBodyText = (selectedEdge: SelectedEdge) => {
-  const { data, source, target } = selectedEdge;
+export const getModalBodyText = (selectedEdge: Edge) => {
+  const { data } = selectedEdge;
+  const { fromEntity, toEntity } = data.edge as EdgeDetails;
   const { isColumnLineage } = data as CustomEdgeData;
   let sourceEntity = '';
   let targetEntity = '';
-  const sourceFQN = isColumnLineage
-    ? data?.sourceHandle
-    : source.fullyQualifiedName;
 
-  const targetFQN = isColumnLineage
-    ? data?.targetHandle
-    : target.fullyQualifiedName;
+  const sourceFQN = isColumnLineage ? data?.sourceHandle : fromEntity.fqn;
+
+  const targetFQN = isColumnLineage ? data?.targetHandle : toEntity.fqn;
 
   const fqnPart = isColumnLineage ? FqnPart.Column : FqnPart.Table;
 
-  if (source.type === EntityType.TABLE) {
+  if (fromEntity.type === EntityType.TABLE) {
     sourceEntity = getPartialNameFromTableFQN(sourceFQN || '', [fqnPart]);
   } else {
     sourceEntity = getPartialNameFromFQN(sourceFQN || '', ['database']);
   }
 
-  if (target.type === EntityType.TABLE) {
+  if (toEntity.type === EntityType.TABLE) {
     targetEntity = getPartialNameFromTableFQN(targetFQN || '', [fqnPart]);
   } else {
     targetEntity = getPartialNameFromFQN(targetFQN || '', ['database']);
   }
 
   return t('message.remove-edge-between-source-and-target', {
-    sourceDisplayName: source.displayName ? source.displayName : sourceEntity,
-    targetDisplayName: target.displayName ? target.displayName : targetEntity,
+    sourceDisplayName: sourceEntity,
+    targetDisplayName: targetEntity,
   });
 };
 
@@ -825,35 +824,26 @@ export const getUpdatedEdgeWithPipeline = (
 };
 
 export const getNewLineageConnectionDetails = (
-  selectedEdgeValue: EntityLineageEdge | undefined,
-  selectedPipelineId: string | undefined,
-  customEdgeData: CustomEdgeData,
-  type: EntityType,
-  edgeDetails?: EntityReference
+  selectedEdgeValue: Edge | undefined,
+  selectedPipeline: EntityReference | undefined
 ) => {
-  const { source, sourceType, target, targetType } = customEdgeData;
+  const { fromEntity, toEntity, sqlQuery, columns } =
+    selectedEdgeValue?.data.edge;
   const updatedLineageDetails: LineageDetails = {
-    ...selectedEdgeValue?.lineageDetails,
-    sqlQuery: selectedEdgeValue?.lineageDetails?.sqlQuery || '',
-    columnsLineage: selectedEdgeValue?.lineageDetails?.columnsLineage || [],
-    pipeline: isUndefined(selectedPipelineId)
-      ? undefined
-      : {
-          id: selectedPipelineId,
-          type,
-          fullyQualifiedName: edgeDetails?.fullyQualifiedName ?? '',
-        },
+    sqlQuery: sqlQuery ?? '',
+    columnsLineage: columns ?? [],
+    pipeline: selectedPipeline,
   };
 
   const newEdge: AddLineage = {
     edge: {
       fromEntity: {
-        id: source,
-        type: sourceType,
+        id: fromEntity.id,
+        type: fromEntity.type,
       },
       toEntity: {
-        id: target,
-        type: targetType,
+        id: toEntity.id,
+        type: toEntity.type,
       },
       lineageDetails: updatedLineageDetails,
     },
