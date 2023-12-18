@@ -20,8 +20,10 @@ import { EntityReference } from '../generated/entity/type';
 import dagre from 'dagre';
 import { isNil, isUndefined } from 'lodash';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NODE_HEIGHT, NODE_WIDTH } from '../constants/Lineage.constants';
-import { ColumnLineage } from '../generated/type/entityLineage';
+import { EntitiesEdge } from '../generated/api/lineage/addLineage';
+import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   const hasUpstream = data.some((edge: EdgeDetails) => edge.toEntity.id === id);
@@ -203,4 +205,63 @@ export const getColumnLineageData = (
   }, [] as ColumnLineage[]);
 
   return columnsLineage;
+};
+
+export const getLineageEdge = (
+  sourceNode: SourceType,
+  targetNode: SourceType
+): { edge: EdgeDetails } => {
+  const {
+    id: sourceId,
+    entityType: sourceType,
+    fullyQualifiedName: sourceFqn,
+  } = sourceNode;
+  const {
+    id: targetId,
+    entityType: targetType,
+    fullyQualifiedName: targetFqn,
+  } = targetNode;
+
+  return {
+    edge: {
+      fromEntity: {
+        id: sourceId,
+        type: sourceType ?? '',
+        fqn: sourceFqn ?? '',
+      },
+      toEntity: { id: targetId, type: targetType ?? '', fqn: targetFqn ?? '' },
+      sqlQuery: '',
+    },
+  };
+};
+
+export const getLineageEdgeForAPI = (
+  sourceNode: SourceType,
+  targetNode: SourceType
+): { edge: EntitiesEdge } => {
+  const { id: sourceId, entityType: sourceType } = sourceNode;
+  const { id: targetId, entityType: targetType } = targetNode;
+
+  return {
+    edge: {
+      fromEntity: { id: sourceId, type: sourceType ?? '' },
+      toEntity: { id: targetId, type: targetType ?? '' },
+      lineageDetails: {
+        sqlQuery: '',
+        columnsLineage: [],
+      },
+    },
+  };
+};
+
+export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
+  const { data } = edge;
+
+  return {
+    sqlQuery: data?.edge?.sqlQuery ?? '',
+    columnsLineage: data?.edge?.columns ?? [],
+    description: data?.edge?.description ?? '',
+    pipeline: data?.edge?.pipeline ?? undefined,
+    source: data?.edge?.source ?? '',
+  };
 };

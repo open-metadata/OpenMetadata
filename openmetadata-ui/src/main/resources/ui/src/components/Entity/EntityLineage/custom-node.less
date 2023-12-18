@@ -21,8 +21,8 @@
 }
 
 .lineage-expand-icon {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   color: inherit;
 }
 
@@ -117,6 +117,9 @@
   }
   .lineage-node-handle {
     border-color: @primary-color;
+    svg {
+      color: @primary-color;
+    }
   }
   .label-container {
     background: @primary-color-hover;
@@ -133,21 +136,24 @@
 
 .react-flow {
   .lineage-node-handle.react-flow__handle-left {
-    left: -10px;
+    left: -18px;
   }
   .lineage-node-handle.react-flow__handle-right {
-    right: -10px;
+    right: -18px;
   }
 }
 
 .react-flow .lineage-node-handle {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
+  width: 35px;
+  min-width: 35px;
+  height: 35px;
   border-radius: 50%;
   border-color: @lineage-border;
   background: @white;
-  top: 38px; // Need to show handles on top half
+  top: 43px; // Need to show handles on top half
+  svg {
+    color: @text-grey-muted;
+  }
 }
 
 .react-flow .lineage-column-node-handle {
