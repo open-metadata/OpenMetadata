@@ -31,3 +31,9 @@ set json = JSON_INSERT(
   false
 )
 where name = 'DataInsightsApplication';
+
+-- Remove mssql connection from airflow db
+UPDATE pipeline_service_entity pse 
+SET json = JSON_REMOVE(json, '$.connection.config.connection')
+WHERE serviceType = 'Airflow'
+AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mssql';

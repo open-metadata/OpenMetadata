@@ -38,3 +38,14 @@ SET json = jsonb_set(
 	to_jsonb(false)
 )
 where name = 'DataInsightsApplication';
+
+-- Remove mssql connection from airflow db
+UPDATE pipeline_service_entity pse
+SET json = jsonb_set(
+    json,
+    '{connection, config}',
+    json->'connection'->'config' #- '{connection}'
+)
+WHERE serviceType = 'Airflow'
+AND json #>> '{connection,config,connection,type}' = 'Mssql';
+
