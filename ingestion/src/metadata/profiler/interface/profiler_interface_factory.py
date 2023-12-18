@@ -74,15 +74,15 @@ class ProfilerInterfaceFactory:
         """Register a new interface"""
         self._interface_type[interface_type] = interface_class
 
-    def register_many(self, profilers):
+    def register_many(self, interface_dict):
         """
         Registers multiple profiler interfaces at once.
 
         Args:
-            profilers: A dictionary mapping connection class names (strings) to their
+            interface_dict: A dictionary mapping connection class names (strings) to their
             corresponding profiler interface classes.
         """
-        for interface_type, interface_class in profilers.items():
+        for interface_type, interface_class in interface_dict.items():
             self.register(interface_type, interface_class)
 
     def create(self, interface_type: str, *args, **kwargs):
