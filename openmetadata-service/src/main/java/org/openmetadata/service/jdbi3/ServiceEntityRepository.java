@@ -17,6 +17,7 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -121,20 +122,22 @@ public abstract class ServiceEntityRepository<
     private void updateConnection() {
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
-      String origJson = JsonUtils.pojoToJson(origConn);
-      String updatedJson = JsonUtils.pojoToJson(updatedConn);
-      S decryptedOrigConn = JsonUtils.readValue(origJson, serviceConnectionClass);
-      S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      decryptedOrigConn.setConfig(
-          secretsManager.decryptServiceConnectionConfig(
-              decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
-      decryptedUpdatedConn.setConfig(
-          secretsManager.decryptServiceConnectionConfig(
-              decryptedUpdatedConn.getConfig(), updated.getServiceType().value(), serviceType));
-      if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
-        // we don't want save connection config details in our database
-        recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
+      if (!CommonUtil.nullOrEmpty(origConn) && !CommonUtil.nullOrEmpty(updatedConn)) {
+        String origJson = JsonUtils.pojoToJson(origConn);
+        String updatedJson = JsonUtils.pojoToJson(updatedConn);
+        S decryptedOrigConn = JsonUtils.readValue(origJson, serviceConnectionClass);
+        S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
+        SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+        decryptedOrigConn.setConfig(
+            secretsManager.decryptServiceConnectionConfig(
+                decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        decryptedUpdatedConn.setConfig(
+            secretsManager.decryptServiceConnectionConfig(
+                decryptedUpdatedConn.getConfig(), updated.getServiceType().value(), serviceType));
+        if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
+          // we don't want save connection config details in our database
+          recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
+        }
       }
     }
   }

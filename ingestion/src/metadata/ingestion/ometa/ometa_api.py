@@ -33,6 +33,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.custom_property_mixin import (
+    OMetaCustomPropertyMixin,
+)
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
@@ -110,6 +113,7 @@ class OpenMetadata(
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
+    OMetaCustomPropertyMixin,
     Generic[T, C],
 ):
     """
