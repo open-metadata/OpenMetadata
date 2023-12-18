@@ -1465,7 +1465,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
       AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
       switch (authType) {
-        case JWT:
+        case JWT -> {
           User original = retrieveBotUser(user, uriInfo);
           if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
@@ -1475,15 +1475,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           } else {
             authMechanism = original.getAuthenticationMechanism();
           }
-          break;
-        case SSO:
+        }
+        case SSO -> {
           SSOAuthMechanism ssoAuthMechanism =
               JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
           authMechanism.setConfig(ssoAuthMechanism);
-          break;
-        default:
-          throw new IllegalArgumentException(
-              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+        }
+        default -> throw new IllegalArgumentException(
+            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
       }
       user.setAuthenticationMechanism(authMechanism);
     } else {

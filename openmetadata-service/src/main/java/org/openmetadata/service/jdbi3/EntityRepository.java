@@ -1273,8 +1273,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     ObjectNode objectNode = JsonUtils.getObjectNode();
     for (ExtensionRecord extensionRecord : records) {
-      String fieldName = TypeRegistry.getPropertyName(extensionRecord.getExtensionName());
-      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.getExtensionJson()));
+      String fieldName = TypeRegistry.getPropertyName(extensionRecord.extensionName());
+      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.extensionJson()));
     }
     return objectNode;
   }

@@ -1085,12 +1085,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable = createRequest(test);
     createTable.setTableType(TableType.View);
     String query =
-        "sales_vw\n"
-            + "create view sales_vw as\n"
-            + "select * from public.sales\n"
-            + "union all\n"
-            + "select * from spectrum.sales\n"
-            + "with no schema binding;\n";
+        """
+                    sales_vw
+                    create view sales_vw as
+                    select * from public.sales
+                    union all
+                    select * from spectrum.sales
+                    with no schema binding;
+                    """;
     createTable.setViewDefinition(query);
     Table table = createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "viewDefinition", ADMIN_AUTH_HEADERS);
@@ -1103,12 +1105,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable = createRequest(test);
     createTable.setTableType(TableType.Regular);
     String query =
-        "sales_vw\n"
-            + "create view sales_vw as\n"
-            + "select * from public.sales\n"
-            + "union all\n"
-            + "select * from spectrum.sales\n"
-            + "with no schema binding;\n";
+        """
+                    sales_vw
+                    create view sales_vw as
+                    select * from public.sales
+                    union all
+                    select * from spectrum.sales
+                    with no schema binding;
+                    """;
     createTable.setViewDefinition(query);
     assertResponseContains(
         () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
@@ -1763,7 +1767,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Remove tableType, tableConstraints
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table, REVERT);
     table.withTableType(null).withTableConstraints(null);
     patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
 

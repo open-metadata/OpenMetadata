@@ -423,15 +423,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     AuthenticationConfiguration authenticationConfiguration =
         catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case BASIC:
-        authenticatorHandler = new BasicAuthenticator();
-        break;
-      case LDAP:
-        authenticatorHandler = new LdapAuthenticator();
-        break;
-      default:
-        // For all other types, google, okta etc. auth is handled externally
-        authenticatorHandler = new NoopAuthenticator();
+      case BASIC -> authenticatorHandler = new BasicAuthenticator();
+      case LDAP -> authenticatorHandler = new LdapAuthenticator();
+      default ->
+      // For all other types, google, okta etc. auth is handled externally
+      authenticatorHandler = new NoopAuthenticator();
     }
   }
 

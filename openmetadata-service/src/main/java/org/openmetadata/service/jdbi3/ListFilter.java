@@ -142,7 +142,7 @@ public class ListFilter {
 
   public String getDisabledCondition(String tableName, String disabledStr) {
     boolean disabled = Boolean.parseBoolean(disabledStr);
-    String disabledCondition = "";
+    String disabledCondition;
     if (DatasourceConfig.getInstance().isMySQL()) {
       if (disabled) {
         disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";

@@ -674,7 +674,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
-    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
+    final TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
 
     TestCaseFailureResolutionTaskWorkflow(FeedRepository.ThreadContext threadContext) {
       super(threadContext);

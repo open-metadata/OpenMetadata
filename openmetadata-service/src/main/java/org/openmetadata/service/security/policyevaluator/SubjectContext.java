@@ -37,14 +37,9 @@ import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public class SubjectContext {
+public record SubjectContext(@Getter User user) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
-  @Getter protected final User user;
-
-  protected SubjectContext(User user) {
-    this.user = user;
-  }
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
@@ -146,7 +141,7 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(getUser(), roles);
+    return hasRole(user(), roles);
   }
 
   /** Return true if the given user has any roles the list of roles */

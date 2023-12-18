@@ -56,17 +56,9 @@ public class DefaultFieldFormatter implements FieldFormatter {
   public String getFormattedMessage(FormatterUtil.CHANGE_TYPE changeType) {
     String message = "";
     switch (changeType) {
-      case ADD:
-        message = formatAddedField();
-        break;
-      case UPDATE:
-        message = formatUpdatedField();
-        break;
-      case DELETE:
-        message = formatDeletedField();
-        break;
-      default:
-        break;
+      case ADD -> message = formatAddedField();
+      case UPDATE -> message = formatUpdatedField();
+      case DELETE -> message = formatDeletedField();
     }
     return message;
   }

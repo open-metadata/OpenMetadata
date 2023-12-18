@@ -68,30 +68,23 @@ public class DataInsightDescriptionAndOwnerTemplate {
   }
 
   private String getMetricTypeMessage(MetricType metricType) {
-    switch (metricType) {
-      case DESCRIPTION:
-        return "<strong>Completed Description</strong>";
-      case OWNER:
-        return "<strong>Assigned Ownership</strong>";
-      case TIER:
-        return "<strong>Assets Assigned with Tiers</strong>";
-    }
-    return "";
+    return switch (metricType) {
+      case DESCRIPTION -> "<strong>Completed Description</strong>";
+      case OWNER -> "<strong>Assigned Ownership</strong>";
+      case TIER -> "<strong>Assets Assigned with Tiers</strong>";
+    };
   }
 
   private String getKpiCriteriaMessage(MetricType metricType, KpiCriteria criteria) {
     if (metricType != MetricType.TIER) {
       if (kpiAvailable) {
-        switch (criteria) {
-          case MET:
-            return "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
-          case IN_PROGRESS:
-            return String.format(
-                "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
-                targetKpi, numberOfDaysLeft);
-          case NOT_MET:
-            return "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
-        }
+        return switch (criteria) {
+          case MET -> "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
+          case IN_PROGRESS -> String.format(
+              "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
+              targetKpi, numberOfDaysLeft);
+          case NOT_MET -> "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
+        };
       }
       return "You have not set any KPIS yet, it’s time to restructure your goals, set KPIs and progress faster.";
     }

@@ -135,21 +135,14 @@ public class SubscriptionUtil {
       Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
     Set<String> webhookUrls = new HashSet<>();
     if (profile != null) {
-      Webhook webhookConfig = null;
-      switch (type) {
-        case SLACK_WEBHOOK:
-          webhookConfig = profile.getSubscription().getSlack();
-          break;
-        case MS_TEAMS_WEBHOOK:
-          webhookConfig = profile.getSubscription().getMsTeams();
-          break;
-        case G_CHAT_WEBHOOK:
-          webhookConfig = profile.getSubscription().getgChat();
-          break;
-        case GENERIC_WEBHOOK:
-          webhookConfig = profile.getSubscription().getGeneric();
-          break;
-      }
+      Webhook webhookConfig =
+          switch (type) {
+            case SLACK_WEBHOOK -> profile.getSubscription().getSlack();
+            case MS_TEAMS_WEBHOOK -> profile.getSubscription().getMsTeams();
+            case G_CHAT_WEBHOOK -> profile.getSubscription().getgChat();
+            case GENERIC_WEBHOOK -> profile.getSubscription().getGeneric();
+            default -> null;
+          };
       if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
         webhookUrls.add(webhookConfig.getEndpoint().toString());
       } else {

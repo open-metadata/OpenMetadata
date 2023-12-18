@@ -58,9 +58,8 @@ public class AuditEventHandler implements EventHandler {
         // a parent class that captures the common fields and then have EntityInterface and
         // EntityTimeSeriesInterface
         // extend it.
-        if (responseContext.getEntity() instanceof EntityTimeSeriesInterface) {
-          EntityTimeSeriesInterface entityTimeSeriesInterface =
-              (EntityTimeSeriesInterface) responseContext.getEntity();
+        if (responseContext.getEntity()
+            instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
           entityReference = entityTimeSeriesInterface.getEntityReference();
         } else {
           entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();

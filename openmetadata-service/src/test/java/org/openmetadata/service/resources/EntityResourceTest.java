@@ -2468,7 +2468,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
     validateChangeDescription(latestVersion, updateType, expectedChangeDescription);
     if (updateType == CREATED) {
-      latestVersion = getVersion(entityInterface.getId(), 0.1, authHeaders);
+      getVersion(entityInterface.getId(), 0.1, authHeaders);
     } else if (updateType == REVERT) {
       Double version = EntityUtil.previousVersion(entityInterface.getVersion());
       if (!version.equals(0.0)) {

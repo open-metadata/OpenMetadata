@@ -64,14 +64,10 @@ public class TestCaseFormatter implements EntityFormatter {
   }
 
   private String getStatusMessage(TestCaseStatus status) {
-    switch (status) {
-      case Success:
-        return "<span style=\"color:#48CA9E\">Passed</span>";
-      case Failed:
-        return "<span style=\"color:#F24822\">Failed</span>";
-      case Aborted:
-        return "<span style=\"color:#FFBE0E\">Aborted</span>";
-    }
-    return status.value();
+    return switch (status) {
+      case Success -> "<span style=\"color:#48CA9E\">Passed</span>";
+      case Failed -> "<span style=\"color:#F24822\">Failed</span>";
+      case Aborted -> "<span style=\"color:#FFBE0E\">Aborted</span>";
+    };
   }
 }

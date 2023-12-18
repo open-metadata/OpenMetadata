@@ -559,24 +559,13 @@ public final class JsonUtils {
   }
 
   private static Class<?> getValueClass(JsonNode jsonNode) {
-    switch (jsonNode.getNodeType()) {
-      case ARRAY:
-        return JsonNode.class; // Adjust as needed for your use case
-      case BINARY:
-        return byte[].class;
-      case BOOLEAN:
-        return Boolean.class;
-      case NUMBER:
-        return Number.class;
-      case OBJECT:
-        return JsonNode.class;
-      case STRING:
-        return String.class;
-      case MISSING:
-      case NULL:
-      case POJO:
-      default:
-        return Object.class;
-    }
+    return switch (jsonNode.getNodeType()) {
+      case ARRAY, OBJECT -> JsonNode.class; // Adjust as needed for your use case
+      case BINARY -> byte[].class;
+      case BOOLEAN -> Boolean.class;
+      case NUMBER -> Number.class;
+      case STRING -> String.class;
+      case MISSING, NULL, POJO -> Object.class;
+    };
   }
 }

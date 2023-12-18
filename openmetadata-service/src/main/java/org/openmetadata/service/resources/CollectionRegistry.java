@@ -187,9 +187,8 @@ public final class CollectionRegistry {
       } else if (a instanceof Api) {
         // Use @Api annotation to get documentation about the collection
         collectionInfo.withDocumentation(((Api) a).value());
-      } else if (a instanceof Collection) {
+      } else if (a instanceof Collection collection) {
         // Use @Collection annotation to get initialization information for the class
-        Collection collection = (Collection) a;
         collectionInfo.withName(collection.name());
         order = collection.order();
       }
