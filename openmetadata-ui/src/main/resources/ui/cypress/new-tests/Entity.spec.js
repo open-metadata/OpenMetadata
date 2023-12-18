@@ -12,10 +12,26 @@
  */
 
 import { uuid } from '../common/common';
+import {
+  createEntityViaREST,
+  deleteEntityViaREST,
+} from '../common/Utils/Entity';
+import ContainerClass from './base/ContainerClass';
+import DashboardClass from './base/DashboardClass';
+import { EntityType } from './base/EntityClass';
+import MlModelClass from './base/MlModelClass';
+import PipelineClass from './base/PipelineClass';
 import TableClass from './base/TableClass';
 import TopicClass from './base/TopicClass';
 
-const entities = [new TableClass(), new TopicClass()];
+const entities = [
+  new TableClass(),
+  new DashboardClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+];
 const domainDetails1 = {
   name: `cypress-domain-${uuid()}`,
   displayName: 'Cypress Domain',
@@ -47,45 +63,45 @@ entities.forEach((entity) => {
       entity.createEntity();
 
       // Create domain
-      //   cy.getAllLocalStorage().then((data) => {
-      //     const token = Object.values(data)[0].oidcIdToken;
+      cy.getAllLocalStorage().then((data) => {
+        const token = Object.values(data)[0].oidcIdToken;
 
-      //     createEntityViaREST({
-      //       token,
-      //       body: domainDetails1,
-      //       endPoint: EntityType.Domain,
-      //     });
+        createEntityViaREST({
+          token,
+          body: domainDetails1,
+          endPoint: EntityType.Domain,
+        });
 
-      //     createEntityViaREST({
-      //       token,
-      //       body: domainDetails2,
-      //       endPoint: EntityType.Domain,
-      //     });
-      //   });
+        createEntityViaREST({
+          token,
+          body: domainDetails2,
+          endPoint: EntityType.Domain,
+        });
+      });
     });
 
-    // after(() => {
-    //   cy.login();
+    after(() => {
+      cy.login();
 
-    //   // Delete domain
-    //   cy.getAllLocalStorage().then((data) => {
-    //     const token = Object.values(data)[0].oidcIdToken;
+      // Delete domain
+      cy.getAllLocalStorage().then((data) => {
+        const token = Object.values(data)[0].oidcIdToken;
 
-    //     // Domain 1 to test
-    //     deleteEntityViaREST({
-    //       token,
-    //       entityName: domainDetails1.name,
-    //       endPoint: EntityType.Domain,
-    //     });
+        // Domain 1 to test
+        deleteEntityViaREST({
+          token,
+          entityName: domainDetails1.name,
+          endPoint: EntityType.Domain,
+        });
 
-    //     // Domain 2 to test
-    //     deleteEntityViaREST({
-    //       token,
-    //       entityName: domainDetails2.name,
-    //       endPoint: EntityType.Domain,
-    //     });
-    //   });
-    // });
+        // Domain 2 to test
+        deleteEntityViaREST({
+          token,
+          entityName: domainDetails2.name,
+          endPoint: EntityType.Domain,
+        });
+      });
+    });
 
     beforeEach(() => {
       cy.login();
@@ -190,6 +206,7 @@ entities.forEach((entity) => {
 
     it(`Soft delete`, () => {
       entity.softDeleteEntity();
+      entity.restoreEntity();
     });
 
     it(`Hard delete`, () => {

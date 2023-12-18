@@ -25,6 +25,7 @@ import {
   deleteEntity,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
+  updateDescriptioForEntity,
   updateDisplayNameForEntity,
 } from '../../common/Utils/Entity';
 import {
@@ -44,9 +45,16 @@ import { addTier, removeTier } from '../../common/Utils/Tier';
 export enum EntityType {
   Table = 'tables',
   Topic = 'topics',
-  Dashboard = 'dashboard',
+  Dashboard = 'dashboards',
+  Pipeline = 'pipelines',
+  Container = 'containers',
+  MlModel = 'mlmodels',
   Domain = 'domains',
 }
+
+const description =
+  // eslint-disable-next-line max-len
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
 class EntityClass {
   entityName: string;
@@ -137,7 +145,9 @@ class EntityClass {
 
   // Description
 
-  updateDescription() {}
+  updateDescription() {
+    updateDescriptioForEntity(description, this.endPoint);
+  }
 
   // Tags
 

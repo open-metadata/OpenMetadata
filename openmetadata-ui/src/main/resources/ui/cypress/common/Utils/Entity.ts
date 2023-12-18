@@ -86,18 +86,18 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
 };
 
-export const restoreEntity = (entityName: string) => {
-  cy.get('[data-testid="app-bar-item-explore"]').click();
-  cy.get('[data-testid="show-deleted"]').click();
-  cy.get(`[data-testid="entity-header-display-name"]`)
-    .contains(entityName)
-    .click();
+export const restoreEntity = () => {
+  //   cy.get('[data-testid="app-bar-item-explore"]').click();
+  //   cy.get('[data-testid="show-deleted"]').click();
+  //   cy.get(`[data-testid="entity-header-display-name"]`)
+  //     .contains(entityName)
+  //     .click();
   cy.get('[data-testid="deleted-badge"]').should('be.visible');
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="restore-button"]').click();
 
   cy.get('[type="button"]').contains('Restore').click();
-  toastNotification('Table restored successfully');
+  toastNotification('restored successfully');
 
   cy.get('[data-testid="deleted-badge"]').should('not.exist');
 };
@@ -154,4 +154,24 @@ export const updateDisplayNameForEntity = (
     'contain',
     displayName
   );
+};
+
+export const updateDescriptioForEntity = (
+  description: string,
+  endPoint: EntityType
+) => {
+  cy.get('[data-testid="edit-description"]').click();
+
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .click()
+    .clear()
+    .type(description);
+  interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'updateEntity');
+  cy.get('[data-testid="save"]').click();
+
+  verifyResponseStatusCode('@updateEntity', 200);
+
+  cy.get(
+    '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+  ).should('contain', description);
 };
