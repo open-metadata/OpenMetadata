@@ -10,7 +10,7 @@ This installation doc will help you start a OpenMetadata standalone instance on 
 If you'd rather see the steps in a guided tutorial, we've got you covered! Otherwise, feel free to read the
 content below 👇
 
-{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" /%}
+{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" width="560px" height="315px" /%}
 
 # Requirements (OSX, Linux and Windows)
 
@@ -254,7 +254,7 @@ installation.
 
 ## Next Steps
 
-1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+1. Refer the [How-to Guides](/how-to-guides) for an overview of all the features in OpenMetadata.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.

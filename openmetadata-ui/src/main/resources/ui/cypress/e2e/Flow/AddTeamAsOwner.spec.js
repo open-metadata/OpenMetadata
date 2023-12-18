@@ -12,6 +12,7 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   addTeam,
   interceptURL,
@@ -19,7 +20,9 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { DATA_ASSETS } from '../../constants/constants';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const teamName = `team-group-test-${uuid()}`;
 const TEAM_DETAILS = {
@@ -27,10 +30,40 @@ const TEAM_DETAILS = {
   teamType: 'Group',
   description: `This is ${teamName} description`,
   email: 'team@gmail.com',
-  ...SEARCH_ENTITY_TABLE.table_1,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
+  entity: DATA_ASSETS.tables,
+  serviceName: DATABASE_SERVICE.service.name,
+  entityType: 'Table',
 };
 
 describe('Create a team and add that team as a owner of the entity', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     interceptURL(
