@@ -27,7 +27,7 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.singleton import Singleton
 
 

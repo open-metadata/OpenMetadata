@@ -71,7 +71,7 @@
     },
     "secretsManagerProvider": {
       "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
-      "default": "noop"
+      "default": "db"
     },
     "secretsManagerLoader": {
       "$ref": "./../../../../security/secrets/secretsManagerClientLoader.json",
