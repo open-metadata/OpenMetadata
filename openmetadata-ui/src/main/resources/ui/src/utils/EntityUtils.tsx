@@ -354,7 +354,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
         'label.url-uppercase'
       )}`,
       dataTestId: 'pipeline-url-label',
-      value: stringToHTML(displayName) ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -405,7 +405,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: stringToHTML(displayName) ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -603,7 +603,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: stringToHTML(displayName) ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
       isLink: true,
       visible: [

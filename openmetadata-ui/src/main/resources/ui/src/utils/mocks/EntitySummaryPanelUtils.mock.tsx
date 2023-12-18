@@ -294,7 +294,7 @@ export const mockEntityDataWithNestingResponse = [
 export const mockInvalidDataResponse = [
   {
     children: [],
-    columnConstraints: undefined,
+    columnConstraint: undefined,
     tableConstraints: undefined,
     description: undefined,
     name: '',

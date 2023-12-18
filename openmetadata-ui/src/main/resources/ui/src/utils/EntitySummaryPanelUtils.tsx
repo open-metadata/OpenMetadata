@@ -42,7 +42,7 @@ export interface HighlightedTagLabel extends TagLabel {
 }
 
 const getTitleName = (data: EntityNameProps) =>
-  getEntityName(data) ?? NO_DATA_PLACEHOLDER;
+  getEntityName(data) || NO_DATA_PLACEHOLDER;
 
 const getTitle = ({
   content,
@@ -176,9 +176,7 @@ export const getFormattedEntityData = (
 
         if (!isUndefined(highlightedListItemNameIndex)) {
           listItemModifiedData.title = getTitle({
-            content: stringToHTML(
-              listHighlights[highlightedListItemNameIndex] ?? ''
-            ),
+            content: stringToHTML(listHighlights[highlightedListItemNameIndex]),
             sourceUrl: (listItem as Chart | Task).sourceUrl,
           });
         }
