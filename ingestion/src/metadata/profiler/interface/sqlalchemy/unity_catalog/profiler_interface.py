@@ -29,6 +29,5 @@ class UnityCatalogProfilerInterface(SQAProfilerInterface):
 
     def create_session(self):
         self.connection = databricks_get_connection(self.service_connection_config)
-        self.session_factory = self._session_factory()
-        self.session = self.session_factory()
+        super().create_session()
         self.set_catalog(self.session)
