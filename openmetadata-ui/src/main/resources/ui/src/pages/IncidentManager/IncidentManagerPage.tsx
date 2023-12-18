@@ -10,27 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Space, Typography } from 'antd';
+import { Col, Row, Select, Space, Table, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEqual, startCase } from 'lodash';
+import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
-import TestCaseIncidentManagerTable from '../../components/IncidentManager/TestCaseIncidentManagerTable/TestCaseIncidentManagerTable.component';
+import Severity from '../../components/IncidentManager/Severity/Severity.component';
+import TestCaseIncidentManagerStatus from '../../components/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { getTableTabPath, PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/entity/type';
 import {
+  Assigned,
+  Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCase';
@@ -42,10 +57,19 @@ import {
 import {
   getListTestCaseIncidentStatus,
   TestCaseIncidentStatusParams,
+  updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
 import { getUserSuggestions } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import {
+  getNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from '../TasksPage/shared/Assignees';
 import { Option } from '../TasksPage/TasksPage.interface';
@@ -75,6 +99,14 @@ const IncidentManagerPage = () => {
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
 
+  const testCaseEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
+
   const {
     paging,
     pageSize,
@@ -85,7 +117,7 @@ const IncidentManagerPage = () => {
     handlePageSizeChange,
   } = usePaging();
 
-  const fetchTestCases = useCallback(
+  const fetchTestCaseIncidents = useCallback(
     async (params: TestCaseIncidentStatusParams) => {
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
@@ -124,33 +156,15 @@ const IncidentManagerPage = () => {
     [pageSize, setTestCaseListData]
   );
 
-  const handelTestCaseUpdate = (
-    testCaseIncidentStatus: TestCaseResolutionStatus
-  ) => {
-    setTestCaseListData((prev) => {
-      const testCaseList = prev.data.map((item) => {
-        if (item.id === testCaseIncidentStatus.id) {
-          return testCaseIncidentStatus;
-        }
-
-        return item;
-      });
-
-      return {
-        ...prev,
-        data: testCaseList,
-      };
-    });
-  };
-
   const handlePagingClick = ({
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchTestCases({
+      fetchTestCaseIncidents({
         ...filters,
         [cursorType]: paging?.[cursorType],
+        offset: paging?.[cursorType],
       });
     }
     handlePageChange(currentPage);
@@ -167,7 +181,35 @@ const IncidentManagerPage = () => {
     [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
   );
 
-  const fetchOptions = async (query: string) => {
+  const handleSeveritySubmit = async (
+    severity: Severities,
+    record: TestCaseResolutionStatus
+  ) => {
+    const updatedData = { ...record, severity };
+    const patch = compare(record, updatedData);
+    try {
+      await updateTestCaseIncidentById(record.id ?? '', patch);
+
+      setTestCaseListData((prev) => {
+        const testCaseList = prev.data.map((item) => {
+          if (item.id === updatedData.id) {
+            return updatedData;
+          }
+
+          return item;
+        });
+
+        return {
+          ...prev,
+          data: testCaseList,
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchUserFilterOptions = async (query: string) => {
     if (!query) {
       return;
     }
@@ -183,7 +225,7 @@ const IncidentManagerPage = () => {
 
       setUsers((pre) => ({ ...pre, options: suggestOptions }));
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setUsers((pre) => ({ ...pre, options: [] }));
     }
   };
 
@@ -204,6 +246,23 @@ const IncidentManagerPage = () => {
     if (!isEqual(value, dateRangeObject)) {
       setFilters((pre) => ({ ...pre, ...value }));
     }
+  };
+
+  const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
+    setTestCaseListData((prev) => {
+      const testCaseList = prev.data.map((item) => {
+        if (item.stateId === value.stateId) {
+          return value;
+        }
+
+        return item;
+      });
+
+      return {
+        ...prev,
+        data: testCaseList,
+      };
+    });
   };
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
@@ -244,11 +303,112 @@ const IncidentManagerPage = () => {
   }, []);
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestCases(filters);
+      fetchTestCaseIncidents(filters);
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
   }, [testCasePermission, pageSize, filters]);
+
+  const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
+    () => [
+      {
+        title: t('label.test-case-name'),
+        dataIndex: 'name',
+        key: 'name',
+        width: 300,
+        fixed: 'left',
+        render: (_, record) => {
+          return (
+            <Link
+              className="m-0 break-all text-primary"
+              data-testid={`test-case-${record.testCaseReference?.name}`}
+              style={{ maxWidth: 280 }}
+              to={getIncidentManagerDetailPagePath(
+                record.testCaseReference?.fullyQualifiedName ?? ''
+              )}>
+              {getEntityName(record.testCaseReference)}
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.table'),
+        dataIndex: 'testCaseReference',
+        key: 'testCaseReference',
+        width: 150,
+        render: (value: EntityReference) => {
+          const tableFqn = getPartialNameFromTableFQN(
+            value.fullyQualifiedName ?? '',
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+            '.'
+          );
+
+          return (
+            <Link
+              data-testid="table-link"
+              to={{
+                pathname: getTableTabPath(
+                  getEncodedFqn(tableFqn),
+                  EntityTabs.PROFILER
+                ),
+                search: QueryString.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.execution-time'),
+        dataIndex: 'timestamp',
+        key: 'timestamp',
+        width: 150,
+        render: (value: number) => (value ? formatDateTime(value) : '--'),
+      },
+      {
+        title: t('label.status'),
+        dataIndex: 'testCaseResolutionStatusType',
+        key: 'testCaseResolutionStatusType',
+        width: 100,
+        render: (_, record: TestCaseResolutionStatus) => (
+          <TestCaseIncidentManagerStatus
+            data={record}
+            onSubmit={handleStatusSubmit}
+          />
+        ),
+      },
+      {
+        title: t('label.severity'),
+        dataIndex: 'severity',
+        key: 'severity',
+        width: 150,
+        render: (value: Severities, record: TestCaseResolutionStatus) => {
+          return (
+            <Severity
+              severity={value}
+              onSubmit={(severity) => handleSeveritySubmit(severity, record)}
+            />
+          );
+        },
+      },
+      {
+        title: t('label.assignee'),
+        dataIndex: 'testCaseResolutionStatusDetails',
+        key: 'testCaseResolutionStatusDetails',
+        width: 150,
+        render: (value?: Assigned) => (
+          <OwnerLabel
+            owner={value?.assignee}
+            placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
+          />
+        ),
+      },
+    ],
+    [testCaseEditPermission, testCaseListData.data]
+  );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -282,7 +442,7 @@ const IncidentManagerPage = () => {
               placeholder={t('label.assignee')}
               value={users.selected}
               onChange={handleAssigneeChange}
-              onSearch={(query) => fetchOptions(query)}
+              onSearch={(query) => fetchUserFilterOptions(query)}
             />
             <Select
               allowClear
@@ -322,13 +482,27 @@ const IncidentManagerPage = () => {
         </Col>
 
         <Col span={24}>
-          <TestCaseIncidentManagerTable
-            handleTestCaseUpdate={handelTestCaseUpdate}
-            pagingData={pagingData}
-            showPagination={showPagination}
-            testCaseListData={testCaseListData}
+          <Table
+            bordered
+            className="test-case-table-container"
+            columns={columns}
+            data-testid="test-case-incident-manager-table"
+            dataSource={testCaseListData.data}
+            loading={testCaseListData.isLoading}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
           />
         </Col>
+
+        {pagingData && showPagination && (
+          <Col span={24}>
+            <NextPrevious {...pagingData} />
+          </Col>
+        )}
       </Row>
     </PageLayoutV1>
   );

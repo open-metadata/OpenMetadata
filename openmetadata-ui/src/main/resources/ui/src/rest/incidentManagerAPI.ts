@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CreateTestCaseResolutionStatus } from '../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseResolutionStatus } from '../generated/tests/testCase';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -27,6 +28,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testCaseResolutionStatusType?: string;
   assignee?: string;
   testCaseFQN?: string;
+  offset?: string;
 };
 
 export const getListTestCaseIncidentStatus = async ({
@@ -70,6 +72,17 @@ export const updateTestCaseIncidentById = async (
     Operation[],
     AxiosResponse<TestCaseResolutionStatus>
   >(`${testCaseIncidentUrl}/${id}`, data, configOptions);
+
+  return response.data;
+};
+
+export const postTestCaseIncidentStatus = async (
+  data: CreateTestCaseResolutionStatus
+) => {
+  const response = await APIClient.post<
+    CreateTestCaseResolutionStatus,
+    AxiosResponse<TestCaseResolutionStatus>
+  >(testCaseIncidentUrl, data);
 
   return response.data;
 };

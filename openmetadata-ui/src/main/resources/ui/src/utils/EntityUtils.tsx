@@ -14,7 +14,6 @@
 import { Popover } from 'antd';
 import i18next from 'i18next';
 import {
-  get,
   isEmpty,
   isNil,
   isObject,
@@ -1257,14 +1256,14 @@ export const getEntityReferenceFromEntity = <
   type: EntityType
 ): EntityReference => {
   return {
-    id: get(entity, 'id', ''),
+    id: entity.id,
     type,
-    deleted: get(entity, 'deleted', false),
-    description: get(entity, 'description', ''),
-    displayName: get(entity, 'displayName', ''),
-    fullyQualifiedName: get(entity, 'fullyQualifiedName', ''),
-    href: get(entity, 'href', ''),
-    name: get(entity, 'name', ''),
+    deleted: entity.deleted,
+    description: entity.description,
+    displayName: entity.displayName,
+    fullyQualifiedName: entity.fullyQualifiedName,
+    href: entity.href,
+    name: entity.name,
   };
 };
 

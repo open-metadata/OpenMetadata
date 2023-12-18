@@ -11,25 +11,32 @@
  *  limitations under the License.
  */
 import { Form, Modal, Select } from 'antd';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
+import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
+import Assignees from '../../../pages/TasksPage/shared/Assignees';
+import { Option } from '../../../pages/TasksPage/TasksPage.interface';
+import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import {
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
-} from '../../../generated/tests/testCaseResolutionStatus';
-import { getCurrentMillis } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
+import { fetchOptions } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
   open,
   data,
+  testCaseFqn,
   onSubmit,
   onCancel,
 }: TestCaseStatusModalProps) => {
@@ -38,23 +45,95 @@ export const TestCaseStatusModal = ({
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [options, setOptions] = useState<Option[]>([]);
 
   const statusType = Form.useWatch('testCaseResolutionStatusType', form);
+  const updatedAssignees = Form.useWatch(
+    ['testCaseResolutionStatusDetails', 'assignee'],
+    form
+  );
 
-  const handleFormSubmit = (data: TestCaseResolutionStatus) => {
+  const statusOptions = useMemo(() => {
+    const status =
+      data?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? [
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Resolved,
+          ]
+        : Object.values(TestCaseResolutionStatusTypes);
+
+    return status.map((value) => ({
+      label: value,
+      value,
+    }));
+  }, [data]);
+
+  const handleFormSubmit = async (data: CreateTestCaseResolutionStatus) => {
     setIsLoading(true);
-
-    const updatedData: TestCaseResolutionStatus = {
+    const updatedData: CreateTestCaseResolutionStatus = {
       ...data,
-      updatedAt: getCurrentMillis(),
-      updatedBy: currentUser
-        ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
-        : undefined,
+      testCaseReference: testCaseFqn,
     };
-    onSubmit(updatedData).finally(() => {
+
+    switch (data.testCaseResolutionStatusType) {
+      case TestCaseResolutionStatusTypes.Resolved:
+        updatedData.testCaseResolutionStatusDetails = {
+          ...data.testCaseResolutionStatusDetails,
+          resolvedBy: currentUser
+            ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
+            : undefined,
+        };
+
+        break;
+
+      case TestCaseResolutionStatusTypes.Assigned:
+        if (updatedAssignees.length > 0) {
+          updatedData.testCaseResolutionStatusDetails = {
+            ...data.testCaseResolutionStatusDetails,
+            assignee: {
+              id: updatedAssignees[0].value,
+              type: EntityType.USER,
+            },
+          };
+        }
+
+        break;
+      default:
+        break;
+    }
+    try {
+      const data = await postTestCaseIncidentStatus(updatedData);
+      onSubmit(data);
+      onCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
       setIsLoading(false);
-    });
+    }
   };
+
+  useEffect(() => {
+    const assignee = data?.testCaseResolutionStatusDetails?.assignee;
+    if (
+      data?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned &&
+      assignee
+    ) {
+      form.setFieldValue(
+        ['testCaseResolutionStatusDetails', 'assignee'],
+        [assignee.id]
+      );
+      setOptions([
+        {
+          label: getEntityName(assignee),
+          value: assignee.id,
+          type: assignee.type,
+          name: assignee.name,
+        },
+      ]);
+    }
+  }, [data]);
 
   return (
     <Modal
@@ -70,7 +149,7 @@ export const TestCaseStatusModal = ({
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}
       onCancel={onCancel}>
-      <Form<TestCaseResolutionStatus>
+      <Form<CreateTestCaseResolutionStatus>
         data-testid="update-status-form"
         form={form}
         id="update-status-form"
@@ -89,19 +168,20 @@ export const TestCaseStatusModal = ({
             },
           ]}>
           <Select
+            options={statusOptions}
             placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
-            })}>
-            {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-              <Select.Option key={value}>{value}</Select.Option>
-            ))}
-          </Select>
+            })}
+          />
         </Form.Item>
         {statusType === TestCaseResolutionStatusTypes.Resolved && (
           <>
             <Form.Item
               label={t('label.reason')}
-              name="testCaseFailureReason"
+              name={[
+                'testCaseResolutionStatusDetails',
+                'testCaseFailureReason',
+              ]}
               rules={[
                 {
                   required: true,
@@ -121,7 +201,10 @@ export const TestCaseStatusModal = ({
             </Form.Item>
             <Form.Item
               label={t('label.comment')}
-              name="testCaseFailureComment"
+              name={[
+                'testCaseResolutionStatusDetails',
+                'testCaseFailureComment',
+              ]}
               rules={[
                 {
                   required: true,
@@ -141,11 +224,44 @@ export const TestCaseStatusModal = ({
                 })}
                 ref={markdownRef}
                 onTextChange={(value) =>
-                  form.setFieldValue('testCaseFailureComment', value)
+                  form.setFieldValue(
+                    [
+                      'testCaseResolutionStatusDetails',
+                      'testCaseFailureComment',
+                    ],
+                    value
+                  )
                 }
               />
             </Form.Item>
           </>
+        )}
+        {statusType === TestCaseResolutionStatusTypes.Assigned && (
+          <Form.Item
+            label={t('label.assignee')}
+            name={['testCaseResolutionStatusDetails', 'assignee']}
+            rules={[
+              {
+                required: true,
+                message: t('label.field-required', {
+                  field: t('label.assignee'),
+                }),
+              },
+            ]}>
+            <Assignees
+              allowClear
+              isSingleSelect
+              options={options}
+              value={updatedAssignees}
+              onChange={(values) =>
+                form.setFieldValue(
+                  ['testCaseResolutionStatusDetails', 'assignee'],
+                  values
+                )
+              }
+              onSearch={(query) => fetchOptions(query, setOptions, true)}
+            />
+          </Form.Item>
         )}
       </Form>
     </Modal>

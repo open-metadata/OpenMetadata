@@ -15,5 +15,5 @@ import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
 
 export interface TestCaseStatusIncidentManagerProps {
   data: TestCaseResolutionStatus;
-  onSubmit: (data: TestCaseResolutionStatus) => Promise<void>;
+  onSubmit: (data: TestCaseResolutionStatus) => void;
 }

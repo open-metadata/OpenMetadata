@@ -187,9 +187,10 @@ export const getDescriptionDiff = (
 
 export const fetchOptions = (
   query: string,
-  setOptions: (value: React.SetStateAction<Option[]>) => void
+  setOptions: (value: React.SetStateAction<Option[]>) => void,
+  onlyUsers?: boolean
 ) => {
-  getUserSuggestions(query)
+  getUserSuggestions(query, onlyUsers)
     .then((res) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       const suggestOptions = hits.map((hit) => ({

@@ -23,8 +23,8 @@ import {
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { TestCaseStatusModal } from '../../DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
+import '../incident-manager.style.less';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
-
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
@@ -35,14 +35,6 @@ const TestCaseIncidentManagerStatus = ({
 
   const onEditSeverity = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
-
-  const handleSubmit = useCallback(
-    async (data) => {
-      await onSubmit(data);
-      onCancel();
-    },
-    [onCancel, onSubmit]
-  );
 
   if (!statusType) {
     return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
@@ -71,12 +63,15 @@ const TestCaseIncidentManagerStatus = ({
         />
       </Space>
 
-      <TestCaseStatusModal
-        data={data}
-        open={isEditStatus}
-        onCancel={onCancel}
-        onSubmit={handleSubmit}
-      />
+      {isEditStatus && (
+        <TestCaseStatusModal
+          data={data}
+          open={isEditStatus}
+          testCaseFqn={data.testCaseReference?.fullyQualifiedName ?? ''}
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+        />
+      )}
     </>
   );
 };

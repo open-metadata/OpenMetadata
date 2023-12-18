@@ -826,14 +826,14 @@ export const TaskTab = ({
           onOk={assigneesForm.submit}>
           <Form form={assigneesForm} layout="vertical" onFinish={onTaskReject}>
             <Form.Item
-              data-testid="assignees"
-              label={`${t('label.assignee-plural')}:`}
+              data-testid="assignee"
+              label={`${t('label.assignee')}:`}
               name="assignees"
               rules={[
                 {
                   required: true,
                   message: t('message.field-text-is-required', {
-                    fieldText: t('label.assignee-plural'),
+                    fieldText: t('label.assignee'),
                   }),
                 },
               ]}>

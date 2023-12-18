@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Tabs, TabsProps, Typography } from 'antd';
+import { Col, Divider, Row, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
@@ -29,7 +31,6 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
@@ -141,9 +142,12 @@ const IncidentManagerDetailPage = () => {
         </Col>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <Space align="center">
-            <Typography.Text className="font-bold">
-              {getEntityName(testCaseData.data)}
-            </Typography.Text>
+            <EntityHeaderTitle
+              displayName={testCaseData.data?.displayName}
+              icon={<TestCaseIcon className="h-9" />}
+              name={testCaseData.data?.name ?? ''}
+              serviceName="testCase"
+            />
             <Divider type="vertical" />
             <OwnerLabel owner={testCaseData.data?.owner} />
           </Space>
