@@ -176,7 +176,9 @@ export const getFormattedEntityData = (
 
         if (!isUndefined(highlightedListItemNameIndex)) {
           listItemModifiedData.title = getTitle({
-            content: stringToHTML(listHighlights[highlightedListItemNameIndex]),
+            content: stringToHTML(
+              listHighlights[highlightedListItemNameIndex] ?? ''
+            ),
             sourceUrl: (listItem as Chart | Task).sourceUrl,
           });
         }
