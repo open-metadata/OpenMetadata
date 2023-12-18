@@ -18,6 +18,7 @@ supporting sqlalchemy abstraction layer
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
 )
@@ -28,6 +29,7 @@ class UnityCatalogTestSuiteInterface(SQATestSuiteInterface):
         super().__init__(*args, **kwargs)
 
     def create_session(self):
-        self.connection = databricks_get_connection(self.service_connection_config)
-        super().create_session()
+        self.session = create_and_bind_session(
+            databricks_get_connection(self.service_connection_config)
+        )
         self.set_catalog(self.session)
