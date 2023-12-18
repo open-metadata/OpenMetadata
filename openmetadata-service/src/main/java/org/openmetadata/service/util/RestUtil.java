@@ -113,7 +113,9 @@ public final class RestUtil {
   }
 
   public static String encodeCursor(String cursor) {
-    return cursor == null ? null : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
+    return cursor == null
+        ? null
+        : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
   }
 
   public static String decodeCursor(String cursor) {
@@ -144,7 +146,8 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
       if (changeType.equals(RestUtil.ENTITY_CREATED)
           || changeType.equals(RestUtil.ENTITY_UPDATED)
           || changeType.equals(RestUtil.ENTITY_NO_CHANGE)
@@ -173,7 +176,10 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
+      return Response.status(status)
+          .header(CHANGE_CUSTOM_HEADER, changeType)
+          .entity(entity)
+          .build();
     }
   }
 
@@ -187,7 +193,8 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
       return responseBuilder.entity(entity).build();
     }
   }

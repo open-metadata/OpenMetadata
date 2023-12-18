@@ -19,7 +19,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class ResourceRegistry {
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
-  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
+  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP =
+      new HashMap<>();
   protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
       new EnumMap<>(MetadataOperation.class);
 
@@ -51,13 +52,16 @@ public class ResourceRegistry {
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
     Collections.sort(allOperations);
-    RESOURCE_DESCRIPTORS.add(new ResourceDescriptor().withName("all").withOperations(allOperations));
+    RESOURCE_DESCRIPTORS.add(
+        new ResourceDescriptor().withName("all").withOperations(allOperations));
   }
 
   private ResourceRegistry() {}
 
   public static void addResource(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, Set<String> entityFields) {
+      String resourceName,
+      List<MetadataOperation> entitySpecificOperations,
+      Set<String> entityFields) {
     // If resourceName already exists, then no need to add the resource again
     if (RESOURCE_DESCRIPTORS.stream().anyMatch(d -> d.getName().equals(resourceName))) {
       return;
@@ -101,9 +105,13 @@ public class ResourceRegistry {
 
   public static ResourceDescriptor getResourceDescriptor(String resourceType) {
     ResourceDescriptor rd =
-        RESOURCE_DESCRIPTORS.stream().filter(r -> r.getName().equalsIgnoreCase(resourceType)).findAny().orElse(null);
+        RESOURCE_DESCRIPTORS.stream()
+            .filter(r -> r.getName().equalsIgnoreCase(resourceType))
+            .findAny()
+            .orElse(null);
     if (rd == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.resourceTypeNotFound(resourceType));
     }
     return rd;
   }

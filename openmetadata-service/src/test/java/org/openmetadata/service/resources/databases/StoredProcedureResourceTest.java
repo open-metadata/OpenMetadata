@@ -37,7 +37,8 @@ import org.openmetadata.service.util.*;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class StoredProcedureResourceTest extends EntityResourceTest<StoredProcedure, CreateStoredProcedure> {
+public class StoredProcedureResourceTest
+    extends EntityResourceTest<StoredProcedure, CreateStoredProcedure> {
   public StoredProcedureResourceTest() {
     super(
         STORED_PROCEDURE,
@@ -70,7 +71,8 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
             + "with no schema binding;\n";
     createStoredProcedure.setStoredProcedureCode(
         new StoredProcedureCode().withCode(query).withLanguage(StoredProcedureLanguage.SQL));
-    StoredProcedure storedProcedure = createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
+    StoredProcedure storedProcedure =
+        createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
     storedProcedure = getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
     assertEquals(storedProcedure.getStoredProcedureCode().getCode(), query);
   }
@@ -85,13 +87,16 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
             + "union all\n"
             + "select * from spectrum.sales\n"
             + "with no schema binding;\n";
-    createStoredProcedure.setStoredProcedureCode(new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL));
-    StoredProcedure storedProcedure = createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
+    createStoredProcedure.setStoredProcedureCode(
+        new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL));
+    StoredProcedure storedProcedure =
+        createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
     String storedProcedureJson = JsonUtils.pojoToJson(storedProcedure);
     storedProcedure.setStoredProcedureCode(
         new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL).withCode(query));
     StoredProcedure storedProcedure1 =
-        patchEntity(storedProcedure.getId(), storedProcedureJson, storedProcedure, ADMIN_AUTH_HEADERS);
+        patchEntity(
+            storedProcedure.getId(), storedProcedureJson, storedProcedure, ADMIN_AUTH_HEADERS);
     compareEntities(storedProcedure, storedProcedure1, ADMIN_AUTH_HEADERS);
     getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
   }
@@ -111,8 +116,8 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
   }
 
   @Override
-  public StoredProcedure validateGetWithDifferentFields(StoredProcedure storedProcedure, boolean byName)
-      throws HttpResponseException {
+  public StoredProcedure validateGetWithDifferentFields(
+      StoredProcedure storedProcedure, boolean byName) throws HttpResponseException {
     storedProcedure =
         byName
             ? getEntityByName(storedProcedure.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -123,7 +128,8 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
         storedProcedure.getDatabase(),
         storedProcedure.getDatabaseSchema(),
         storedProcedure.getStoredProcedureCode());
-    assertListNull(storedProcedure.getOwner(), storedProcedure.getTags(), storedProcedure.getFollowers());
+    assertListNull(
+        storedProcedure.getOwner(), storedProcedure.getTags(), storedProcedure.getFollowers());
 
     String fields = "owner,tags,followers";
     storedProcedure =
@@ -145,11 +151,13 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
   public StoredProcedure createEntity(TestInfo test, int index) throws IOException {
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     DatabaseService service =
-        databaseServiceResourceTest.createEntity(databaseServiceResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+        databaseServiceResourceTest.createEntity(
+            databaseServiceResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(service.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
     CreateStoredProcedure create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
@@ -185,7 +193,9 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
 
   @Override
   public void validateCreatedEntity(
-      StoredProcedure createdEntity, CreateStoredProcedure createRequest, Map<String, String> authHeaders)
+      StoredProcedure createdEntity,
+      CreateStoredProcedure createRequest,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     // Entity specific validation
     assertReference(createRequest.getDatabaseSchema(), createdEntity.getDatabaseSchema());
@@ -196,12 +206,14 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
     assertEquals(createdEntity.getStoredProcedureCode(), createRequest.getStoredProcedureCode());
     assertEquals(
-        FullyQualifiedName.add(createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
+        FullyQualifiedName.add(
+            createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
   }
 
   @Override
-  public void compareEntities(StoredProcedure expected, StoredProcedure patched, Map<String, String> authHeaders)
+  public void compareEntities(
+      StoredProcedure expected, StoredProcedure patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Entity specific validation
     validateDatabase(expected.getDatabase(), patched.getDatabase());
@@ -209,7 +221,8 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
     TestUtils.validateEntityReferences(expected.getFollowers());
     assertEquals(expected.getStoredProcedureCode(), patched.getStoredProcedureCode());
     assertEquals(
-        FullyQualifiedName.add(patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
+        FullyQualifiedName.add(
+            patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
         patched.getFullyQualifiedName());
   }
 

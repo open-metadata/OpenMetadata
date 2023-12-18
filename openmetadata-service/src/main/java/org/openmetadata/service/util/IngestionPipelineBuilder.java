@@ -28,7 +28,8 @@ public final class IngestionPipelineBuilder {
 
   /** Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`. */
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
-    if (DBT.equals(ingestionPipeline.getPipelineType()) && ingestionPipeline.getSourceConfig() != null) {
+    if (DBT.equals(ingestionPipeline.getPipelineType())
+        && ingestionPipeline.getSourceConfig() != null) {
       ingestionPipeline
           .getSourceConfig()
           .setConfig(

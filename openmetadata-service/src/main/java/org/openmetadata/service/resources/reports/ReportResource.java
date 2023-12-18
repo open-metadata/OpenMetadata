@@ -88,7 +88,10 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of reports",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportList.class)))
       })
   public ResultList<Report> list(
       @Context UriInfo uriInfo,
@@ -112,13 +115,17 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
       })
   public Report get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -143,10 +150,14 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.create(uriInfo, securityContext, report);
   }
@@ -161,7 +172,10 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -180,15 +194,21 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

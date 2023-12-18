@@ -53,13 +53,17 @@ public final class ParserFactory {
       MessageParser.EntityLink entityLink) {
     switch (fieldChangeName) {
       case Entity.FIELD_TAGS:
-        return new TagFormatter(decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+        return new TagFormatter(
+            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
       case Entity.FIELD_FOLLOWERS:
-        return new FollowersFormatter(decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+        return new FollowersFormatter(
+            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
       case Entity.FIELD_OWNER:
-        return new OwnerFormatter(decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+        return new OwnerFormatter(
+            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
       default:
-        return new DefaultFieldFormatter(decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+        return new DefaultFieldFormatter(
+            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
     }
   }
 }

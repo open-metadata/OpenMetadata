@@ -29,7 +29,8 @@ public class OpenMetadataAuthenticationProvider implements AuthenticationProvide
   public OpenMetadataAuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.OPENMETADATA)) {
       LOG.error("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
-      throw new RuntimeException("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
     }
 
     securityConfig = (OpenMetadataJWTClientConfig) iConfig.getSecurityConfig();

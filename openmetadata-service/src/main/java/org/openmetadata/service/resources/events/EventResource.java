@@ -69,12 +69,16 @@ public class EventResource {
   @Operation(
       operationId = "listChangeEvents",
       summary = "Get change events",
-      description = "Get a list of change events matching event types, entity type, from a given date",
+      description =
+          "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventList.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventList.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public ResultList<ChangeEvent> get(
@@ -122,7 +126,8 @@ public class EventResource {
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     List<ChangeEvent> events =
-        repository.list(timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
+        repository.list(
+            timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
     return new EventList(events, null, null, events.size());
   }

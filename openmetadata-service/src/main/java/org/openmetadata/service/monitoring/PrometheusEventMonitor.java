@@ -34,7 +34,9 @@ public class PrometheusEventMonitor extends EventMonitor {
   private static final String CLUSTER_TAG_NAME = "clusterName";
 
   public PrometheusEventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+      EventMonitorProvider eventMonitorProvider,
+      EventMonitorConfiguration config,
+      String clusterPrefix) {
     super(eventMonitorProvider, config, clusterPrefix);
     meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
   }
@@ -61,7 +63,8 @@ public class PrometheusEventMonitor extends EventMonitor {
                   change -> {
                     if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
                       PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
-                      incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
+                      incrementIngestionPipelineCounter(
+                          fqn, pipelineType, pipelineStatus.getPipelineState().value());
                     }
                   });
           break;
