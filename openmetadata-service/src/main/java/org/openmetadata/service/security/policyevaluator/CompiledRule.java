@@ -55,7 +55,7 @@ public class CompiledRule extends Rule {
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
     try {
-      expression.getValue(ruleEvaluator,  clz);
+      expression.getValue(ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
