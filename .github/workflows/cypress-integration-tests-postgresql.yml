@@ -45,6 +45,7 @@ jobs:
                )
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         parallel-machine: [1, 2, 3, 4]
     environment: test
@@ -60,7 +61,7 @@ jobs:
             swap-storage: true
             docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        uses: lewagon/wait-on-check-action@v1.3.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

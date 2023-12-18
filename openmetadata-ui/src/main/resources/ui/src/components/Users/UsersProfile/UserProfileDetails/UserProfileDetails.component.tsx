@@ -171,27 +171,31 @@ const UserProfileDetails = ({
       ),
     [showChangePasswordComponent]
   );
-
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
       setIsLoading(true);
+
+      const newData = {
+        username: userData.name,
+        requestType: isLoggedInUser ? RequestType.Self : RequestType.User,
+      };
+
       const sendData = {
         ...data,
-        ...(isAdminUser &&
-          !isLoggedInUser && {
-            username: userData.name,
-            requestType: RequestType.User,
-          }),
+        ...newData,
       };
+
       await changePassword(sendData);
-      setIsChangePassword(false);
+
       showSuccessToast(
         t('server.update-entity-success', { entity: t('label.password') })
       );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+
+      setIsChangePassword(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(true);
+      setIsLoading(false);
     }
   };
 
