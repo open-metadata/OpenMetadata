@@ -1763,7 +1763,7 @@ export const highlightEntityNameAndDescription = (
   highlight: SearchedDataProps['data'][number]['highlight']
 ): SearchedDataProps['data'][number]['_source'] => {
   let entityDescription = entity.description ?? '';
-  const descHighlights = highlight?.description || [];
+  const descHighlights = highlight?.description ?? [];
 
   if (descHighlights.length > 0) {
     const matchTextArr = descHighlights.map((val: string) =>

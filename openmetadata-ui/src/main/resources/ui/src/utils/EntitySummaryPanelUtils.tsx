@@ -42,7 +42,7 @@ export interface HighlightedTagLabel extends TagLabel {
 }
 
 const getTitleName = (data: EntityNameProps) =>
-  getEntityName(data) || NO_DATA_PLACEHOLDER;
+  getEntityName(data) ?? NO_DATA_PLACEHOLDER;
 
 const getTitle = ({
   content,
@@ -127,7 +127,7 @@ export const getFormattedEntityData = (
 
     entityInfo?.reduce((acc, listItem) => {
       const listItemModifiedData = {
-        name: listItem.name || '',
+        name: listItem.name ?? '',
         title: getTitle({
           content: getTitleName(listItem),
           sourceUrl: (listItem as Chart | Task).sourceUrl,
