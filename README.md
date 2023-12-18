@@ -40,11 +40,12 @@ OpenMetadata consists of four main components:
 ## Features
 
 <div align='center'>    
-<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/4b645808-85d9-43ca-b4d4-9acceec295ee">
-<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/b143b53c-66f4-482d-8f78-8d97440509a0">
-<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/c333183f-ce20-4c9d-898f-cc971e5da846">
-<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/3638363e-356d-403f-8a65-6cacaa0a8e47">
-<img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/cd3aec27-18f6-47d0-8550-5f03a72cada5">
+
+![11](https://github.com/open-metadata/OpenMetadata/assets/40225091/7846b745-b6e3-4ad3-b450-998b4d3b2180)
+![8](https://github.com/open-metadata/OpenMetadata/assets/40225091/50b6d871-2627-4330-bd15-f1710e04a915)
+![10](https://github.com/open-metadata/OpenMetadata/assets/40225091/b5b97e0d-1f0e-4e51-894a-375526331524)
+![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/0e2f80cd-0650-420f-b7ec-25232a327928)
+![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/d98ab2ab-248b-4c12-8958-df33c017fb5b)
 </div>
 
 ## Some of the key features of OpenMetadata are:
