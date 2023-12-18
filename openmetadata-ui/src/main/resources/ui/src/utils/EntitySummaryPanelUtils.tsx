@@ -48,7 +48,7 @@ const getTitle = ({
   content,
   sourceUrl,
 }: {
-  content: string | JSX.Element | JSX.Element[];
+  content: string | JSX.Element | JSX.Element[] | undefined;
   sourceUrl: string | undefined;
 }) => {
   return sourceUrl ? (

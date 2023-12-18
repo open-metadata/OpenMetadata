@@ -27,8 +27,8 @@ export const stringToSlug = (dataString: string, slugString = '') => {
  */
 export const stringToHTML = function (
   strHTML: string | undefined
-): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : '';
+): string | JSX.Element | JSX.Element[] | undefined {
+  return strHTML ? parse(strHTML) : strHTML;
 };
 
 /**

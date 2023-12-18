@@ -603,7 +603,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: stringToHTML(displayName) || NO_DATA,
+      value: stringToHTML(displayName) ?? NO_DATA,
       url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
       isLink: true,
       visible: [
