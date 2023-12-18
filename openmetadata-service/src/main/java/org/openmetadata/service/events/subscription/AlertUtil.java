@@ -49,6 +49,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
@@ -104,8 +105,9 @@ public final class AlertUtil {
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(context, ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
@@ -169,7 +171,7 @@ public final class AlertUtil {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+      SimpleEvaluationContext evaluationContext = SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
       Expression expression = parseExpression(completeCondition);
       result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);

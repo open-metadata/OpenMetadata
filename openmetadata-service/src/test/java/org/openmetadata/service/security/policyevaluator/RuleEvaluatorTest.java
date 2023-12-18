@@ -34,7 +34,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 class RuleEvaluatorTest {
   private static final Table table = new Table().withName("table");
@@ -74,7 +74,7 @@ class RuleEvaluatorTest {
     resourceContext = new ResourceContext("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
-    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    evaluationContext =  SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
   }
 
   @Test
@@ -295,6 +295,6 @@ class RuleEvaluatorTest {
   private void updatePolicyContext(String team) {
     PolicyContext policyContext = new PolicyContext(Entity.TEAM, team, null, null, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
-    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    evaluationContext = SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
   }
 }
