@@ -33,7 +33,7 @@ class TestDeprecationWarning(TestCase):
             self.deprecated_call()
 
             # Verify the result
-            self.assertEquals(len(warn), 1)
+            self.assertEqual(len(warn), 1)
             self.assertTrue(issubclass(warn[0].category, DeprecationWarning))
             self.assertTrue("This is a deprecation" in str(warn[0].message))
             self.assertTrue("x.y.z" in str(warn[0].message))

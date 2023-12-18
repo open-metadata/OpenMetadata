@@ -225,7 +225,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         )[0]
 
         self.assertIsNone(table.testSuite)
-        self.assertEquals(
+        self.assertEqual(
             table_and_tests.right.executable_test_suite.name.__root__,
             self.table.fullyQualifiedName.__root__ + ".testSuite",
         )

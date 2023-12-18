@@ -201,7 +201,7 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema
-        for table in self.spark.catalog.listTables(schema_name):
+        for table in self.spark.catalog.listTables(dbName=schema_name):
             try:
                 table_name = table.name
                 table_fqn = fqn.build(

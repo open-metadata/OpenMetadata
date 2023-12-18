@@ -45,8 +45,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (5, 2))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
@@ -62,8 +62,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (5, 2))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
@@ -81,8 +81,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (5, 2))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
@@ -98,8 +98,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (4, 4))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (4, 4))
+        self.assertEqual(
             list(df_list[0].columns),
             ["name", "id", "version", "Company"],
         )
@@ -116,8 +116,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (4, 8))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (4, 8))
+        self.assertEqual(
             list(df_list[0].columns),
             [
                 "Boolean",

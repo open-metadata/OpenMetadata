@@ -21,28 +21,28 @@ class StoredProceduresTests(TestCase):
 
     def test_get_procedure_name_from_call(self):
         """Check that we properly parse CALL queries"""
-        self.assertEquals(
+        self.assertEqual(
             get_procedure_name_from_call(
                 query_text="CALL db.schema.procedure_name(...)",
             ),
             "procedure_name",
         )
 
-        self.assertEquals(
+        self.assertEqual(
             get_procedure_name_from_call(
                 query_text="CALL schema.procedure_name(...)",
             ),
             "procedure_name",
         )
 
-        self.assertEquals(
+        self.assertEqual(
             get_procedure_name_from_call(
                 query_text="CALL procedure_name(...)",
             ),
             "procedure_name",
         )
 
-        self.assertEquals(
+        self.assertEqual(
             get_procedure_name_from_call(
                 query_text="CALL DB.SCHEMA.PROCEDURE_NAME(...)",
             ),

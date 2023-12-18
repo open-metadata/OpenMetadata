@@ -56,7 +56,7 @@ class TestAirflowLineageParser(TestCase):
         For this test, we will assume that by having the same FQN, the
         entity type will also be the same.
         """
-        self.assertEquals(len(first), len(second))
+        self.assertEqual(len(first), len(second))
 
         for xlet1 in first:
             match = False
@@ -305,7 +305,7 @@ class TestAirflowLineageParser(TestCase):
             fqn="FQN",
             key="test",
         )
-        self.assertEquals(
+        self.assertEqual(
             str(om_entity),
             '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}',
         )
@@ -315,7 +315,7 @@ class TestAirflowLineageParser(TestCase):
             fqn="FQN",
             key="test",
         )
-        self.assertEquals(
+        self.assertEqual(
             str(om_entity),
             '{"entity": "metadata.generated.schema.entity.data.container.Container", "fqn": "FQN", "key": "test"}',
         )
@@ -332,7 +332,7 @@ class TestAirflowLineageParser(TestCase):
         """
         self.assertIsNone(_parse_xlets("random"))
 
-        self.assertEquals(
+        self.assertEqual(
             _parse_xlets(
                 '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}'
             ),
@@ -347,7 +347,7 @@ class TestAirflowLineageParser(TestCase):
             },
         )
 
-        self.assertEquals(
+        self.assertEqual(
             _parse_xlets(
                 '{"entity": "metadata.generated.schema.entity.data.container.Container", "fqn": "FQN", "key": "test"}'
             ),
@@ -362,7 +362,7 @@ class TestAirflowLineageParser(TestCase):
             },
         )
 
-        self.assertEquals(
+        self.assertEqual(
             _parse_xlets(
                 '{"entity": "metadata.generated.schema.entity.data.dashboard.Dashboard", "fqn": "FQN", "key": "test"}'
             ),
@@ -385,7 +385,7 @@ class TestAirflowLineageParser(TestCase):
             key="test",
         )
 
-        self.assertEquals(
+        self.assertEqual(
             serialize(om_entity).get("__data__"),
             '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}',
         )

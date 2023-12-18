@@ -38,11 +38,8 @@ Configure and schedule Deltalake metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
+Deltalake requires to run with Python 3.8, 3.9 or 3.10. We do not yet support the Delta connector
+for Python 3.11
 
 ### Python Requirements
 

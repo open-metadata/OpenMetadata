@@ -64,6 +64,7 @@ and we'll treat this as independent sets of lineage
 """
 import json
 import logging
+import textwrap
 import traceback
 from collections import defaultdict
 from copy import deepcopy
@@ -200,7 +201,12 @@ def _parse_xlets(xlet: Any) -> None:
 
 @_parse_xlets.register
 @deprecated(
-    message="Please update your inlets/outlets to follow <TODO DOCS>",
+    message=textwrap.dedent(
+        """
+    Please update your inlets/outlets to follow 
+    https://docs.open-metadata.org/connectors/pipeline/airflow/configuring-lineage
+    """
+    ),
     release="1.4.0",
 )
 def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
