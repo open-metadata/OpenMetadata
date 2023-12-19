@@ -607,9 +607,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
-      // same as the user
-      // we are trying to update. One option is to set users.owner as user, however that is not
-      // supported for User.
+      // is same as the user. We are trying to update. One option is to set users.owner as user,
+      // however that is not supported for User.
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);

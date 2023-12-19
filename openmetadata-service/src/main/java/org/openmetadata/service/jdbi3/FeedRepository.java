@@ -582,10 +582,8 @@ public class FeedRepository {
       threads = JsonUtils.readObjects(jsons, Thread.class);
       total = dao.feedDAO().listCount(filter.getCondition());
     } else {
-      // Either one or both the filters are enabled
-      // we don't support both the filters together. If both are not null, entity link takes
-      // precedence
-
+      // Either one or both the filters are enabled. We don't support both the filters together.
+      // If both are not null, entity link takes precedence
       if (link != null) {
         EntityLink entityLink = EntityLink.parse(link);
         EntityReference reference = EntityUtil.validateEntityLink(entityLink);

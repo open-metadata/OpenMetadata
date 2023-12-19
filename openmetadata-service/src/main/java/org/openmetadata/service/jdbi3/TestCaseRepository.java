@@ -726,8 +726,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     @Transaction
     public void closeTask(String userName, CloseTask closeTask) {
       // closing task in the context of test case resolution status means that the resolution task
-      // has been reassigned
-      // to someone else
+      // has been reassigned to someone else
       TestCaseResolutionStatus latestTestCaseResolutionStatus =
           testCaseResolutionStatusRepository.getLatestRecord(closeTask.getTestCaseFQN());
       if (latestTestCaseResolutionStatus == null) {

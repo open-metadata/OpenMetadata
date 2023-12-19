@@ -271,8 +271,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
 
     // when basic auth is enabled and the user is created through the API without password, the
-    // stored auth mechanism
-    // for the user is null
+    // stored auth mechanism for the user is null
     if (storedUser.getAuthenticationMechanism() == null) {
       storedUser.setAuthenticationMechanism(
           new AuthenticationMechanism()

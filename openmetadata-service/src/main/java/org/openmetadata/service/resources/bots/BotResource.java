@@ -53,7 +53,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -65,11 +64,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.UserUtil;
 
@@ -105,24 +102,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       user = UserUtil.addOrUpdateBotUser(user);
       bot.withBotUser(user.getEntityReference());
       repository.initializeEntity(bot);
-    }
-  }
-
-  @Override
-  public void upgrade() {
-    // This should be deleted once 0.13 is deprecated
-    // For all the existing bots, add ingestion bot role
-    ResultList<Bot> bots =
-        repository.listAfter(
-            null, Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED), 1000, null);
-    EntityReference ingestionBotRole = RoleResource.getRole(Entity.INGESTION_BOT_ROLE);
-    for (Bot bot : bots.getData()) {
-      User botUser = Entity.getEntity(bot.getBotUser(), "roles", Include.NON_DELETED);
-      if (botUser.getRoles() == null) {
-        botUser.setRoles(List.of(ingestionBotRole));
-        repository.addRelationship(
-            botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
-      }
     }
   }
 

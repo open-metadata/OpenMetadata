@@ -416,8 +416,7 @@ public abstract class SecretsManager {
                 String fieldName = method.getName().replaceFirst("get", "");
                 // check if it has annotation:
                 // We are replicating the logic that we use for storing the fields we need to
-                // encrypt
-                // at encryptPasswordFields
+                // encrypt at encryptPasswordFields
                 if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
                   deleteSecrets(
                       obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));

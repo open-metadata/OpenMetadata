@@ -334,8 +334,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Glossary term g2t1 created under it are in `Draft` status. Automatically a Request Approval
     // task is created.
     // Only a reviewer can change the status to `Approved`. When the status changes to `Approved`,
-    // the Request Approval
-    // task is automatically resolved.
+    // the Request Approval task is automatically resolved.
     //
     createGlossary =
         glossaryTest

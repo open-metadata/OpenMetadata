@@ -73,8 +73,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Remove User2 as expert using PATCH
     // Version 0.1 - Changes from this PATCH is consolidated with the previous two changes resulting
-    // in deletion of
-    // USER2
+    // in deletion of USER2
     json = JsonUtils.pojoToJson(domain);
     change = getChangeDescription(domain, REVERT);
     domain.withExperts(List.of(USER1.getEntityReference()));

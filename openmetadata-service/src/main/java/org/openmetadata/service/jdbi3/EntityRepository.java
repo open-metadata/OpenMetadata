@@ -922,7 +922,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
-    postDelete(response.getEntity());
+    postDelete(response.entity());
     return response;
   }
 
@@ -931,7 +931,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-    postDelete(response.getEntity());
+    postDelete(response.entity());
     return response;
   }
 
@@ -1442,8 +1442,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     UUID to = toId;
     if (bidirectional && fromId.compareTo(toId) > 0) {
       // For bidirectional relationship, instead of adding two row fromId -> toId and toId ->
-      // fromId, just add one
-      // row where fromId is alphabetically less than toId
+      // fromId, just add one row where fromId is alphabetically less than toId
       from = toId;
       to = fromId;
     }

@@ -52,12 +52,9 @@ public class AuditEventHandler implements EventHandler {
       try {
         EntityReference entityReference;
         // TODO: EntityInterface and EntityTimeSeriesInterface share some common implementation and
-        // diverge
-        // at the edge (e.g. EntityTimeSeriesInterface does not expect owners, etc.). We should
-        // implement
-        // a parent class that captures the common fields and then have EntityInterface and
-        // EntityTimeSeriesInterface
-        // extend it.
+        // diverge at the edge (e.g. EntityTimeSeriesInterface does not expect owners, etc.).
+        // We should implement a parent class that captures the common fields and then have
+        // EntityInterface and EntityTimeSeriesInterface extend it.
         if (responseContext.getEntity()
             instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
           entityReference = entityTimeSeriesInterface.getEntityReference();

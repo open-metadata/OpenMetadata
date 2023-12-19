@@ -57,8 +57,7 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
       initClientWithCredentials(region, credentialsProvider);
     } else {
       // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials
-      // loaded from the
-      // DefaultCredentialsProvider
+      // loaded from the DefaultCredentialsProvider
       initClientWithoutCredentials();
     }
   }

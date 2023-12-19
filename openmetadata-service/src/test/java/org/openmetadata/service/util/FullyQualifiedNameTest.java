@@ -48,8 +48,7 @@ class FullyQualifiedNameTest {
   @Test
   void test_quoteName() {
     assertEquals("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
-    assertEquals(
-        "\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." exists in the name
+    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
 

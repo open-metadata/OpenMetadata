@@ -198,17 +198,14 @@ public record SubjectContext(@Getter User user) {
   static class PolicyIterator implements Iterator<PolicyContext> {
 
     // When executing roles from a policy, entity type User or Team to which the Role is attached
-    // to.
-    // In case of executing a policy attached to a team, the entityType is Team
+    // to. In case of executing a policy attached to a team, the entityType is Team.
     private final String entityType;
 
     // User or Team name to which the Role or Policy is attached to
-
     private final String entityName;
 
     // Name of the role from which the policy is from. If policy is not part of the role, but from
-    // directly attaching
-    // it to a Team, then null
+    // directly attaching it to a Team, then null
     private final String roleName;
 
     // Index to the current policy being evaluation

@@ -166,8 +166,7 @@ public class MigrationUtil {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
       // We have to do this since this column in changed in the dao in the latest version after this
-      // , and this will
-      // fail the migrations here
+      // , and this will fail the migrations here
       nameHashColumn = "nameHash";
     }
     while (true) {
@@ -239,9 +238,8 @@ public class MigrationUtil {
 
   public static void dataMigrationFQNHashing(
       Handle handle, CollectionDAO collectionDAO, int limitParam) {
-    // Migration for Entities with Name as their FQN
-    // We need to quote the FQN, if these entities have "." in their name we are storing it as it is
-    // into the FQN field.
+    // Migration for Entities with Name as their FQN. We need to quote the FQN, if these entities
+    // have "." in their name we are storing it as it is into the FQN field.
     updateFQNHashForEntityWithName(handle, Bot.class, collectionDAO.botDAO(), limitParam);
     updateFQNHashForEntityWithName(handle, User.class, collectionDAO.userDAO(), limitParam);
     updateFQNHashForEntityWithName(handle, Team.class, collectionDAO.teamDAO(), limitParam);
@@ -507,8 +505,7 @@ public class MigrationUtil {
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
     // Update existing test suites as logical test suites and delete any ingestion pipeline
-    // associated with the existing
-    // test suite
+    // associated with the existing test suite
     migrateExistingTestSuitesToLogical(collectionDAO);
 
     // create native test suites

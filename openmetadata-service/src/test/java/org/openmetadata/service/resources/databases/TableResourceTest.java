@@ -699,8 +699,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     //
     // Change the column c2 data length from 10 to 20. Increasing the data length is considered
-    // backward compatible
-    // and only minor version changes
+    // backward compatible and only minor version changes
     //
     c2.setDataLength(20);
     change = getChangeDescription(table, MINOR_UPDATE);
@@ -712,8 +711,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     //
     // Change the column c2 data length from 20 to 10. Decreasing the data length is considered
-    // backward compatible
-    // and results in major version changes
+    // backward compatible and results in major version changes
     //
     c2.setDataLength(10);
     change = getChangeDescription(table, MAJOR_UPDATE);
@@ -1475,9 +1473,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS);
 
     //
-    // Update the data model and validate the response.
-    // Make sure table and column description is carried forward if the original entity had them as
-    // null
+    // Update the data model and validate the response. Make sure table and column description
+    // is carried forward if the original entity had them as null
     //
     columns.get(0).setDescription("updatedDescription");
     columns.get(1).setDescription("updatedDescription");
@@ -1873,8 +1870,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address,
-    // glossaryTerm1
-    // and a derived tag PII.Sensitive from glossary term1
+    // glossaryTerm1 and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
     assertEquals(4, updateTags.size());
 

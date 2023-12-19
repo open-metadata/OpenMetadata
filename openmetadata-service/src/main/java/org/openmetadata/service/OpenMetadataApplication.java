@@ -145,8 +145,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setCollectionDAO(collectionDAO);
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing
-    // repository
+    // before initializing repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration(), new SearchIndexFactory());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
