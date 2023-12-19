@@ -123,6 +123,7 @@ export type ConfigData =
 export type IngestionWorkflowData = Pipeline & {
   name: string;
   enableDebugLog?: boolean;
+  displayName?: string;
 };
 
 export interface IngestionWorkflowFormProps {
