@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/tests/table/tablecolumntomatchset
 ## Properties
 
 - **`columnNames`** *(string)*: Expected columns of the table to match the ones in {columnValuesSet}.
-- **`ordered`** *(boolean)*: Wether or not to considered the order of the list when performing the match. Default: `False`.
+- **`ordered`** *(boolean)*: Whether or not to considered the order of the list when performing the match. Default: `False`.
 
 
 Documentation file automatically generated at 2022-07-14 10:51:34.749986.
