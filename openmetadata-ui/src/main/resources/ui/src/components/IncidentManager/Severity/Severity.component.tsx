@@ -15,18 +15,30 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import AppBadge from '../../common/Badge/Badge.component';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({ severity, onSubmit }: SeverityProps) => {
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
+  const { permissions } = usePermissionProvider();
+  const hasEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   const onEditSeverity = useCallback(() => setIsEditSeverity(true), []);
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
@@ -50,12 +62,14 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
         ) : (
           NO_DATA_PLACEHOLDER
         )}
-        <Icon
-          component={EditIcon}
-          data-testid="edit-description-icon"
-          style={{ color: DE_ACTIVE_COLOR }}
-          onClick={onEditSeverity}
-        />
+        {hasEditPermission && (
+          <Icon
+            component={EditIcon}
+            data-testid="edit-description-icon"
+            style={{ color: DE_ACTIVE_COLOR }}
+            onClick={onEditSeverity}
+          />
+        )}
       </Space>
 
       {isEditSeverity && (

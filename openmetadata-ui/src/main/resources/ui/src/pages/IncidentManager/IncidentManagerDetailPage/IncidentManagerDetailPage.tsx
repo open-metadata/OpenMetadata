@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Tabs, TabsProps } from 'antd';
+import { Col, Divider, Row, Space, Tabs, TabsProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -26,11 +27,18 @@ import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssues
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import { ROUTES } from '../../../constants/constants';
+import { getTableTabPath, ROUTES } from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { TestCase } from '../../../generated/tests/testCase';
-import { getTestCaseByFqn } from '../../../rest/testAPI';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
@@ -48,6 +56,26 @@ const IncidentManagerDetailPage = () => {
     data: undefined,
     isLoading: true,
   });
+
+  const tableFqn = useMemo(
+    () => getEntityFQN(testCaseData.data?.entityLink ?? ''),
+    [testCaseData.data]
+  );
+  const { permissions } = usePermissionProvider();
+  const { hasEditPermission, hasViewPermission } = useMemo(() => {
+    return {
+      hasEditPermission: checkPermission(
+        Operation.EditAll,
+        ResourceEntity.TEST_CASE,
+        permissions
+      ),
+      hasViewPermission: checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.TEST_CASE,
+        permissions
+      ),
+    };
+  }, [permissions]);
 
   const onTestCaseUpdate = (data: TestCase) => {
     setTestCaseData((prev) => ({ ...prev, data }));
@@ -84,7 +112,7 @@ const IncidentManagerDetailPage = () => {
     setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
       const response = await getTestCaseByFqn(testCaseFQN, {
-        fields: ['testSuite', 'testCaseResult', 'testDefinition'],
+        fields: ['testSuite', 'testCaseResult', 'testDefinition', 'owner'],
       });
       setTestCaseData((prev) => ({ ...prev, data: response.data }));
     } catch (error) {
@@ -122,15 +150,43 @@ const IncidentManagerDetailPage = () => {
     }
   };
 
+  const handleOwnerChange = async (owner?: EntityReference) => {
+    const data = testCaseData.data;
+    if (data) {
+      const updatedTestCase = {
+        ...data,
+        owner,
+      };
+      const jsonPatch = compare(data, updatedTestCase);
+
+      if (jsonPatch.length) {
+        try {
+          const res = await updateTestCaseById(data.id ?? '', jsonPatch);
+          onTestCaseUpdate(res);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchTestCaseData();
-  }, [testCaseFQN]);
+    if (hasViewPermission && testCaseFQN) {
+      fetchTestCaseData();
+    } else {
+      setTestCaseData((prev) => ({ ...prev, isLoading: false }));
+    }
+  }, [testCaseFQN, hasViewPermission]);
 
   if (testCaseData.isLoading) {
     return <Loader />;
   }
 
-  if (isEmpty(testCaseData)) {
+  if (!hasViewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  if (isUndefined(testCaseData.data)) {
     return <ErrorPlaceHolder />;
   }
 
@@ -141,15 +197,37 @@ const IncidentManagerDetailPage = () => {
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
         </Col>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <EntityHeaderTitle
+            displayName={testCaseData.data?.displayName}
+            icon={<TestCaseIcon className="h-9" />}
+            name={testCaseData.data?.name ?? ''}
+            serviceName="testCase"
+          />
+        </Col>
+        <Col className="p-x-lg">
           <Space align="center">
-            <EntityHeaderTitle
-              displayName={testCaseData.data?.displayName}
-              icon={<TestCaseIcon className="h-9" />}
-              name={testCaseData.data?.name ?? ''}
-              serviceName="testCase"
+            <OwnerLabel
+              hasPermission={hasEditPermission}
+              owner={testCaseData.data?.owner}
+              onUpdate={handleOwnerChange}
             />
-            <Divider type="vertical" />
-            <OwnerLabel owner={testCaseData.data?.owner} />
+
+            {tableFqn && (
+              <>
+                <Divider className="self-center m-x-sm" type="vertical" />
+                <Typography.Text className="self-center text-xs whitespace-nowrap">
+                  <span className="text-grey-muted">{`${t(
+                    'label.table'
+                  )}: `}</span>
+
+                  <Link
+                    className="font-medium"
+                    to={getTableTabPath(tableFqn, EntityTabs.PROFILER)}>
+                    {getNameFromFQN(tableFqn)}
+                  </Link>
+                </Typography.Text>
+              </>
+            )}
           </Space>
         </Col>
 

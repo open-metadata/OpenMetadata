@@ -15,7 +15,6 @@ import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
@@ -40,10 +39,7 @@ import { TestCaseStatus } from '../../../generated/configuration/testResultNotif
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
-import {
-  patchTestCaseResult,
-  removeTestCaseFromTestSuite,
-} from '../../../rest/testAPI';
+import { removeTestCaseFromTestSuite } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDate,
@@ -51,6 +47,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -119,28 +116,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const handleStatusSubmit = async (data: TestCaseResolutionStatus) => {
     if (selectedTestCase?.data?.testCaseResult) {
-      const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...selectedTestCase.data?.testCaseResult,
         testCaseResolutionStatusReference: data,
       };
-      const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
-      const patch = compare(
-        selectedTestCase.data.testCaseResult,
-        updatedResult
-      );
-      try {
-        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
+      onTestCaseResultUpdate?.({
+        ...selectedTestCase.data,
+        testCaseResult: updatedResult,
+      });
 
-        onTestCaseResultUpdate?.({
-          ...selectedTestCase.data,
-          testCaseResult: updatedResult,
-        });
-
-        handleCancel();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
+      handleCancel();
     }
 
     return;
@@ -249,7 +234,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'testCaseResult',
         key: 'resolution',
         width: 100,
-        render: (value: TestCaseResult) => {
+        render: (value: TestCaseResult, record) => {
           const label =
             value?.testCaseResolutionStatusReference
               ?.testCaseResolutionStatusType;
@@ -263,11 +248,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 `${formatDate(failureStatus.updatedAt)}
                     ${
                       failureStatus.updatedBy
-                        ? 'by ' + failureStatus.updatedBy
+                        ? 'by ' + getEntityName(failureStatus.updatedBy)
                         : ''
                     }`
               }>
-              <div>
+              <Link
+                to={getIncidentManagerDetailPagePath(
+                  record.fullyQualifiedName ?? ''
+                )}>
                 <AppBadge
                   className={classNames(
                     'resolution',
@@ -275,7 +263,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   )}
                   label={label}
                 />
-              </div>
+              </Link>
             </Tooltip>
           ) : (
             '--'
@@ -435,6 +423,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               ?.testCaseResolutionStatusReference
           }
           open={selectedTestCase?.action === 'UPDATE_STATUS'}
+          testCaseFqn={selectedTestCase?.data?.fullyQualifiedName ?? ''}
           onCancel={handleCancel}
           onSubmit={handleStatusSubmit}
         />

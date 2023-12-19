@@ -92,6 +92,7 @@ export const TestCaseStatusModal = ({
           updatedData.testCaseResolutionStatusDetails = {
             ...data.testCaseResolutionStatusDetails,
             assignee: {
+              name: updatedAssignees[0].name,
               id: updatedAssignees[0].value,
               type: EntityType.USER,
             },

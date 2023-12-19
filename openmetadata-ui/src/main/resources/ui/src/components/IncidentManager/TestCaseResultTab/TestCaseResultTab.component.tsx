@@ -21,10 +21,15 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { updateTestCaseById } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import TestSummary from '../../ProfilerDashboard/component/TestSummary';
 import '../incident-manager.style.less';
 import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
@@ -36,8 +41,14 @@ const TestCaseResultTab = ({
   const { t } = useTranslation();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
-
-  const hasEditPermission = true;
+  const { permissions } = usePermissionProvider();
+  const hasEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   const parameterValuesWithoutSqlExpression = useMemo(
     () =>
@@ -103,16 +114,29 @@ const TestCaseResultTab = ({
 
       <Col span={24}>
         <Space direction="vertical" size="middle">
+          <Typography.Text className="right-panel-label">
+            {t('label.test-type')}
+          </Typography.Text>
+          <Typography.Text>
+            {getEntityName(testCaseData?.testDefinition)}
+          </Typography.Text>
+        </Space>
+      </Col>
+
+      <Col span={24}>
+        <Space direction="vertical" size="middle">
           <Space align="center" size="middle">
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
-            <Icon
-              component={EditIcon}
-              data-testid="edit-description-icon"
-              style={{ color: DE_ACTIVE_COLOR }}
-              onClick={() => setIsParameterEdit(true)}
-            />
+            {hasEditPermission && (
+              <Icon
+                component={EditIcon}
+                data-testid="edit-description-icon"
+                style={{ color: DE_ACTIVE_COLOR }}
+                onClick={() => setIsParameterEdit(true)}
+              />
+            )}
           </Space>
 
           {!isEmpty(parameterValuesWithoutSqlExpression) &&

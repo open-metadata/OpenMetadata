@@ -20,9 +20,14 @@ import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { TestCaseStatusModal } from '../../DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import '../incident-manager.style.less';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 const TestCaseIncidentManagerStatus = ({
@@ -32,6 +37,14 @@ const TestCaseIncidentManagerStatus = ({
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
   const statusType = useMemo(() => data.testCaseResolutionStatusType, [data]);
+  const { permissions } = usePermissionProvider();
+  const hasEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   const onEditSeverity = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
@@ -42,26 +55,28 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <Space align="center">
-        <Tooltip
-          placement="bottom"
-          title={
-            data?.updatedAt &&
-            `${formatDate(data.updatedAt)}
-                ${data.updatedBy ? 'by ' + data.updatedBy : ''}`
-          }>
+      <Tooltip
+        placement="bottom"
+        title={
+          data?.updatedAt &&
+          `${formatDate(data.updatedAt)}
+                ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
+        }>
+        <Space align="center">
           <AppBadge
             className={classNames('resolution', statusType.toLocaleLowerCase())}
             label={statusType}
           />
-        </Tooltip>
-        <Icon
-          component={EditIcon}
-          data-testid="edit-description-icon"
-          style={{ color: DE_ACTIVE_COLOR }}
-          onClick={onEditSeverity}
-        />
-      </Space>
+          {hasEditPermission && (
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description-icon"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onEditSeverity}
+            />
+          )}
+        </Space>
+      </Tooltip>
 
       {isEditStatus && (
         <TestCaseStatusModal
