@@ -154,7 +154,8 @@ public abstract class ExternalSecretsManagerTest {
         "secret:/openmetadata/workflow/my-workflow/request/connection/config/password";
     String secretKey = "secret:/openmetadata/serverconnection/securityconfig/secretkey";
     OpenMetadataConnection connection =
-        new OpenMetadataConnection().withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(secretKey));
+        new OpenMetadataConnection()
+            .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(secretKey));
     DatabaseConnection dbConnection =
         new DatabaseConnection()
             .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
@@ -173,12 +174,16 @@ public abstract class ExternalSecretsManagerTest {
     // Encrypt the workflow and ensure password and secrete key are encrypted
     actualWorkflow = secretsManager.encryptWorkflow(actualWorkflow);
     assertNotEquals(password, getPassword(actualWorkflow));
-    assertNotEquals(secretKey, actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
+    assertNotEquals(
+        secretKey,
+        actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
 
     // Decrypt the workflow and ensure password and secrete key are decrypted
     actualWorkflow = secretsManager.decryptWorkflow(actualWorkflow);
     assertEquals(password, getPassword(actualWorkflow));
-    assertEquals(secretKey, actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
+    assertEquals(
+        secretKey,
+        actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
     assertEquals(expectedWorkflow, actualWorkflow);
   }
 

@@ -120,11 +120,14 @@ public class OpenMetadataConnectionBuilder {
     AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
     if (Objects.requireNonNull(botUser.getAuthenticationMechanism().getAuthType())
         == AuthenticationMechanism.AuthType.JWT) {
-      JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
       return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
     }
     throw new IllegalArgumentException(
-        String.format("Not supported authentication mechanism type: [%s]", authMechanism.getAuthType().value()));
+        String.format(
+            "Not supported authentication mechanism type: [%s]",
+            authMechanism.getAuthType().value()));
   }
 
   public OpenMetadataConnection build() {
