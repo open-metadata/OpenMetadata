@@ -13,33 +13,16 @@
 
 package org.openmetadata.client.security.factory;
 
-import org.openmetadata.client.security.Auth0AuthenticationProvider;
-import org.openmetadata.client.security.AzureAuthenticationProvider;
-import org.openmetadata.client.security.CustomOIDCAuthenticationProvider;
-import org.openmetadata.client.security.GoogleAuthenticationProvider;
-import org.openmetadata.client.security.NoOpAuthenticationProvider;
-import org.openmetadata.client.security.OktaAuthenticationProvider;
+import java.util.Objects;
 import org.openmetadata.client.security.OpenMetadataAuthenticationProvider;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 public class AuthenticationProviderFactory {
   public AuthenticationProvider getAuthProvider(OpenMetadataConnection serverConfig) {
-    switch (serverConfig.getAuthProvider()) {
-      case NO_AUTH:
-        return new NoOpAuthenticationProvider();
-      case GOOGLE:
-        return new GoogleAuthenticationProvider(serverConfig);
-      case OKTA:
-        return new OktaAuthenticationProvider(serverConfig);
-      case AUTH_0:
-        return new Auth0AuthenticationProvider(serverConfig);
-      case CUSTOM_OIDC:
-        return new CustomOIDCAuthenticationProvider(serverConfig);
-      case AZURE:
-        return new AzureAuthenticationProvider(serverConfig);
-      case OPENMETADATA:
-        return new OpenMetadataAuthenticationProvider(serverConfig);
+    if (Objects.requireNonNull(serverConfig.getAuthProvider()) == AuthProvider.OPENMETADATA) {
+      return new OpenMetadataAuthenticationProvider(serverConfig);
     }
     return null;
   }
