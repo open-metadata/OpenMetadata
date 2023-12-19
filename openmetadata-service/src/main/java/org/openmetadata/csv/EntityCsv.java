@@ -56,9 +56,9 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 /**
- * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
- * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
- * record.
+ * EntityCsv provides export and import capabilities for an entity. Each entity must implement the
+ * abstract methods to provide entity specific processing functionality to export an entity to a CSV
+ * record, and import an entity from a CSV record.
  */
 @Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {

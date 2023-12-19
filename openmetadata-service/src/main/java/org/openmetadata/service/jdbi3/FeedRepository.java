@@ -1029,8 +1029,8 @@ public class FeedRepository {
   }
 
   /**
-   * Return the threads associated with user/team owned entities and the threads that were created by or replied to by
-   * the user.
+   * Return the threads associated with user/team owned entities and the threads that were created
+   * by or replied to by the user.
    */
   private FilteredThreads getThreadsByOwner(FeedFilter filter, UUID userId, int limit) {
     // add threads on user or team owned entities
@@ -1044,7 +1044,10 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
-  /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
+  /**
+   * Returns the threads where the user or the team they belong to were mentioned by other users
+   * with @mention.
+   */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, UUID userId, int limit) {
     User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
     String userNameHash = getUserNameHash(user);

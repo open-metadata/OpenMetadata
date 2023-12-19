@@ -90,7 +90,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
 )
-from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -193,7 +192,7 @@ def get_connection_class(
         Type[PipelineConnection],
         Type[MlModelConnection],
     ],
-) -> T:
+) -> Type[T]:
     """
     Build the connection class path, import and return it
     :param source_type: e.g., Glue
@@ -248,7 +247,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     return "\t - " + "\n\t - ".join(missing_fields + extra_fields + invalid_fields)
 
 
-def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
+def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
     """
     Given a config dictionary and the class it should match,
     try to parse it or log the given message
@@ -348,39 +347,6 @@ def parse_workflow_source(config_dict: dict) -> None:
     parse_source_config(config_dict)
 
 
-def parse_server_config(config_dict: dict) -> None:
-    """
-    Validate the parsing of openMetadataServerConfig.
-    This is valuable to make sure there are no issues
-    when setting up auth providers.
-
-    :param config_dict: JSON configuration
-    """
-    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"][
-        "authProvider"
-    ]
-    logger.debug(
-        f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
-    )
-
-    # If the error comes from the security config:
-    auth_class = PROVIDER_CLASS_MAP.get(auth_provider)
-    # throw an error if the keys are not present
-    security_config = config_dict["workflowConfig"]["openMetadataServerConfig"][
-        "securityConfig"
-    ]
-
-    _unsafe_parse_config(
-        config=security_config,
-        cls=auth_class,
-        message="Error parsing the workflow security config",
-    )
-
-    # If the security config is properly configured, let's raise the ValidationError of the whole WorkflowConfig
-    WorkflowConfig.parse_obj(config_dict["workflowConfig"])
-
-
 def parse_workflow_config_gracefully(
     config_dict: dict,
 ) -> OpenMetadataWorkflowConfig:
@@ -407,7 +373,7 @@ def parse_workflow_config_gracefully(
     except ValidationError as original_error:
         try:
             parse_workflow_source(config_dict)
-            parse_server_config(config_dict)
+            WorkflowConfig.parse_obj(config_dict["workflowConfig"])
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself

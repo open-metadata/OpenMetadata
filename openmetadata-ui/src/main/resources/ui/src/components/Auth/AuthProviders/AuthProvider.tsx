@@ -40,7 +40,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { NO_AUTH } from '../../../constants/auth.constants';
 import {
   ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
@@ -510,8 +509,7 @@ export const AuthProvider = ({
         fetchAuthenticationConfig(),
         fetchAuthorizerConfig(),
       ]);
-      const isSecureMode =
-        !isNil(authConfig) && authConfig.provider !== NO_AUTH;
+      const isSecureMode = !isNil(authConfig);
       if (isSecureMode) {
         const provider = authConfig?.provider;
         // show an error toast if provider is null or not supported

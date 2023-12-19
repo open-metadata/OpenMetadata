@@ -23,7 +23,6 @@ import feign.slf4j.Slf4jLogger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.api.SystemApi;
-import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -72,18 +71,6 @@ public class OpenMetadata {
 
   public <T extends ApiClient.Api> T buildClient(Class<T> clientClass) {
     return apiClient.buildClient(clientClass);
-  }
-
-  public <T extends ApiClient.Api, K> T buildClient(Class<T> clientClass, Class<K> requestClass) {
-    updateRequestType(requestClass);
-    return apiClient.buildClient(clientClass);
-  }
-
-  public <K> void updateRequestType(Class<K> requestClass) {
-    apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
-    CustomRequestInterceptor<K> newInterceptor =
-        new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
-    apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
   }
 
   public void validateVersion() {
