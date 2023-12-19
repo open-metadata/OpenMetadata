@@ -5,7 +5,7 @@
     </a>
 </p>
 
-<p align="center"><b>Empower Your Data Journey with OpenMetadata</b></p>
+<p align="center"><b>Empower your Data Journey with OpenMetadata</b></p>
 
 <div align="center">
     
@@ -21,25 +21,23 @@
 </div>
 
 <br />
-List of contents:
+Contents:
 
 - [Features](#some-of-the-key-features-of-openmetadata-are)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
 - [Roadmap](https://docs.open-metadata.org/releases/roadmap)
-- [Documentation and support](#documentation-and-support)
+- [Documentation and Support](#documentation-and-support)
 - [Contributors](#contributors)
 - [License](#license)
 
-
-
-OpenMetadata consists of four main components:
+OpenMetadata Consists of Four Main Components:
 - **Metadata Schemas**: These are the core definitions and vocabulary for metadata, based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
 - **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
 - **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
-- **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 55 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+- **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
-## Some of the key features of OpenMetadata are:
+## Key Features of OpenMetadata:
 
 <div align='center'>    
 
@@ -59,23 +57,17 @@ OpenMetadata consists of four main components:
 ![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/0e2f80cd-0650-420f-b7ec-25232a327928)
 </div>
 
-
-
-
-  
-  
 - **Data Lineage**: This feature enables you to track and visualize the origin and transformation of your data assets. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
   
-- **Data Documentation**: This feature enables you to document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations, and generate data dictionaries and data catalogs.
+- **Data Documentation**: You can document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations, and generate data dictionaries and data catalogs.
   
 - **Data Observability**: This feature enables you to monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
   
-- **Data Security**: This feature enables you to secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on, and define roles and policies for access control.
+- **Data Security**: You can secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on, and define roles and policies for access control.
   
-- **Webhooks**: This feature enables you to integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications, and integrate with Slack, Microsoft Teams, and Google Chat.
+- **Webhooks**: You can integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications, and integrate with Slack, Microsoft Teams, and Google Chat.
   
-- **Connectors**: This feature enables you to ingest metadata from various sources and tools using connectors. OpenMetadata supports about 77 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
-
+- **Connectors**: You can ingest metadata from various sources and tools using connectors. OpenMetadata supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
 ## Try our Sandbox
 
