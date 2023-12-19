@@ -1433,22 +1433,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       return;
     }
     switch (fieldName) {
-      case "profile":
+      case "profile" -> {
         Profile expectedProfile = (Profile) expected;
         Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
         assertEquals(expectedProfile, actualProfile);
-        break;
-      case "teams":
-      case "roles":
-      case "personas":
-        assertEntityReferencesFieldChange(expected, actual);
-        break;
-      case "defaultPersona":
-        assertEntityReferenceFieldChange(expected, actual);
-        break;
-      default:
-        assertCommonFieldChange(fieldName, expected, actual);
-        break;
+      }
+      case "teams", "roles", "personas" -> assertEntityReferencesFieldChange(expected, actual);
+      case "defaultPersona" -> assertEntityReferenceFieldChange(expected, actual);
+      default -> assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

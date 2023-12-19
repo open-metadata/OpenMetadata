@@ -74,15 +74,9 @@ public class NotificationHandler {
         && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
       switch (thread.getType()) {
-        case Task:
-          handleTaskNotification(thread, collectionDAO);
-          break;
-        case Conversation:
-          handleConversationNotification(thread, collectionDAO);
-          break;
-        case Announcement:
-          handleAnnouncementNotification(thread);
-          break;
+        case Task -> handleTaskNotification(thread, collectionDAO);
+        case Conversation -> handleConversationNotification(thread, collectionDAO);
+        case Announcement -> handleAnnouncementNotification(thread);
       }
     }
   }

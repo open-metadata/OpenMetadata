@@ -496,7 +496,7 @@ public class SearchRepository {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
-      case Entity.DOMAIN:
+      case Entity.DOMAIN -> {
         searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>(entityType + ".id", docId),
@@ -505,15 +505,12 @@ public class SearchRepository {
         // deleted
         searchClient.deleteEntityByFields(
             indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        break;
-      case Entity.TAG:
-      case Entity.GLOSSARY_TERM:
-        searchClient.updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-            new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null));
-        break;
-      case Entity.TEST_SUITE:
+      }
+      case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
+          new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null));
+      case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           searchClient.deleteEntityByFields(
@@ -524,20 +521,17 @@ public class SearchRepository {
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
               new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
         }
-        break;
-      case Entity.DASHBOARD_SERVICE:
-      case Entity.DATABASE_SERVICE:
-      case Entity.MESSAGING_SERVICE:
-      case Entity.PIPELINE_SERVICE:
-      case Entity.MLMODEL_SERVICE:
-      case Entity.STORAGE_SERVICE:
-      case Entity.SEARCH_SERVICE:
-        searchClient.deleteEntityByFields(
-            indexMapping.getAlias(), List.of(new ImmutablePair<>("service.id", docId)));
-        break;
-      default:
-        searchClient.deleteEntityByFields(
-            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      }
+      case Entity.DASHBOARD_SERVICE,
+          Entity.DATABASE_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          indexMapping.getAlias(), List.of(new ImmutablePair<>("service.id", docId)));
+      default -> searchClient.deleteEntityByFields(
+          indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
     }
   }
 
@@ -547,22 +541,18 @@ public class SearchRepository {
     String entityType = entity.getEntityReference().getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
     switch (entityType) {
-      case Entity.DASHBOARD_SERVICE:
-      case Entity.DATABASE_SERVICE:
-      case Entity.MESSAGING_SERVICE:
-      case Entity.PIPELINE_SERVICE:
-      case Entity.MLMODEL_SERVICE:
-      case Entity.STORAGE_SERVICE:
-      case Entity.SEARCH_SERVICE:
-        searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getAlias(), scriptTxt, List.of(new ImmutablePair<>("service.id", docId)));
-        break;
-      default:
-        searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getAlias(),
-            scriptTxt,
-            List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        break;
+      case Entity.DASHBOARD_SERVICE,
+          Entity.DATABASE_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
+          indexMapping.getAlias(), scriptTxt, List.of(new ImmutablePair<>("service.id", docId)));
+      default -> searchClient.softDeleteOrRestoreChildren(
+          indexMapping.getAlias(),
+          scriptTxt,
+          List.of(new ImmutablePair<>(entityType + ".id", docId)));
     }
   }
 

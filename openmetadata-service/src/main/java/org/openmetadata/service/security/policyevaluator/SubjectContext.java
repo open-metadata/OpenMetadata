@@ -37,14 +37,9 @@ import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public class SubjectContext {
+public record SubjectContext(@Getter User user) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
-  @Getter protected final User user;
-
-  protected SubjectContext(User user) {
-    this.user = user;
-  }
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
@@ -146,7 +141,7 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(getUser(), roles);
+    return hasRole(user(), roles);
   }
 
   /** Return true if the given user has any roles the list of roles */
@@ -203,17 +198,14 @@ public class SubjectContext {
   static class PolicyIterator implements Iterator<PolicyContext> {
 
     // When executing roles from a policy, entity type User or Team to which the Role is attached
-    // to.
-    // In case of executing a policy attached to a team, the entityType is Team
+    // to. In case of executing a policy attached to a team, the entityType is Team.
     private final String entityType;
 
     // User or Team name to which the Role or Policy is attached to
-
     private final String entityName;
 
     // Name of the role from which the policy is from. If policy is not part of the role, but from
-    // directly attaching
-    // it to a Team, then null
+    // directly attaching it to a Team, then null
     private final String roleName;
 
     // Index to the current policy being evaluation

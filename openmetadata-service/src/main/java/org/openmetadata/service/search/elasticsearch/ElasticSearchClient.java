@@ -261,92 +261,48 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder;
-    switch (request.getIndex()) {
-      case "topic_search_index":
-        searchSourceBuilder =
-            buildTopicSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "dashboard_search_index":
-        searchSourceBuilder =
-            buildDashboardSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "pipeline_search_index":
-        searchSourceBuilder =
-            buildPipelineSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "mlmodel_search_index":
-        searchSourceBuilder =
-            buildMlModelSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "table_search_index":
-        searchSourceBuilder =
-            buildTableSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "user_search_index":
-      case "team_search_index":
-        searchSourceBuilder =
-            buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "glossary_term_search_index":
-        searchSourceBuilder =
-            buildGlossaryTermSearchBuilder(
-                request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "tag_search_index":
-        searchSourceBuilder =
-            buildTagSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "container_search_index":
-        searchSourceBuilder =
-            buildContainerSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "query_search_index":
-        searchSourceBuilder =
-            buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "test_case_search_index":
-      case "test_suite_search_index":
-        searchSourceBuilder =
-            buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "stored_procedure_search_index":
-        searchSourceBuilder =
-            buildStoredProcedureSearch(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "dashboard_data_model_search_index":
-        searchSourceBuilder =
-            buildDashboardDataModelsSearch(
-                request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "search_entity_search_index":
-        searchSourceBuilder =
-            buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "domain_search_index":
-        searchSourceBuilder =
-            buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "raw_cost_analysis_report_data_index":
-      case "aggregated_cost_analysis_report_data_index":
-        searchSourceBuilder =
-            buildCostAnalysisReportDataSearch(
-                request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "data_product_search_index":
-        searchSourceBuilder =
-            buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      case "test_case_resolution_status_search_index":
-        searchSourceBuilder =
-            buildTestCaseResolutionStatusSearch(
-                request.getQuery(), request.getFrom(), request.getSize());
-        break;
-      default:
-        searchSourceBuilder =
-            buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
-        break;
-    }
+    SearchSourceBuilder searchSourceBuilder =
+        switch (request.getIndex()) {
+          case "topic_search_index" -> buildTopicSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "dashboard_search_index" -> buildDashboardSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "pipeline_search_index" -> buildPipelineSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "mlmodel_search_index" -> buildMlModelSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "table_search_index" -> buildTableSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "user_search_index", "team_search_index" -> buildUserOrTeamSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "glossary_term_search_index" -> buildGlossaryTermSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "tag_search_index" -> buildTagSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "container_search_index" -> buildContainerSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "query_search_index" -> buildQuerySearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "test_case_search_index", "test_suite_search_index" -> buildTestCaseSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "stored_procedure_search_index" -> buildStoredProcedureSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "dashboard_data_model_search_index" -> buildDashboardDataModelsSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "search_entity_search_index" -> buildSearchEntitySearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "domain_search_index" -> buildDomainsSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "raw_cost_analysis_report_data_index",
+              "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "data_product_search_index" -> buildDataProductSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+              request.getQuery(), request.getFrom(), request.getSize());
+          default -> buildAggregateSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+        };
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
@@ -987,7 +943,6 @@ public class ElasticSearchClient implements SearchClient {
             .fields(SearchIndex.getAllFields())
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
-    ;
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -1334,45 +1289,39 @@ public class ElasticSearchClient implements SearchClient {
   private static DataInsightAggregatorInterface createDataAggregator(
       SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
-    switch (dataInsightChartType) {
-      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new ElasticSearchEntitiesDescriptionAggregator(aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new ElasticSearchServicesDescriptionAggregator(aggregations.getAggregations());
-      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new ElasticSearchEntitiesOwnerAggregator(aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new ElasticSearchServicesOwnerAggregator(aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TYPE:
-        return new ElasticSearchTotalEntitiesAggregator(aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TIER:
-        return new ElasticSearchTotalEntitiesByTierAggregator(aggregations.getAggregations());
-      case DAILY_ACTIVE_USERS:
-        return new ElasticSearchDailyActiveUsersAggregator(aggregations.getAggregations());
-      case PAGE_VIEWS_BY_ENTITIES:
-        return new ElasticSearchPageViewsByEntitiesAggregator(aggregations.getAggregations());
-      case MOST_ACTIVE_USERS:
-        return new ElasticSearchMostActiveUsersAggregator(aggregations.getAggregations());
-      case MOST_VIEWED_ENTITIES:
-        return new ElasticSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
-      case UNUSED_ASSETS:
-        return new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
-      case AGGREGATED_UNUSED_ASSETS_SIZE:
-        return new ElasticSearchAggregatedUnusedAssetsSizeAggregator(
-            aggregations.getAggregations());
-      case AGGREGATED_UNUSED_ASSETS_COUNT:
-        return new ElasticSearchAggregatedUnusedAssetsCountAggregator(
-            aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
-        return new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(
-            aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
-        return new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
-            aggregations.getAggregations());
-      default:
-        throw new IllegalArgumentException(
-            String.format("No processor found for chart Type %s ", dataInsightChartType));
-    }
+    return switch (dataInsightChartType) {
+      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE -> new ElasticSearchEntitiesDescriptionAggregator(
+          aggregations.getAggregations());
+      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION -> new ElasticSearchServicesDescriptionAggregator(
+          aggregations.getAggregations());
+      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE -> new ElasticSearchEntitiesOwnerAggregator(
+          aggregations.getAggregations());
+      case PERCENTAGE_OF_SERVICES_WITH_OWNER -> new ElasticSearchServicesOwnerAggregator(
+          aggregations.getAggregations());
+      case TOTAL_ENTITIES_BY_TYPE -> new ElasticSearchTotalEntitiesAggregator(
+          aggregations.getAggregations());
+      case TOTAL_ENTITIES_BY_TIER -> new ElasticSearchTotalEntitiesByTierAggregator(
+          aggregations.getAggregations());
+      case DAILY_ACTIVE_USERS -> new ElasticSearchDailyActiveUsersAggregator(
+          aggregations.getAggregations());
+      case PAGE_VIEWS_BY_ENTITIES -> new ElasticSearchPageViewsByEntitiesAggregator(
+          aggregations.getAggregations());
+      case MOST_ACTIVE_USERS -> new ElasticSearchMostActiveUsersAggregator(
+          aggregations.getAggregations());
+      case MOST_VIEWED_ENTITIES -> new ElasticSearchMostViewedEntitiesAggregator(
+          aggregations.getAggregations());
+      case UNUSED_ASSETS -> new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
+      case AGGREGATED_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUnusedAssetsSizeAggregator(
+          aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUnusedAssetsCountAggregator(
+          aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT -> new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(
+          aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
+          aggregations.getAggregations());
+      default -> throw new IllegalArgumentException(
+          String.format("No processor found for chart Type %s ", dataInsightChartType));
+    };
   }
 
   private static es.org.elasticsearch.action.search.SearchRequest buildSearchRequest(

@@ -271,8 +271,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
 
     // when basic auth is enabled and the user is created through the API without password, the
-    // stored auth mechanism
-    // for the user is null
+    // stored auth mechanism for the user is null
     if (storedUser.getAuthenticationMechanism() == null) {
       storedUser.setAuthenticationMechanism(
           new AuthenticationMechanism()
@@ -322,7 +321,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String pwd)
       throws IOException {
     switch (requestType) {
-      case ADMIN_CREATE:
+      case ADMIN_CREATE -> {
         Map<String, Object> templatePopulator = new HashMap<>();
         templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getEmailingEntity());
         templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getSupportUrl());
@@ -343,12 +342,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
               ex.getMessage(),
               ex);
         }
-        break;
-      case USER_CREATE:
-        sendPasswordResetLink(uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
-        break;
-      default:
-        LOG.error("Invalid Password Create Type");
+      }
+      case USER_CREATE -> sendPasswordResetLink(
+          uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+      default -> LOG.error("Invalid Password Create Type");
     }
   }
 

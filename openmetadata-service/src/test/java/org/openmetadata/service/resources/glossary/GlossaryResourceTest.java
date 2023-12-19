@@ -237,8 +237,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     //
     // Change the glossary renameGlossary to newRenameGlossary and ensure the children FQNs are
-    // changed
-    // Also ensure the table tag label names are also changed
+    // changed. Also ensure the table tag label names are also changed
     //
     renameGlossaryAndCheck(glossary, "newRenameGlossary");
     table = tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
@@ -404,8 +403,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String team11 = TEAM11.getName();
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references"
-    // "tags",
-    // "reviewers", "owner", "status"
+    // "tags", "reviewers", "owner", "status"
     // Create two records
     List<String> createRecords =
         listOf(

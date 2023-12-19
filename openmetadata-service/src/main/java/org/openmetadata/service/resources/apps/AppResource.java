@@ -140,7 +140,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           }
 
           // Schedule
-          if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
             ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
           }
 

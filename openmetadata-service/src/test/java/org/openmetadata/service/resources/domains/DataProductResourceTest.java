@@ -76,7 +76,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
 
-    // Add topic asset with PATCH
+    // Add topic asset with PATCH.
     // Version 0.2 - Changes from this PATCH is consolidated with the previous changes resulting in
     // no change
     String json = JsonUtils.pojoToJson(product);

@@ -427,7 +427,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCase> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -533,7 +533,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 

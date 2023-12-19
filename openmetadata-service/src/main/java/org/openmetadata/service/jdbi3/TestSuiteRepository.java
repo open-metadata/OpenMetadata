@@ -168,9 +168,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(
       SecurityContext securityContext, TestSuite original, boolean hardDelete) {
-    // deleting a logical will delete the test suite and only remove
-    // the relationship to test cases if hardDelete is true. Test Cases
-    // will not be deleted.
+    // deleting a logical will delete the test suite and only remove the relationship to
+    // test cases if hardDelete is true. Test Cases will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);

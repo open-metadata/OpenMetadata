@@ -406,8 +406,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role
-    // contains, to avoid
-    // leaving a dangling policy without a role.
+    // contains, to avoid leaving a dangling policy without a role.
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 

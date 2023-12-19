@@ -216,10 +216,9 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   void put_validUsageForTables_200_OK() throws HttpResponseException {
     // This test creates TABLE_COUNT of tables.
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
-    // For 100 tables send usage report for last 30 days
-    // This test checks if the daily, rolling weekly and monthly usage count is correct.
-    // This test also checks if the daily, rolling weekly and monthly usage percentile rank is
-    // correct.
+    // For 100 tables send usage report for last 30 days. This test checks if the daily, rolling
+    // weekly and monthly usage count is correct. This test also checks if the daily, rolling weekly
+    // and monthly usage percentile rank is correct.
 
     // Publish usage for DAYS_OF_USAGE number of days starting from today
     String today = RestUtil.DATE_FORMAT.format(new Date()); // today

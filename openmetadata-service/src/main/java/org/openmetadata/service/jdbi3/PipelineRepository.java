@@ -165,8 +165,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it
-    // is unrelated to
-    // workflow execution. We should bring back the old behavior for this one.
+    // is unrelated to workflow execution. We should bring back the old behavior for this one.
     String storedPipelineStatus =
         getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
     if (storedPipelineStatus != null) {
@@ -375,8 +374,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       // The lineage backend will take care of controlling new & deleted tasks, while passing to the
       // API the full list of Tasks to consider for a given Pipeline. Having a single point of
-      // control
-      // of the Tasks and their status, simplifies the logic on how to add/delete tasks.
+      // control of the Tasks and their status, simplifies the logic on how to add/delete tasks.
 
       // The API will only take care of marking tasks as added/updated/deleted based on the original
       // and incoming changes.

@@ -22,6 +22,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -126,21 +127,22 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) {
+    public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
       switch (SettingsType.fromValue(settingsName)) {
-        case EMAIL_CONFIGURATION:
+        case EMAIL_CONFIGURATION -> {
           fetchedSettings = systemRepository.getEmailConfigInternal();
           LOG.info("Loaded Email Setting");
-          break;
-        case SLACK_APP_CONFIGURATION:
+        }
+        case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
-          break;
-        default:
+        }
+        default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+        }
       }
       return fetchedSettings;
     }

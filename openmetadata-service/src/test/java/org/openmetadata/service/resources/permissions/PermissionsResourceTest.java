@@ -300,9 +300,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         getPermission(Entity.TABLE, table.getId(), null, authHeaders);
 
     // Note that conditional list is empty. All the required context to resolve is met when
-    // requesting permission of
-    // a specific resource (both subject and resource context). Only Deny, Allow, NotAllow
-    // permissions are expected.
+    // requesting permission of a specific resource (both subject and resource context).
+    // Only Deny, Allow, NotAllow permissions are expected.
     assertResourcePermission(
         PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
         actualPermission);
@@ -311,8 +310,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   @Test
   void get_owner_permissions() throws HttpResponseException {
     //
-    // Test getting permissions for an entity as an owner - where ORG_POLICY isOwner becomes
-    // effective
+    // Test getting permissions for an entity as an owner - ORG_POLICY isOwner becomes effective
     //
     TableResourceTest tableResourceTest = new TableResourceTest();
     Map<String, String> authHeaders =

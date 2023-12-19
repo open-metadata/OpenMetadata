@@ -19,20 +19,13 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import org.apache.commons.io.IOUtils;
 
-class JsonHandler implements HttpHandler {
-
-  final Map<String, MockResponse> pathResponses;
-
-  public JsonHandler(Map<String, MockResponse> pathResponses) {
-    this.pathResponses = pathResponses;
-  }
-
+record JsonHandler(Map<String, MockResponse> pathResponses) implements HttpHandler {
   @Override
   public void handle(HttpExchange exchange) throws IOException {
     MockResponse response = pathResponses.get(exchange.getRequestURI().toString());
-    exchange.getResponseHeaders().add("Content-Type", response.getContentType());
-    exchange.sendResponseHeaders(response.getStatusCode(), response.getBody().length());
-    IOUtils.write(response.getBody(), exchange.getResponseBody(), Charset.defaultCharset());
+    exchange.getResponseHeaders().add("Content-Type", response.contentType());
+    exchange.sendResponseHeaders(response.statusCode(), response.body().length());
+    IOUtils.write(response.body(), exchange.getResponseBody(), Charset.defaultCharset());
     exchange.close();
   }
 }

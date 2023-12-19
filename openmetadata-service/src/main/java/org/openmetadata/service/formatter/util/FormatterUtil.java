@@ -282,8 +282,7 @@ public class FormatterUtil {
     if (changeType != null && changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       changeEvent = (ChangeEvent) responseContext.getEntity();
     } else if (responseContext.getEntity() != null
-        && responseContext.getEntity() instanceof EntityInterface) {
-      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+        && responseContext.getEntity() instanceof EntityInterface entityInterface) {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -291,7 +290,6 @@ public class FormatterUtil {
 
       // Entity was created by either POST .../entities or PUT .../entities
       if (responseCode == Response.Status.CREATED.getStatusCode()
-          && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
           && !responseContext.getEntity().getClass().equals(Thread.class)) {
         changeEvent =
             getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)

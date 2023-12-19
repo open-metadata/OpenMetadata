@@ -100,18 +100,12 @@ public class EmailUtil {
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
     if (Boolean.TRUE.equals(smtpServerSettings.getEnableSmtpServer())) {
-      TransportStrategy strategy;
-      switch (smtpServerSettings.getTransportationStrategy()) {
-        case SMTPS:
-          strategy = SMTPS;
-          break;
-        case SMTP_TLS:
-          strategy = SMTP_TLS;
-          break;
-        default:
-          strategy = SMTP;
-          break;
-      }
+      TransportStrategy strategy =
+          switch (smtpServerSettings.getTransportationStrategy()) {
+            case SMTPS -> SMTPS;
+            case SMTP_TLS -> SMTP_TLS;
+            default -> SMTP;
+          };
       String username =
           CommonUtil.nullOrEmpty(smtpServerSettings.getUsername())
               ? null

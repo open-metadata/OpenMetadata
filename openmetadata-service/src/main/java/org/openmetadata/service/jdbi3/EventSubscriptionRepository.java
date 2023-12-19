@@ -187,7 +187,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws InterruptedException, SchedulerException {
     switch (deletedEntity.getAlertType()) {
-      case CHANGE_EVENT:
+      case CHANGE_EVENT -> {
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
         if (publisher != null && publisher.getProcessor() != null) {
           publisher.getProcessor().halt();
@@ -195,12 +195,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           EventPubSub.removeProcessor(publisher.getProcessor());
           LOG.info("Webhook publisher deleted for {}", publisher.getEventSubscription().getName());
         }
-        break;
-      case DATA_INSIGHT_REPORT:
-        ReportsHandler.getInstance().deleteDataReportConfig(deletedEntity);
-        break;
-      default:
-        throw new IllegalArgumentException(INVALID_ALERT);
+      }
+      case DATA_INSIGHT_REPORT -> ReportsHandler.getInstance()
+          .deleteDataReportConfig(deletedEntity);
+      default -> throw new IllegalArgumentException(INVALID_ALERT);
     }
   }
 

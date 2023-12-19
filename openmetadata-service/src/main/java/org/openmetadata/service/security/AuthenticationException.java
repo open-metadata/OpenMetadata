@@ -52,12 +52,5 @@ public class AuthenticationException extends RuntimeException {
     return new ErrorResponse(msg);
   }
 
-  private static class ErrorResponse {
-    /** Response message. */
-    @Getter private final String responseMessage;
-
-    ErrorResponse(String responseMessage) {
-      this.responseMessage = responseMessage;
-    }
-  }
+  private record ErrorResponse(String responseMessage) {}
 }

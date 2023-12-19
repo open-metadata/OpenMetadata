@@ -59,8 +59,7 @@ public class MigrationUtil {
       }
     }
     // Let's iterate through the test cases and make sure there exists a relationship between
-    // testcases and its native
-    // TestSuite
+    // testcases and its native TestSuite
     Map<String, ArrayList<TestCase>> testCasesGroupByTable = groupTestCasesByTable();
     for (Entry<String, ArrayList<TestCase>> entry : testCasesGroupByTable.entrySet()) {
       String tableFQN = entry.getKey();
@@ -88,8 +87,7 @@ public class MigrationUtil {
                 }
               } catch (EntityNotFoundException ex) {
                 // if testsuite cannot be retrieved but the relation exists, then this is orphaned
-                // relation, we will
-                // delete the relation
+                // relation, we will delete the relation
                 testSuiteRepository.deleteRelationship(
                     existingTestSuiteRel.getId(),
                     TEST_SUITE,
@@ -122,8 +120,7 @@ public class MigrationUtil {
             testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
           } catch (EntityNotFoundException ex) {
             // if testsuite cannot be retrieved but the relation exists, then this is orphaned
-            // relation, we will
-            // delete the relation
+            // relation, we will delete the relation
             testSuiteRepository.deleteRelationship(
                 executableTestSuite.getExecutableEntityReference().getId(),
                 TABLE,

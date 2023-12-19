@@ -57,29 +57,16 @@ public final class AlertUtil {
   public static SubscriptionPublisher getNotificationsPublisher(
       EventSubscription subscription, CollectionDAO daoCollection) {
     validateSubscriptionConfig(subscription);
-    SubscriptionPublisher publisher;
-    switch (subscription.getSubscriptionType()) {
-      case SLACK_WEBHOOK:
-        publisher = new SlackEventPublisher(subscription, daoCollection);
-        break;
-      case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsPublisher(subscription, daoCollection);
-        break;
-      case G_CHAT_WEBHOOK:
-        publisher = new GChatPublisher(subscription, daoCollection);
-        break;
-      case GENERIC_WEBHOOK:
-        publisher = new GenericPublisher(subscription, daoCollection);
-        break;
-      case EMAIL:
-        publisher = new EmailPublisher(subscription, daoCollection);
-        break;
-      case ACTIVITY_FEED:
-        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
-      default:
-        throw new IllegalArgumentException("Invalid Alert Action Specified.");
-    }
-    return publisher;
+    return switch (subscription.getSubscriptionType()) {
+      case SLACK_WEBHOOK -> new SlackEventPublisher(subscription, daoCollection);
+      case MS_TEAMS_WEBHOOK -> new MSTeamsPublisher(subscription, daoCollection);
+      case G_CHAT_WEBHOOK -> new GChatPublisher(subscription, daoCollection);
+      case GENERIC_WEBHOOK -> new GenericPublisher(subscription, daoCollection);
+      case EMAIL -> new EmailPublisher(subscription, daoCollection);
+      case ACTIVITY_FEED -> throw new IllegalArgumentException(
+          "Cannot create Activity Feed as Publisher.");
+      default -> throw new IllegalArgumentException("Invalid Alert Action Specified.");
+    };
   }
 
   public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
@@ -119,39 +106,30 @@ public final class AlertUtil {
       SubscriptionFilterOperation type = SubscriptionFilterOperation.valueOf(func.getName());
       ParamAdditionalContext paramAdditionalContext = new ParamAdditionalContext();
       switch (type) {
-        case matchAnySource:
-          func.setParamAdditionalContext(
-              paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
-          break;
-        case matchUpdatedBy:
-        case matchAnyOwnerName:
-          func.setParamAdditionalContext(
-              paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
-          break;
-        case matchAnyEntityFqn:
-        case matchAnyEntityId:
-          func.setParamAdditionalContext(
-              paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
-          break;
-        case matchAnyEventType:
+        case matchAnySource -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
+        case matchUpdatedBy, matchAnyOwnerName -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
+        case matchAnyEntityFqn, matchAnyEntityId -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
+        case matchAnyEventType -> {
           List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
           func.setParamAdditionalContext(
               paramAdditionalContext.withData(new HashSet<>(eventTypes)));
-          break;
-        case matchIngestionPipelineState:
+        }
+        case matchIngestionPipelineState -> {
           List<String> ingestionPipelineState =
               Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
           func.setParamAdditionalContext(
               paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
-          break;
-        case matchTestResult:
+        }
+        case matchTestResult -> {
           List<String> testResultStatus =
               Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
           func.setParamAdditionalContext(
               paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
-          break;
-        default:
-          LOG.error("Invalid Function name : {}", type);
+        }
+        default -> LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);
     }

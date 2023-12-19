@@ -163,9 +163,11 @@ public final class TablesInitializer {
 
     if (commandLine.hasOption(SchemaMigrationOption.DROP.toString())) {
       printToConsoleMandatory(
-          "You are about drop all the data in the database. ALL METADATA WILL BE DELETED. \nThis is"
-              + " not recommended for a Production setup or any deployment where you have collected \na lot of "
-              + "information from the users, such as descriptions, tags, etc.\n");
+          """
+                      You are about drop all the data in the database. ALL METADATA WILL BE DELETED.\s
+                      This is not recommended for a Production setup or any deployment where you have collected\s
+                      a lot of information from the users, such as descriptions, tags, etc.
+                      """);
       String input = "";
       Scanner scanner = new Scanner(System.in);
       while (!input.equals("DELETE")) {

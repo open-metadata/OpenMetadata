@@ -334,8 +334,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Glossary term g2t1 created under it are in `Draft` status. Automatically a Request Approval
     // task is created.
     // Only a reviewer can change the status to `Approved`. When the status changes to `Approved`,
-    // the Request Approval
-    // task is automatically resolved.
+    // the Request Approval task is automatically resolved.
     //
     createGlossary =
         glossaryTest
@@ -766,10 +765,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       return;
     }
     switch (fieldName) {
-      case "glossary":
-        assertEntityReferenceFieldChange(expected, actual);
-        break;
-      case "synonyms":
+      case "glossary" -> assertEntityReferenceFieldChange(expected, actual);
+      case "synonyms" -> {
         @SuppressWarnings("unchecked")
         List<String> expectedStrings =
             expected instanceof List
@@ -777,8 +774,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 : JsonUtils.readObjects(expected.toString(), String.class);
         List<String> actualStrings = JsonUtils.readObjects(actual.toString(), String.class);
         assertStrings(expectedStrings, actualStrings);
-        break;
-      case "references":
+      }
+      case "references" -> {
         @SuppressWarnings("unchecked")
         List<TermReference> expectedTermRefs =
             expected instanceof List
@@ -787,15 +784,13 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         List<TermReference> actualTermRefs =
             JsonUtils.readObjects(actual.toString(), TermReference.class);
         assertTermReferences(expectedTermRefs, actualTermRefs);
-        break;
-      case "status":
+      }
+      case "status" -> {
         Status expectedStatus = Status.fromValue(expected.toString());
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);
-        break;
-      default:
-        assertCommonFieldChange(fieldName, expected, actual);
-        break;
+      }
+      default -> assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
