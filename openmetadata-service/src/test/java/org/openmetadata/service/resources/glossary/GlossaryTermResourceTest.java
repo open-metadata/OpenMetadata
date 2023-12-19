@@ -508,7 +508,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     for (String name : getAllHelloWorldTranslations()) {
       CreateGlossaryTerm create = createRequest(name);
       GlossaryTerm createdEntity = createEntity(create, ADMIN_AUTH_HEADERS);
-      GlossaryTerm glossaryGet = getEntityByName(createdEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+      GlossaryTerm glossaryGet =
+          getEntityByName(createdEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
       assertEquals(name, glossaryGet.getName());
     }
   }
