@@ -14,13 +14,21 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 
 public interface MigrationDAO {
-  @ConnectionAwareSqlQuery(value = "SELECT MAX(version) FROM DATABASE_CHANGE_LOG", connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM \"DATABASE_CHANGE_LOG\"", connectionType = POSTGRES)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT MAX(version) FROM DATABASE_CHANGE_LOG",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT max(version) FROM \"DATABASE_CHANGE_LOG\"",
+      connectionType = POSTGRES)
   @SingleValue
   Optional<String> getMaxVersion() throws StatementException;
 
-  @ConnectionAwareSqlQuery(value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG", connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM SERVER_CHANGE_LOG", connectionType = POSTGRES)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT max(version) FROM SERVER_CHANGE_LOG",
+      connectionType = POSTGRES)
   @SingleValue
   Optional<String> getMaxServerMigrationVersion() throws StatementException;
 
@@ -33,12 +41,15 @@ public interface MigrationDAO {
   String getVersionMigrationChecksum(@Bind("version") String version) throws StatementException;
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
+      value =
+          "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
-      value = "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
+      value =
+          "SELECT sqlStatement FROM SERVER_MIGRATION_SQL_LOGS where version = :version and checksum = :checksum",
       connectionType = POSTGRES)
-  String getSqlQuery(@Bind("version") String version, @Bind("checksum") String checksum) throws StatementException;
+  String getSqlQuery(@Bind("version") String version, @Bind("checksum") String checksum)
+      throws StatementException;
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -82,7 +93,9 @@ public interface MigrationDAO {
               + "executedAt = EXCLUDED.executedAt",
       connectionType = POSTGRES)
   void upsertServerMigrationSQL(
-      @Bind("version") String version, @Bind("sqlStatement") String sqlStatement, @Bind("checksum") String success);
+      @Bind("version") String version,
+      @Bind("sqlStatement") String sqlStatement,
+      @Bind("checksum") String success);
 
   @ConnectionAwareSqlQuery(
       value = "SELECT checksum FROM SERVER_MIGRATION_SQL_LOGS where version = :version",

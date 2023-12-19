@@ -46,6 +46,7 @@ main(args)
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
     with open(file_path, "r", encoding="UTF-8") as file_:
         content = file_.read()
+        # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
     with open(file_path, "w", encoding="UTF-8") as file_:
         file_.write(content)

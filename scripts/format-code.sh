@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-mvn googleformatter:format@reformat-sources
+mvn spotless:apply

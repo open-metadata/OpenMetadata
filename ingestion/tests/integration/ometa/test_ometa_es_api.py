@@ -285,7 +285,7 @@ class OMetaESTest(TestCase):
             '{"query": {"bool": {"must": [{"term": {"processedLineage": true}},'
             ' {"term": {"service.name.keyword": "my_service"}}]}}}'
         )
-        self.assertEquals(res, quote(expected))
+        self.assertEqual(res, quote(expected))
 
     def test_get_queries_with_lineage(self):
         """Check the payload from ES"""
