@@ -39,7 +39,9 @@ public class JwtTokenCacheManager {
     String token = logoutRequest.getToken();
     if (tokenEventMap.containsKey(token)) {
       LOG.info(
-          String.format("Log out token for user [%s] is already present in the cache", logoutRequest.getUsername()));
+          String.format(
+              "Log out token for user [%s] is already present in the cache",
+              logoutRequest.getUsername()));
 
     } else {
       Date tokenExpiryDate = JWTTokenGenerator.getInstance().getTokenExpiryFromJWT(token);

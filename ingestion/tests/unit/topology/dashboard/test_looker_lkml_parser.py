@@ -250,7 +250,7 @@ class TestLkmlParser(TestCase):
             ),
         ]
 
-        self.assertEquals(cols, expected_cols)
+        self.assertEqual(cols, expected_cols)
 
     def test_view_col_parser(self):
         """
@@ -278,4 +278,4 @@ class TestLkmlParser(TestCase):
             ),
         ]
 
-        self.assertEquals(cols, expected_cols)
+        self.assertEqual(cols, expected_cols)

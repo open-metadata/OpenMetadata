@@ -24,7 +24,8 @@ public class DatabaseSchemaIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(databaseSchema.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(databaseSchema.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(databaseSchema.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(

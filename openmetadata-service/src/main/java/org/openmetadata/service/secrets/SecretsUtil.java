@@ -42,7 +42,11 @@ public final class SecretsUtil {
   }
 
   public static String buildExceptionMessageConnection(
-      String exceptionMessage, String type, String firstAction, String secondAction, boolean isFirstAction) {
+      String exceptionMessage,
+      String type,
+      String firstAction,
+      String secondAction,
+      boolean isFirstAction) {
     return buildExceptionMessageUnrecognizedField(
         "Failed to "
             + (isFirstAction ? firstAction : secondAction)
@@ -54,16 +58,21 @@ public final class SecretsUtil {
         type);
   }
 
-  public static String buildExceptionMessageConnection(String exceptionMessage, String type, boolean encrypt) {
+  public static String buildExceptionMessageConnection(
+      String exceptionMessage, String type, boolean encrypt) {
     return buildExceptionMessageConnection(exceptionMessage, type, "encrypt", "decrypt", encrypt);
   }
 
-  public static String buildExceptionMessageConnectionMask(String exceptionMessage, String type, boolean mask) {
+  public static String buildExceptionMessageConnectionMask(
+      String exceptionMessage, String type, boolean mask) {
     return buildExceptionMessageConnection(exceptionMessage, type, "mask", "unmask", mask);
   }
 
   public static Object convert(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
       return ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
@@ -72,11 +81,14 @@ public final class SecretsUtil {
       if (connectionName != null) {
         throw new InvalidServiceConnectionException(
             String.format(
-                "Failed to convert [%s] to type [%s]. Review the connection.", connectionName, connectionType));
+                "Failed to convert [%s] to type [%s]. Review the connection.",
+                connectionName, connectionType));
       }
       // If we don't have the name, we are decrypting from the db
       throw new InvalidServiceConnectionException(
-          String.format("Failed to load the connection of type [%s]. Did migrations run properly?", connectionType));
+          String.format(
+              "Failed to load the connection of type [%s]. Did migrations run properly?",
+              connectionType));
     }
   }
 }

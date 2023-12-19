@@ -27,7 +27,8 @@ public class OnlyExposedFieldAnnotationIntrospector extends JacksonAnnotationInt
   @Override
   public boolean hasIgnoreMarker(AnnotatedMember m) {
     // only ignore fields and methods
-    if (m.getAnnotated().getClass().equals(Field.class) || m.getAnnotated().getClass().equals(Method.class)) {
+    if (m.getAnnotated().getClass().equals(Field.class)
+        || m.getAnnotated().getClass().equals(Method.class)) {
       return (super.hasIgnoreMarker(m) || _findAnnotation(m, ExposedField.class) == null);
     }
     return false;
