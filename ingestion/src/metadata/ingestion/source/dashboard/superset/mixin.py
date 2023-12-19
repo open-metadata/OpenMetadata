@@ -120,21 +120,27 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         Method to fetch chart ids linked to dashboard
         """
-        raw_position_data = dashboard_details.position_json
-        if raw_position_data:
-            position_data = json.loads(raw_position_data)
-            return [
-                value.get("meta", {}).get("chartId")
-                for key, value in position_data.items()
-                if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
-            ]
+        try:
+            raw_position_data = dashboard_details.position_json
+            if raw_position_data:
+                position_data = json.loads(raw_position_data)
+                return [
+                    value.get("meta", {}).get("chartId")
+                    for key, value in position_data.items()
+                    if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
+                ]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to charts of dashboard {dashboard_details.id} due to {err}"
+            )
         return []
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboradResult],
         db_service_name: DatabaseService,
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Get lineage between datamodel and table
         """
@@ -145,16 +151,16 @@ class SupersetSourceMixin(DashboardServiceSource):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if chart_json:
-                    datasource_fqn = self._get_datasource_fqn_for_lineage(
-                        chart_json, db_service_entity
-                    )
-                    if not datasource_fqn:
-                        continue
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=datasource_fqn,
-                    )
                     try:
+                        datasource_fqn = self._get_datasource_fqn_for_lineage(
+                            chart_json, db_service_entity
+                        )
+                        if not datasource_fqn:
+                            continue
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table,
+                            fqn=datasource_fqn,
+                        )
                         datamodel_fqn = fqn.build(
                             self.metadata,
                             entity_type=DashboardDataModel,

@@ -116,24 +116,32 @@ class SupersetAPISource(SupersetSourceMixin):
 
     def yield_dashboard_chart(
         self, dashboard_details: DashboradResult
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[CreateChartRequest]:
         """
         Metod to fetch charts linked to dashboard
         """
-        for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if not chart_json:
-                logger.warning(f"chart details for id: {chart_id} not found, skipped")
-                continue
-            chart = CreateChartRequest(
-                name=chart_json.id,
-                displayName=chart_json.slice_name,
-                description=chart_json.description,
-                chartType=get_standard_chart_type(chart_json.viz_type),
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+        try:
+            for chart_id in self._get_charts_of_dashboard(dashboard_details):
+                chart_json = self.all_charts.get(chart_id)
+                if not chart_json:
+                    logger.warning(
+                        f"chart details for id: {chart_id} not found, skipped"
+                    )
+                    continue
+                chart = CreateChartRequest(
+                    name=chart_json.id,
+                    displayName=chart_json.slice_name,
+                    description=chart_json.description,
+                    chartType=get_standard_chart_type(chart_json.viz_type),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                )
+                yield chart
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}"
             )
-            yield chart
 
     def _get_datasource_fqn(
         self, datasource_id: str, db_service_entity: DatabaseService
@@ -164,7 +172,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         service_name=db_service_entity.name.__root__,
                     )
                 return dataset_fqn
-        except KeyError as err:
+        except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
