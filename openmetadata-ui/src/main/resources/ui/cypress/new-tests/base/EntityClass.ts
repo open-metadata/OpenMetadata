@@ -22,7 +22,9 @@ import {
   removeDomainFromEntity,
 } from '../../common/Utils/Domain';
 import {
+  createEntityViaREST,
   deleteEntity,
+  deleteEntityViaREST,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
   updateDescriptioForEntity,
@@ -41,6 +43,7 @@ import {
 } from '../../common/Utils/Owner';
 import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
 import { addTier, removeTier } from '../../common/Utils/Tier';
+import { uuid } from '../../constants/constants';
 
 export enum EntityType {
   Table = 'tables',
@@ -50,6 +53,8 @@ export enum EntityType {
   Container = 'containers',
   MlModel = 'mlmodels',
   Domain = 'domains',
+  Glossary = 'glossaries',
+  GlossaryTerm = 'glossaryTerms',
   DatabaseService = 'services/databaseServices',
   DashboardService = 'services/dashboardServices',
   StorageService = 'services/storageServices',
@@ -70,6 +75,71 @@ class EntityClass {
   endPoint: EntityType;
   protected name: string;
 
+  domainDetails1 = {
+    name: `cypress-domain-${uuid()}`,
+    displayName: 'Cypress Domain',
+    description: 'Cypress domain description',
+    domainType: 'Aggregate',
+    experts: [],
+    style: {},
+  };
+
+  domainDetails2 = {
+    name: `cypress-domain-${uuid()}`,
+    displayName: 'Cypress Domain 2',
+    description: 'Cypress domain description',
+    domainType: 'Aggregate',
+    experts: [],
+    style: {},
+  };
+
+  glossaryDetails1 = {
+    name: 'General',
+    displayName: 'General',
+    description:
+      'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
+    reviewers: [],
+    tags: [],
+    mutuallyExclusive: false,
+  };
+
+  glossaryDetails2 = {
+    name: 'Person',
+    displayName: 'Person',
+    description:
+      // eslint-disable-next-line max-len
+      'Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with Person.PhoneNumber tag. The associated PII and PersonalData tags are automatically applied.',
+    reviewers: [],
+    tags: [],
+    mutuallyExclusive: false,
+  };
+
+  glossaryTermDetails1 = {
+    name: 'BankNumber',
+    displayName: 'BankNumber',
+    description: 'A bank account number.',
+    reviewers: [],
+    relatedTerms: [],
+    synonyms: [],
+    mutuallyExclusive: false,
+    tags: [],
+    style: {},
+    glossary: 'General',
+  };
+
+  glossaryTermDetails2 = {
+    name: 'Address',
+    displayName: 'Address',
+    description: 'Address of a Person.',
+    reviewers: [],
+    relatedTerms: [],
+    synonyms: [],
+    mutuallyExclusive: false,
+    tags: [],
+    style: {},
+    glossary: 'Person',
+  };
+
   constructor(
     entityName: string,
     entityDetails: unknown,
@@ -89,6 +159,87 @@ class EntityClass {
         res();
       })
     );
+  }
+
+  // Prepare for tests
+  prepareForTests() {
+    this.createEntity();
+
+    // Create domain
+
+    createEntityViaREST({
+      body: this.domainDetails1,
+      endPoint: EntityType.Domain,
+    });
+
+    createEntityViaREST({
+      body: this.domainDetails2,
+      endPoint: EntityType.Domain,
+    });
+
+    // Create glossary
+
+    createEntityViaREST({
+      body: this.glossaryDetails1,
+      endPoint: EntityType.Glossary,
+    });
+
+    createEntityViaREST({
+      body: this.glossaryDetails2,
+      endPoint: EntityType.Glossary,
+    });
+
+    // Create glossary term
+
+    createEntityViaREST({
+      body: this.glossaryTermDetails1,
+      endPoint: EntityType.GlossaryTerm,
+    });
+
+    createEntityViaREST({
+      body: this.glossaryTermDetails2,
+      endPoint: EntityType.GlossaryTerm,
+    });
+  }
+
+  cleanup() {
+    // Domain 1 to test
+    deleteEntityViaREST({
+      entityName: this.domainDetails1.name,
+      endPoint: EntityType.Domain,
+    });
+
+    // Domain 2 to test
+    deleteEntityViaREST({
+      entityName: this.domainDetails2.name,
+      endPoint: EntityType.Domain,
+    });
+
+    // Glossary 1 to test
+
+    deleteEntityViaREST({
+      entityName: `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+      endPoint: EntityType.GlossaryTerm,
+    });
+
+    // Glossary 2 to test
+
+    deleteEntityViaREST({
+      entityName: `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+      endPoint: EntityType.GlossaryTerm,
+    });
+
+    // Glossary 2 to test
+
+    deleteEntityViaREST({
+      entityName: this.glossaryDetails1.name,
+      endPoint: EntityType.Glossary,
+    });
+
+    deleteEntityViaREST({
+      entityName: this.glossaryDetails2.name,
+      endPoint: EntityType.Glossary,
+    });
   }
 
   // Creation
@@ -171,16 +322,13 @@ class EntityClass {
   // Glossary
 
   assignGlossary() {
-    assignGlossaryTerm('business glossary.Location', this.endPoint);
+    assignGlossaryTerm('General.BankNumber', this.endPoint);
   }
   updateGlossary() {
-    udpateGlossaryTerm('business glossary.DateTime', this.endPoint);
+    udpateGlossaryTerm('Person.Address', this.endPoint);
   }
   removeGlossary() {
-    removeGlossaryTerm(
-      ['business glossary.Location', 'business glossary.DateTime'],
-      this.endPoint
-    );
+    removeGlossaryTerm(['General.BankNumber', 'Person.Address'], this.endPoint);
   }
 
   // Rename
@@ -231,7 +379,33 @@ class EntityClass {
 
   // Custom property
 
-  createCustomProperty() {}
+  createCustomProperty() {
+    // interceptURL(
+    //   'GET',
+    //   `/api/v1/metadata/types/name/${entity.name}*`,
+    //   'getEntity'
+    // );
+    // // Selecting the entity
+    // cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+    //   .scrollIntoView()
+    //   .should('be.visible')
+    //   .click();
+    // verifyResponseStatusCode('@getEntity', 200);
+    // // Getting the property
+    // addCustomPropertiesForEntity(
+    //   propertyName,
+    //   entity,
+    //   'Integer',
+    //   entity.integerValue,
+    //   entity.entityObj
+    // );
+    // // Navigating back to custom properties page
+    // cy.get('[data-testid="app-bar-item-settings"]').click();
+    // cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+    //   .scrollIntoView()
+    //   .click();
+    // verifyResponseStatusCode('@getEntity', 200);
+  }
   updateCustomProperty() {}
   removeCustomProperty() {}
 }

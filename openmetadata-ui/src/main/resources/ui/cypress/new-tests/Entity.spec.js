@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../common/common';
-import {
-  createEntityViaREST,
-  deleteEntityViaREST,
-} from '../common/Utils/Entity';
 import ContainerClass from './base/ContainerClass';
 import DashboardClass from './base/DashboardClass';
-import { EntityType } from './base/EntityClass';
 import MlModelClass from './base/MlModelClass';
 import PipelineClass from './base/PipelineClass';
 import TableClass from './base/TableClass';
@@ -34,24 +28,6 @@ const entities = [
   // TODO: add tests for metadata service tests
   //   new MetadataServiceClass(),
 ];
-const domainDetails1 = {
-  name: `cypress-domain-${uuid()}`,
-  displayName: 'Cypress Domain',
-  description: 'Cypress domain description',
-  domainType: 'Aggregate',
-  experts: [],
-  style: {},
-};
-
-const domainDetails2 = {
-  name: `cypress-domain-${uuid()}`,
-  displayName: 'Cypress Domain 2',
-  description: 'Cypress domain description',
-  domainType: 'Aggregate',
-  experts: [],
-  style: {},
-};
-
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
 
@@ -62,47 +38,14 @@ entities.forEach((entity) => {
   describe(`${entity.name} page`, () => {
     before(() => {
       cy.login();
-      entity.createEntity();
 
-      // Create domain
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-
-        createEntityViaREST({
-          token,
-          body: domainDetails1,
-          endPoint: EntityType.Domain,
-        });
-
-        createEntityViaREST({
-          token,
-          body: domainDetails2,
-          endPoint: EntityType.Domain,
-        });
-      });
+      entity.prepareForTests();
     });
 
     after(() => {
       cy.login();
 
-      // Delete domain
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-
-        // Domain 1 to test
-        deleteEntityViaREST({
-          token,
-          entityName: domainDetails1.name,
-          endPoint: EntityType.Domain,
-        });
-
-        // Domain 2 to test
-        deleteEntityViaREST({
-          token,
-          entityName: domainDetails2.name,
-          endPoint: EntityType.Domain,
-        });
-      });
+      entity.cleanup();
     });
 
     beforeEach(() => {
@@ -111,15 +54,15 @@ entities.forEach((entity) => {
     });
 
     it(`Assign domain`, () => {
-      entity.assignDomain(domainDetails1.displayName);
+      entity.assignDomain(this.domainDetails1.displayName);
     });
 
     it(`Update domain`, () => {
-      entity.updateDomain(domainDetails2.displayName);
+      entity.updateDomain(this.domainDetails2.displayName);
     });
 
     it(`Remove domain`, () => {
-      entity.removeDomain(domainDetails2.displayName);
+      entity.removeDomain(this.domainDetails2.displayName);
     });
 
     it(`Assign user Owner`, () => {
