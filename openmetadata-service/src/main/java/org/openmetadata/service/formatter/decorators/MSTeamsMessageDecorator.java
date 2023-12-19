@@ -59,7 +59,8 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public String getEntityUrl(String entityType, String fqn) {
-    return String.format("[%s](/%s/%s)", fqn.trim(), getSmtpSettings().getOpenMetadataUrl(), entityType);
+    return String.format(
+        "[%s](/%s/%s)", fqn.trim(), getSmtpSettings().getOpenMetadataUrl(), entityType);
   }
 
   @Override

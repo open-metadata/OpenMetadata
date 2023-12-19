@@ -135,21 +135,14 @@ public class SubscriptionUtil {
       Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
     Set<String> webhookUrls = new HashSet<>();
     if (profile != null) {
-      Webhook webhookConfig = null;
-      switch (type) {
-        case SLACK_WEBHOOK:
-          webhookConfig = profile.getSubscription().getSlack();
-          break;
-        case MS_TEAMS_WEBHOOK:
-          webhookConfig = profile.getSubscription().getMsTeams();
-          break;
-        case G_CHAT_WEBHOOK:
-          webhookConfig = profile.getSubscription().getgChat();
-          break;
-        case GENERIC_WEBHOOK:
-          webhookConfig = profile.getSubscription().getGeneric();
-          break;
-      }
+      Webhook webhookConfig =
+          switch (type) {
+            case SLACK_WEBHOOK -> profile.getSubscription().getSlack();
+            case MS_TEAMS_WEBHOOK -> profile.getSubscription().getMsTeams();
+            case G_CHAT_WEBHOOK -> profile.getSubscription().getgChat();
+            case GENERIC_WEBHOOK -> profile.getSubscription().getGeneric();
+            default -> null;
+          };
       if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
         webhookUrls.add(webhookConfig.getEndpoint().toString());
       } else {
@@ -161,7 +154,10 @@ public class SubscriptionUtil {
             webhookConfig);
       }
     } else {
-      LOG.debug("[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ", id, type);
+      LOG.debug(
+          "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
+          id,
+          type);
     }
     return webhookUrls;
   }
@@ -180,12 +176,14 @@ public class SubscriptionUtil {
 
     // Send To Owners
     if (Boolean.TRUE.equals(action.getSendToOwners())) {
-      receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
+      receiverList.addAll(
+          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
     }
 
     // Send To Followers
     if (Boolean.TRUE.equals(action.getSendToFollowers())) {
-      receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
+      receiverList.addAll(
+          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
     }
 
     return receiverList;
@@ -207,7 +205,8 @@ public class SubscriptionUtil {
   public static void postWebhookMessage(AbstractEventConsumer publisher, Invocation.Builder target, Object message)
       throws InterruptedException {
     long attemptTime = System.currentTimeMillis();
-    Response response = target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    Response response =
+        target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     LOG.debug(
         "Subscription Publisher Posted Message {}:{} received response {}",
         publisher.getEventSubscription().getName(),
@@ -215,7 +214,8 @@ public class SubscriptionUtil {
         response.getStatusInfo());
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      publisher.setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+      publisher.setErrorStatus(
+          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
       publisher.setNextBackOff();

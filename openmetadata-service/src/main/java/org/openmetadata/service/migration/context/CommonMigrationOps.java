@@ -11,14 +11,17 @@ public class CommonMigrationOps {
           new MigrationOps("dashboardCount", "SELECT COUNT(*) FROM dashboard_entity"),
           new MigrationOps("pipelineCount", "SELECT COUNT(*) FROM pipeline_entity"),
           new MigrationOps("mlModelCount", "SELECT COUNT(*) FROM ml_model_entity"),
-          new MigrationOps("storageContainerCount", "SELECT COUNT(*) FROM storage_container_entity"),
+          new MigrationOps(
+              "storageContainerCount", "SELECT COUNT(*) FROM storage_container_entity"),
           new MigrationOps("searchIndexCount", "SELECT COUNT(*) FROM search_index_entity"),
           new MigrationOps("glossaryCount", "SELECT COUNT(*) FROM glossary_entity"),
           new MigrationOps("glossaryTermCount", "SELECT COUNT(*) FROM glossary_term_entity"),
           // Services
           new MigrationOps("databaseServiceCount", "SELECT COUNT(*) FROM dbservice_entity"),
-          new MigrationOps("messagingServiceCount", "SELECT COUNT(*) FROM messaging_service_entity"),
-          new MigrationOps("dashboardServiceCount", "SELECT COUNT(*) FROM dashboard_service_entity"),
+          new MigrationOps(
+              "messagingServiceCount", "SELECT COUNT(*) FROM messaging_service_entity"),
+          new MigrationOps(
+              "dashboardServiceCount", "SELECT COUNT(*) FROM dashboard_service_entity"),
           new MigrationOps("pipelineServiceCount", "SELECT COUNT(*) FROM pipeline_service_entity"),
           new MigrationOps("mlModelServiceCount", "SELECT COUNT(*) FROM mlmodel_service_entity"),
           new MigrationOps("searchServiceCount", "SELECT COUNT(*) FROM search_service_entity"),

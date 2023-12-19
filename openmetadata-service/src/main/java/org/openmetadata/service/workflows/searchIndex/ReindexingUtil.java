@@ -46,7 +46,8 @@ public class ReindexingUtil {
         total += repository.getDao().listTotalCount();
       } else {
         total +=
-            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
+            dao.reportDataTimeSeriesDao()
+                .listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
       }
     }
     return total;
@@ -62,7 +63,8 @@ public class ReindexingUtil {
     return success;
   }
 
-  public static int getSuccessFromBulkResponseEs(es.org.elasticsearch.action.bulk.BulkResponse response) {
+  public static int getSuccessFromBulkResponseEs(
+      es.org.elasticsearch.action.bulk.BulkResponse response) {
     int success = 0;
     for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {

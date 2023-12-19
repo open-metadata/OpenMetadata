@@ -125,8 +125,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
+      throws ClassNotFoundException,
+          IllegalAccessException,
+          InstantiationException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          IOException,
+          ConfigurationException,
+          CertificateException,
+          KeyStoreException,
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
@@ -137,8 +144,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
 
-    // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
-    // repository
+    // initialize Search Repository, all repositories use SearchRepository this line should always
+    // before initializing repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration(), new SearchIndexFactory());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
@@ -162,7 +169,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
+        .setSqlLocator(
+            new ConnectionAwareAnnotationSqlLocator(
+                catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig);
@@ -174,7 +183,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthenticator(catalogConfig);
 
     // Unregister dropwizard default exception mappers
-    ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
+    ((DefaultServerFactory) catalogConfig.getServerFactory())
+        .setRegisterDefaultExceptionMappers(false);
     environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
     environment.jersey().register(MultiPartFeature.class);
     environment.jersey().register(CatalogGenericExceptionMapper.class);
@@ -187,7 +197,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
+    environment
+        .healthChecks()
+        .register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
     // start event hub before registering publishers
     EventPubSub.start();
 
@@ -200,26 +212,32 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerEventPublisher(catalogConfig);
 
     // update entities secrets if required
-    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName()).updateEntities();
+    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName())
+        .updateEntities();
 
     // start authorizer after event publishers
-    // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
+    // authorizer creates admin/bot users, ES publisher should start before to index users created
+    // by authorizer
     authorizer.init(catalogConfig);
 
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
 
-    webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
+    webAnalyticEvents =
+        MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(
-        EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
+        EnumSet.allOf(DispatcherType.class),
+        true,
+        catalogConfig.getEventMonitorConfiguration().getPathPattern());
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
 
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet("/assets", "/", "index.html", catalogConfig.getWebConfiguration());
+        new OpenMetadataAssetServlet(
+            "/assets", "/", "index.html", catalogConfig.getWebConfiguration());
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
@@ -230,7 +248,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
-  private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
+  private void registerSamlHandlers(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
@@ -279,7 +298,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       jdbi.setSqlLogger(sqlLogger);
     }
     // Set the Database type for choosing correct queries from annotations
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
 
     return jdbi;
   }
@@ -301,7 +321,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     bootstrap.addBundle(
         new HealthCheckBundle<>() {
           @Override
-          protected HealthConfiguration getHealthConfiguration(final OpenMetadataApplicationConfig configuration) {
+          protected HealthConfiguration getHealthConfiguration(
+              final OpenMetadataApplicationConfig configuration) {
             return configuration.getHealthConfiguration();
           }
         });
@@ -309,14 +330,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     bootstrap.addBundle(
         new OMWebBundle<>() {
           @Override
-          public OMWebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+          public OMWebConfiguration getWebConfiguration(
+              final OpenMetadataApplicationConfig configuration) {
             return configuration.getWebConfiguration();
           }
         });
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
+      throws IOException {
     LOG.info("Validating Flyway migrations");
     Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
     String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
@@ -333,7 +356,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     LOG.info("Validating native migrations");
-    ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
+    ConnectionType connectionType =
+        ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
         new MigrationWorkflow(
             jdbi,
@@ -345,7 +369,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     migrationWorkflow.validateMigrationsForServer();
   }
 
-  private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
+  private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig)
+      throws ConfigurationException {
     if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null) {
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
@@ -357,15 +382,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerAuthorizer(OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
+  private void registerAuthorizer(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment)
+      throws NoSuchMethodException,
+          ClassNotFoundException,
+          IllegalAccessException,
+          InvocationTargetException,
           InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
-    AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    AuthenticationConfiguration authenticationConfiguration =
+        catalogConfig.getAuthenticationConfiguration();
     // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
       authorizer =
-          Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
+          Class.forName(authorizerConf.getClassName())
+              .asSubclass(Authorizer.class)
+              .getConstructor()
+              .newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
@@ -386,21 +419,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    AuthenticationConfiguration authenticationConfiguration =
+        catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case BASIC:
-        authenticatorHandler = new BasicAuthenticator();
-        break;
-      case LDAP:
-        authenticatorHandler = new LdapAuthenticator();
-        break;
-      default:
-        // For all other types, google, okta etc. auth is handled externally
-        authenticatorHandler = new NoopAuthenticator();
+      case BASIC -> authenticatorHandler = new BasicAuthenticator();
+      case LDAP -> authenticatorHandler = new LdapAuthenticator();
+      default ->
+      // For all other types, google, okta etc. auth is handled externally
+      authenticatorHandler = new NoopAuthenticator();
     }
   }
 
-  private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+  private void registerEventFilter(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
@@ -415,27 +446,32 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               openMetadataApplicationConfig.getEventMonitorConfiguration(),
               openMetadataApplicationConfig.getClusterName());
       EventMonitorPublisher eventMonitorPublisher =
-          new EventMonitorPublisher(openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
+          new EventMonitorPublisher(
+              openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
       EventPubSub.addEventHandler(eventMonitorPublisher);
     }
   }
 
-  private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+  private void registerResources(
+      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+    CollectionRegistry.getInstance()
+        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
   }
 
-  private void initializeWebsockets(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+  private void initializeWebsockets(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
-              catalogConfig.getAuthenticationConfiguration(), catalogConfig.getAuthorizerConfiguration());
+              catalogConfig.getAuthenticationConfiguration(),
+              catalogConfig.getAuthorizerConfiguration());
     } else {
       socketAddressFilter = new SocketAddressFilter();
     }
@@ -446,7 +482,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().setContextPath("/");
     environment
         .getApplicationContext()
-        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+        .addFilter(
+            new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
@@ -457,7 +494,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               container.addMapping(
                   new ServletPathSpec(pathSpec),
                   (servletUpgradeRequest, servletUpgradeResponse) ->
-                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
+                      new JettyWebSocketHandler(
+                          WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }

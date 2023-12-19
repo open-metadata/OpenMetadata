@@ -73,7 +73,9 @@ public class GChatPublisher extends AbstractEventConsumer {
           postWebhookMessage(this, actionTarget, gchatMessage);
         }
       } catch (Exception e) {
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT_WEBHOOK, event, e.getMessage());
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(
+                G_CHAT_WEBHOOK, event, e.getMessage());
         LOG.error(message);
         throw new EventPublisherException(message);
       }

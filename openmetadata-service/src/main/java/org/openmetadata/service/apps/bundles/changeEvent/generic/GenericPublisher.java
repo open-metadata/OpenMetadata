@@ -47,7 +47,8 @@ public class GenericPublisher extends AbstractEventConsumer {
       // Build Client
       this.client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
     } else {
-      throw new IllegalArgumentException("GenericWebhook Alert Invoked with Illegal Type and Settings.");
+      throw new IllegalArgumentException(
+          "GenericWebhook Alert Invoked with Illegal Type and Settings.");
     }
   }
 
@@ -77,7 +78,8 @@ public class GenericPublisher extends AbstractEventConsumer {
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
       if (cause != null && cause.getClass() == UnknownHostException.class) {
-        LOG.warn("Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
+        LOG.warn(
+            "Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
         setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);

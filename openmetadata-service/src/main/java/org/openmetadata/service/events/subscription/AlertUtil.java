@@ -49,7 +49,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.springframework.expression.Expression;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -107,7 +106,8 @@ public final class AlertUtil {
       expression.getValue(ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
-      String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      String message =
+          exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
       throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
     }
   }
@@ -118,32 +118,30 @@ public final class AlertUtil {
       SubscriptionFilterOperation type = SubscriptionFilterOperation.valueOf(func.getName());
       ParamAdditionalContext paramAdditionalContext = new ParamAdditionalContext();
       switch (type) {
-        case matchAnySource:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
-          break;
-        case matchUpdatedBy:
-        case matchAnyOwnerName:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
-          break;
-        case matchAnyEntityFqn:
-        case matchAnyEntityId:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
-          break;
-        case matchAnyEventType:
+        case matchAnySource -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
+        case matchUpdatedBy, matchAnyOwnerName -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
+        case matchAnyEntityFqn, matchAnyEntityId -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
+        case matchAnyEventType -> {
           List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
-          break;
-        case matchIngestionPipelineState:
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(eventTypes)));
+        }
+        case matchIngestionPipelineState -> {
           List<String> ingestionPipelineState =
               Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
-          break;
-        case matchTestResult:
-          List<String> testResultStatus = Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
-          break;
-        default:
-          LOG.error("Invalid Function name : {}", type);
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
+        }
+        case matchTestResult -> {
+          List<String> testResultStatus =
+              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
+        }
+        default -> LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);
     }
@@ -163,14 +161,14 @@ public final class AlertUtil {
     return indexesToSearch;
   }
 
-  public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
+  public static boolean evaluateAlertConditions(
+      ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
     if (!alertFilterRules.isEmpty()) {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
@@ -209,7 +207,8 @@ public final class AlertUtil {
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
-    FilteringRules filteringRules = ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
+    FilteringRules filteringRules =
+        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
     return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
         && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }

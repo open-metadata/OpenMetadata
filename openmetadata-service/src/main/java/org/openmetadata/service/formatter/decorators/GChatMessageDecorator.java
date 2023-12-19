@@ -61,7 +61,10 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim().replace(" ", "%20"), fqn.trim());
+        getSmtpSettings().getOpenMetadataUrl(),
+        entityType,
+        fqn.trim().replace(" ", "%20"),
+        fqn.trim());
   }
 
   @Override

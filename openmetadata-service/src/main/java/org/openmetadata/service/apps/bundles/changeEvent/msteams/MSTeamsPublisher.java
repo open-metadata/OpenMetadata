@@ -73,7 +73,9 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
           postWebhookMessage(this, actionTarget, teamsMessage);
         }
       } catch (Exception e) {
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS_WEBHOOK, event, e.getMessage());
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(
+                MS_TEAMS_WEBHOOK, event, e.getMessage());
         LOG.error(message);
         throw new EventPublisherException(message);
       }

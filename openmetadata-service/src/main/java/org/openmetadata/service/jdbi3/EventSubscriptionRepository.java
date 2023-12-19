@@ -88,7 +88,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {
-    public EventSubscriptionUpdater(EventSubscription original, EventSubscription updated, Operation operation) {
+    public EventSubscriptionUpdater(
+        EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -97,9 +98,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
-      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
-      recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
-      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig(), true);
+      recordChange(
+          "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
+      recordChange(
+          "subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
+      recordChange(
+          "subscriptionConfig",
+          original.getSubscriptionConfig(),
+          updated.getSubscriptionConfig(),
+          true);
       recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
     }
   }

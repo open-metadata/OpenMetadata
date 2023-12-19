@@ -133,7 +133,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     ResultList<GlossaryTerm> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     List<GlossaryTerm> expectedTerms =
-        Arrays.asList(GLOSSARY1_TERM1, GLOSSARY2_TERM1, term1, term11, term12, term2, term21, term22);
+        Arrays.asList(
+            GLOSSARY1_TERM1, GLOSSARY2_TERM1, term1, term11, term12, term2, term21, term22);
     assertContains(expectedTerms, list.getData());
 
     // List terms under glossary1
@@ -177,14 +178,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Create term t1 in the glossary without reviewers and owner
     CreateGlossaryTerm create =
-        new CreateGlossaryTerm().withName("t1").withGlossary(glossary.getFullyQualifiedName()).withDescription("desc");
+        new CreateGlossaryTerm()
+            .withName("t1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("desc");
     GlossaryTerm t1 = assertOwnerInheritance(create, USER2_REF);
     t1 = getEntity(t1.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
 
     // Create term t12 under t1 without reviewers and owner
     create =
-        create.withName("t12").withGlossary(glossary.getFullyQualifiedName()).withParent(t1.getFullyQualifiedName());
+        create
+            .withName("t12")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(t1.getFullyQualifiedName());
     GlossaryTerm t12 = assertOwnerInheritance(create, USER2_REF);
     t12 = getEntity(t12.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
@@ -193,17 +200,24 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
-    CreateGlossary createGlossary = glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateGlossary createGlossary =
+        glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Create term t1 in the glossary without domain
     CreateGlossaryTerm create =
-        new CreateGlossaryTerm().withName("t1").withGlossary(glossary.getFullyQualifiedName()).withDescription("desc");
+        new CreateGlossaryTerm()
+            .withName("t1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("desc");
     GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
     create =
-        create.withName("t12").withGlossary(glossary.getFullyQualifiedName()).withParent(t1.getFullyQualifiedName());
+        create
+            .withName("t12")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(t1.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
@@ -222,7 +236,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Apply each of the tag to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable createTable =
-        tableResourceTest.createRequest(tableResourceTest.getEntityName(test)).withTags(toTagLabels(a, aa, aaa));
+        tableResourceTest
+            .createRequest(tableResourceTest.getEntityName(test))
+            .withTags(toTagLabels(a, aa, aaa));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Ensure prefix based tagLabel doesn't double count due too common prefix
@@ -234,13 +250,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
-    CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+    CreateGlossaryTerm create =
+        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
-    TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
-    term.withReviewers(List.of(USER1_REF)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
+    TermReference reference1 =
+        new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+    term.withReviewers(List.of(USER1_REF))
+        .withSynonyms(List.of("synonym1"))
+        .withReferences(List.of(reference1));
     ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     fieldAdded(change, "synonyms", List.of("synonym1"));
@@ -250,7 +270,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Add reviewer USER2, synonym2, reference2 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(term);
-    TermReference reference2 = new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
+    TermReference reference2 =
+        new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
     term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
@@ -263,7 +284,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
     origJson = JsonUtils.pojoToJson(term);
-    term.withReviewers(List.of(USER2_REF)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
+    term.withReviewers(List.of(USER2_REF))
+        .withSynonyms(List.of("synonym2"))
+        .withReferences(List.of(reference2));
     change = getChangeDescription(term, CHANGE_CONSOLIDATED);
     fieldAdded(change, "reviewers", List.of(USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym2"));
@@ -273,12 +296,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_addDeleteRelatedTerms(TestInfo test) throws IOException {
-    CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+    CreateGlossaryTerm create =
+        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
-    TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+    TermReference reference1 =
+        new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
     term.withReferences(List.of(reference1));
     ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "references", List.of(reference1));
@@ -296,7 +321,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //
     // glossary1 create without reviewers is created with Approved status
     //
-    CreateGlossary createGlossary = glossaryTest.createRequest(getEntityName(test, 1)).withReviewers(null);
+    CreateGlossary createGlossary =
+        glossaryTest.createRequest(getEntityName(test, 1)).withReviewers(null);
     Glossary glossary1 = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // term g1t1 under glossary1 is created in Approved mode without reviewers
@@ -305,9 +331,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     //
     // glossary2 created with reviewers user1, user2
-    // Glossary term g2t1 created under it are in `Draft` status. Automatically a Request Approval task is created.
-    // Only a reviewer can change the status to `Approved`. When the status changes to `Approved`, the Request Approval
-    // task is automatically resolved.
+    // Glossary term g2t1 created under it are in `Draft` status. Automatically a Request Approval
+    // task is created.
+    // Only a reviewer can change the status to `Approved`. When the status changes to `Approved`,
+    // the Request Approval task is automatically resolved.
     //
     createGlossary =
         glossaryTest
@@ -323,7 +350,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
     String json = JsonUtils.pojoToJson(g2t1);
     g2t1.setStatus(Status.APPROVED);
-    assertResponse(() -> patchEntity(g2t1.getId(), json, g2t1, ADMIN_AUTH_HEADERS), FORBIDDEN, notReviewer("admin"));
+    assertResponse(
+        () -> patchEntity(g2t1.getId(), json, g2t1, ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        notReviewer("admin"));
 
     // A reviewer can change the `Draft` to `Approved` status using PATCH or PUT
     GlossaryTerm g2t1Updated = patchEntity(g2t1.getId(), json, g2t1, authHeaders(USER1.getName()));
@@ -331,18 +361,23 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertApprovalTask(g2t1, TaskStatus.Closed); // The Request Approval task is closed
 
     //
-    // Glossary terms g2t2 created is in `Draft` status. Automatically a Request Approval task is created.
-    // Only a reviewer can resolve the task. Resolving the task changes g2t1 status from `Draft` to `Approved`.
+    // Glossary terms g2t2 created is in `Draft` status. Automatically a Request Approval task is
+    // created.
+    // Only a reviewer can resolve the task. Resolving the task changes g2t1 status from `Draft` to
+    // `Approved`.
     //
     GlossaryTerm g2t2 = createTerm(glossary2, null, "g2t2");
     assertEquals(Status.DRAFT, g2t2.getStatus());
-    Thread approvalTask = assertApprovalTask(g2t2, TaskStatus.Open); // A Request Approval task is opened
+    Thread approvalTask =
+        assertApprovalTask(g2t2, TaskStatus.Open); // A Request Approval task is opened
     int taskId = approvalTask.getTask().getId();
 
     // Even admin can't resolve the task
     ResolveTask resolveTask = new ResolveTask().withNewValue(Status.APPROVED.value());
     assertResponse(
-        () -> taskTest.resolveTask(taskId, resolveTask, ADMIN_AUTH_HEADERS), FORBIDDEN, notReviewer("admin"));
+        () -> taskTest.resolveTask(taskId, resolveTask, ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        notReviewer("admin"));
 
     // Reviewer resolves the task. Glossary is approved. And task is resolved.
     taskTest.resolveTask(taskId, resolveTask, authHeaders(USER1.getName()));
@@ -351,8 +386,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEquals(Status.APPROVED, g2t2.getStatus());
 
     //
-    // Glossary terms g2t3 created is in `Draft` status. Automatically a Request Approval task is created.
-    // Only a reviewer can close the task. Closing the task moves g2t1 from `Draft` to `Rejected` state.
+    // Glossary terms g2t3 created is in `Draft` status. Automatically a Request Approval task is
+    // created.
+    // Only a reviewer can close the task. Closing the task moves g2t1 from `Draft` to `Rejected`
+    // state.
     //
     GlossaryTerm g2t3 = createTerm(glossary2, null, "g2t3");
     assertEquals(Status.DRAFT, g2t3.getStatus());
@@ -360,7 +397,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     int taskId2 = approvalTask.getTask().getId();
 
     // Even admin can't close the task
-    assertResponse(() -> taskTest.closeTask(taskId2, "comment", ADMIN_AUTH_HEADERS), FORBIDDEN, notReviewer("admin"));
+    assertResponse(
+        () -> taskTest.closeTask(taskId2, "comment", ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        notReviewer("admin"));
 
     // Reviewer closes the task. Glossary term is rejected. And task is resolved.
     taskTest.closeTask(taskId2, "Rejected", authHeaders(USER1.getName()));
@@ -369,8 +409,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEquals(Status.REJECTED, g2t3.getStatus());
 
     //
-    // Glossary terms g2t4 created is in `Draft` status. Automatically a Request Approval task is created.
-    // Only a reviewer changes the status to `Rejected`. This automatically closes Request Approval task.
+    // Glossary terms g2t4 created is in `Draft` status. Automatically a Request Approval task is
+    // created.
+    // Only a reviewer changes the status to `Rejected`. This automatically closes Request Approval
+    // task.
     //
     final GlossaryTerm g2t4 = createTerm(glossary2, null, "g2t4");
     assertEquals(Status.DRAFT, g2t4.getStatus());
@@ -379,7 +421,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
     String json2 = JsonUtils.pojoToJson(g2t4);
     g2t4.setStatus(Status.REJECTED);
-    assertResponse(() -> patchEntity(g2t4.getId(), json2, g2t4, ADMIN_AUTH_HEADERS), FORBIDDEN, notReviewer("admin"));
+    assertResponse(
+        () -> patchEntity(g2t4.getId(), json2, g2t4, ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        notReviewer("admin"));
 
     // A reviewer can change the `Draft` to `Rejected` status using PATCH
     GlossaryTerm g2t4Updated = patchEntity(g2t4.getId(), json2, g2t4, authHeaders(USER1.getName()));
@@ -393,14 +438,24 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Glossary g = createGlossary(getEntityName(test), null, DATA_CONSUMER.getEntityReference());
     // dataConsumer as owner of g can create glossary term t1 under it
     GlossaryTerm t1 =
-        createTerm(g, null, "t1", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_CONSUMER.getName()));
+        createTerm(
+            g,
+            null,
+            "t1",
+            null,
+            DATA_STEWARD.getEntityReference(),
+            authHeaders(DATA_CONSUMER.getName()));
     // dataSteward who is owner of term t1 can create term t11 under it
-    createTerm(g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
+    createTerm(
+        g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
   }
 
-  private Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus) throws HttpResponseException {
-    String entityLink = new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
-    ThreadList threads = taskTest.listTasks(entityLink, null, null, expectedTaskStatus, 100, ADMIN_AUTH_HEADERS);
+  private Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
+      throws HttpResponseException {
+    String entityLink =
+        new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, expectedTaskStatus, 100, ADMIN_AUTH_HEADERS);
     assertEquals(1, threads.getData().size());
     Thread taskThread = threads.getData().get(0);
     TaskDetails taskDetails = taskThread.getTask();
@@ -412,7 +467,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void patch_addDeleteTags(TestInfo test) throws IOException {
     // Create glossary term1 in glossary g1
-    CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+    CreateGlossaryTerm create =
+        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create glossary term11 under term1 in glossary g1
@@ -448,7 +504,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   void patch_addDeleteStyle(TestInfo test) throws IOException {
     // Create glossary term1 in glossary g1
     CreateGlossaryTerm create =
-        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null).withStyle(null);
+        createRequest(getEntityName(test), "", "", null)
+            .withReviewers(null)
+            .withSynonyms(null)
+            .withStyle(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create glossary term11 under term1 in glossary g1
@@ -512,24 +571,37 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
     TableResourceTest tableResourceTest = new TableResourceTest();
-    List<Column> columns = Arrays.asList(getColumn(C1, BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
+    List<Column> columns =
+        Arrays.asList(getColumn(C1, BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
     CreateTable createTable =
-        tableResourceTest.createRequest("glossaryTermDelTest").withTags(List.of(t1Label)).withColumns(columns);
+        tableResourceTest
+            .createRequest("glossaryTermDelTest")
+            .withTags(List.of(t1Label))
+            .withColumns(columns);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     //
-    // Glossary that has terms and glossary terms that have children CAN'T BE DELETED without recursive flag
+    // Glossary that has terms and glossary terms that have children CAN'T BE DELETED without
+    // recursive flag
     //
 
     // g1 glossary is not empty and can't be deleted
     assertResponse(
-        () -> glossaryTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY));
+        () -> glossaryTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        entityIsNotEmpty(GLOSSARY));
 
     // t1 is not empty and can't be deleted
-    assertResponse(() -> deleteEntity(t1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
+    assertResponse(
+        () -> deleteEntity(t1.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        entityIsNotEmpty(GLOSSARY_TERM));
 
     // t11 is not empty and can't be deleted
-    assertResponse(() -> deleteEntity(t11.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
+    assertResponse(
+        () -> deleteEntity(t11.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        entityIsNotEmpty(GLOSSARY_TERM));
 
     //
     // Glossary that has terms and glossary terms that have children CAN BE DELETED recursive flag
@@ -558,12 +630,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(table.getTags().isEmpty()); // tag t1 is removed
   }
 
-  public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws IOException {
+  public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)
+      throws IOException {
     return createTerm(glossary, parent, termName, glossary.getReviewers());
   }
 
   public GlossaryTerm createTerm(
-      Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
+      Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers)
+      throws IOException {
     return createTerm(glossary, parent, termName, reviewers, null, ADMIN_AUTH_HEADERS);
   }
 
@@ -590,8 +664,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEquals(expectedTerms.size(), actualTerms.size());
     for (GlossaryTerm expected : expectedTerms) {
       GlossaryTerm actual =
-          actualTerms.stream().filter(a -> EntityUtil.glossaryTermMatch.test(a, expected)).findAny().orElse(null);
-      assertNotNull(actual, "Expected glossaryTerm " + expected.getFullyQualifiedName() + " not found");
+          actualTerms.stream()
+              .filter(a -> EntityUtil.glossaryTermMatch.test(a, expected))
+              .findAny()
+              .orElse(null);
+      assertNotNull(
+          actual, "Expected glossaryTerm " + expected.getFullyQualifiedName() + " not found");
       assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
       assertEquals(expected.getSynonyms(), actual.getSynonyms());
       assertEquals(expected.getParent(), actual.getParent());
@@ -615,7 +693,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public void validateCreatedEntity(GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
     // TODO fix this
     assertReference(request.getParent(), entity.getParent());
@@ -643,7 +722,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public void compareEntities(GlossaryTerm expected, GlossaryTerm patched, Map<String, String> authHeaders)
+  public void compareEntities(
+      GlossaryTerm expected, GlossaryTerm patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertReference(expected.getGlossary(), patched.getGlossary());
     assertReference(expected.getParent(), patched.getParent());
@@ -654,13 +734,19 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public GlossaryTerm validateGetWithDifferentFields(GlossaryTerm term, boolean byName) throws HttpResponseException {
+  public GlossaryTerm validateGetWithDifferentFields(GlossaryTerm term, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     term =
         byName
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getOwner(), term.getTags());
+    assertListNull(
+        term.getChildren(),
+        term.getRelatedTerms(),
+        term.getReviewers(),
+        term.getOwner(),
+        term.getTags());
 
     fields = "children,relatedTerms,reviewers,owner,tags";
     term =
@@ -679,10 +765,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       return;
     }
     switch (fieldName) {
-      case "glossary":
-        assertEntityReferenceFieldChange(expected, actual);
-        break;
-      case "synonyms":
+      case "glossary" -> assertEntityReferenceFieldChange(expected, actual);
+      case "synonyms" -> {
         @SuppressWarnings("unchecked")
         List<String> expectedStrings =
             expected instanceof List
@@ -690,30 +774,29 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 : JsonUtils.readObjects(expected.toString(), String.class);
         List<String> actualStrings = JsonUtils.readObjects(actual.toString(), String.class);
         assertStrings(expectedStrings, actualStrings);
-        break;
-      case "references":
+      }
+      case "references" -> {
         @SuppressWarnings("unchecked")
         List<TermReference> expectedTermRefs =
             expected instanceof List
                 ? (List<TermReference>) expected
                 : JsonUtils.readObjects(expected.toString(), TermReference.class);
-        List<TermReference> actualTermRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
+        List<TermReference> actualTermRefs =
+            JsonUtils.readObjects(actual.toString(), TermReference.class);
         assertTermReferences(expectedTermRefs, actualTermRefs);
-        break;
-      case "status":
+      }
+      case "status" -> {
         Status expectedStatus = Status.fromValue(expected.toString());
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);
-        break;
-      default:
-        assertCommonFieldChange(fieldName, expected, actual);
-        break;
+      }
+      default -> assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
   @Override
-  public GlossaryTerm createAndCheckEntity(CreateGlossaryTerm create, Map<String, String> authHeaders)
-      throws IOException {
+  public GlossaryTerm createAndCheckEntity(
+      CreateGlossaryTerm create, Map<String, String> authHeaders) throws IOException {
     int termCount = getGlossary(create.getGlossary()).getTermCount();
     GlossaryTerm term = super.createAndCheckEntity(create, authHeaders);
     assertEquals(termCount + 1, getGlossary(create.getGlossary()).getTermCount());
@@ -729,7 +812,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       ChangeDescription changeDescription)
       throws IOException {
     int termCount = getGlossary(request.getGlossary()).getTermCount();
-    GlossaryTerm term = super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
+    GlossaryTerm term =
+        super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
     if (status == Response.Status.CREATED) {
       assertEquals(termCount + 1, getGlossary(request.getGlossary()).getTermCount());
     }
@@ -742,7 +826,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     term.setName(newName);
-    term.setFullyQualifiedName(FullyQualifiedName.build(term.getGlossary().getFullyQualifiedName(), newName));
+    term.setFullyQualifiedName(
+        FullyQualifiedName.build(term.getGlossary().getFullyQualifiedName(), newName));
     patchEntityAndCheck(term, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // GET the glossary term and check all the children are renamed
@@ -760,7 +845,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
   }
 
-  public GlossaryTerm moveGlossaryTerm(EntityReference newGlossary, EntityReference newParent, GlossaryTerm term)
+  public GlossaryTerm moveGlossaryTerm(
+      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term)
       throws IOException {
     EntityReference oldGlossary = term.getGlossary();
     EntityReference oldParent = term.getParent();
@@ -792,7 +878,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       change = change == null ? getChangeDescription(term, update) : change;
     }
 
-    String parentFQN = newParent == null ? newGlossary.getFullyQualifiedName() : newParent.getFullyQualifiedName();
+    String parentFQN =
+        newParent == null ? newGlossary.getFullyQualifiedName() : newParent.getFullyQualifiedName();
     term.setFullyQualifiedName(FullyQualifiedName.add(parentFQN, term.getName()));
     term.setParent(newParent);
     term.setGlossary(newGlossary);
@@ -817,14 +904,15 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
   }
 
-  public Glossary createGlossary(TestInfo test, List<EntityReference> reviewers, EntityReference owner)
-      throws IOException {
+  public Glossary createGlossary(
+      TestInfo test, List<EntityReference> reviewers, EntityReference owner) throws IOException {
     return createGlossary(glossaryTest.getEntityName(test), reviewers, owner);
   }
 
-  public Glossary createGlossary(String name, List<EntityReference> reviewers, EntityReference owner)
-      throws IOException {
-    CreateGlossary create = glossaryTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
+  public Glossary createGlossary(
+      String name, List<EntityReference> reviewers, EntityReference owner) throws IOException {
+    CreateGlossary create =
+        glossaryTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
     return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 

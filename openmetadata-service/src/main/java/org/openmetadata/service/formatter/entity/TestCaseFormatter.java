@@ -55,20 +55,20 @@ public class TestCaseFormatter implements EntityFormatter {
       return String.format(format, testCaseName, getStatusMessage(result.getTestCaseStatus()));
     }
     String format =
-        String.format("Test Case %s is updated in %s", messageFormatter.getBold(), messageFormatter.getBold());
+        String.format(
+            "Test Case %s is updated in %s",
+            messageFormatter.getBold(), messageFormatter.getBold());
     return String.format(
-        format, testCaseName, MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+        format,
+        testCaseName,
+        MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
   }
 
   private String getStatusMessage(TestCaseStatus status) {
-    switch (status) {
-      case Success:
-        return "<span style=\"color:#48CA9E\">Passed</span>";
-      case Failed:
-        return "<span style=\"color:#F24822\">Failed</span>";
-      case Aborted:
-        return "<span style=\"color:#FFBE0E\">Aborted</span>";
-    }
-    return status.value();
+    return switch (status) {
+      case Success -> "<span style=\"color:#48CA9E\">Passed</span>";
+      case Failed -> "<span style=\"color:#F24822\">Failed</span>";
+      case Aborted -> "<span style=\"color:#FFBE0E\">Aborted</span>";
+    };
   }
 }

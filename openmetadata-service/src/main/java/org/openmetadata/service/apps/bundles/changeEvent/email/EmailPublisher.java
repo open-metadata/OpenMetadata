@@ -63,7 +63,8 @@ public class EmailPublisher extends AbstractEventConsumer {
         setSuccessStatus(System.currentTimeMillis());
       } catch (Exception e) {
         setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
         LOG.error(message);
         throw new EventPublisherException(message);
       }
@@ -76,7 +77,11 @@ public class EmailPublisher extends AbstractEventConsumer {
     EntityInterface entityInterface = getEntity(changeEvent);
     receiverList.addAll(
         buildReceiversListFromActions(
-            emailAlertConfig, EMAIL, daoCollection, entityInterface.getId(), changeEvent.getEntityType()));
+            emailAlertConfig,
+            EMAIL,
+            daoCollection,
+            entityInterface.getId(),
+            changeEvent.getEntityType()));
     return receiverList;
   }
 
