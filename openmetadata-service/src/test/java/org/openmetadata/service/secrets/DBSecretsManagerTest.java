@@ -46,7 +46,8 @@ public class DBSecretsManagerTest {
   static void setUp() {
     secretsManager =
         DBSecretsManager.getInstance(
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
+            new SecretsManager.SecretsConfig(
+                "openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
@@ -73,14 +74,17 @@ public class DBSecretsManagerTest {
   @Test
   void testEncryptServiceConnectionWithoutPassword() {
     SklearnConnection connection = new SklearnConnection();
-    Object actualConfig = secretsManager.encryptServiceConnectionConfig(connection, Sklearn.value(), "test", ML_MODEL);
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, Sklearn.value(), "test", ML_MODEL);
     assertNotSame(connection, actualConfig);
   }
 
   @Test
   void testDecryptServiceConnectionWithoutPassword() {
     SklearnConnection connection = new SklearnConnection();
-    Object actualConfig = secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
+    Object actualConfig =
+        secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
     assertNotSame(connection, actualConfig);
   }
 
@@ -90,22 +94,28 @@ public class DBSecretsManagerTest {
   }
 
   private void testEncryptServiceConnection() {
-    MysqlConnection connection = new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
     Object actualConfig =
-        secretsManager.encryptServiceConnectionConfig(connection, Mysql.value(), "test", ServiceType.DATABASE);
+        secretsManager.encryptServiceConnectionConfig(
+            connection, Mysql.value(), "test", ServiceType.DATABASE);
     assertEquals(
         ENCRYPTED_VALUE,
-        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
+            .getPassword());
     assertNotSame(connection, actualConfig);
   }
 
   private void testDecryptServiceConnection() {
-    MysqlConnection mysqlConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
+    MysqlConnection mysqlConnection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
     Object actualConfig =
-        secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
+        secretsManager.decryptServiceConnectionConfig(
+            mysqlConnection, Mysql.value(), ServiceType.DATABASE);
     assertEquals(
         DECRYPTED_VALUE,
-        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
+            .getPassword());
     assertNotSame(mysqlConnection, actualConfig);
   }
 }

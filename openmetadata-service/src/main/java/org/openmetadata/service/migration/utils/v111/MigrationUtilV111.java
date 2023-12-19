@@ -27,7 +27,8 @@ public class MigrationUtilV111 {
     /* Cannot create object  util class*/
   }
 
-  public static void removeDuplicateTestCases(CollectionDAO collectionDAO, Handle handle, String getSql) {
+  public static void removeDuplicateTestCases(
+      CollectionDAO collectionDAO, Handle handle, String getSql) {
     List<Map<String, Object>> resultList = handle.createQuery(getSql).mapToMap().list();
     Map<String, String> resultMap = new HashMap<>();
     for (Map<String, Object> idMap : resultList) {
@@ -43,7 +44,9 @@ public class MigrationUtilV111 {
 
           // Get all the relationship of id1
           List<CollectionDAO.EntityRelationshipRecord> records =
-              collectionDAO.relationshipDAO().findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
+              collectionDAO
+                  .relationshipDAO()
+                  .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
 
           List<CollectionDAO.EntityRelationshipRecord> ingestionRecords =
               collectionDAO
@@ -55,7 +58,12 @@ public class MigrationUtilV111 {
             // Store the relationship to be with id2 so that the test Cases are not lost
             collectionDAO
                 .relationshipDAO()
-                .insert(UUID.fromString(v), toId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal());
+                .insert(
+                    UUID.fromString(v),
+                    toId,
+                    TEST_SUITE,
+                    TEST_CASE,
+                    Relationship.CONTAINS.ordinal());
           }
 
           // Delete Test Suite
@@ -80,7 +88,11 @@ public class MigrationUtilV111 {
   }
 
   public static void runTestSuiteMigration(
-      CollectionDAO collectionDAO, Handle handle, String getSql, String updateSql, String resultListSql) {
+      CollectionDAO collectionDAO,
+      Handle handle,
+      String getSql,
+      String updateSql,
+      String resultListSql) {
     List<Map<String, Object>> resultList = handle.createQuery(resultListSql).mapToMap().list();
     for (Map<String, Object> row : resultList) {
       if (row.containsKey("json")) {
@@ -124,7 +136,8 @@ public class MigrationUtilV111 {
         EntityReference executableEntityRef = suite.getExecutableEntityReference();
         // Run new Migrations
         suite.setName(String.format("%s.testSuite", executableEntityRef.getName()));
-        suite.setFullyQualifiedName(String.format("%s.testSuite", executableEntityRef.getFullyQualifiedName()));
+        suite.setFullyQualifiedName(
+            String.format("%s.testSuite", executableEntityRef.getFullyQualifiedName()));
         int result =
             handle
                 .createUpdate(updateSql)
