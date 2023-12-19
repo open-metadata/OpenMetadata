@@ -1519,7 +1519,7 @@
     "password-error-message": "Password must be a minimum of 8 and a maximum of 16 characters long and contain at least one uppercase character (A-Z), one lowercase character (a-z), one number, and one special character (such as !, %, @, or #)",
     "password-pattern-error": "パスワードは8～16の文字列で、1つの特殊文字、大文字1つ、小文字1つが含まれる必要があります。",
     "path-of-the-dbt-files-stored": "Path of the folder where the dbt files are stored",
-    "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
+    "permanently-delete-metadata": "Permanently deleting this <0>{{entityName}}</0> will remove its metadata from OpenMetadata permanently.",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "パイプラインの説明",

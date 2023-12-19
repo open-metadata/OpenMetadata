@@ -50,7 +50,7 @@ const revokeToken = () => {
   // Verify the revoke text
   cy.get('[data-testid="body-text"]').should(
     'contain',
-    'Are you sure you want to revoke access for JWT token?'
+    'Are you sure you want to revoke access for JWT Token?'
   );
   interceptURL('PUT', `/api/v1/users/revokeToken`, 'revokeToken');
   // Click on confirm button
