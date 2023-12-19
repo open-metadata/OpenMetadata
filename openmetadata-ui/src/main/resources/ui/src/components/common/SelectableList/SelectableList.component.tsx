@@ -241,7 +241,6 @@ export const SelectableList = ({
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
           searchBarDataTestId={searchBarDataTestId}
-          //   searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearch}
         />
@@ -279,10 +278,7 @@ export const SelectableList = ({
               {customTagRenderer ? (
                 customTagRenderer(item)
               ) : (
-                <UserTag
-                  id={item.name ?? ''}
-                  name={item.displayName ?? item.name ?? ''}
-                />
+                <UserTag id={item.name ?? ''} name={getEntityName(item)} />
               )}
             </List.Item>
           )}

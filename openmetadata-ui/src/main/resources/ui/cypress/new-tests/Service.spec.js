@@ -16,21 +16,23 @@ import {
   createEntityViaREST,
   deleteEntityViaREST,
 } from '../common/Utils/Entity';
-import ContainerClass from './base/ContainerClass';
-import DashboardClass from './base/DashboardClass';
+import DashboardServiceClass from './base/DashboardServiceClass';
+import DatabaseServiceClass from './base/DatabaseServiceClass';
 import { EntityType } from './base/EntityClass';
-import MlModelClass from './base/MlModelClass';
-import PipelineClass from './base/PipelineClass';
-import TableClass from './base/TableClass';
-import TopicClass from './base/TopicClass';
+import MessagingServiceClass from './base/MessagingServiceClass';
+import MlModelServiceClass from './base/MlModelServiceClass';
+import PipelineServiceClass from './base/PipelineServiceClass';
+import SearchServiceClass from './base/SearchServiceClass';
+import StorageServiceClass from './base/StorageServiceClass';
 
 const entities = [
-  new TableClass(),
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
+  new DatabaseServiceClass(),
+  new MessagingServiceClass(),
+  new DashboardServiceClass(),
+  new PipelineServiceClass(),
+  new MlModelServiceClass(),
+  new StorageServiceClass(),
+  new SearchServiceClass(),
   // TODO: add tests for metadata service tests
   //   new MetadataServiceClass(),
 ];

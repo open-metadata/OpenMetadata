@@ -78,7 +78,7 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
-  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
+  interceptURL('GET', '/api/v1/users/loggedInUser?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
 
   verifyResponseStatusCode('@userProfile', 200);

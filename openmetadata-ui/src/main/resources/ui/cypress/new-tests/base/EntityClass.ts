@@ -50,6 +50,13 @@ export enum EntityType {
   Container = 'containers',
   MlModel = 'mlmodels',
   Domain = 'domains',
+  DatabaseService = 'services/databaseServices',
+  DashboardService = 'services/dashboardServices',
+  StorageService = 'services/storageServices',
+  MlModelService = 'services/mlmodelServices',
+  PipelineService = 'services/pipelineServices',
+  MessagingService = 'services/messagingServices',
+  SearchService = 'services/searchServices',
 }
 
 const description =
@@ -189,7 +196,7 @@ class EntityClass {
   }
 
   restoreEntity() {
-    restoreEntityUtil(this.entityName);
+    restoreEntityUtil();
   }
 
   hardDeleteEntity() {

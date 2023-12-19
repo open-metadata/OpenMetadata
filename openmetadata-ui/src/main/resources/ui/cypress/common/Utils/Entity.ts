@@ -92,6 +92,7 @@ export const restoreEntity = () => {
   //   cy.get(`[data-testid="entity-header-display-name"]`)
   //     .contains(entityName)
   //     .click();
+  cy.reload();
   cy.get('[data-testid="deleted-badge"]').should('be.visible');
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="restore-button"]').click();
