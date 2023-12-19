@@ -49,7 +49,8 @@ public final class LambdaExceptionUtil {
    *     Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(name -> System.out.println(Class.forName(name))));
    *   </code> throws checked {@link ClassNotFoundException}
    */
-  public static <T, E extends Exception> Consumer<T> rethrowConsumer(ConsumerWithExceptions<T, E> consumer) {
+  public static <T, E extends Exception> Consumer<T> rethrowConsumer(
+      ConsumerWithExceptions<T, E> consumer) {
     return t -> {
       try {
         consumer.accept(t);
@@ -69,7 +70,8 @@ public final class LambdaExceptionUtil {
    *     Stream.of("java.lang.String", "java.bad.Class").map(rethrowFunction(Class::forName)));
    *   </code> throws checked {@link ClassNotFoundException}
    */
-  public static <T, R, E extends Exception> Function<T, R> rethrowFunction(FunctionWithExceptions<T, R, E> function) {
+  public static <T, R, E extends Exception> Function<T, R> rethrowFunction(
+      FunctionWithExceptions<T, R, E> function) {
     return t -> {
       try {
         return function.apply(t);
@@ -89,7 +91,8 @@ public final class LambdaExceptionUtil {
    * List.of("java.lang.String", "java.lang.Integer", "java.bad.Class").sorted((c1, c2) -> Class.forName(c1).getFields().length - Class.forName(c2).getFields().length
    * </code> throws checked {@link ClassNotFoundException}
    */
-  public static <T, E extends Exception> Comparator<T> rethrowComparator(ComparatorWithExceptions<T, E> comparator) {
+  public static <T, E extends Exception> Comparator<T> rethrowComparator(
+      ComparatorWithExceptions<T, E> comparator) {
     return (t1, t2) -> {
       try {
         return comparator.compare(t1, t2);
@@ -106,7 +109,8 @@ public final class LambdaExceptionUtil {
    * <p><bold>WARNING!</bold> When {@link Comparator#compare} throws an exception the elements are treated as equal.
    * This should only be used for ignoring checked exceptions that can never be throws.
    */
-  public static <T, E extends Exception> Comparator<T> ignoringComparator(ComparatorWithExceptions<T, E> comparator) {
+  public static <T, E extends Exception> Comparator<T> ignoringComparator(
+      ComparatorWithExceptions<T, E> comparator) {
     return (t1, t2) -> {
       try {
         return comparator.compare(t1, t2);

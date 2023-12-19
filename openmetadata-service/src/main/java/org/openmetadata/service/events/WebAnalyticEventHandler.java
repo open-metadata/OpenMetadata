@@ -21,7 +21,8 @@ public class WebAnalyticEventHandler implements EventHandler {
     this.clusterName = config.getClusterName();
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
     if (uriInfo.getPath().contains(WEB_ANALYTIC_ENDPOINT)) {
       String username = "anonymous";

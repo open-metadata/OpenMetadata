@@ -37,7 +37,8 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
   public GoogleAuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.GOOGLE)) {
       LOG.error("Required type to invoke is Google for GoogleAuthentication Provider");
-      throw new RuntimeException("Required type to invoke is Google for GoogleAuthentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is Google for GoogleAuthentication Provider");
     }
 
     securityConfig = (GoogleSSOClientConfig) iConfig.getSecurityConfig();
@@ -59,13 +60,19 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
     try {
       String credPath = securityConfig.getSecretKey();
       String targetAudience = securityConfig.getAudience();
-      if ((credPath != null && !credPath.equals("")) && (targetAudience != null && !targetAudience.equals(""))) {
-        ServiceAccountCredentials saCreds = ServiceAccountCredentials.fromStream(new FileInputStream(credPath));
+      if ((credPath != null && !credPath.equals(""))
+          && (targetAudience != null && !targetAudience.equals(""))) {
+        ServiceAccountCredentials saCreds =
+            ServiceAccountCredentials.fromStream(new FileInputStream(credPath));
 
         saCreds =
-            (ServiceAccountCredentials) saCreds.createScoped(Arrays.asList(OPENID_SCOPE, PROFILE_SCOPE, EMAIL_SCOPE));
+            (ServiceAccountCredentials)
+                saCreds.createScoped(Arrays.asList(OPENID_SCOPE, PROFILE_SCOPE, EMAIL_SCOPE));
         IdTokenCredentials tokenCredential =
-            IdTokenCredentials.newBuilder().setIdTokenProvider(saCreds).setTargetAudience(targetAudience).build();
+            IdTokenCredentials.newBuilder()
+                .setIdTokenProvider(saCreds)
+                .setTargetAudience(targetAudience)
+                .build();
         AccessToken token = tokenCredential.refreshAccessToken();
         this.expirationTimeMillis = token.getExpirationTime().getTime();
         this.generatedAuthToken = token.getTokenValue();
@@ -73,7 +80,8 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
         LOG.error("Credentials Path or Target Audience is null");
       }
     } catch (Exception ex) {
-      LOG.error("Google Authentication Provider error in getting access token: {}", ex.getMessage());
+      LOG.error(
+          "Google Authentication Provider error in getting access token: {}", ex.getMessage());
     }
     return generatedAuthToken;
   }

@@ -163,14 +163,12 @@ class TestBaseWorkflow(TestCase):
     @pytest.mark.order(2)
     def test_workflow_status(self):
         # Everything is processed properly in the Source
-        self.assertEquals(
-            self.workflow.source.status.records, ["0", "1", "2", "3", "4"]
-        )
-        self.assertEquals(len(self.workflow.source.status.failures), 0)
+        self.assertEqual(self.workflow.source.status.records, ["0", "1", "2", "3", "4"])
+        self.assertEqual(len(self.workflow.source.status.failures), 0)
 
         # We catch one error in the Sink
-        self.assertEquals(len(self.workflow.steps[0].status.records), 4)
-        self.assertEquals(len(self.workflow.steps[0].status.failures), 1)
+        self.assertEqual(len(self.workflow.steps[0].status.records), 4)
+        self.assertEqual(len(self.workflow.steps[0].status.failures), 1)
 
     @pytest.mark.order(3)
     def test_workflow_raise_status(self):
