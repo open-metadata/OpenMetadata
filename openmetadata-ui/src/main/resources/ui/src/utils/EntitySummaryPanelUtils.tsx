@@ -44,7 +44,7 @@ export interface HighlightedTagLabel extends TagLabel {
 const getTitleName = (data: EntityNameProps) =>
   getEntityName(data) || NO_DATA_PLACEHOLDER;
 
-const getTitle = ({
+export const getTitle = ({
   content,
   sourceUrl,
 }: {
@@ -68,6 +68,25 @@ const getTitle = ({
       {content}
     </Text>
   );
+};
+
+export const getSummaryListItemType = (
+  entityType: SummaryEntityType,
+  listItemInfo: Column | Field | Chart | Task | MlFeature
+) => {
+  switch (entityType) {
+    case SummaryEntityType.COLUMN:
+    case SummaryEntityType.FIELD:
+    case SummaryEntityType.MLFEATURE:
+    case SummaryEntityType.SCHEMAFIELD:
+      return (listItemInfo as Column | Field | MlFeature).dataType;
+    case SummaryEntityType.CHART:
+      return (listItemInfo as Chart).chartType;
+    case SummaryEntityType.TASK:
+      return (listItemInfo as Task).taskType;
+    default:
+      return '';
+  }
 };
 
 export const getSortedTagsWithHighlight = ({
@@ -132,10 +151,7 @@ export const getFormattedEntityData = (
           content: getTitleName(listItem),
           sourceUrl: (listItem as Chart | Task).sourceUrl,
         }),
-        type:
-          (listItem as Column | Field | MlFeature).dataType ??
-          (listItem as Chart).chartType ??
-          (listItem as Task).taskType,
+        type: getSummaryListItemType(entityType, listItem),
         tags: listItem.tags,
         description: listItem.description,
         ...(entityType === SummaryEntityType.COLUMN && {

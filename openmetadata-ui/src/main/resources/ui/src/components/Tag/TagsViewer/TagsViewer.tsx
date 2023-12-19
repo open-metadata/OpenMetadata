@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Tag, Typography } from 'antd';
+import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
@@ -132,17 +132,11 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   }
 
   if (sizeCap < 0) {
-    return (
-      <Row>
-        <Col className="d-flex flex-wrap" data-testid="tags-viewer" span={23}>
-          {sortedTagsBySource.map(getTagsElement)}
-        </Col>
-      </Row>
-    );
+    return <>{sortedTagsBySource.map(getTagsElement)}</>;
   }
 
   return (
-    <div data-testid="tags-viewer">
+    <>
       <div className="d-flex flex-wrap">
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </div>
@@ -150,7 +144,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         ? popoverRenderElement
         : readMoreRenderElement}
       {}
-    </div>
+    </>
   );
 };
 

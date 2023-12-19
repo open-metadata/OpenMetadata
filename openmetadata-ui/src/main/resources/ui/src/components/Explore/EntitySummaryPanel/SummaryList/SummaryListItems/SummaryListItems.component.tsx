@@ -82,7 +82,7 @@ function SummaryListItem({
             </Paragraph>
           </Col>
           {entityDetails.tags && entityDetails.tags.length !== 0 && (
-            <Col className="flex-grow" span={24}>
+            <Col className="flex-grow" data-testid="tags-viewer" span={24}>
               <TagsViewer
                 sizeCap={2}
                 tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
