@@ -15,7 +15,7 @@
 </div>
 
 - [What is OpenMetadata?](#what-is-openmetadata)
-- [Features](#features)
+- [Features](#some-of-the-key-features-of-openmetadata-are)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
 - [Roadmap](https://docs.open-metadata.org/releases/roadmap)
@@ -34,31 +34,33 @@ OpenMetadata consists of four main components:
 - **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
 - **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
 - **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 55 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
-- OpenMetadata also provides a user interface for data discovery and collaboration, where users can search, browse, explore, and annotate data assets and metadata entities.
-- OpenMetadata is an open source project that welcomes contributions from the community.
-
-## Features
-
-<div align='center'>    
-
-![11](https://github.com/open-metadata/OpenMetadata/assets/40225091/7846b745-b6e3-4ad3-b450-998b4d3b2180)
-![8](https://github.com/open-metadata/OpenMetadata/assets/40225091/50b6d871-2627-4330-bd15-f1710e04a915)
-![10](https://github.com/open-metadata/OpenMetadata/assets/40225091/b5b97e0d-1f0e-4e51-894a-375526331524)
-![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/0e2f80cd-0650-420f-b7ec-25232a327928)
-![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/d98ab2ab-248b-4c12-8958-df33c017fb5b)
-</div>
 
 ## Some of the key features of OpenMetadata are:
 
+<div align='center'>    
+
+![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/d98ab2ab-248b-4c12-8958-df33c017fb5b)
 - **Data Discovery**: This feature enables you to find and explore data assets and metadata entities using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
 
+![11](https://github.com/open-metadata/OpenMetadata/assets/40225091/7846b745-b6e3-4ad3-b450-998b4d3b2180)
+
 - **Data Collaboration**: This feature enables you to communicate and cooperate with other users and teams on data assets and metadata entities. You can get event notifications, send alerts, add announcements, create tasks, and use conversation threads.
-  
+
+![8](https://github.com/open-metadata/OpenMetadata/assets/40225091/50b6d871-2627-4330-bd15-f1710e04a915)
 - **Data Quality and Profiler**: This feature enables you to measure and monitor the quality and characteristics of your data assets. You can define and run data quality tests, group them into test suites, and view the results in an interactive dashboard.
+
+![10](https://github.com/open-metadata/OpenMetadata/assets/40225091/b5b97e0d-1f0e-4e51-894a-375526331524)
+- **Data Governance**: This feature enables you to enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms.
+
+![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/0e2f80cd-0650-420f-b7ec-25232a327928)
+</div>
+
+
+
+
+  
   
 - **Data Lineage**: This feature enables you to track and visualize the origin and transformation of your data assets. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
-  
-- **Data Governance**: This feature enables you to enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms.
   
 - **Data Documentation**: This feature enables you to document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations, and generate data dictionaries and data catalogs.
   
@@ -68,7 +70,7 @@ OpenMetadata consists of four main components:
   
 - **Webhooks**: This feature enables you to integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications, and integrate with Slack, Microsoft Teams, and Google Chat.
   
-- **Connectors**: This feature enables you to ingest metadata from various sources and tools using connectors. OpenMetadata supports about 55 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+- **Connectors**: This feature enables you to ingest metadata from various sources and tools using connectors. OpenMetadata supports about 77 connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
 
 ## Try our Sandbox
