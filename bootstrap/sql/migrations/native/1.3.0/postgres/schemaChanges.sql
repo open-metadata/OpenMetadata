@@ -49,3 +49,6 @@ set json = jsonb_set(
 )
 where name = 'OpenMetadata'
   and json #>> '{connection,config,secretsManagerProvider}' = 'noop';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;
