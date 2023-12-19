@@ -25,6 +25,7 @@ import {
   Position,
   useUpdateNodeInternals,
 } from 'reactflow';
+import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
@@ -37,7 +38,7 @@ import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import './custom-node.less';
 import { getColumnHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
-import { ModifiedColumn } from './EntityLineage.interface';
+import { EdgeTypeEnum, ModifiedColumn } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {
@@ -54,6 +55,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     nodes,
     edges,
     onColumnClick,
+    onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
   } = useLineageProvider();
@@ -70,10 +72,9 @@ const CustomNodeV1 = (props: NodeProps) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
-  const { hasDownstream, hasUpstream } = checkUpstreamDownstream(
-    id,
-    lineage ?? []
-  );
+  const { hasDownstream, hasUpstream } = useMemo(() => {
+    return checkUpstreamDownstream(id, lineage ?? []);
+  }, [id, lineage]);
 
   const isLeafNode = useMemo(() => {
     return (
@@ -81,6 +82,14 @@ const CustomNodeV1 = (props: NodeProps) => {
       (getIncomers(node, nodes, edges).length === 0 && hasUpstream)
     );
   }, [nodes, edges]);
+
+  // console.log(
+  //   node.fullyQualifiedName,
+  //   nodeType,
+  //   isLeafNode,
+  //   hasUpstream,
+  //   hasDownstream
+  // );
 
   const supportsColumns = useMemo(() => {
     if (node && node.entityType === EntityType.TABLE) {
@@ -168,6 +177,18 @@ const CustomNodeV1 = (props: NodeProps) => {
                 }}
               />
             )}
+            {hasDownstream && !isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
+                icon={<MinusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
+                }}
+              />
+            )}
           </>
         );
 
@@ -193,6 +214,30 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
+            {hasUpstream && !isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-left"
+                icon={<MinusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNodeCollapse(props, EdgeTypeEnum.UP_STREAM);
+                }}
+              />
+            )}
+            {hasDownstream && !isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
+                icon={<MinusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
+                }}
+              />
+            )}
           </>
         );
 
@@ -216,6 +261,42 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
+            {hasDownstream && !isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
+                icon={<MinusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
+                }}
+              />
+            )}
+            {hasUpstream && !isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-left"
+                icon={<MinusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNodeCollapse(props, EdgeTypeEnum.UP_STREAM);
+                }}
+              />
+            )}
+            {isLeafNode && !isEditMode && (
+              <Button
+                className="absolute lineage-node-handle flex-center react-flow__handle-right"
+                icon={<PlusIcon className="lineage-expand-icon" />}
+                shape="circle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  loadChildNodesHandler(node);
+                }}
+              />
+            )}
           </>
         );
     }

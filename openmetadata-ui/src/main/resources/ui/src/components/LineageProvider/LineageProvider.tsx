@@ -66,6 +66,7 @@ import {
   createEdges,
   createNodes,
   getColumnLineageData,
+  getConnectedNodesEdges,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -77,6 +78,7 @@ import EntityInfoDrawer from '../Entity/EntityInfoDrawer/EntityInfoDrawer.compon
 import AddPipeLineModal from '../Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
   EdgeData,
+  EdgeTypeEnum,
   ElementLoadingState,
   LineageConfig,
 } from '../Entity/EntityLineage/EntityLineage.interface';
@@ -793,6 +795,27 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setShowDeleteModal(true);
   }, []);
 
+  const onNodeCollapse = useCallback(
+    (node: Node, direction: EdgeTypeEnum) => {
+      const { nodeFqn } = getConnectedNodesEdges(node, nodes, edges, direction);
+
+      const updatedNodes = (entityLineage.nodes ?? []).filter(
+        (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
+      );
+
+      setEntityLineage((pre) => {
+        return {
+          ...pre,
+          nodes: updatedNodes,
+        };
+      });
+
+      const allNodes = createNodes(updatedNodes, entityLineage.edges ?? []);
+      setNodes(allNodes);
+    },
+    [nodes, edges, entityLineage]
+  );
+
   useEffect(() => {
     if (entityFqn) {
       fetchLineageData(entityFqn, lineageConfig);
@@ -821,6 +844,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onPaneClick,
       onConnect,
       onNodeDrop,
+      onNodeCollapse,
       onColumnClick,
       onNodesChange,
       onEdgesChange,
@@ -860,6 +884,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onPaneClick,
     onConnect,
     onNodeDrop,
+    onNodeCollapse,
     onColumnClick,
     onQueryFilterUpdate,
     onNodesChange,

@@ -10,19 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, MarkerType, Position } from 'reactflow';
+import dagre from 'dagre';
+import { isNil, isUndefined } from 'lodash';
+import {
+  Edge,
+  getConnectedEdges,
+  getIncomers,
+  getOutgoers,
+  MarkerType,
+  Node,
+  Position,
+} from 'reactflow';
+import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EdgeDetails } from '../components/Lineage/Lineage.interface';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NODE_HEIGHT, NODE_WIDTH } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
 } from '../enums/entity.enum';
-import { EntityReference } from '../generated/entity/type';
-
-import dagre from 'dagre';
-import { isNil, isUndefined } from 'lodash';
-import { EdgeDetails } from '../components/Lineage/Lineage.interface';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { NODE_HEIGHT, NODE_WIDTH } from '../constants/Lineage.constants';
 import { EntitiesEdge } from '../generated/api/lineage/addLineage';
+import { EntityReference } from '../generated/entity/type';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
@@ -263,5 +271,110 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     description: data?.edge?.description ?? '',
     pipeline: data?.edge?.pipeline ?? undefined,
     source: data?.edge?.source ?? '',
+  };
+};
+
+const checkTarget = (edgesObj: Edge[], id: string) => {
+  const edges = edgesObj.filter((ed) => {
+    return ed.target !== id;
+  });
+
+  return edges;
+};
+
+const checkSource = (edgesObj: Edge[], id: string) => {
+  const edges = edgesObj.filter((ed) => {
+    return ed.source !== id;
+  });
+
+  return edges;
+};
+
+const getOutgoersAndConnectedEdges = (
+  node: Node,
+  allNodes: Node[],
+  allEdges: Edge[],
+  currentNodeID: string
+) => {
+  const outgoers = getOutgoers(node, allNodes, allEdges);
+  const connectedEdges = checkTarget(
+    getConnectedEdges([node], allEdges),
+    currentNodeID
+  );
+
+  return { outgoers, connectedEdges };
+};
+
+const getIncomersAndConnectedEdges = (
+  node: Node,
+  allNodes: Node[],
+  allEdges: Edge[],
+  currentNodeID: string
+) => {
+  const outgoers = getIncomers(node, allNodes, allEdges);
+  const connectedEdges = checkSource(
+    getConnectedEdges([node], allEdges),
+    currentNodeID
+  );
+
+  return { outgoers, connectedEdges };
+};
+
+/**
+ * This function returns all downstream nodes and edges of given node.
+ * The output of this method is further passed to collapse downstream nodes and edges.
+ *
+ * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
+ * @param {Node[]} nodes - All nodes in the lineage.
+ * @param {Edge[]} edges - All edges in the lineage.
+ * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
+ * An object containing the downstream nodes and edges.
+ */
+export const getConnectedNodesEdges = (
+  selectedNode: Node,
+  nodes: Node[],
+  edges: Edge[],
+  direction: EdgeTypeEnum
+): { nodes: Node[]; edges: Edge[]; nodeFqn: string[] } => {
+  const visitedNodes = new Set();
+  const outgoers: Node[] = [];
+  const connectedEdges: Edge[] = [];
+  const stack: Node[] = [selectedNode];
+  const currentNodeID = selectedNode.id;
+
+  while (stack.length > 0) {
+    const currentNode = stack.pop();
+    if (currentNode && !visitedNodes.has(currentNode.id)) {
+      visitedNodes.add(currentNode.id);
+
+      const { outgoers: childNodes, connectedEdges: childEdges } =
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? getOutgoersAndConnectedEdges(
+              currentNode,
+              nodes,
+              edges,
+              currentNodeID
+            )
+          : getIncomersAndConnectedEdges(
+              currentNode,
+              nodes,
+              edges,
+              currentNodeID
+            );
+
+      stack.push(...childNodes);
+      outgoers.push(...childNodes);
+      connectedEdges.push(...childEdges);
+    }
+  }
+
+  const childNodeFqn = outgoers.map(
+    (node) => node.data.node.fullyQualifiedName
+  );
+
+  return {
+    nodes: outgoers,
+    edges: connectedEdges,
+    nodeFqn: childNodeFqn,
   };
 };
