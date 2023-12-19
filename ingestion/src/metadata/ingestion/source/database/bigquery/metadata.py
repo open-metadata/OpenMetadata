@@ -48,7 +48,8 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -306,7 +307,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 left=StackTraceError(
                     name="Tags and Classifications",
                     error=f"Skipping Policy Tag ingestion due to: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -635,7 +636,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

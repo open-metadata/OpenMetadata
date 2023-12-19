@@ -30,7 +30,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
@@ -160,7 +161,7 @@ class MetabaseSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error creating dashboard [{dashboard_details.name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -204,7 +205,7 @@ class MetabaseSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error creating chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -255,7 +256,7 @@ class MetabaseSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Lineage",
                         error=f"Error adding lineage: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

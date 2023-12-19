@@ -30,7 +30,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -103,7 +104,7 @@ class DomopipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.get("name", "unknown"),
                     error=f"Error extracting data from {pipeline_details.get('name', 'unknown')} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -111,7 +112,7 @@ class DomopipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.get("name", "unknown"),
                     error=f"Wild error ingesting pipeline {pipeline_details.get('name', 'unknown')} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -175,7 +176,7 @@ class DomopipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_fqn,
                     error=f"Error extracting status for {pipeline_id} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

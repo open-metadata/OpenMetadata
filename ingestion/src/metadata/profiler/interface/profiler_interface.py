@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.ingestion.api.models import StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -77,7 +77,7 @@ class ProfilerProcessorStatus(Status):
             StackTraceError(
                 name=self.entity if self.entity else "",
                 error=error,
-                stack_trace=stack_trace,
+                stackTrace=stack_trace,
             )
         )
 

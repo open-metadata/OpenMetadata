@@ -25,7 +25,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import Topic
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -137,7 +138,7 @@ class KinesisSource(MessagingServiceSource):
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -215,7 +216,7 @@ class KinesisSource(MessagingServiceSource):
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

@@ -14,7 +14,8 @@ Delete methods
 import traceback
 from typing import Dict, Iterable, Optional, Type
 
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.utils.logger import utils_logger
@@ -52,6 +53,6 @@ def delete_entity_from_source(
             left=StackTraceError(
                 name="Delete Entity",
                 error=f"Error deleting {entity_type.__class__}: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )

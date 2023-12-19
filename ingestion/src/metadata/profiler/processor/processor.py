@@ -20,7 +20,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
@@ -63,7 +64,7 @@ class ProfilerProcessor(Processor):
                 StackTraceError(
                     name=record.entity.fullyQualifiedName.__root__,
                     error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.__root__}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
             self.status.failures.extend(

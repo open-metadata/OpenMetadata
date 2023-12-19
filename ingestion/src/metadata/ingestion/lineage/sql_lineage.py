@@ -23,7 +23,8 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -326,7 +327,7 @@ def _create_lineage_by_table_name(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )
 
@@ -429,7 +430,7 @@ def get_lineage_by_query(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Ingesting lineage failed for service [{service_name}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )
 
@@ -470,6 +471,6 @@ def get_lineage_via_table_entity(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )

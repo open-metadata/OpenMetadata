@@ -32,7 +32,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -185,7 +186,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                                     "Error to yield dashboard lineage details for DB "
                                     f"service name [{db_service_name}]: {exc}"
                                 ),
-                                stack_trace=traceback.format_exc(),
+                                stackTrace=traceback.format_exc(),
                             )
                         )
 

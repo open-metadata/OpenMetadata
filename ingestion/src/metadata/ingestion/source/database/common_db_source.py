@@ -47,7 +47,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -469,7 +470,7 @@ class CommonDbSourceService(
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             yield Either(
                 left=StackTraceError(
-                    name=table_name, error=error, stack_trace=traceback.format_exc()
+                    name=table_name, error=error, stackTrace=traceback.format_exc()
                 )
             )
 

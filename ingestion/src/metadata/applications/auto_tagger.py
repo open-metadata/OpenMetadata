@@ -25,7 +25,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.models import StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
@@ -153,7 +153,7 @@ class AutoTaggerApp(AppRunner):
                     StackTraceError(
                         name=table.fullyQualifiedName.__root__,
                         error=f"Error computing PII tags for [{column}] - [{err}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

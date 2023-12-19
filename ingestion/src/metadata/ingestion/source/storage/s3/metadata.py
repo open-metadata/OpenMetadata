@@ -38,7 +38,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
@@ -159,7 +160,7 @@ class S3Source(StorageServiceSource):
                     StackTraceError(
                         name=bucket_response.name,
                         error=f"Validation error while creating Container from bucket details - {err}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
             except Exception as err:
@@ -167,7 +168,7 @@ class S3Source(StorageServiceSource):
                     StackTraceError(
                         name=bucket_response.name,
                         error=f"Wild error while creating Container from bucket details - {err}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

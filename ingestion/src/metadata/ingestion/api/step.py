@@ -90,7 +90,7 @@ class ReturnStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -98,7 +98,7 @@ class ReturnStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -145,7 +145,7 @@ class StageStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -153,7 +153,7 @@ class StageStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -194,7 +194,7 @@ class IterStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -202,7 +202,7 @@ class IterStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 

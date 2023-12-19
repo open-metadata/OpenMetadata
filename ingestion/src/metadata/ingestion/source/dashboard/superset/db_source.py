@@ -31,7 +31,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
@@ -131,7 +132,7 @@ class SupersetDBSource(SupersetSourceMixin):
                         f"Error yielding Dashboard [{dashboard_details.id} "
                         f"- {dashboard_details.dashboard_title}]: {exc}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -173,7 +174,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     left=StackTraceError(
                         name=chart_json.id,
                         error=f"Error yielding Chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -243,6 +244,6 @@ class SupersetDBSource(SupersetSourceMixin):
                         left=StackTraceError(
                             name=chart_json.table_name,
                             error=f"Error yielding Data Model [{chart_json.table_name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )

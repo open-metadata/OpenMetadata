@@ -26,7 +26,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.modeConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -157,7 +158,7 @@ class ModeSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -208,6 +209,6 @@ class ModeSource(DashboardServiceSource):
                         left=StackTraceError(
                             name=name,
                             error=f"Error to yield dashboard chart [{chart}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )

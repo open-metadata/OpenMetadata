@@ -22,7 +22,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.mstrConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -121,7 +122,7 @@ class MstrSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.id,
                     error=f"Error yielding dashboard for {dashboard_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -173,6 +174,6 @@ class MstrSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error creating chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )

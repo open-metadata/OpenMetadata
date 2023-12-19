@@ -18,11 +18,12 @@ from logging import Logger
 from pathlib import Path
 from typing import Dict, List
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StepSummary
 from pydantic import BaseModel
 from tabulate import tabulate
 
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.models import StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
@@ -42,15 +43,10 @@ class Failure(BaseModel):
     failures: List[StackTraceError]
 
 
-class Summary(BaseModel):
+class Summary(StepSummary):
     """
     Auxiliary class to calculate the summary of all statuses
     """
-
-    records = 0
-    warnings = 0
-    errors = 0
-    filtered = 0
 
     def __add__(self, other):
         self.records += other.records

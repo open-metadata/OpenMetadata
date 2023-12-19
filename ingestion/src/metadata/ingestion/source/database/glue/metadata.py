@@ -36,7 +36,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -143,7 +144,7 @@ class GlueSource(DatabaseServiceSource):
                             StackTraceError(
                                 name=schema.CatalogId,
                                 error=f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}",
-                                stack_trace=traceback.format_exc(),
+                                stackTrace=traceback.format_exc(),
                             )
                         )
 
@@ -191,7 +192,7 @@ class GlueSource(DatabaseServiceSource):
                         StackTraceError(
                             name=schema.Name,
                             error=f"Unexpected exception to get database schema [{schema.Name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -273,7 +274,7 @@ class GlueSource(DatabaseServiceSource):
                         StackTraceError(
                             name=table.Name,
                             error=f"Unexpected exception to get table [{table.Name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -316,7 +317,7 @@ class GlueSource(DatabaseServiceSource):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

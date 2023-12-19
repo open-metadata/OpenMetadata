@@ -1,0 +1,102 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/status.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IngestionStatus",
+  "description": "Ingestion detailed status",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.IngestionStatus",
+  "definitions": {
+    "stackTraceError": {
+      "title": "StackTraceError",
+      "type": "object",
+      "description": "Represents a failure status",
+      "properties": {
+        "name": {
+          "description": "Name of the asset with the error",
+          "type": "string"
+        },
+        "error": {
+          "description": "Error being handled",
+          "type": "string"
+        },
+        "stackTrace": {
+          "description": "Exception stack trace",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "error"]
+    },
+    "failure": {
+      "title": "Failure",
+      "type": "object",
+      "description": "Link step name with the encountered failure",
+      "properties": {
+        "name": {
+          "description": "Step name",
+          "type": "string"
+        },
+        "failures": {
+          "description": "List of errors in the step",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/stackTraceError"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name"]
+    },
+    "stepSummary": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.StepStatus",
+      "description": "Defines the summary status of each step executed in an Ingestion Pipeline.",
+      "properties": {
+        "name": {
+          "description": "Step name",
+          "type": "string"
+        },
+        "records": {
+          "description": "Number of successfully processed records.",
+          "type": "integer",
+          "default": 0
+        },
+        "warnings": {
+          "description": "Number of records raising warnings.",
+          "type": "integer",
+          "default": 0
+        },
+        "errors": {
+          "description": "Number of records with errors.",
+          "type": "integer",
+          "default": 0
+        },
+        "filtered": {
+          "description": "Number of filtered records.",
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name"]
+    }
+  },
+  "properties": {
+    "summary": {
+      "description": "Summary for each step of the ingestion pipeline",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/stepSummary"
+      }
+    },
+    "failures": {
+      "description": "List of failures encountered during the processing. We are only storing up to 20 errors each run.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/stackTraceError"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -32,7 +32,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
@@ -91,7 +92,7 @@ class SimpleSink(Sink):
     def _run(self, element: int) -> Either:
         if element == 2:
             return Either(
-                left=StackTraceError(name="bum", error="kaboom", stack_trace="trace")
+                left=StackTraceError(name="bum", error="kaboom", stackTrace="trace")
             )
 
         return Either(right=element)

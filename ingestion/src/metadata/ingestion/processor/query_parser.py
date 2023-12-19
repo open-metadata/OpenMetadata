@@ -20,7 +20,8 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -106,7 +107,7 @@ class QueryParserProcessor(Processor):
                         left=StackTraceError(
                             name="Query",
                             error=f"Error processing query [{table_query.query}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
