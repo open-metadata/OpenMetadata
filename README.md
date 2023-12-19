@@ -14,7 +14,15 @@
 
 </div>
 
-- [What is OpenMetadata?](#what-is-openmetadata)
+## What is OpenMetadata?
+[OpenMetadata](https://open-metadata.org/) is a unified platform for discovery, observability, and governance, powered by a central metadata repository, in-depth lineage, and seamless team collaboration. Based on Open Metadata Standards and APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
+<div align="center">
+    <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/ebfb4ec5-f0a2-4d58-8ce5-a082b5cf0f76" width=800>
+</div>
+
+<br />
+List of contents:
+
 - [Features](#some-of-the-key-features-of-openmetadata-are)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
@@ -23,11 +31,7 @@
 - [Contributors](#contributors)
 - [License](#license)
 
-## What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/) is a unified platform for discovery, observability, and governance, powered by a central metadata repository, in-depth lineage, and seamless team collaboration. Based on Open Metadata Standards and APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
-<div align="center">
-    <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/ebfb4ec5-f0a2-4d58-8ce5-a082b5cf0f76" width=800>
-</div>
+
 
 OpenMetadata consists of four main components:
 - **Metadata Schemas**: These are the core definitions and vocabulary for metadata, based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
