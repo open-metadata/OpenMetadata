@@ -26,9 +26,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
-import ClassificationDetails, {
-  ClassificationDetailsRef,
-} from '../../components/ClassificationDetails/ClassificationDetails';
+import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
+import { ClassificationDetailsRef } from '../../components/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import Loader from '../../components/Loader/Loader';
