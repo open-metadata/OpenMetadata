@@ -90,9 +90,12 @@ const DeleteWidgetModal = ({
       },
       {
         title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
-        description: `${
-          deleteMessage || getDeleteMessage(entityName, entityType)
-        } ${hardDeleteMessagePostFix}`,
+        description: (
+          <>
+            {deleteMessage ?? getDeleteMessage(entityName, entityType)}
+            {hardDeleteMessagePostFix}
+          </>
+        ),
         type: DeleteType.HARD_DELETE,
         isAllowed: true,
       },
