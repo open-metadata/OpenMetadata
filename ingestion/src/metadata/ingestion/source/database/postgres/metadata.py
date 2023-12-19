@@ -17,12 +17,12 @@ from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.engine import Inspector
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -49,20 +49,21 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
-    POSTGRES_TABLE_OWNERS,
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
+    get_etable_owner,
     get_table_comment,
+    get_table_owner,
     get_view_definition,
 )
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_owners,
     get_all_view_definitions,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -114,7 +115,11 @@ PGDialect.get_view_definition = get_view_definition
 PGDialect.get_columns = get_columns
 PGDialect.get_all_view_definitions = get_all_view_definitions
 
+PGDialect.get_all_table_owners = get_all_table_owners
+PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
+
+Inspector.get_table_owner = get_etable_owner
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -193,7 +198,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     )
 
     def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
+        self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
             POSTGRES_PARTITION_DETAILS.format(
@@ -245,23 +250,14 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    def get_table_owner(self, table_name, schema=None):
-        if self.all_table_owners.get((table_name, schema)):
-            return self.all_table_owners.get((table_name, schema))
-        result = self.connection.execute(POSTGRES_TABLE_OWNERS)
-        for table in result:
-            self.all_table_owners[(table[1], table[0])] = table[2]
-        return self.all_table_owners.get((table_name, schema))
-
-    def get_owner_detail(self, schema_name: str, table_name: str) -> Optional[str]:
-        """Get database owner
-        Args
-        schema_name, table_name
-        Returns:
-            Optional[EntityReference]
+    def get_owner_entity_reference(self, table_name, schema):
+        """
+        Returns owner's entity reference
         """
         owner = None
-        owner_name = self.get_table_owner(table_name, schema_name)
+        owner_name = self.inspector.get_table_owner(
+            connection=self.connection, table_name=table_name, schema=schema
+        )
         if not owner_name:
             return owner_name
         user_owner_fqn = fqn.build(
@@ -284,106 +280,41 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
         return owner
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Either[CreateTableRequest]]:
-        """
-        From topology.
-        Prepare a table request and pass it to the sink
-        """
-        table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
-        try:
-            (
-                columns,
-                table_constraints,
-                foreign_columns,
-            ) = self.get_columns_and_constraints(
-                schema_name=schema_name,
-                table_name=table_name,
-                db_name=self.context.database.name.__root__,
-                inspector=self.inspector,
-            )
-
-            view_definition = self.get_view_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
-            )
-            table_constraints = self.update_table_constraints(
-                table_constraints, foreign_columns
-            )
-            table_request = CreateTableRequest(
-                name=table_name,
-                tableType=table_type,
-                description=self.get_table_description(
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    inspector=self.inspector,
-                ),
-                columns=columns,
-                tableConstraints=table_constraints,
-                viewDefinition=view_definition,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
-                tags=self.get_tag_labels(
-                    table_name=table_name
-                ),  # Pick tags from context info, if any
-                sourceUrl=self.get_source_url(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    database_name=self.context.database.name.__root__,
-                    table_type=table_type,
-                ),
-                owner=self.get_owner_detail(schema_name, table_name),
-            )
-
-            is_partitioned, partition_details = self.get_table_partition_details(
-                table_name=table_name, schema_name=schema_name, inspector=self.inspector
-            )
-            if is_partitioned:
-                table_request.tableType = TableType.Partitioned.value
-                table_request.tablePartition = partition_details
-
-            yield Either(right=table_request)
-
-            # Register the request that we'll handle during the deletion checks
-            self.register_record(table_request=table_request)
-
-            # Flag view as visited
-            if table_type == TableType.View or view_definition:
-                table_view = TableView.parse_obj(
-                    {
-                        "table_name": table_name,
-                        "schema_name": schema_name,
-                        "db_name": self.context.database.name.__root__,
-                        "view_definition": view_definition,
-                    }
-                )
-                self.context.table_views.append(table_view)
-
-        except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            yield Either(
-                left=StackTraceError(
-                    name=table_name, error=error, stack_trace=traceback.format_exc()
-                )
-            )
-
     def process_owner(self, table_name_and_type: Tuple[str, str]):
         try:
             if self.source_config.includeOwners:
-                schema_name = self.context.database_schema.name.__root__
+                self.inspector.get_table_owner(
+                    connection=self.connection,
+                    table_name=table_name_and_type[0],
+                    schema=self.context.database_schema,
+                )
+                schema_name = self.context.database_schema
                 table_name = table_name_and_type[0]
-                owner = self.get_owner_detail(schema_name, table_name)
+
+                owner = self.get_owner_entity_reference(
+                    table_name=table_name, schema=schema_name
+                )
 
                 if owner:
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                        table_name=table_name,
+                    )
+                    table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
                     self.metadata.patch_owner(
-                        entity=Database,
-                        source=self.context.database,
+                        entity=Table,
+                        source=table_entity,
                         owner=owner,
                         force=False,
                     )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+            logger.warning(
+                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
+            )

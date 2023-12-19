@@ -28,17 +28,51 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
+    POSTGRES_TABLE_OWNERS,
     POSTGRES_VIEW_DEFINITIONS,
 )
 from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
+    get_table_owner_wrapper,
     get_view_definition_wrapper,
 )
 
 logger = utils_logger()
 
 OLD_POSTGRES_VERSION = "13.0"
+
+
+def get_etable_owner(
+    self, connection, table_name=None, schema=None
+):  # pylint: disable=unused-argument
+    """Return all materialized view names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:
+        return self.dialect.get_table_owner(
+            connection=conn,
+            query=POSTGRES_TABLE_OWNERS,
+            table_name=table_name,
+            schema=schema,
+        )
+
+
+@reflection.cache
+def get_table_owner(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_owner_wrapper(
+        self,
+        connection=connection,
+        query=POSTGRES_TABLE_OWNERS,
+        table_name=table_name,
+        schema=schema,
+    )
 
 
 @reflection.cache

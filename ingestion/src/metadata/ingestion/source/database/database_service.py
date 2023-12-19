@@ -167,7 +167,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=User,
                 context="owner",
                 processor="process_owner",
-                consumer=["dashboard_service"],
+                consumer=["database_service", "database_schema"],
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,

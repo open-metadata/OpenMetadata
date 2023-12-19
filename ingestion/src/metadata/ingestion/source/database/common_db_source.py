@@ -14,7 +14,7 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -110,7 +110,6 @@ class CommonDbSourceService(
         self.database_source_state = set()
         self.context.table_views = []
         self.context.table_constrains = []
-        self.all_table_owners: Dict[Tuple[str, str], str] = {}
         self.current_db: str = self.connection.engine.url.database
         super().__init__()
 
