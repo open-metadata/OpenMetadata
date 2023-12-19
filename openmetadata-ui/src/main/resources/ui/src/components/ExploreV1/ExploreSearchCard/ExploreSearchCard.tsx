@@ -24,19 +24,11 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityId,
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityId, getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import {
-  getEntityIcon,
-  getServiceIcon,
-  getUsagePercentile,
-} from '../../../utils/TableUtils';
+import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
@@ -102,16 +94,20 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           openInNewTab: false,
         });
       } else {
-        _otherDetails.push({
-          key: 'Domain',
-          value: '',
-        });
+        const entitiesWithoutDomain =
+          searchClassBase.getListOfEntitiesWithoutDomain();
+        if (!entitiesWithoutDomain.includes(source.entityType ?? '')) {
+          _otherDetails.push({
+            key: 'Domain',
+            value: '',
+          });
+        }
       }
 
       if (
-        source.entityType !== EntityType.GLOSSARY_TERM &&
-        source.entityType !== EntityType.TAG &&
-        source.entityType !== EntityType.DATA_PRODUCT
+        !searchClassBase
+          .getListOfEntitiesWithoutTier()
+          .includes((source.entityType ?? '') as EntityType)
       ) {
         _otherDetails.push({
           key: 'Tier',
@@ -132,11 +128,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source]);
 
     const serviceIcon = useMemo(() => {
-      return getServiceIcon(source);
+      return searchClassBase.getServiceIcon(source);
     }, [source]);
 
     const breadcrumbs = useMemo(
-      () => getEntityBreadcrumbs(source, source.entityType as EntityType, true),
+      () =>
+        searchClassBase.getEntityBreadcrumbs(
+          source,
+          source.entityType as EntityType,
+          true
+        ),
       [source]
     );
 
@@ -207,7 +208,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(getEntityName(source))}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
@@ -217,19 +218,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Link
                   className="no-underline line-height-22"
                   data-testid="entity-link"
-                  target={openEntityInNewPage ? '_blank' : '_self'}
-                  to={
-                    source.fullyQualifiedName && source.entityType
-                      ? getEntityLinkFromType(
-                          source.fullyQualifiedName,
-                          source.entityType as EntityType
-                        )
-                      : ''
-                  }>
+                  target={searchClassBase.getSearchEntityLinkTarget(
+                    source,
+                    openEntityInNewPage
+                  )}
+                  to={searchClassBase.getEntityLink(source)}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(getEntityName(source))}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
               </div>

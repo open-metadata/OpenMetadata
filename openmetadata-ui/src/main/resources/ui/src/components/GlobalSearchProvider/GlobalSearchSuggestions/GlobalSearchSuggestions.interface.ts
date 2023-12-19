@@ -34,6 +34,7 @@ export interface CommonSource {
   fullyQualifiedName: string;
   serviceType: string;
   name: string;
+  entityType: string;
 }
 
 export interface TableSource extends CommonSource {

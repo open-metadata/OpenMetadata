@@ -44,6 +44,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
@@ -145,7 +146,9 @@ export const DataAssetsHeader = ({
       dataAsset?.serviceType ? (
         <img
           className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(dataAsset.serviceType)}
+          src={serviceUtilClassBase.getServiceTypeLogo(
+            dataAsset as SearchSourceAlias
+          )}
         />
       ) : null,
     [dataAsset]

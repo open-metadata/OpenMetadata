@@ -21,6 +21,7 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -91,9 +92,9 @@ function DataAssetsVersionHeader({
   const logo = useMemo(
     () =>
       serviceUtilClassBase.getServiceTypeLogo(
-        currentVersionData.serviceType ?? ''
+        currentVersionData as SearchSourceAlias
       ),
-    [currentVersionData.serviceType]
+    [currentVersionData]
   );
 
   return (

@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
-import { ALL_EXPLORE_SEARCH_INDEX } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
@@ -27,6 +26,7 @@ import {
 } from '../../interface/search.interface';
 import { searchData } from '../../rest/miscAPI';
 import { Transi18next } from '../../utils/CommonUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import {
   filterOptionsByIndex,
   getGroupLabel,
@@ -187,6 +187,7 @@ const Suggestions = ({
             suggestions: dataProductSuggestions,
             searchIndex: SearchIndex.DATA_PRODUCT,
           },
+          ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
         )}
@@ -204,7 +205,7 @@ const Suggestions = ({
         '',
         '',
         '',
-        searchCriteria ?? ALL_EXPLORE_SEARCH_INDEX
+        searchCriteria ?? SearchIndex.ALL
       );
 
       if (res.data) {

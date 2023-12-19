@@ -33,10 +33,10 @@ import {
   emptyJsonTree,
   getQbConfigs,
 } from '../../../constants/AdvancedSearch.constants';
-import { tabsInfo } from '../../../constants/explore.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
@@ -53,6 +53,7 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 export const AdvanceSearchProvider = ({
   children,
 }: AdvanceSearchProviderProps) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();

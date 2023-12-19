@@ -39,11 +39,9 @@ import { MlmodelService } from '../../../generated/entity/services/mlmodelServic
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getEncodedFqn, stringToHTML } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -228,19 +226,12 @@ export default function EntitySummaryPanel({
         );
 
       default:
-        return null;
+        return searchClassBase.getEntitySummaryComponent(entity);
     }
   }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const entityLink = useMemo(
-    () =>
-      (entityDetails.details.fullyQualifiedName &&
-        entityDetails.details.entityType &&
-        getEntityLinkFromType(
-          entityDetails.details.fullyQualifiedName,
-          entityDetails.details.entityType as EntityType
-        )) ??
-      '',
+    () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType, getEncodedFqn]
   );
 
@@ -258,9 +249,14 @@ export default function EntitySummaryPanel({
           <Link
             className="no-underline"
             data-testid="entity-link"
+            target={searchClassBase.getSearchEntityLinkTarget(
+              entityDetails.details
+            )}
             to={entityLink}>
             <Typography.Text className="m-b-0 d-block summary-panel-title">
-              {stringToHTML(getEntityName(entityDetails.details))}
+              {stringToHTML(
+                searchClassBase.getEntityName(entityDetails.details)
+              )}
             </Typography.Text>
           </Link>
         )

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
@@ -381,3 +382,5 @@ export type RawSuggestResponse<
     }>;
   };
 };
+
+export type SearchSourceAlias = SearchedDataProps['data'][number]['_source'];
