@@ -134,7 +134,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         });
   }
 
-  /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
+  /**
+   * Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table
+   * DAO.
+   */
   private void validateReferences(List<MlFeature> mlFeatures) {
     for (MlFeature feature : mlFeatures) {
       if (!nullOrEmpty(feature.getFeatureSources())) {
@@ -198,8 +201,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   /**
-   * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
-   * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
+   * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly
+   * informed the Data Source EntityRef, then we will automatically build the lineage between tables
+   * and ML Model.
    */
   private void setMlFeatureSourcesLineage(MlModel mlModel) {
     if (mlModel.getMlFeatures() != null) {

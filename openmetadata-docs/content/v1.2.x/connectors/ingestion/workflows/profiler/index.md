@@ -20,7 +20,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 
 {% image
-  src="/images/v1.2/features/ingestion/workflows/profiler/profiler-summary-colomn.png"
+  src="/images/v1.2/features/ingestion/workflows/profiler/profiler-summary-column.png"
   alt="Column profile summary page"
   caption="Column profile summary page"
  /%}
