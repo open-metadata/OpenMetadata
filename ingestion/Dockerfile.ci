@@ -76,7 +76,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 USER airflow
-ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
+ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching

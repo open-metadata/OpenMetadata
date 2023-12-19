@@ -83,7 +83,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="1.3.0.0.dev0"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
