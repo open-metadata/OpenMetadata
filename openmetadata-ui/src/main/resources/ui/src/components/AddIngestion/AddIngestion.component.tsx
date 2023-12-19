@@ -129,7 +129,12 @@ const AddIngestion = ({
   };
 
   const createNewIngestion = (extraData: WorkflowExtraConfig) => {
-    const { name = '', enableDebugLog, ...rest } = workflowData ?? {};
+    const {
+      name = '',
+      enableDebugLog,
+      displayName,
+      ...rest
+    } = workflowData ?? {};
     const ingestionName = trim(name);
     setSaveState(LOADING_STATE.WAITING);
 
@@ -148,7 +153,7 @@ const AddIngestion = ({
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
-      displayName: ingestionName,
+      displayName: displayName,
       owner: {
         id: currentUser?.id ?? '',
         type: 'user',
@@ -194,12 +199,14 @@ const AddIngestion = ({
             : scheduleInterval,
           retries: extraData.retries,
         },
+        displayName: workflowData?.displayName,
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
           : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(omit(workflowData, ['name', 'enableDebugLog']) ?? {}),
+            ...(omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
+              {}),
           },
         },
       };
