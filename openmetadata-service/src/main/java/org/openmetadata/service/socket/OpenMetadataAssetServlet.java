@@ -34,7 +34,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   @Override
-  protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+      throws ServletException, IOException {
     setSecurityHeader(webConfiguration, resp);
     super.doGet(req, resp);
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {

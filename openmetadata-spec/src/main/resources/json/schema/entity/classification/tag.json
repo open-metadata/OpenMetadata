@@ -12,7 +12,7 @@
       "type": "string",
       "minLength": 2,
       "maxLength": 64,
-      "pattern": "^(?U)[\\w'\\- .&()]+$"
+      "pattern": "(?U)^[\\w'\\- .&()]+$"
     }
   },
   "properties": {

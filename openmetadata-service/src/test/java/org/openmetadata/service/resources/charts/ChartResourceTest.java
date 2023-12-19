@@ -169,7 +169,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a dashboard service, carry it forward from the chart
-    CreateDashboardService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateDashboardService createService =
+        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a chart without domain and ensure it inherits domain from the parent
@@ -181,17 +182,21 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create dashboard service with owner data consumer
     CreateDashboardService createDashboardService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create chart under it
     createEntity(
-        createRequest("chart").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+        createRequest("chart").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override
   @Execution(ExecutionMode.CONCURRENT)
-  public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  public Chart validateGetWithDifferentFields(Chart chart, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     chart =
         byName
@@ -213,7 +218,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public CreateChart createRequest(String name) {
-    return new CreateChart().withName(name).withService(getContainer().getName()).withChartType(ChartType.Area);
+    return new CreateChart()
+        .withName(name)
+        .withService(getContainer().getName())
+        .withChartType(ChartType.Area);
   }
 
   @Override
@@ -227,7 +235,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public void validateCreatedEntity(Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
     assertEquals(createRequest.getChartType(), chart.getChartType());
