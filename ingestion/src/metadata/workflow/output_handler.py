@@ -111,7 +111,7 @@ def get_failures(failure: Failure) -> List[Dict[str, str]]:
             "From": failure.name,
             "Entity Name": f.name,
             "Message": f.error,
-            "Stack Trace": f.stack_trace,
+            "Stack Trace": f.stackTrace,
         }
         for f in failure.failures
     ]

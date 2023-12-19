@@ -63,7 +63,7 @@ class Status(BaseModel):
         Add a failure to the list of failures
         """
         logger.warning(error.error)
-        logger.debug(error.stack_trace)
+        logger.debug(error.stackTrace)
         self.failures.append(error)
 
     def fail_all(self, failures: List[StackTraceError]) -> None:
