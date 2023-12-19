@@ -31,8 +31,11 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.custom_property_mixin import (
+    OMetaCustomPropertyMixin,
+)
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
@@ -53,10 +56,6 @@ from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.provider_registry import (
-    InvalidAuthProviderException,
-    auth_provider_registry,
-)
 from metadata.ingestion.ometa.routes import ROUTES
 from metadata.ingestion.ometa.utils import get_entity_type, model_str
 from metadata.utils.logger import ometa_logger
@@ -108,6 +107,7 @@ class OpenMetadata(
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
+    OMetaCustomPropertyMixin,
     Generic[T, C],
 ):
     """
@@ -119,7 +119,7 @@ class OpenMetadata(
     """
 
     client: REST
-    _auth_provider: AuthenticationProvider
+    _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
@@ -140,16 +140,7 @@ class OpenMetadata(
             config.secretsManagerLoader,
         ).get_secrets_manager()
 
-        # Load the auth provider init from the registry
-        auth_provider_fn = auth_provider_registry.registry.get(
-            self.config.authProvider.value
-        )
-        if not auth_provider_fn:
-            raise InvalidAuthProviderException(
-                f"Cannot find {self.config.authProvider.value} in {auth_provider_registry.registry}"
-            )
-
-        self._auth_provider = auth_provider_fn(self.config)
+        self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 

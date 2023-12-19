@@ -34,7 +34,9 @@ public class PrometheusEventMonitor extends EventMonitor {
   private static final String CLUSTER_TAG_NAME = "clusterName";
 
   public PrometheusEventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+      EventMonitorProvider eventMonitorProvider,
+      EventMonitorConfiguration config,
+      String clusterPrefix) {
     super(eventMonitorProvider, config, clusterPrefix);
     meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
   }
@@ -47,26 +49,24 @@ public class PrometheusEventMonitor extends EventMonitor {
 
     try {
       switch (event.getEventType()) {
-        case ENTITY_DELETED:
-        case ENTITY_SOFT_DELETED:
-        case ENTITY_CREATED:
-          incrementIngestionPipelineCounter(fqn, pipelineType, event.getEventType().value());
-          break;
-        case ENTITY_UPDATED:
-          // we can have multiple updates bundled together
-          event
-              .getChangeDescription()
-              .getFieldsUpdated()
-              .forEach(
-                  change -> {
-                    if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
-                      PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
-                      incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
-                    }
-                  });
-          break;
-        default:
-          throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
+        case ENTITY_DELETED,
+            ENTITY_SOFT_DELETED,
+            ENTITY_CREATED -> incrementIngestionPipelineCounter(
+            fqn, pipelineType, event.getEventType().value());
+        case ENTITY_UPDATED ->
+        // we can have multiple updates bundled together
+        event
+            .getChangeDescription()
+            .getFieldsUpdated()
+            .forEach(
+                change -> {
+                  if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
+                    PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
+                    incrementIngestionPipelineCounter(
+                        fqn, pipelineType, pipelineStatus.getPipelineState().value());
+                  }
+                });
+        default -> throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
       }
     } catch (IllegalArgumentException | CloudWatchException e) {
       LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to " + e.getMessage());

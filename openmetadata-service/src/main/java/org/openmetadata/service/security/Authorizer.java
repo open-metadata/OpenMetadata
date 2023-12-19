@@ -37,7 +37,9 @@ public interface Authorizer {
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
 
   void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext);
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext);
 
   void authorizeAdmin(SecurityContext securityContext);
 

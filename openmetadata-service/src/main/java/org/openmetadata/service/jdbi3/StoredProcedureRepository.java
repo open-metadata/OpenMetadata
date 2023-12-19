@@ -35,7 +35,9 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public void setFullyQualifiedName(StoredProcedure storedProcedure) {
     storedProcedure.setFullyQualifiedName(
-        FullyQualifiedName.add(storedProcedure.getDatabaseSchema().getFullyQualifiedName(), storedProcedure.getName()));
+        FullyQualifiedName.add(
+            storedProcedure.getDatabaseSchema().getFullyQualifiedName(),
+            storedProcedure.getName()));
   }
 
   @Override
@@ -68,9 +70,11 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public StoredProcedure setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
+  public StoredProcedure setInheritedFields(
+      StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owner,domain", ALL);
+        Entity.getEntity(
+            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owner,domain", ALL);
     inheritOwner(storedProcedure, fields, schema);
     inheritDomain(storedProcedure, fields, schema);
     return storedProcedure;
@@ -79,8 +83,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public void setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     setDefaultFields(storedProcedure);
-    storedProcedure.setSourceHash(fields.contains("sourceHash") ? storedProcedure.getSourceHash() : null);
-    storedProcedure.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
+    storedProcedure.setSourceHash(
+        fields.contains("sourceHash") ? storedProcedure.getSourceHash() : null);
+    storedProcedure.setFollowers(
+        fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
   }
 
   @Override
@@ -91,11 +97,15 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   private void setDefaultFields(StoredProcedure storedProcedure) {
     EntityReference schemaRef = getContainer(storedProcedure.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
-    storedProcedure.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
+    storedProcedure
+        .withDatabaseSchema(schemaRef)
+        .withDatabase(schema.getDatabase())
+        .withService(schema.getService());
   }
 
   @Override
-  public StoredProcedureUpdater getUpdater(StoredProcedure original, StoredProcedure updated, Operation operation) {
+  public StoredProcedureUpdater getUpdater(
+      StoredProcedure original, StoredProcedure updated, Operation operation) {
     return new StoredProcedureUpdater(original, updated, operation);
   }
 
@@ -107,13 +117,18 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   public void setService(StoredProcedure storedProcedure, EntityReference service) {
     if (service != null && storedProcedure != null) {
       addRelationship(
-          service.getId(), storedProcedure.getId(), service.getType(), STORED_PROCEDURE, Relationship.CONTAINS);
+          service.getId(),
+          storedProcedure.getId(),
+          service.getType(),
+          STORED_PROCEDURE,
+          Relationship.CONTAINS);
       storedProcedure.setService(service);
     }
   }
 
   public class StoredProcedureUpdater extends EntityUpdater {
-    public StoredProcedureUpdater(StoredProcedure original, StoredProcedure updated, Operation operation) {
+    public StoredProcedureUpdater(
+        StoredProcedure original, StoredProcedure updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -122,7 +137,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     public void entitySpecificUpdate() {
       // storedProcedureCode is a required field. Cannot be null.
       if (updated.getStoredProcedureCode() != null) {
-        recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+        recordChange(
+            "storedProcedureCode",
+            original.getStoredProcedureCode(),
+            updated.getStoredProcedureCode());
       }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

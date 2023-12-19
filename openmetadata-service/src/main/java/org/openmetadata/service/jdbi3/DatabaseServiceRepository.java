@@ -21,7 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 
 @Slf4j
-public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
+public class DatabaseServiceRepository
+    extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
   public DatabaseServiceRepository() {
     super(
         DatabaseServiceResource.COLLECTION_PATH,

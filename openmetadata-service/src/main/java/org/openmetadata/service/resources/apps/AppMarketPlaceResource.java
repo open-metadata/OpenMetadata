@@ -57,12 +57,15 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apps/marketplace")
-@Tag(name = "Apps", description = "Apps marketplace holds to application available for Open-metadata")
+@Tag(
+    name = "Apps",
+    description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apps/marketplace", order = 8)
 @Slf4j
-public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
+public class AppMarketPlaceResource
+    extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
 
@@ -72,7 +75,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       this.pipelineServiceClient =
-          PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
+          PipelineServiceClientFactory.createPipelineServiceClient(
+              config.getPipelineServiceClientConfiguration());
 
       // Initialize Default Installed Applications
       List<CreateAppMarketPlaceDefinitionReq> createAppMarketPlaceDefinitionReqs =
@@ -124,16 +128,22 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tests before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -143,7 +153,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -156,12 +167,16 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "List of installed application versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -182,7 +197,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
       })
   public AppMarketPlaceDefinition get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -216,7 +232,9 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
       })
   public AppMarketPlaceDefinition getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -242,13 +260,19 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
-        @ApiResponse(responseCode = "404", description = "App for instance {id} and version {version} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "App for instance {id} and version {version} is not found")
       })
   public AppMarketPlaceDefinition getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "KPI version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -276,7 +300,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
-    AppMarketPlaceDefinition app = getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
+    AppMarketPlaceDefinition app =
+        getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, app);
   }
 
@@ -286,18 +311,24 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
       operationId = "patchApplication",
       summary = "Updates a App",
       description = "Update an existing App using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchApplication(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -311,13 +342,17 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "The updated Application Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
-    AppMarketPlaceDefinition app = getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
+    AppMarketPlaceDefinition app =
+        getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
@@ -338,7 +373,9 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
@@ -359,7 +396,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
@@ -379,7 +417,9 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
                     schema = @Schema(implementation = AppMarketPlaceDefinition.class)))
       })
   public Response restoreApp(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
