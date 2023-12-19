@@ -101,6 +101,6 @@ RUN if [[ $(uname -m) == "arm64" ]]; \
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
-# while authrenticating connection with the airflow, psycopg2 solves this error
+# while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1

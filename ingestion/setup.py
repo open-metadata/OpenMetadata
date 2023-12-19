@@ -13,13 +13,13 @@
 Python Dependencies
 """
 
-from typing import Dict, Set
+from typing import Dict, List, Set
 
 from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.6.3",
+    "airflow": "apache-airflow==2.7.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
@@ -29,7 +29,7 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas<=2,<3",
-    "pyarrow": "pyarrow~=10.0",
+    "pyarrow": "pyarrow~=14.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -304,6 +304,20 @@ e2e_test = {
     "pytest-base-url",
 }
 
+
+def filter_requirements(filtered: Set[str]) -> List[str]:
+    """Filter out requirements from base_requirements"""
+    return list(
+        base_requirements.union(
+            *[
+                requirements
+                for plugin, requirements in plugins.items()
+                if plugin not in filtered
+            ]
+        )
+    )
+
+
 setup(
     install_requires=list(base_requirements),
     extras_require={
@@ -313,14 +327,9 @@ setup(
         "e2e_test": list(e2e_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        "all": list(
-            base_requirements.union(
-                *[
-                    requirements
-                    for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow", "db2", "great-expectations"}
-                ]
-            )
+        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "slim": filter_requirements(
+            {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
         ),
     },
 )
