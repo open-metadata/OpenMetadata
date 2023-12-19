@@ -259,7 +259,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     confirmDelete: boolean
   ): Promise<void> => {
     if (confirmDelete && entityLineage) {
-      const { data, id } = edge;
+      const { data } = edge;
       const edgeData: EdgeData = {
         fromEntity: data.edge.fromEntity.type,
         fromId: data.edge.fromEntity.id,
@@ -268,9 +268,33 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       };
 
       await removeLineageHandler(edgeData);
-      setEdges((prevEdges) => {
-        return prevEdges.filter((e) => e.id !== id);
+
+      const updatedEdges = entityLineage.edges?.filter(
+        (item) =>
+          !(
+            item.fromEntity.id === edgeData.fromId &&
+            item.toEntity.id === edgeData.toId
+          )
+      );
+
+      setEntityLineage((prev) => {
+        return {
+          ...prev,
+          edges: updatedEdges,
+        };
       });
+
+      const newNodes = createNodes(
+        entityLineage.nodes ?? [],
+        updatedEdges ?? []
+      );
+      const newEdges = createEdges(
+        entityLineage.nodes ?? [],
+        updatedEdges ?? []
+      );
+
+      setNodes(newNodes);
+      setEdges(newEdges);
     }
   };
 

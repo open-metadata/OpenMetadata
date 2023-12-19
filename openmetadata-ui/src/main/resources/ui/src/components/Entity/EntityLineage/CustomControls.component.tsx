@@ -13,7 +13,6 @@
 
 import { FilterOutlined, SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
-import Input from 'antd/lib/input/Input';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -26,20 +25,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Node, useReactFlow } from 'reactflow';
+import { Node } from 'reactflow';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
 import { PRIMERY_COLOR } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import {
-  MAX_ZOOM_VALUE,
-  MIN_ZOOM_VALUE,
-  ZOOM_BUTTON_STEP,
-  ZOOM_SLIDER_STEP,
-  ZOOM_TRANSITION_DURATION,
-} from '../../../constants/Lineage.constants';
+import { ZOOM_TRANSITION_DURATION } from '../../../constants/Lineage.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   QueryFieldInterface,
@@ -50,7 +43,6 @@ import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../../utils/Explore.utils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
@@ -59,9 +51,6 @@ import LineageConfigModal from './LineageConfigModal';
 
 const CustomControls: FC<ControlProps> = ({
   style,
-  showFitView = true,
-  showZoom = true,
-  fitViewParams,
   className,
   deleted,
   hasEditAccess,
@@ -69,7 +58,6 @@ const CustomControls: FC<ControlProps> = ({
   onExitFullScreenViewClick,
 }: ControlProps) => {
   const { t } = useTranslation();
-  const { fitView, zoomTo } = useReactFlow();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
     nodes,
@@ -104,41 +92,6 @@ const CustomControls: FC<ControlProps> = ({
       onClick: handleMenuClick,
     }));
   }, [filters]);
-
-  const onZoomHandler = useCallback(
-    (zoomLevel: number) => {
-      zoomTo?.(zoomLevel, { duration: ZOOM_TRANSITION_DURATION });
-    },
-    [zoomTo]
-  );
-
-  const onZoomInHandler = useCallback(() => {
-    setZoom((pre) => {
-      const zoomInValue = pre < MAX_ZOOM_VALUE ? pre + ZOOM_BUTTON_STEP : pre;
-      onZoomHandler(zoomInValue);
-
-      return zoomInValue;
-    });
-  }, [onZoomHandler]);
-
-  const onZoomOutHandler = useCallback(() => {
-    setZoom((pre) => {
-      const zoomOutValue = pre > MIN_ZOOM_VALUE ? pre - ZOOM_BUTTON_STEP : pre;
-      onZoomHandler(zoomOutValue);
-
-      return zoomOutValue;
-    });
-  }, [onZoomHandler]);
-
-  const onFitViewHandler = useCallback(() => {
-    fitView?.(fitViewParams);
-  }, [fitView, fitViewParams]);
-
-  const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const zoomValue = parseFloat(event.target.value);
-    onZoomHandler(zoomValue);
-    setZoom(zoomValue);
-  };
 
   useEffect(() => {
     if (zoomValue !== zoom) {
@@ -283,7 +236,7 @@ const CustomControls: FC<ControlProps> = ({
         className={classNames('z-10 w-full', className)}
         gutter={[8, 8]}
         style={style}>
-        <Col span={12}>
+        <Col flex="auto">
           <Select
             allowClear
             showSearch
@@ -316,7 +269,7 @@ const CustomControls: FC<ControlProps> = ({
             />
           </Space>
         </Col>
-        <Col span={12}>
+        <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
             <Button
               ghost
@@ -329,61 +282,6 @@ const CustomControls: FC<ControlProps> = ({
                 : t('label.expand-all')}
             </Button>
 
-            {showZoom && (
-              <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide items-center">
-                <Button
-                  className={classNames('control-button', 'p-y-0')}
-                  data-testid="zoom-in-button"
-                  icon={
-                    <SVGIcons
-                      alt="minus-icon"
-                      icon="icon-control-minus"
-                      width="12"
-                    />
-                  }
-                  type="text"
-                  onClick={onZoomOutHandler}
-                />
-
-                <Input
-                  className="border-none bg-transparent p-0"
-                  data-testid="lineage-zoom-slider"
-                  max={MAX_ZOOM_VALUE}
-                  min={MIN_ZOOM_VALUE}
-                  step={ZOOM_SLIDER_STEP}
-                  type="range"
-                  value={zoom}
-                  onChange={onRangeChange}
-                />
-
-                <Button
-                  className={classNames('control-button', 'p-y-0')}
-                  data-testid="zoom-out-button"
-                  icon={
-                    <SVGIcons
-                      alt="plus-icon"
-                      icon="icon-control-plus"
-                      width="12"
-                    />
-                  }
-                  type="text"
-                  onClick={onZoomInHandler}
-                />
-              </div>
-            )}
-            {showFitView && (
-              <Button
-                className=" custom-control-fit-screen-button"
-                data-testid="fit-to-screen"
-                icon={
-                  <span className="anticon">
-                    <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
-                  </span>
-                }
-                title={t('label.fit-to-screen')}
-                onClick={onFitViewHandler}
-              />
-            )}
             {handleFullScreenViewClick && (
               <Button
                 className="custom-control-fit-screen-button"

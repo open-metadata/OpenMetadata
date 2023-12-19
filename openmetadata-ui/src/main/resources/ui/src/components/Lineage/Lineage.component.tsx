@@ -16,7 +16,7 @@ import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, { DragEvent, useCallback, useEffect, useRef } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import ReactFlow, { Background, ReactFlowProvider } from 'reactflow';
+import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -133,12 +133,8 @@ const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
             onPaneClick={onPaneClick}>
             {entityLineage && (
               <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full p-md"
+                className="absolute top-1 right-1 p-xs"
                 deleted={deleted}
-                fitViewParams={{
-                  minZoom: MIN_ZOOM_VALUE,
-                  maxZoom: MAX_ZOOM_VALUE,
-                }}
                 handleFullScreenViewClick={
                   !isFullScreen ? onFullScreenClick : undefined
                 }
@@ -149,6 +145,7 @@ const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
               />
             )}
             <Background gap={12} size={1} />
+            <Controls position="bottom-right" showInteractive={false} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>

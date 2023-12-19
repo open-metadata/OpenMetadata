@@ -13,7 +13,7 @@
 
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
-import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
+import { Edge as FlowEdge, Node } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
@@ -107,9 +107,6 @@ export enum EdgeTypeEnum {
 }
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  showZoom?: boolean;
-  showFitView?: boolean;
-  fitViewParams?: FitViewOptions;
   onFitView?: () => void;
   handleFullScreenViewClick?: () => void;
   onExitFullScreenViewClick?: () => void;
