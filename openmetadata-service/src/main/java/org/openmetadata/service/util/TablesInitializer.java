@@ -73,15 +73,23 @@ public final class TablesInitializer {
         OPTION_FORCE_MIGRATIONS,
         true,
         "Ignore the server checksum and force migrations to be run again");
-    OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
-    OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
+    OPTIONS.addOption(
+        null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
+    OPTIONS.addOption(
+        null,
+        SchemaMigrationOption.DROP.toString(),
+        false,
+        "Drop all the tables in the target database");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.CHECK_CONNECTION.toString(),
         false,
         "Check the connection for configured data source");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.MIGRATE.toString(), false, "Execute schema migration from last check point");
+        null,
+        SchemaMigrationOption.MIGRATE.toString(),
+        false,
+        "Execute schema migration from last check point");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.INFO.toString(),
@@ -99,12 +107,25 @@ public final class TablesInitializer {
         "Repairs the DATABASE_CHANGE_LOG by "
             + "removing failed migrations and correcting checksum of existing migration script");
     OPTIONS.addOption(
-        null, DISABLE_VALIDATE_ON_MIGRATE, false, "Disable flyway validation checks while running migrate");
+        null,
+        DISABLE_VALIDATE_ON_MIGRATE,
+        false,
+        "Disable flyway validation checks while running migrate");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_CREATE.toString(), false, "Creates all the indexes in the elastic search");
+        null,
+        SchemaMigrationOption.ES_CREATE.toString(),
+        false,
+        "Creates all the indexes in the elastic search");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
-    OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
+        null,
+        SchemaMigrationOption.ES_DROP.toString(),
+        false,
+        "Drop all the indexes in the elastic search");
+    OPTIONS.addOption(
+        null,
+        SchemaMigrationOption.ES_MIGRATE.toString(),
+        false,
+        "Update Elastic Search index mapping");
   }
 
   private TablesInitializer() {}
@@ -142,13 +163,16 @@ public final class TablesInitializer {
 
     if (commandLine.hasOption(SchemaMigrationOption.DROP.toString())) {
       printToConsoleMandatory(
-          "You are about drop all the data in the database. ALL METADATA WILL BE DELETED. \nThis is"
-              + " not recommended for a Production setup or any deployment where you have collected \na lot of "
-              + "information from the users, such as descriptions, tags, etc.\n");
+          """
+                      You are about drop all the data in the database. ALL METADATA WILL BE DELETED.\s
+                      This is not recommended for a Production setup or any deployment where you have collected\s
+                      a lot of information from the users, such as descriptions, tags, etc.
+                      """);
       String input = "";
       Scanner scanner = new Scanner(System.in);
       while (!input.equals("DELETE")) {
-        printToConsoleMandatory("Enter QUIT to quit. If you still want to continue, please enter DELETE: ");
+        printToConsoleMandatory(
+            "Enter QUIT to quit. If you still want to continue, please enter DELETE: ");
         input = scanner.next();
         if (input.equals("QUIT")) {
           printToConsoleMandatory("\nExiting without deleting data");
@@ -161,7 +185,8 @@ public final class TablesInitializer {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
     OpenMetadataApplicationConfig config =
         factory.build(
             new SubstitutingSourceProvider(
@@ -179,7 +204,9 @@ public final class TablesInitializer {
             databaseAuthenticationProvider -> {
               String token =
                   databaseAuthenticationProvider.authenticate(
-                      dataSourceFactory.getUrl(), dataSourceFactory.getUser(), dataSourceFactory.getPassword());
+                      dataSourceFactory.getUrl(),
+                      dataSourceFactory.getUser(),
+                      dataSourceFactory.getPassword());
               dataSourceFactory.setPassword(token);
             });
 
@@ -203,17 +230,30 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
     try {
-      execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath, extensionSQLScriptRootPath);
+      execute(
+          config,
+          flyway,
+          schemaMigrationOptionSpecified,
+          nativeSQLScriptRootPath,
+          extensionSQLScriptRootPath);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
+      printError(
+          schemaMigrationOptionSpecified
+              + "option failed with : "
+              + ExceptionUtils.getStackTrace(e));
       System.exit(1);
     }
     System.exit(0);
   }
 
   static Flyway get(
-      String url, String user, String password, String scriptRootPath, String dbSubType, boolean validateOnMigrate) {
+      String url,
+      String user,
+      String password,
+      String scriptRootPath,
+      String dbSubType,
+      boolean validateOnMigrate) {
     printToConsoleInDebug(
         "Url:"
             + url
@@ -255,20 +295,25 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+        .setSqlLocator(
+            new ConnectionAwareAnnotationSqlLocator(
+                config.getDataSourceFactory().getDriverClass()));
     SearchRepository searchRepository =
         new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
 
     // Initialize secrets manager
-    SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
+    SecretsManagerFactory.createSecretsManager(
+        config.getSecretsManagerConfiguration(), config.getClusterName());
 
     switch (schemaMigrationOption) {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
           DatabaseMetaData databaseMetaData = connection.getMetaData();
           try (ResultSet resultSet =
-              databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)) {
-            // If the database has any entity like views, tables etc, resultSet.next() would return true here
+              databaseMetaData.getTables(
+                  connection.getCatalog(), connection.getSchema(), "", null)) {
+            // If the database has any entity like views, tables etc, resultSet.next() would return
+            // true here
             if (resultSet.next()) {
               throw new SQLException(
                   "Please use an empty database or use \"migrate\" if you are already running a "
@@ -328,7 +373,8 @@ public final class TablesInitializer {
         searchRepository.dropIndexes();
         break;
       default:
-        throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
+        throw new SQLException(
+            "SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
   }
 
@@ -352,7 +398,8 @@ public final class TablesInitializer {
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
+        new MigrationWorkflow(
+            jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();

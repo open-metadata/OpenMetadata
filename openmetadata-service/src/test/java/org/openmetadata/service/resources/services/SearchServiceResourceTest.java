@@ -34,7 +34,8 @@ import org.openmetadata.service.resources.services.searchIndexes.SearchServiceRe
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest
+    extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,
@@ -84,7 +85,8 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-    createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
+    createAndCheckEntity(
+        createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -93,9 +95,13 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     SearchConnection connection1 =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
+        new SearchConnection()
+            .withConfig(
+                new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
     SearchService service =
-        createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withDescription(null).withConnection(connection1),
+            ADMIN_AUTH_HEADERS);
 
     ElasticSearchConnection credentials2 =
         new ElasticSearchConnection().withHostPort(new URI("https://localhost:9400"));
@@ -103,7 +109,8 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
 
     // Update SearchService description and connection
 
-    CreateSearchService update = createRequest(test).withDescription("description1").withConnection(connection2);
+    CreateSearchService update =
+        createRequest(test).withDescription("description1").withConnection(connection2);
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -116,15 +123,19 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
     SearchService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    SearchService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    SearchService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     SearchService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -142,7 +153,9 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
         .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
         .withConnection(
             new SearchConnection()
-                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
+                .withConfig(
+                    new ElasticSearchConnection()
+                        .withHostPort(CommonUtil.getUri("http://localhost:9200"))));
   }
 
   @Override
@@ -155,7 +168,8 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   }
 
   @Override
-  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      SearchService expected, SearchService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -196,12 +210,14 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
       CreateSearchService.SearchServiceType serviceType) {
     if (expectedConnection != null && actualConnection != null) {
       if (serviceType == CreateSearchService.SearchServiceType.ElasticSearch) {
-        ElasticSearchConnection expectedESConnection = (ElasticSearchConnection) expectedConnection.getConfig();
+        ElasticSearchConnection expectedESConnection =
+            (ElasticSearchConnection) expectedConnection.getConfig();
         ElasticSearchConnection actualESConnection;
         if (actualConnection.getConfig() instanceof ElasticSearchConnection) {
           actualESConnection = (ElasticSearchConnection) actualConnection.getConfig();
         } else {
-          actualESConnection = JsonUtils.convertValue(actualConnection.getConfig(), ElasticSearchConnection.class);
+          actualESConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), ElasticSearchConnection.class);
         }
         assertEquals(expectedESConnection.getHostPort(), actualESConnection.getHostPort());
       }

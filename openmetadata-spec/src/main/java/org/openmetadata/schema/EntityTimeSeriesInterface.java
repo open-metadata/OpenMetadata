@@ -12,7 +12,8 @@ import org.openmetadata.schema.type.EntityReference;
 
 public interface EntityTimeSeriesInterface {
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
-  Map<String, Class<? extends EntityTimeSeriesInterface>> ENTITY_TYPE_TO_CLASS_MAP = new HashMap<>();
+  Map<String, Class<? extends EntityTimeSeriesInterface>> ENTITY_TYPE_TO_CLASS_MAP =
+      new HashMap<>();
 
   UUID getId();
 
@@ -43,6 +44,8 @@ public interface EntityTimeSeriesInterface {
   default EntityReference getEntityReference() {
     return new EntityReference()
         .withId(getId())
-        .withType(CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)));
+        .withType(
+            CANONICAL_ENTITY_NAME_MAP.get(
+                this.getClass().getSimpleName().toLowerCase(Locale.ROOT)));
   }
 }
