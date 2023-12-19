@@ -407,7 +407,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(String fqn, int depth, String queryFilter) throws IOException {
+  public Response searchLineage(String fqn, int upstreamDepth, int downstreamDepth, String queryFilter)
+      throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
@@ -420,8 +421,8 @@ public class ElasticSearchClient implements SearchClient {
     for (var hit : searchResponse.getHits().getHits()) {
       responseMap.put("entity", hit.getSourceAsMap());
     }
-    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword");
-    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword");
+    getLineage(fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword");
+    getLineage(fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword");
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -1122,7 +1123,6 @@ public class ElasticSearchClient implements SearchClient {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
           new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
-      //      String scriptTxt = "ctx._source.lineage.add(params.lineageData)";
       Map<String, Object> params = Collections.singletonMap("lineageData", lineageData);
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
       updateByQueryRequest.setScript(script);

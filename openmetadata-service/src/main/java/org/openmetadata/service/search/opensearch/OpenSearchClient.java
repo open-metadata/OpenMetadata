@@ -410,7 +410,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(String fqn, int Depth, String queryFilter) throws IOException {
+  public Response searchLineage(String fqn, int upstreamDepth, int downstreamDepth, String queryFilter)
+      throws IOException {
     return Response.status(OK).build();
   }
 

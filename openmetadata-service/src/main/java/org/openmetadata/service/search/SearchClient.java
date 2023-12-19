@@ -72,7 +72,7 @@ public interface SearchClient {
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
-  Response searchLineage(String fqn, int Depth, String queryFilter) throws IOException;
+  Response searchLineage(String fqn, int upstreamDepth, int downstreamDepth, String queryFilter) throws IOException;
 
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
