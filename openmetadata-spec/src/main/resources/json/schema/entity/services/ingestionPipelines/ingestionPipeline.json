@@ -39,6 +39,10 @@
         "endDate": {
           "description": "endDate of the pipeline run for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "description": "Ingestion Pipeline summary status. Informed at the end of the execution.",
+          "$ref": "status.json"
         }
       },
       "additionalProperties": false

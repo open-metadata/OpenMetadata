@@ -18,7 +18,7 @@ from logging import Logger
 from pathlib import Path
 from typing import Dict, List
 
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StepSummary
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StepSummary, Failure
 from pydantic import BaseModel
 from tabulate import tabulate
 
@@ -32,15 +32,6 @@ from metadata.utils.logger import ANSI, log_ansi_encoded_string
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
 WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
-
-
-class Failure(BaseModel):
-    """
-    Auxiliary class to print the error per status
-    """
-
-    name: str
-    failures: List[StackTraceError]
 
 
 class Summary(StepSummary):
@@ -58,7 +49,7 @@ class Summary(StepSummary):
 
 class WorkflowType(Enum):
     """
-    Workflow type enums
+    Workflow type enums based on the `metadata` CLI commands
     """
 
     INGEST = "ingest"
