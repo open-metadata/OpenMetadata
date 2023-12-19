@@ -24,7 +24,7 @@
 - [License](#license)
 
 ## What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/) is an all-in-one platform for **data discovery, data lineage, data quality, observability, governance, and team collaboration**. It is one of the fastest growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services, OpenMetadata enables **end-to-end metadata management**, giving you the freedom to **unlock the value of your data assets**.
+[OpenMetadata](https://open-metadata.org/) is a unified platform for discovery, observability, and governance, powered by a central metadata repository, in-depth lineage, and seamless team collaboration. Based on Open Metadata Standards and APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
 <div align="center">
     <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/ebfb4ec5-f0a2-4d58-8ce5-a082b5cf0f76" width=800>
 </div>
