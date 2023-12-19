@@ -43,7 +43,7 @@ export const getLineageDataByFQN = async (
 ) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<EntityLineageReponse>(
-    `/search/getLineage?fqn=${fqn}&depth=${upstreamDepth}&upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}&query_filter=${queryFilter}`
+    `/search/getLineage?fqn=${fqn}&upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}&query_filter=${queryFilter}`
   );
 
   return response.data;
