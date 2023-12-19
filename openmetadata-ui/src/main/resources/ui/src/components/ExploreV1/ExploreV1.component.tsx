@@ -37,7 +37,6 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import { tabsInfo } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
@@ -45,6 +44,7 @@ import {
 } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import searchClassBase from '../../utils/SearchClassBase';
 import {
   ExploreProps,
   ExploreQuickFilterField,
@@ -75,6 +75,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   loading,
   quickFilters,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
