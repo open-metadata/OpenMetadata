@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import java.util.Objects;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -41,7 +42,7 @@ public class OpenMetadataConnectionBuilder {
 
   AuthProvider authProvider;
   String bot;
-  Object securityConfig;
+  OpenMetadataJWTClientConfig securityConfig;
   private VerifySSL verifySSL;
   private String openMetadataURL;
   private String clusterName;
@@ -115,22 +116,18 @@ public class OpenMetadataConnectionBuilder {
     };
   }
 
-  private Object extractSecurityConfig(User botUser) {
+  private OpenMetadataJWTClientConfig extractSecurityConfig(User botUser) {
     AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
-    switch (botUser.getAuthenticationMechanism().getAuthType()) {
-      case SSO:
-        return JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class)
-            .getAuthConfig();
-      case JWT:
-        JWTAuthMechanism jwtAuthMechanism =
-            JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-        return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
-      default:
-        throw new IllegalArgumentException(
-            String.format(
-                "Not supported authentication mechanism type: [%s]",
-                authMechanism.getAuthType().value()));
+    if (Objects.requireNonNull(botUser.getAuthenticationMechanism().getAuthType())
+        == AuthenticationMechanism.AuthType.JWT) {
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+      return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
     }
+    throw new IllegalArgumentException(
+        String.format(
+            "Not supported authentication mechanism type: [%s]",
+            authMechanism.getAuthType().value()));
   }
 
   public OpenMetadataConnection build() {
