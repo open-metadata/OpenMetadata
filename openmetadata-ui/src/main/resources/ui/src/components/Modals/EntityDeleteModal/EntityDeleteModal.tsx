@@ -27,6 +27,7 @@ const EntityDeleteModal = ({
   onConfirm,
   softDelete = false,
   visible,
+  bodyText,
 }: EntityDeleteModalProp) => {
   const [name, setName] = useState('');
 
@@ -91,15 +92,17 @@ const EntityDeleteModal = ({
       width={600}>
       <div data-testid="body-text">
         <div className="mb-2">
-          <Transi18next
-            i18nKey="message.permanently-delete-metadata"
-            renderElement={
-              <span data-testid="entityName" style={{ fontWeight: 500 }} />
-            }
-            values={{
-              entityName: entityName,
-            }}
-          />
+          {bodyText || (
+            <Transi18next
+              i18nKey="message.permanently-delete-metadata"
+              renderElement={
+                <span data-testid="entityName" style={{ fontWeight: 500 }} />
+              }
+              values={{
+                entityName: entityName,
+              }}
+            />
+          )}
         </div>
         <Typography className="mb-2">
           <Trans

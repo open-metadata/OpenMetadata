@@ -92,10 +92,8 @@ const DeleteWidgetModal = ({
         title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
         description: (
           <>
-            <span>
-              {deleteMessage ?? getDeleteMessage(entityName, entityType)}
-            </span>
-            <span>{hardDeleteMessagePostFix}</span>
+            {deleteMessage ?? getDeleteMessage(entityName, entityType)}
+            {hardDeleteMessagePostFix}
           </>
         ),
         type: DeleteType.HARD_DELETE,

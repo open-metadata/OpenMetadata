@@ -725,7 +725,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
       <Transi18next
         i18nKey="message.permanently-delete-metadata"
         renderElement={
-          <span data-testid="entityName" style={{ fontWeight: 500 }} />
+          <span className="font-medium" data-testid="entityName" />
         }
         values={{
           entityName: entity,

@@ -37,23 +37,16 @@ import RichTextEditorPreviewer from '../../components/common/RichTextEditor/Rich
 import Table from '../../components/common/Table/Table';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ProviderType } from '../../generated/api/classification/createClassification';
-import {
-  ChangeDescription,
-  Classification,
-} from '../../generated/entity/classification/classification';
+import { ChangeDescription } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { DeleteTagsType } from '../../pages/TagsPage/TagsPage.interface';
 import { getTags } from '../../rest/tagAPI';
 import {
   getClassificationExtraDropdownContent,
@@ -74,28 +67,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ManageButton from '../common/EntityPageInfos/ManageButton/ManageButton';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-
-export interface ClassificationDetailsProps {
-  classificationPermissions: OperationPermission;
-  isVersionView?: boolean;
-  currentClassification?: Classification;
-  deleteTags?: DeleteTagsType;
-  isEditClassification?: boolean;
-  isAddingTag?: boolean;
-  disableEditButton?: boolean;
-  handleAfterDeleteAction?: () => void;
-  handleEditTagClick?: (selectedTag: Tag) => void;
-  handleActionDeleteTag?: (record: Tag) => void;
-  handleAddNewTagClick?: () => void;
-  handleEditDescriptionClick?: () => void;
-  handleCancelEditDescription?: () => void;
-  handleUpdateClassification?: (
-    updatedClassification: Classification
-  ) => Promise<void>;
-}
-export interface ClassificationDetailsRef {
-  refreshClassificationTags: () => void;
-}
+import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
 const ClassificationDetails = forwardRef(
   (
