@@ -65,7 +65,8 @@ public class NotificationHandler {
         });
   }
 
-  private void handleNotifications(ContainerResponseContext responseContext, CollectionDAO collectionDAO)
+  private void handleNotifications(
+      ContainerResponseContext responseContext, CollectionDAO collectionDAO)
       throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     if (responseCode == Response.Status.CREATED.getStatusCode()
@@ -73,20 +74,15 @@ public class NotificationHandler {
         && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
       switch (thread.getType()) {
-        case Task:
-          handleTaskNotification(thread, collectionDAO);
-          break;
-        case Conversation:
-          handleConversationNotification(thread, collectionDAO);
-          break;
-        case Announcement:
-          handleAnnouncementNotification(thread);
-          break;
+        case Task -> handleTaskNotification(thread, collectionDAO);
+        case Conversation -> handleConversationNotification(thread, collectionDAO);
+        case Announcement -> handleAnnouncementNotification(thread);
       }
     }
   }
 
-  private void handleTaskNotification(Thread thread, CollectionDAO collectionDAO) throws JsonProcessingException {
+  private void handleTaskNotification(Thread thread, CollectionDAO collectionDAO)
+      throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
     if (thread.getPostsCount() == 0) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
@@ -98,7 +94,9 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                  collectionDAO
+                      .relationshipDAO()
+                      .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
               records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
@@ -119,14 +117,16 @@ public class NotificationHandler {
     Long currentTimestamp = Instant.now().getEpochSecond();
     if (announcementDetails.getStartTime() <= currentTimestamp
         && currentTimestamp <= announcementDetails.getEndTime()) {
-      WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
     }
   }
 
   private void handleConversationNotification(Thread thread, CollectionDAO collectionDAO)
       throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
-    WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -139,14 +139,18 @@ public class NotificationHandler {
           String fqn = entityLink.getEntityFQN();
           if (USER.equals(entityLink.getEntityType())) {
             User user = collectionDAO.userDAO().findEntityByName(fqn);
-            WebSocketManager.getInstance().sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
+            WebSocketManager.getInstance()
+                .sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
           } else if (TEAM.equals(entityLink.getEntityType())) {
             Team team = collectionDAO.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
+                collectionDAO
+                    .relationshipDAO()
+                    .findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
-            WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
+            WebSocketManager.getInstance()
+                .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }
         });
   }
@@ -160,7 +164,8 @@ public class NotificationHandler {
             EmailUtil.sendTaskAssignmentNotificationToUser(
                 user.getName(),
                 user.getEmail(),
-                String.format("%s/users/%s/tasks", getSmtpSettings().getOpenMetadataUrl(), user.getName()),
+                String.format(
+                    "%s/users/%s/tasks", getSmtpSettings().getOpenMetadataUrl(), user.getName()),
                 thread,
                 EmailUtil.getTaskAssignmentSubject(),
                 EmailUtil.TASK_NOTIFICATION_TEMPLATE);

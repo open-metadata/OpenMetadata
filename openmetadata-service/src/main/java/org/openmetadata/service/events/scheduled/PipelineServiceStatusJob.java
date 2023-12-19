@@ -24,10 +24,15 @@ public class PipelineServiceStatusJob implements Job {
 
     PipelineServiceClient pipelineServiceClient =
         (PipelineServiceClient)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_PIPELINE_SERVICE_CLIENT);
+            jobExecutionContext
+                .getJobDetail()
+                .getJobDataMap()
+                .get(JOB_CONTEXT_PIPELINE_SERVICE_CLIENT);
     PrometheusMeterRegistry meterRegistry =
-        (PrometheusMeterRegistry) jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_METER_REGISTRY);
-    String clusterName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_CLUSTER_NAME);
+        (PrometheusMeterRegistry)
+            jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_METER_REGISTRY);
+    String clusterName =
+        (String) jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_CLUSTER_NAME);
     try {
       registerStatusMetric(pipelineServiceClient, meterRegistry, clusterName);
     } catch (Exception e) {
@@ -37,7 +42,9 @@ public class PipelineServiceStatusJob implements Job {
   }
 
   private void registerStatusMetric(
-      PipelineServiceClient pipelineServiceClient, PrometheusMeterRegistry meterRegistry, String clusterName) {
+      PipelineServiceClient pipelineServiceClient,
+      PrometheusMeterRegistry meterRegistry,
+      String clusterName) {
     String status = pipelineServiceClient.getServiceStatusBackoff();
     if (!HEALTHY_STATUS.equals(status)) {
       publishUnhealthyCounter(meterRegistry, clusterName);

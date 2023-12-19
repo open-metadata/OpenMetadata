@@ -136,13 +136,13 @@ class OMetaDomainTest(TestCase):
         """
 
         res: Domain = self.metadata.create_or_update(data=self.create_domain)
-        self.assertEquals(res.name, self.create_domain.name)
-        self.assertEquals(res.description, self.create_domain.description)
+        self.assertEqual(res.name, self.create_domain.name)
+        self.assertEqual(res.description, self.create_domain.description)
 
         res: DataProduct = self.metadata.create_or_update(data=self.create_data_product)
-        self.assertEquals(res.name, self.create_data_product.name)
-        self.assertEquals(res.description, self.create_data_product.description)
-        self.assertEquals(res.domain.name, self.create_data_product.domain.__root__)
+        self.assertEqual(res.name, self.create_data_product.name)
+        self.assertEqual(res.description, self.create_data_product.description)
+        self.assertEqual(res.domain.name, self.create_data_product.domain.__root__)
 
     def test_get_name(self):
         """We can fetch Domains & Data Products by name"""
@@ -189,4 +189,4 @@ class OMetaDomainTest(TestCase):
             entity=Dashboard, fqn=self.dashboard.fullyQualifiedName, fields=["domain"]
         )
 
-        self.assertEquals(updated_dashboard.domain.name, domain.name.__root__)
+        self.assertEqual(updated_dashboard.domain.name, domain.name.__root__)

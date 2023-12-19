@@ -45,8 +45,6 @@ public final class RestUtil {
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final String LOGICAL_TEST_CASES_ADDED = "Logical Test Cases Added to Test Suite";
-  public static final String TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE =
-      "Test case successfully  removed from test suite ID %s";
 
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;
@@ -113,7 +111,9 @@ public final class RestUtil {
   }
 
   public static String encodeCursor(String cursor) {
-    return cursor == null ? null : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
+    return cursor == null
+        ? null
+        : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
   }
 
   public static String decodeCursor(String cursor) {
@@ -144,7 +144,8 @@ public final class RestUtil {
     }
 
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
       if (changeType.equals(RestUtil.ENTITY_CREATED)
           || changeType.equals(RestUtil.ENTITY_UPDATED)
           || changeType.equals(RestUtil.ENTITY_NO_CHANGE)
@@ -157,37 +158,19 @@ public final class RestUtil {
     }
   }
 
-  public static class PatchResponse<T> {
-    @Getter private final T entity;
-    private final Response.Status status;
-    private final String changeType;
-
-    /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
-     */
-    public PatchResponse(Response.Status status, T entity, String changeType) {
-      this.entity = entity;
-      this.status = status;
-      this.changeType = changeType;
-    }
-
+  public record PatchResponse<T>(Status status, T entity, String changeType) {
     public Response toResponse() {
-      return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
+      return Response.status(status)
+          .header(CHANGE_CUSTOM_HEADER, changeType)
+          .entity(entity)
+          .build();
     }
   }
 
-  public static class DeleteResponse<T> {
-    @Getter private final T entity;
-    @Getter private final String changeType;
-
-    public DeleteResponse(T entity, String changeType) {
-      this.entity = entity;
-      this.changeType = changeType;
-    }
-
+  public record DeleteResponse<T>(@Getter T entity, @Getter String changeType) {
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
       return responseBuilder.entity(entity).build();
     }
   }

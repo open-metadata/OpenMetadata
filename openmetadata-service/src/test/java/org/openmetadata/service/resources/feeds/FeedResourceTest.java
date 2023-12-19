@@ -138,11 +138,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static TableResourceTest TABLE_RESOURCE_TEST;
   public static final Comparator<Reaction> REACTION_COMPARATOR =
       (o1, o2) ->
-          o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
+          o1.getReactionType().equals(o2.getReactionType())
+                  && o1.getUser().getId().equals(o2.getUser().getId())
               ? 0
               : 1;
 
-  private static final MessageDecorator<FeedMessage> feedMessageFormatter = new FeedMessageDecorator();
+  private static final MessageDecorator<FeedMessage> feedMessageFormatter =
+      new FeedMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -150,10 +152,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
+    USER2 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
 
-    CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
+    CreateTable createTable =
+        TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -170,11 +174,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     createTable2.withName("table2").withOwner(TEAM2_REF);
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
-    COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
+    COLUMNS =
+        Collections.singletonList(
+            new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
     TABLE_COLUMN_LINK =
-        String.format("<#E::table::%s::columns::" + C1 + "::description>", TABLE.getFullyQualifiedName());
-    TABLE_DESCRIPTION_LINK = String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
+        String.format(
+            "<#E::table::%s::columns::" + C1 + "::description>", TABLE.getFullyQualifiedName());
+    TABLE_DESCRIPTION_LINK =
+        String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;
     USER_LINK = String.format("<#E::user::%s>", USER.getFullyQualifiedName());
@@ -191,7 +199,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void post_feedWithoutAbout_4xx() {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout(null);
-    assertResponse(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[about must not be null]");
+    assertResponse(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[about must not be null]");
   }
 
   @Test
@@ -199,43 +208,53 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"^(?U)<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+    String failureReason = "[about must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::table::>"); // Invalid EntityLink - missing entityId
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::table::tableName"); // Invalid EntityLink - missing closing bracket ">"
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
   }
 
   @Test
   void post_feedWithoutMessage_4xx() {
     CreateThread create = create().withFrom(USER.getName()).withMessage(null);
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
   }
 
   @Test
   void post_feedWithoutFrom_4xx() {
     CreateThread create = create().withFrom(null);
-    assertResponseContains(() -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
+    assertResponseContains(
+        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
   }
 
   @Test
   void post_feedWithNonExistentFrom_404() {
     CreateThread create = create().withFrom(NON_EXISTENT_ENTITY.toString());
     assertResponse(
-        () -> createThread(create, USER_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
+        () -> createThread(create, USER_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
   void post_feedWithNonExistentAbout_404() {
     CreateThread create = create().withAbout("<#E::table::invalidTableName>");
     assertResponse(
-        () -> createThread(create, USER_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
+        () -> createThread(create, USER_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TABLE, "invalidTableName"));
   }
 
   @Test
@@ -251,25 +270,35 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String message =
         String.format(
             "%s mentions user %s team %s, table %s, description %s, and column description %s",
-            test.getDisplayName(), USER_LINK, TEAM_LINK, TABLE_LINK, TABLE_DESCRIPTION_LINK, TABLE_COLUMN_LINK);
+            test.getDisplayName(),
+            USER_LINK,
+            TEAM_LINK,
+            TABLE_LINK,
+            TABLE_DESCRIPTION_LINK,
+            TABLE_COLUMN_LINK);
     CreateThread create = create().withMessage(message);
     // Create 10 threads
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
       assertEquals(
-          ++userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
+          ++userThreadCount,
+          listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
       assertEquals(
-          ++tableThreadCount, listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
+          ++tableThreadCount,
+          listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
       assertEquals(
-          ++totalThreadCount, listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
+          ++totalThreadCount,
+          listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
 
     // List threads should not include mentioned entities
     // It should only include threads which are about the entity link
     assertEquals(
         tableDescriptionThreadCount,
-        listThreads(TABLE_DESCRIPTION_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE Description
+        listThreads(TABLE_DESCRIPTION_LINK, null, USER_AUTH_HEADERS)
+            .getPaging()
+            .getTotal()); // About TABLE Description
     assertEquals(
         tableColumnDescriptionThreadCount,
         listThreads(TABLE_COLUMN_LINK, null, USER_AUTH_HEADERS)
@@ -281,16 +310,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
       assertEquals(
-          ++userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
+          ++userThreadCount,
+          listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
       assertEquals(
-          ++tableThreadCount, listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
+          ++tableThreadCount,
+          listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
       assertEquals(
           ++tableDescriptionThreadCount,
           listThreads(TABLE_DESCRIPTION_LINK, null, USER_AUTH_HEADERS)
               .getPaging()
               .getTotal()); // About TABLE Description
       assertEquals(
-          ++totalThreadCount, listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
+          ++totalThreadCount,
+          listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
 
     create.withAbout(TABLE_COLUMN_LINK);
@@ -298,32 +330,53 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
       assertEquals(
-          ++userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
+          ++userThreadCount,
+          listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
       assertEquals(
-          ++tableThreadCount, listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
+          ++tableThreadCount,
+          listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
       assertEquals(
           ++tableColumnDescriptionThreadCount,
-          listThreads(TABLE_COLUMN_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE Description
+          listThreads(TABLE_COLUMN_LINK, null, USER_AUTH_HEADERS)
+              .getPaging()
+              .getTotal()); // About TABLE Description
       assertEquals(
-          ++totalThreadCount, listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
+          ++totalThreadCount,
+          listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
 
     // Test the /api/v1/feed/count API
-    assertEquals(userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal());
+    assertEquals(
+        userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal());
     assertEquals(userThreadCount, listThreadsCount(USER_LINK, USER_AUTH_HEADERS).getTotalCount());
-    assertEquals(tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, USER_AUTH_HEADERS));
-    assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, USER_AUTH_HEADERS));
+    assertEquals(
+        tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, USER_AUTH_HEADERS));
+    assertEquals(
+        tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, USER_AUTH_HEADERS));
   }
 
   @Test
   void post_validTaskAndList_200() throws IOException {
-    int totalTaskCount = listTasks(null, null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    int totalTaskCount =
+        listTasks(null, null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int assignedByCount =
-        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY, null, null, ADMIN_AUTH_HEADERS)
+        listTasks(
+                null,
+                USER.getId().toString(),
+                FilterType.ASSIGNED_BY,
+                null,
+                null,
+                ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
     int assignedToCount =
-        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO, null, null, ADMIN_AUTH_HEADERS)
+        listTasks(
+                null,
+                USER.getId().toString(),
+                FilterType.ASSIGNED_TO,
+                null,
+                null,
+                ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
 
@@ -331,7 +384,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     Thread taskThread =
         createTaskThread(
-            USER.getName(), about, USER2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
+            USER.getName(),
+            about,
+            USER2.getEntityReference(),
+            "old",
+            "new",
+            RequestDescription,
+            USER_AUTH_HEADERS);
     TaskDetails task1 = taskThread.getTask();
 
     // List task and validate
@@ -344,22 +403,35 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     validateTask(task1, taskThread.getTask());
 
     // User2 creates a task2 assigned to User on TABLE2
-    about = String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE2.getFullyQualifiedName(), C1);
+    about =
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE2.getFullyQualifiedName(), C1);
     taskThread =
         createTaskThread(
-            USER2.getName(), about, USER.getEntityReference(), "old", "new2", RequestDescription, USER2_AUTH_HEADERS);
+            USER2.getName(),
+            about,
+            USER.getEntityReference(),
+            "old",
+            "new2",
+            RequestDescription,
+            USER2_AUTH_HEADERS);
     TaskDetails task2 = taskThread.getTask();
     tasks = listTasks(null, null, null, null, null, USER2_AUTH_HEADERS);
     validateTaskList(USER.getId(), "new2", TaskStatus.Open, totalTaskCount + 2, tasks);
 
     // List tasks assigned by USER
-    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY, null, null, USER2_AUTH_HEADERS);
+    tasks =
+        listTasks(
+            null, USER.getId().toString(), FilterType.ASSIGNED_BY, null, null, USER2_AUTH_HEADERS);
     task = tasks.getData().get(0).getTask();
     validateTask(task1, task);
     validateTaskList(USER2.getId(), "new", TaskStatus.Open, assignedByCount + 1, tasks);
 
     // List tasks assigned to USER
-    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO, null, null, USER2_AUTH_HEADERS);
+    tasks =
+        listTasks(
+            null, USER.getId().toString(), FilterType.ASSIGNED_TO, null, null, USER2_AUTH_HEADERS);
     task = tasks.getData().get(0).getTask();
     validateTask(task2, task);
     validateTaskList(USER.getId(), "new2", TaskStatus.Open, assignedToCount + 1, tasks);
@@ -390,26 +462,31 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void post_validAnnouncementAndList_200() throws IOException {
-    int totalAnnouncementCount = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    int totalAnnouncementCount =
+        listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
 
     // create two announcements with start time in the future
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
 
     // Create announcement 1
     AnnouncementDetails announcementDetails = getAnnouncementDetails("First announcement", 10, 11);
-    createAnnouncement(USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
+    createAnnouncement(
+        USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
 
     // Create announcement 2
     announcementDetails = getAnnouncementDetails("Second announcement", 12, 13);
-    createAnnouncement(USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS);
+    createAnnouncement(
+        USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS);
 
     // create an expired announcement
     announcementDetails = getAnnouncementDetails("Expired", -30, -20);
-    createAnnouncement(USER.getName(), about, "Announcement Three", announcementDetails, USER_AUTH_HEADERS);
+    createAnnouncement(
+        USER.getName(), about, "Announcement Three", announcementDetails, USER_AUTH_HEADERS);
 
     // create one active announcement
     announcementDetails = getAnnouncementDetails("Active", -1, 1);
-    createAnnouncement(USER.getName(), about, "Announcement Four", announcementDetails, USER_AUTH_HEADERS);
+    createAnnouncement(
+        USER.getName(), about, "Announcement Four", announcementDetails, USER_AUTH_HEADERS);
 
     ThreadList announcements = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS);
     int announcementCount = announcements.getPaging().getTotal();
@@ -447,11 +524,14 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // create two announcements with same start time in the future
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     AnnouncementDetails announcementDetails = getAnnouncementDetails("1", 3, 5);
-    createAnnouncement(USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
+    createAnnouncement(
+        USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
 
     // create announcement with same start and end time
     assertResponse(
-        () -> createAnnouncement(USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS),
+        () ->
+            createAnnouncement(
+                USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS),
         BAD_REQUEST,
         ANNOUNCEMENT_OVERLAP);
 
@@ -459,7 +539,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () ->
             createAnnouncement(
-                USER.getName(), about, "Announcement Three", getAnnouncementDetails("2", 3, 2), USER_AUTH_HEADERS),
+                USER.getName(),
+                about,
+                "Announcement Three",
+                getAnnouncementDetails("2", 3, 2),
+                USER_AUTH_HEADERS),
         BAD_REQUEST,
         ANNOUNCEMENT_INVALID_START_TIME);
 
@@ -467,7 +551,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () ->
             createAnnouncement(
-                USER.getName(), about, "Announcement Four", getAnnouncementDetails("3", 2, 6), USER_AUTH_HEADERS),
+                USER.getName(),
+                about,
+                "Announcement Four",
+                getAnnouncementDetails("3", 2, 6),
+                USER_AUTH_HEADERS),
         BAD_REQUEST,
         ANNOUNCEMENT_OVERLAP);
   }
@@ -476,10 +564,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void put_resolveTaskByUser_description_200() throws IOException {
     // Create a task from User to User2
     String about =
-        String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     Thread taskThread =
         createTaskThread(
-            USER.getName(), about, USER2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
+            USER.getName(),
+            about,
+            USER2.getEntityReference(),
+            "old",
+            "new",
+            RequestDescription,
+            USER_AUTH_HEADERS);
 
     assertNotNull(taskThread.getTask().getId());
     int taskId = taskThread.getTask().getId();
@@ -512,10 +608,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void put_resolveTaskByTeamMember_description_200() throws IOException {
     // Create a task from User to Team2
     String about =
-        String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     Thread taskThread =
         createTaskThread(
-            USER.getName(), about, TEAM2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
+            USER.getName(),
+            about,
+            TEAM2.getEntityReference(),
+            "old",
+            "new",
+            RequestDescription,
+            USER_AUTH_HEADERS);
 
     assertNotNull(taskThread.getTask().getId());
     int taskId = taskThread.getTask().getId();
@@ -542,7 +646,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void put_closeTask_200() throws IOException {
     // User created a task for USER2
     String about =
-        String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     Thread threadTask =
         createTaskThread(
             USER.getName(),
@@ -570,18 +676,28 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    assertEquals("Closed the Task with comment - closing comment", taskThread.getPosts().get(0).getMessage());
+    assertEquals(
+        "Closed the Task with comment - closing comment",
+        taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
   void put_resolveTask_tags_200() throws IOException {
     // Test user creates a task for TABLE (owned by USER) and assigns it to User2
-    String about = String.format("<#E::%s::%s::columns::%s::tags>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+    String about =
+        String.format(
+            "<#E::%s::%s::columns::%s::tags>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
 
     Thread taskThread =
         createTaskThread(
-            TEST_USER_NAME, about, USER2.getEntityReference(), null, newValue, RequestTag, TEST_AUTH_HEADERS);
+            TEST_USER_NAME,
+            about,
+            USER2.getEntityReference(),
+            null,
+            newValue,
+            RequestTag,
+            TEST_AUTH_HEADERS);
     int taskId = taskThread.getTask().getId();
 
     ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
@@ -626,7 +742,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       CreateThread create = create().withMessage("Thread " + i);
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(++totalThreadCount, listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal());
+      assertEquals(
+          ++totalThreadCount,
+          listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal());
     }
     // Now test if there are n number of pages with limit set to 5. (n = totalThreadCount / 5)
     int limit = 5;
@@ -728,7 +846,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     CreatePost createPost = createPost(null).withMessage(null);
 
     assertResponseContains(
-        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
+        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[message must not be null]");
   }
 
   @Test
@@ -737,7 +857,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     CreatePost createPost = createPost(null).withFrom(null);
 
     assertResponseContains(
-        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
+        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[from must not be null]");
   }
 
   @Test
@@ -789,7 +911,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String originalJson = JsonUtils.pojoToJson(thread);
 
     // add reactions
-    Reaction reaction = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
+    Reaction reaction =
+        new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     Thread updated = thread.withReactions(List.of(reaction));
 
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
@@ -803,7 +926,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     AnnouncementDetails announcementDetails = getAnnouncementDetails("First announcement", 5, 6);
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     Thread thread =
-        createAnnouncement(USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
+        createAnnouncement(
+            USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(thread);
 
     long startTs = now.plusDays(6L).toEpochSecond(ZoneOffset.UTC);
@@ -824,7 +948,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // patch description
     originalJson = JsonUtils.pojoToJson(thread1);
-    AnnouncementDetails announcementDetails1 = thread1.getAnnouncement().withDescription("New Description");
+    AnnouncementDetails announcementDetails1 =
+        thread1.getAnnouncement().withDescription("New Description");
     updated = thread1.withAnnouncement(announcementDetails1);
     patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
     assertEquals("New Description", patched.getAnnouncement().getDescription());
@@ -839,11 +964,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     AnnouncementDetails announcementDetails = getAnnouncementDetails("First announcement", 53, 55);
     Thread thread1 =
-        createAnnouncement(USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
+        createAnnouncement(
+            USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
 
     announcementDetails = getAnnouncementDetails("Second announcement", 57, 59);
     Thread thread2 =
-        createAnnouncement(USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS);
+        createAnnouncement(
+            USER.getName(), about, "Announcement Two", announcementDetails, USER_AUTH_HEADERS);
 
     String originalJson = JsonUtils.pojoToJson(thread2);
 
@@ -966,17 +1093,22 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String user2 = USER2.getId().toString(); // user2 belongs to team2 which owns TABLE2
     assertNotNull(user1);
     // Get thread counts for user1 and user2
-    int user1ThreadCount = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
-    int user2ThreadCount = listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
+    int user1ThreadCount =
+        listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
+    int user2ThreadCount =
+        listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
     String team2 = TABLE2.getOwner().getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
-        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        create()
+            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName()))
+            .withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
 
-    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is not part of it
+    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
+    // not part of it
     ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
     assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
@@ -1001,21 +1133,26 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     String user1 = USER1.getId().toString(); // user1 is the owner of TABLE
     // Get thread counts for user1 and user2
-    int user1ThreadCount = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
+    int user1ThreadCount =
+        listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
     String team2 = TABLE2.getOwner().getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
-        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        create()
+            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName()))
+            .withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
 
-    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is not part of it
+    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
+    // not part of it
     ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
     assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
     String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
-    int initialThreadCount = listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal();
+    int initialThreadCount =
+        listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // Create threads
     createAndCheck(create().withMessage("Message 1").withAbout(entityLink), ADMIN_AUTH_HEADERS);
@@ -1030,13 +1167,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         .until(
             () -> {
               ThreadList followThreads =
-                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
+                  listThreadsWithFilter(
+                      USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
               return followThreads.getPaging().getTotal().equals(initialThreadCount + 3);
             });
 
     // filter by OWNER_OR_FOLLOWS we should list both team owned listing and followed table threads.
     ThreadList ownerOrFollowTreads =
-        listThreadsWithFilter(USER.getId().toString(), FilterType.OWNER_OR_FOLLOWS, USER_AUTH_HEADERS);
+        listThreadsWithFilter(
+            USER.getId().toString(), FilterType.OWNER_OR_FOLLOWS, USER_AUTH_HEADERS);
     assertEquals(threads.getPaging().getTotal() + 3, ownerOrFollowTreads.getPaging().getTotal());
   }
 
@@ -1059,7 +1198,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
     addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
 
-    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
+    ThreadList threads =
+        listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
     assertEquals(2, threads.getPaging().getTotal());
   }
 
@@ -1067,7 +1207,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void list_threadsWithFollowsFilter() throws HttpResponseException {
     // Get the initial thread count of TABLE2
     String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
-    int initialThreadCount = listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal();
+    int initialThreadCount =
+        listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // Create threads
     createAndCheck(create().withMessage("Message 1").withAbout(entityLink), ADMIN_AUTH_HEADERS);
@@ -1085,10 +1226,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         .until(
             () -> {
               ThreadList threads =
-                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
+                  listThreadsWithFilter(
+                      USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
               return threads.getPaging().getTotal().equals(initialThreadCount + 3);
             });
-    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
+    ThreadList threads =
+        listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
     assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
     assertEquals(initialThreadCount + 3, threads.getData().size());
     assertEquals(
@@ -1097,7 +1240,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals("Message 2", threads.getData().get(1).getMessage());
 
     // Filter by follows for another user should return 0 threads
-    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
+    threads =
+        listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
     assertEquals(0, threads.getPaging().getTotal());
     assertEquals(0, threads.getData().size());
   }
@@ -1107,7 +1251,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> listThreadsWithFilter(USER.getId().toString(), "Invalid", USER_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("query param filterType must be one of %s", Arrays.toString(FilterType.values())));
+        String.format(
+            "query param filterType must be one of %s", Arrays.toString(FilterType.values())));
   }
 
   @Test
@@ -1176,7 +1321,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // Check if thread is not found
     assertResponse(
-        () -> getThread(thread.getId(), USER_AUTH_HEADERS), NOT_FOUND, entityNotFound("Thread", thread.getId()));
+        () -> getThread(thread.getId(), USER_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", thread.getId()));
   }
 
   @Test
@@ -1225,8 +1372,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // patch the post
     Post post = thread.getPosts().get(0);
     String originalJson = JsonUtils.pojoToJson(post);
-    Reaction reaction1 = new Reaction().withReactionType(ReactionType.ROCKET).withUser(USER2.getEntityReference());
-    Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
+    Reaction reaction1 =
+        new Reaction().withReactionType(ReactionType.ROCKET).withUser(USER2.getEntityReference());
+    Reaction reaction2 =
+        new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     post.withReactions(List.of(reaction1, reaction2));
     Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
     assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2)));
@@ -1239,7 +1388,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void patch_post_404() {
     // Test with an invalid thread id
     assertResponse(
-        () -> patchPost(NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, "{}", new Post(), USER_AUTH_HEADERS),
+        () ->
+            patchPost(
+                NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, "{}", new Post(), USER_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("Thread", NON_EXISTENT_ENTITY));
 
@@ -1250,7 +1401,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         entityNotFound("Post", NON_EXISTENT_ENTITY));
   }
 
-  public Thread createAndCheck(CreateThread create, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
+      throws HttpResponseException {
     // Validate returned thread from POST
     Thread thread = createThread(create, authHeaders);
     validateThread(thread, create.getMessage(), create.getFrom(), create.getAbout());
@@ -1281,7 +1433,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   private void validatePost(Thread expected, Thread actual, String from, String message) {
     // Make sure the post added is as expected
-    Post actualPost = actual.getPosts().get(actual.getPosts().size() - 1); // Last post was newly added to the thread
+    Post actualPost =
+        actual
+            .getPosts()
+            .get(actual.getPosts().size() - 1); // Last post was newly added to the thread
     assertEquals(from, actualPost.getFrom());
     assertEquals(message, actualPost.getMessage());
     assertNotNull(actualPost.getPostTs());
@@ -1290,20 +1445,26 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(expected.getPosts().size() + 1, actual.getPosts().size());
   }
 
-  public Thread createThread(CreateThread create, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread createThread(CreateThread create, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getResource("feed"), create, Thread.class, authHeaders);
   }
 
-  public Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
+  public Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.post(
+        getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
   }
 
-  public Thread deleteThread(UUID threadId, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread deleteThread(UUID threadId, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.delete(getResource("feed/" + threadId), Thread.class, authHeaders);
   }
 
-  public Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.delete(getResource("feed/" + threadId + "/posts/" + postId), Post.class, authHeaders);
+  public Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.delete(
+        getResource("feed/" + threadId + "/posts/" + postId), Post.class, authHeaders);
   }
 
   public CreateThread create() {
@@ -1332,12 +1493,14 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TestUtils.put(target, resolveTask, Status.OK, authHeaders);
   }
 
-  public void closeTask(int id, String comment, Map<String, String> authHeaders) throws HttpResponseException {
+  public void closeTask(int id, String comment, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/close");
     TestUtils.put(target, new CloseTask().withComment(comment), Status.OK, authHeaders);
   }
 
-  public void closeTask(int id, CloseTask closeTask, Map<String, String> authHeaders) throws HttpResponseException {
+  public void closeTask(int id, CloseTask closeTask, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/close");
     TestUtils.put(target, closeTask, Status.OK, authHeaders);
   }
@@ -1365,7 +1528,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   public ThreadList listAnnouncements(
-      String entityLink, Integer limitPosts, Boolean activeAnnouncement, Map<String, String> authHeaders)
+      String entityLink,
+      Integer limitPosts,
+      Boolean activeAnnouncement,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
         entityLink,
@@ -1381,7 +1547,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null);
   }
 
-  public ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
+  public ThreadList listThreads(
+      String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
         entityLink,
@@ -1415,7 +1582,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     target = filterType != null ? target.queryParam("filterType", filterType) : target;
     target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     target = threadType != null ? target.queryParam("type", threadType) : target;
-    target = activeAnnouncement != null ? target.queryParam("activeAnnouncement", activeAnnouncement) : target;
+    target =
+        activeAnnouncement != null
+            ? target.queryParam("activeAnnouncement", activeAnnouncement)
+            : target;
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
@@ -1424,17 +1594,20 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
-  public void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders) throws HttpResponseException {
+  public void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
     TestUtils.put(target, userId, OK, authHeaders);
   }
 
-  public ThreadList listThreadsWithFilter(String userId, FilterType filterType, Map<String, String> authHeaders)
+  public ThreadList listThreadsWithFilter(
+      String userId, FilterType filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreadsWithFilter(userId, filterType.toString(), authHeaders);
   }
 
-  public ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
+  public ThreadList listThreadsWithFilter(
+      String userId, String filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
     target = target.queryParam("type", ThreadType.Conversation);
@@ -1443,19 +1616,22 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
-  public PostList listPosts(String threadId, Map<String, String> authHeaders) throws HttpResponseException {
+  public PostList listPosts(String threadId, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(String.format("feed/%s/posts", threadId));
     return TestUtils.get(target, PostList.class, authHeaders);
   }
 
-  public ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
+  public ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = target.queryParam("type", ThreadType.Conversation);
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
-  public ThreadCount listTasksCount(String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
+  public ThreadCount listTasksCount(
+      String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
@@ -1464,15 +1640,20 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
-  private int getThreadCount(String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
-    List<EntityLinkThreadCount> linkThreadCount = listThreadsCount(entityLink, authHeaders).getCounts();
+  private int getThreadCount(String entityLink, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    List<EntityLinkThreadCount> linkThreadCount =
+        listThreadsCount(entityLink, authHeaders).getCounts();
     EntityLinkThreadCount threadCount =
-        linkThreadCount.stream().filter(l -> l.getEntityLink().equals(entityLink)).findFirst().orElseThrow();
+        linkThreadCount.stream()
+            .filter(l -> l.getEntityLink().equals(entityLink))
+            .findFirst()
+            .orElseThrow();
     return threadCount.getCount();
   }
 
-  protected final Thread patchThreadAndCheck(Thread updated, String originalJson, Map<String, String> authHeaders)
-      throws IOException {
+  protected final Thread patchThreadAndCheck(
+      Thread updated, String originalJson, Map<String, String> authHeaders) throws IOException {
     // Validate information returned in patch response has the updates
     Thread returned = patchThread(updated.getId(), originalJson, updated, authHeaders);
     compareEntities(updated, returned, authHeaders);
@@ -1483,22 +1664,26 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return returned;
   }
 
-  public final Thread patchThread(UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
+  public final Thread patchThread(
+      UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     String updatedThreadJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
-    return TestUtils.patch(getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    return TestUtils.patch(
+        getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
   }
 
   protected final Post patchPostAndCheck(
-      UUID threadId, Post updated, String originalJson, Map<String, String> authHeaders) throws IOException {
+      UUID threadId, Post updated, String originalJson, Map<String, String> authHeaders)
+      throws IOException {
     // Validate information returned in patch response has the updates
     Post returned = patchPost(threadId, updated.getId(), originalJson, updated, authHeaders);
     compareEntities(updated, returned);
 
     // GET the entity and Validate information returned
     Thread thread = getThread(threadId, authHeaders);
-    Post post = thread.getPosts().stream().filter(p -> p.getId().equals(updated.getId())).findAny().get();
+    Post post =
+        thread.getPosts().stream().filter(p -> p.getId().equals(updated.getId())).findAny().get();
     compareEntities(updated, post);
     return returned;
   }
@@ -1509,7 +1694,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String updatedPostJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
     return TestUtils.patch(
-        getResource(String.format("feed/%s/posts/%s", threadId, id)), patch, Post.class, authHeaders);
+        getResource(String.format("feed/%s/posts/%s", threadId, id)),
+        patch,
+        Post.class,
+        authHeaders);
   }
 
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
@@ -1538,7 +1726,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   private static <T> boolean containsAll(List<T> list, List<T> items) {
     for (T item : items) {
-      if (list.stream().noneMatch(bind(match((Comparator<? super T>) FeedResourceTest.REACTION_COMPARATOR), item))) {
+      if (list.stream()
+          .noneMatch(
+              bind(match((Comparator<? super T>) FeedResourceTest.REACTION_COMPARATOR), item))) {
         return false;
       }
     }
@@ -1593,13 +1783,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       TaskStatus expectedTaskStatus,
       int expectedCount,
       ThreadList tasks) {
-    validateTask(expectedAssignee, expectedSuggestion, expectedTaskStatus, tasks.getData().get(0).getTask());
+    validateTask(
+        expectedAssignee, expectedSuggestion, expectedTaskStatus, tasks.getData().get(0).getTask());
     assertEquals(expectedCount, tasks.getPaging().getTotal());
     assertEquals(expectedCount, tasks.getData().size());
   }
 
   public void validateTask(
-      UUID expectedAssignee, String expectedSuggestion, TaskStatus expectedTaskStatus, TaskDetails task) {
+      UUID expectedAssignee,
+      String expectedSuggestion,
+      TaskStatus expectedTaskStatus,
+      TaskDetails task) {
     assertNotNull(task.getId());
     assertEquals(expectedAssignee, task.getAssignees().get(0).getId());
     assertEquals(expectedSuggestion, task.getSuggestion());
