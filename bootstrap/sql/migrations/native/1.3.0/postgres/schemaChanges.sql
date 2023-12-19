@@ -49,3 +49,5 @@ set json = jsonb_set(
 )
 where name = 'OpenMetadata'
   and json #>> '{connection,config,secretsManagerProvider}' = 'noop';
+
+TRUNCATE TABLE automations_workflow;
