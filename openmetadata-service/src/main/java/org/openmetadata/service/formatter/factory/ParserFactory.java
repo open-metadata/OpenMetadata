@@ -31,18 +31,13 @@ public final class ParserFactory {
   private ParserFactory() {}
 
   public static EntityFormatter getEntityParser(String entityType) {
-    switch (entityType) {
-      case Entity.QUERY:
-        return new QueryFormatter();
-      case Entity.TEST_CASE:
-        return new TestCaseFormatter();
-      case Entity.KPI:
-        return new KpiFormatter();
-      case Entity.INGESTION_PIPELINE:
-        return new IngestionPipelineFormatter();
-      default:
-        return new DefaultEntityFormatter();
-    }
+    return switch (entityType) {
+      case Entity.QUERY -> new QueryFormatter();
+      case Entity.TEST_CASE -> new TestCaseFormatter();
+      case Entity.KPI -> new KpiFormatter();
+      case Entity.INGESTION_PIPELINE -> new IngestionPipelineFormatter();
+      default -> new DefaultEntityFormatter();
+    };
   }
 
   public static DefaultFieldFormatter getFieldParserObject(
@@ -51,19 +46,15 @@ public final class ParserFactory {
       String fieldNewValue,
       String fieldChangeName,
       MessageParser.EntityLink entityLink) {
-    switch (fieldChangeName) {
-      case Entity.FIELD_TAGS:
-        return new TagFormatter(
-            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
-      case Entity.FIELD_FOLLOWERS:
-        return new FollowersFormatter(
-            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
-      case Entity.FIELD_OWNER:
-        return new OwnerFormatter(
-            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
-      default:
-        return new DefaultFieldFormatter(
-            decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
-    }
+    return switch (fieldChangeName) {
+      case Entity.FIELD_TAGS -> new TagFormatter(
+          decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      case Entity.FIELD_FOLLOWERS -> new FollowersFormatter(
+          decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      case Entity.FIELD_OWNER -> new OwnerFormatter(
+          decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      default -> new DefaultFieldFormatter(
+          decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+    };
   }
 }

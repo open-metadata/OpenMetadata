@@ -219,20 +219,13 @@ public final class UserUtil {
   }
 
   public static List<EntityReference> getRoleForBot(String botName) {
-    String botRole;
-    switch (botName) {
-      case Entity.INGESTION_BOT_NAME:
-        botRole = Entity.INGESTION_BOT_ROLE;
-        break;
-      case Entity.QUALITY_BOT_NAME:
-        botRole = Entity.QUALITY_BOT_ROLE;
-        break;
-      case Entity.PROFILER_BOT_NAME:
-        botRole = Entity.PROFILER_BOT_ROLE;
-        break;
-      default:
-        throw new IllegalArgumentException("No role found for the bot " + botName);
-    }
+    String botRole =
+        switch (botName) {
+          case Entity.INGESTION_BOT_NAME -> Entity.INGESTION_BOT_ROLE;
+          case Entity.QUALITY_BOT_NAME -> Entity.QUALITY_BOT_ROLE;
+          case Entity.PROFILER_BOT_NAME -> Entity.PROFILER_BOT_ROLE;
+          default -> throw new IllegalArgumentException("No role found for the bot " + botName);
+        };
     return listOf(RoleResource.getRole(botRole));
   }
 }

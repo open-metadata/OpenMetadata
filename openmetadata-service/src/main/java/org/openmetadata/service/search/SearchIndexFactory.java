@@ -75,82 +75,52 @@ import org.openmetadata.service.search.indexes.WebAnalyticUserActivityReportData
 public class SearchIndexFactory {
 
   public SearchIndex buildIndex(String entityType, Object entity) {
-    switch (entityType) {
-      case Entity.TABLE:
-        return new TableIndex((Table) entity);
-      case Entity.DASHBOARD:
-        return new DashboardIndex((Dashboard) entity);
-      case Entity.TOPIC:
-        return new TopicIndex((Topic) entity);
-      case Entity.PIPELINE:
-        return new PipelineIndex((Pipeline) entity);
-      case Entity.USER:
-        return new UserIndex((User) entity);
-      case Entity.TEAM:
-        return new TeamIndex((Team) entity);
-      case Entity.GLOSSARY_TERM:
-        return new GlossaryTermIndex((GlossaryTerm) entity);
-      case Entity.MLMODEL:
-        return new MlModelIndex((MlModel) entity);
-      case Entity.TAG:
-        return new TagIndex((Tag) entity);
-      case Entity.CLASSIFICATION:
-        return new ClassificationIndex((Classification) entity);
-      case Entity.QUERY:
-        return new QueryIndex((Query) entity);
-      case Entity.CONTAINER:
-        return new ContainerIndex((Container) entity);
-      case Entity.DATABASE:
-        return new DatabaseIndex((Database) entity);
-      case Entity.DATABASE_SCHEMA:
-        return new DatabaseSchemaIndex((DatabaseSchema) entity);
-      case Entity.TEST_CASE:
-        return new TestCaseIndex((TestCase) entity);
-      case Entity.TEST_SUITE:
-        return new TestSuiteIndex((TestSuite) entity);
-      case Entity.CHART:
-        return new ChartIndex((Chart) entity);
-      case Entity.DASHBOARD_DATA_MODEL:
-        return new DashboardDataModelIndex((DashboardDataModel) entity);
-      case Entity.DASHBOARD_SERVICE:
-        return new DashboardServiceIndex((DashboardService) entity);
-      case Entity.DATABASE_SERVICE:
-        return new DatabaseServiceIndex((DatabaseService) entity);
-      case Entity.MESSAGING_SERVICE:
-        return new MessagingServiceIndex((MessagingService) entity);
-      case Entity.MLMODEL_SERVICE:
-        return new MlModelServiceIndex((MlModelService) entity);
-      case Entity.SEARCH_SERVICE:
-        return new SearchServiceIndex((SearchService) entity);
-      case Entity.SEARCH_INDEX:
-        return new SearchEntityIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
-      case Entity.PIPELINE_SERVICE:
-        return new PipelineServiceIndex((PipelineService) entity);
-      case Entity.STORAGE_SERVICE:
-        return new StorageServiceIndex((StorageService) entity);
-      case Entity.DOMAIN:
-        return new DomainIndex((Domain) entity);
-      case Entity.STORED_PROCEDURE:
-        return new StoredProcedureIndex((StoredProcedure) entity);
-      case Entity.DATA_PRODUCT:
-        return new DataProductIndex((DataProduct) entity);
-      case Entity.METADATA_SERVICE:
-        return new MetadataServiceIndex((MetadataService) entity);
-      case Entity.ENTITY_REPORT_DATA:
-        return new EntityReportDataIndex((ReportData) entity);
-      case Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA:
-        return new WebAnalyticEntityViewReportDataIndex((ReportData) entity);
-      case Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA:
-        return new WebAnalyticUserActivityReportDataIndex((ReportData) entity);
-      case Entity.RAW_COST_ANALYSIS_REPORT_DATA:
-        return new RawCostAnalysisReportDataIndex((ReportData) entity);
-      case Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA:
-        return new AggregatedCostAnalysisReportDataIndex((ReportData) entity);
-      case Entity.TEST_CASE_RESOLUTION_STATUS:
-        return new TestCaseResolutionStatusIndex((TestCaseResolutionStatus) entity);
-      default:
-        return buildExternalIndexes(entityType, entity);
-    }
+    return switch (entityType) {
+      case Entity.TABLE -> new TableIndex((Table) entity);
+      case Entity.DASHBOARD -> new DashboardIndex((Dashboard) entity);
+      case Entity.TOPIC -> new TopicIndex((Topic) entity);
+      case Entity.PIPELINE -> new PipelineIndex((Pipeline) entity);
+      case Entity.USER -> new UserIndex((User) entity);
+      case Entity.TEAM -> new TeamIndex((Team) entity);
+      case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
+      case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
+      case Entity.TAG -> new TagIndex((Tag) entity);
+      case Entity.CLASSIFICATION -> new ClassificationIndex((Classification) entity);
+      case Entity.QUERY -> new QueryIndex((Query) entity);
+      case Entity.CONTAINER -> new ContainerIndex((Container) entity);
+      case Entity.DATABASE -> new DatabaseIndex((Database) entity);
+      case Entity.DATABASE_SCHEMA -> new DatabaseSchemaIndex((DatabaseSchema) entity);
+      case Entity.TEST_CASE -> new TestCaseIndex((TestCase) entity);
+      case Entity.TEST_SUITE -> new TestSuiteIndex((TestSuite) entity);
+      case Entity.CHART -> new ChartIndex((Chart) entity);
+      case Entity.DASHBOARD_DATA_MODEL -> new DashboardDataModelIndex((DashboardDataModel) entity);
+      case Entity.DASHBOARD_SERVICE -> new DashboardServiceIndex((DashboardService) entity);
+      case Entity.DATABASE_SERVICE -> new DatabaseServiceIndex((DatabaseService) entity);
+      case Entity.MESSAGING_SERVICE -> new MessagingServiceIndex((MessagingService) entity);
+      case Entity.MLMODEL_SERVICE -> new MlModelServiceIndex((MlModelService) entity);
+      case Entity.SEARCH_SERVICE -> new SearchServiceIndex((SearchService) entity);
+      case Entity.SEARCH_INDEX -> new SearchEntityIndex(
+          (org.openmetadata.schema.entity.data.SearchIndex) entity);
+      case Entity.PIPELINE_SERVICE -> new PipelineServiceIndex((PipelineService) entity);
+      case Entity.STORAGE_SERVICE -> new StorageServiceIndex((StorageService) entity);
+      case Entity.DOMAIN -> new DomainIndex((Domain) entity);
+      case Entity.STORED_PROCEDURE -> new StoredProcedureIndex((StoredProcedure) entity);
+      case Entity.DATA_PRODUCT -> new DataProductIndex((DataProduct) entity);
+      case Entity.METADATA_SERVICE -> new MetadataServiceIndex((MetadataService) entity);
+      case Entity.ENTITY_REPORT_DATA -> new EntityReportDataIndex((ReportData) entity);
+      case Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA -> new WebAnalyticEntityViewReportDataIndex(
+          (ReportData) entity);
+      case Entity
+          .WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA -> new WebAnalyticUserActivityReportDataIndex(
+          (ReportData) entity);
+      case Entity.RAW_COST_ANALYSIS_REPORT_DATA -> new RawCostAnalysisReportDataIndex(
+          (ReportData) entity);
+      case Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA -> new AggregatedCostAnalysisReportDataIndex(
+          (ReportData) entity);
+      case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
+          (TestCaseResolutionStatus) entity);
+      default -> buildExternalIndexes(entityType, entity);
+    };
   }
 
   protected SearchIndex buildExternalIndexes(String entityType, Object entity) {

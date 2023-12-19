@@ -271,7 +271,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -285,8 +285,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
-    addHref(uriInfo, response.getEntity());
+    repository.deleteFromSearch(response.entity(), response.changeType());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -301,8 +301,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
-    addHref(uriInfo, response.getEntity());
+    repository.deleteFromSearch(response.entity(), response.changeType());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 

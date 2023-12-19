@@ -63,12 +63,14 @@ public class StoredProcedureResourceTest
   void put_storedProcedureCode_200(TestInfo test) throws IOException {
     CreateStoredProcedure createStoredProcedure = createRequest(test);
     String query =
-        "sales_vw\n"
-            + "create view sales_vw as\n"
-            + "select * from public.sales\n"
-            + "union all\n"
-            + "select * from spectrum.sales\n"
-            + "with no schema binding;\n";
+        """
+                    sales_vw
+                    create view sales_vw as
+                    select * from public.sales
+                    union all
+                    select * from spectrum.sales
+                    with no schema binding;
+                    """;
     createStoredProcedure.setStoredProcedureCode(
         new StoredProcedureCode().withCode(query).withLanguage(StoredProcedureLanguage.SQL));
     StoredProcedure storedProcedure =
@@ -81,12 +83,14 @@ public class StoredProcedureResourceTest
   void patch_storedProcedureCode_200(TestInfo test) throws IOException {
     CreateStoredProcedure createStoredProcedure = createRequest(test);
     String query =
-        "sales_vw\n"
-            + "create view sales_vw as\n"
-            + "select * from public.sales\n"
-            + "union all\n"
-            + "select * from spectrum.sales\n"
-            + "with no schema binding;\n";
+        """
+                    sales_vw
+                    create view sales_vw as
+                    select * from public.sales
+                    union all
+                    select * from spectrum.sales
+                    with no schema binding;
+                    """;
     createStoredProcedure.setStoredProcedureCode(
         new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL));
     StoredProcedure storedProcedure =
@@ -167,13 +171,14 @@ public class StoredProcedureResourceTest
     StoredProcedureCode storedProcedureCode =
         new StoredProcedureCode()
             .withCode(
-                "CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\n"
-                    + "RETURNS VARCHAR NOT NULL\n"
-                    + "LANGUAGE SQL\n"
-                    + "AS\n"
-                    + "BEGIN\n"
-                    + "  RETURN message;\n"
-                    + "END;")
+                """
+                            CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)
+                            RETURNS VARCHAR NOT NULL
+                            LANGUAGE SQL
+                            AS
+                            BEGIN
+                              RETURN message;
+                            END;""")
             .withLanguage(StoredProcedureLanguage.SQL);
     return new CreateStoredProcedure()
         .withName(name)

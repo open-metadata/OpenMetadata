@@ -24,7 +24,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   private final T entity; // Entity being created
   private EntityInterface parentEntity; // Entity being created
 
-  public CreateResourceContext(String resource, @NotNull T entity) {
+  public CreateResourceContext(@NonNull String resource, @NotNull T entity) {
     this.resource = resource;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
     this.entity = entity;

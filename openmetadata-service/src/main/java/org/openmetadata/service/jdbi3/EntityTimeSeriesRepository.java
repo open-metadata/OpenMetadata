@@ -73,8 +73,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     int beforeOffsetInt = offsetInt - limitParam;
 
     // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
-    // page will
-    // be at offset 0
+    // page will be at offset 0
     if (beforeOffsetInt < 0) beforeOffsetInt = 0;
 
     // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no

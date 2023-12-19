@@ -470,12 +470,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // summary is updated
 
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        1,
-        logicalTestSummary
-            .getTotal()); // check the deletion of the test case from the executable test suite
-    // cascaded to the logical
-    // test suite
+    assertEquals(1, logicalTestSummary.getTotal());
+    // check the deletion of the test case from the executable test suite
+    // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     // check the deletion of the test case from the logical test suite is reflected in the summary
@@ -760,8 +757,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(testCases.size(), logicalTestSuiteTestCases.getData().size());
 
     // Delete a logical test case and check that it is deleted from the logical test suite but not
-    // from the executable
-    // test suite
+    // from the executable test suite
     UUID logicalTestCaseIdToDelete = testCases.get(0).getId();
     deleteLogicalTestCase(logicalTestSuite, logicalTestCaseIdToDelete);
     logicalTestSuiteTestCases = getTestCases(100, "*", logicalTestSuite, false, ADMIN_AUTH_HEADERS);
@@ -771,8 +767,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(testCases.size(), executableTestSuiteTestCases.getData().size());
 
     // Soft Delete a test case from the executable test suite and check that it is deleted from the
-    // executable test
-    // suite and from the logical test suite
+    // executable test suite and from the logical test suite
     UUID executableTestCaseIdToDelete = testCases.get(1).getId();
     deleteEntity(executableTestCaseIdToDelete, false, false, ADMIN_AUTH_HEADERS);
     logicalTestSuiteTestCases = getTestCases(100, "*", logicalTestSuite, false, ADMIN_AUTH_HEADERS);
@@ -791,8 +786,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(5, executableTestSuiteTestCases.getData().size());
 
     // Hard Delete a test case from the executable test suite and check that it is deleted from the
-    // executable test
-    // suite and from the logical test suite
+    // executable test suite and from the logical test suite
     deleteEntity(executableTestCaseIdToDelete, false, true, ADMIN_AUTH_HEADERS);
     logicalTestSuiteTestCases = getTestCases(100, "*", logicalTestSuite, true, ADMIN_AUTH_HEADERS);
     assertEquals(3, logicalTestSuiteTestCases.getData().size());

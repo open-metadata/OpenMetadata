@@ -103,19 +103,16 @@ public class OpenMetadataConnectionBuilder {
 
   private AuthProvider extractAuthProvider(User botUser) {
     AuthenticationMechanism.AuthType authType = botUser.getAuthenticationMechanism().getAuthType();
-    switch (authType) {
-      case SSO:
-        return AuthProvider.fromValue(
-            JsonUtils.convertValue(
-                    botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
-                .getSsoServiceType()
-                .value());
-      case JWT:
-        return AuthProvider.OPENMETADATA;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
-    }
+    return switch (authType) {
+      case SSO -> AuthProvider.fromValue(
+          JsonUtils.convertValue(
+                  botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
+              .getSsoServiceType()
+              .value());
+      case JWT -> AuthProvider.OPENMETADATA;
+      default -> throw new IllegalArgumentException(
+          String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+    };
   }
 
   private Object extractSecurityConfig(User botUser) {
@@ -188,15 +185,11 @@ public class OpenMetadataConnectionBuilder {
   }
 
   protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, Object sslConfig) {
-    switch (verifySSL) {
-      case NO_SSL:
-      case IGNORE:
-        return null;
-      case VALIDATE:
-        return JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
-      default:
-        throw new IllegalArgumentException(
-            "OpenMetadata doesn't support SSL verification type " + verifySSL.value());
-    }
+    return switch (verifySSL) {
+      case NO_SSL, IGNORE -> null;
+      case VALIDATE -> JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
+      default -> throw new IllegalArgumentException(
+          "OpenMetadata doesn't support SSL verification type " + verifySSL.value());
+    };
   }
 }

@@ -582,10 +582,8 @@ public class FeedRepository {
       threads = JsonUtils.readObjects(jsons, Thread.class);
       total = dao.feedDAO().listCount(filter.getCondition());
     } else {
-      // Either one or both the filters are enabled
-      // we don't support both the filters together. If both are not null, entity link takes
-      // precedence
-
+      // Either one or both the filters are enabled. We don't support both the filters together.
+      // If both are not null, entity link takes precedence
       if (link != null) {
         EntityLink entityLink = EntityLink.parse(link);
         EntityReference reference = EntityUtil.validateEntityLink(entityLink);
@@ -593,8 +591,8 @@ public class FeedRepository {
         // For a user entityLink get created or replied relationships to the thread
         if (reference.getType().equals(USER)) {
           FilteredThreads filteredThreads = getThreadsByOwner(filter, reference.getId(), limit + 1);
-          threads = filteredThreads.getThreads();
-          total = filteredThreads.getTotalCount();
+          threads = filteredThreads.threads();
+          total = filteredThreads.totalCount();
         } else {
           // Only data assets are added as about
           User user =
@@ -635,8 +633,8 @@ public class FeedRepository {
             filteredThreads = getThreadsByOwner(filter, userId, limit + 1);
           }
         }
-        threads = filteredThreads.getThreads();
-        total = filteredThreads.getTotalCount();
+        threads = filteredThreads.threads();
+        total = filteredThreads.totalCount();
       }
     }
     sortAndLimitPosts(threads, limitPosts);
@@ -1148,13 +1146,5 @@ public class FeedRepository {
     return String.format("Closed the Task with comment - %s", closingComment);
   }
 
-  public static class FilteredThreads {
-    @Getter private final List<Thread> threads;
-    @Getter private final int totalCount;
-
-    public FilteredThreads(List<Thread> threads, int totalCount) {
-      this.threads = threads;
-      this.totalCount = totalCount;
-    }
-  }
+  public record FilteredThreads(List<Thread> threads, int totalCount) {}
 }

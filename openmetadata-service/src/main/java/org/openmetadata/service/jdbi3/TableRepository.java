@@ -1030,8 +1030,7 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
     List<CustomMetric> customMetrics = new ArrayList<>();
     for (ExtensionRecord extensionRecord : extensionRecords) {
-      customMetrics.add(
-          JsonUtils.readValue(extensionRecord.getExtensionJson(), CustomMetric.class));
+      customMetrics.add(JsonUtils.readValue(extensionRecord.extensionJson(), CustomMetric.class));
     }
 
     if (columnName != null) {

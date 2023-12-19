@@ -87,14 +87,11 @@ public class MigrationUtil {
                             "Query [%s] cannot be linked to a service. Deleting...",
                             queryJson.getString("id")));
                     // We cannot directly call the queryRepository for deletion, since the Query
-                    // object is missing
-                    // the new `service` property we introduced and the `delete` operation would
-                    // fail.
-                    // We need to delete the query entry and the relationships from/to this ID by
-                    // hand.
-                    // It should be OK since queries are simple structures without any children. We
-                    // should only
-                    // have relationship table <> query & user <> query
+                    // object is missing the new `service` property we introduced and the `delete`
+                    // operation would fail. We need to delete the query entry and the relationships
+                    // from/to this ID by hand. It should be OK since queries are simple structures
+                    // without any children. We should only have relationship
+                    // table <> query & user <> query
                     handle
                         .createUpdate(DELETE_QUERY)
                         .bind("id", queryJson.getString("id"))

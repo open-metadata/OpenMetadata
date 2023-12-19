@@ -11,15 +11,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
-  private static class FQNTest {
-    private final String[] parts;
-    private final String fqn;
-
-    FQNTest(String[] parts, String fqn) {
-      this.parts = parts;
-      this.fqn = fqn;
-    }
-
+  private record FQNTest(String[] parts, String fqn) {
     public void validate(String[] actualParts, String actualFQN) {
       assertEquals(fqn, actualFQN);
       assertEquals(parts.length, actualParts.length);
@@ -56,8 +48,7 @@ class FullyQualifiedNameTest {
   @Test
   void test_quoteName() {
     assertEquals("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
-    assertEquals(
-        "\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." exists in the name
+    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
 

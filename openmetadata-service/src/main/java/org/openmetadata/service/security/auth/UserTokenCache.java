@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -66,7 +67,7 @@ public class UserTokenCache {
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {
     @Override
-    public HashSet<String> load(@CheckForNull String userName) {
+    public @NonNull HashSet<String> load(@CheckForNull String userName) {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =

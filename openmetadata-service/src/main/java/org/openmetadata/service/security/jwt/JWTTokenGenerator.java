@@ -130,30 +130,16 @@ public class JWTTokenGenerator {
   }
 
   public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
-    LocalDateTime expiryDate;
-    switch (jwtTokenExpiry) {
-      case OneHour:
-        expiryDate = LocalDateTime.now().plusHours(1);
-        break;
-      case One:
-        expiryDate = LocalDateTime.now().plusDays(1);
-        break;
-      case Seven:
-        expiryDate = LocalDateTime.now().plusDays(7);
-        break;
-      case Thirty:
-        expiryDate = LocalDateTime.now().plusDays(30);
-        break;
-      case Sixty:
-        expiryDate = LocalDateTime.now().plusDays(60);
-        break;
-      case Ninety:
-        expiryDate = LocalDateTime.now().plusDays(90);
-        break;
-      case Unlimited:
-      default:
-        expiryDate = null;
-    }
+    LocalDateTime expiryDate =
+        switch (jwtTokenExpiry) {
+          case OneHour -> LocalDateTime.now().plusHours(1);
+          case One -> LocalDateTime.now().plusDays(1);
+          case Seven -> LocalDateTime.now().plusDays(7);
+          case Thirty -> LocalDateTime.now().plusDays(30);
+          case Sixty -> LocalDateTime.now().plusDays(60);
+          case Ninety -> LocalDateTime.now().plusDays(90);
+          case Unlimited -> null;
+        };
     return expiryDate != null
         ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant())
         : null;

@@ -365,10 +365,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Type STRING_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
-  // evey time junit
-  // tests are run to save time. But over the course of development of a release, when tests are run
-  // enough times,
-  // the webhook tests are run for all the entities.
+  // evey time junit tests are run to save time. But over the course of development of a release,
+  // when tests are run enough times, the webhook tests are run for all the entities.
   public static boolean runWebhookTests;
 
   protected boolean supportsSearchIndex = false;
@@ -456,9 +454,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     delete_recursiveTest();
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Methods to be overridden entity test class
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public final K createRequest(TestInfo test) {
@@ -490,19 +488,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract K createRequest(String name);
 
   // Get container entity used in createRequest that has CONTAINS relationship to the entity created
-  // with this
-  // request has. For table, it is database. For database, it is databaseService. See
-  // Relationship.CONTAINS for
-  // details.
+  // with this request has. For table, it is database. For database, it is databaseService. See
+  // Relationship.CONTAINS for details.
   public EntityReference getContainer() {
     return null;
   }
 
   // Get container entity based on create request that has CONTAINS relationship to the entity
-  // created with this
-  // request has. For table, it is database. For database, it is databaseService. See
-  // Relationship.CONTAINS for
-  // details.
+  // created with this request has. For table, it is database. For database, it is databaseService.
+  // See Relationship.CONTAINS for details.
   public EntityReference getContainer(T e) {
     return null;
   }
@@ -553,9 +547,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithDifferentFieldsQueryParam(TestInfo test) throws HttpResponseException {
@@ -629,9 +623,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       printEntities(allEntities);
 
       // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the
-      // test time)
-      // Each time compare the returned list with allTables list to make sure right results are
-      // returned
+      // test time) Each time compare the returned list with allTables list to make sure right
+      // results are returned
       for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
         String before;
@@ -750,9 +743,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // Restore the soft-deleted container by PUT operation and make sure it is restored
       String containerName = container.getName();
       if (containerTest.getContainer() != null) {
-        // Find container name by removing parentContainer fqn from container fqn
-        // Example: remove "service" from "service.database" to get "database" container name for
-        // table
+        // Find container name by removing parentContainer fqn from container fqn. Example: remove
+        // "service" from "service.database" to get "database" container name for table
         String parentOfContainer = containerTest.getContainer().getName();
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
@@ -887,9 +879,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for POST operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_entityCreateWithInvalidName_400() {
@@ -1067,18 +1059,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities
-    // like user,
-    // team, webhook and the entity names that are at the root for FQN like services,
-    // Classification, and Glossary etc.)
-    // No delimiter is expected.
+    // like user, team, webhook and the entity names that are at the root for FQN like services,
+    // Classification, and Glossary etc.), no delimiter is expected.
     boolean noHierarchicalName = entity.getFullyQualifiedName().equals(entity.getName());
     assertTrue(noHierarchicalName || entity.getFullyQualifiedName().contains("\""));
     assertEquals(name, entity.getName());
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void put_entityCreate_200(TestInfo test) throws IOException {
@@ -1437,9 +1427,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PATCH operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
@@ -1611,9 +1601,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldAdded(change, "displayName", "displayName");
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
-    // Update displayName to a new displayName
-    // In this test, the user who previously made a change makes the change after session timeout
-    // The changes are not consolidated
+    // Update displayName to a new displayName.
+    // In this test, the user who previously made a change makes the change after session timeout.
+    // The changes are not consolidated.
     EntityUpdater.setSessionTimeout(1); // Reduce the session timeout for this test
     java.lang.Thread.sleep(2);
     json = JsonUtils.pojoToJson(entity);
@@ -1776,9 +1766,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         CatalogExceptionMessage.unknownCustomField("stringC"));
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for DELETE operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_nonExistentEntity_404() {
@@ -1825,9 +1815,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Other tests
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void testInvalidEntityList() {
@@ -2167,9 +2157,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   protected WebTarget getCollection() {
     return getResource(collectionName);
   }
@@ -2468,7 +2458,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
     validateChangeDescription(latestVersion, updateType, expectedChangeDescription);
     if (updateType == CREATED) {
-      latestVersion = getVersion(entityInterface.getId(), 0.1, authHeaders);
+      getVersion(entityInterface.getId(), 0.1, authHeaders);
     } else if (updateType == REVERT) {
       Double version = EntityUtil.previousVersion(entityInterface.getVersion());
       if (!version.equals(0.0)) {

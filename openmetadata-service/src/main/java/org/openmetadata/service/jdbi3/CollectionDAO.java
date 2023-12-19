@@ -658,20 +658,12 @@ public interface CollectionDAO {
     @Getter private final String entityJson;
 
     public EntityVersionPair(ExtensionRecord extensionRecord) {
-      this.version = EntityUtil.getVersion(extensionRecord.getExtensionName());
-      this.entityJson = extensionRecord.getExtensionJson();
+      this.version = EntityUtil.getVersion(extensionRecord.extensionName());
+      this.entityJson = extensionRecord.extensionJson();
     }
   }
 
-  class ExtensionRecord {
-    @Getter private final String extensionName;
-    @Getter private final String extensionJson;
-
-    public ExtensionRecord(String extensionName, String extensionJson) {
-      this.extensionName = extensionName;
-      this.extensionJson = extensionJson;
-    }
-  }
+  record ExtensionRecord(String extensionName, String extensionJson) {}
 
   class ExtensionMapper implements RowMapper<ExtensionRecord> {
     @Override
@@ -3745,27 +3737,16 @@ public interface CollectionDAO {
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
-      Object value;
-      switch (configType) {
-        case EMAIL_CONFIGURATION:
-          value = JsonUtils.readValue(json, SmtpSettings.class);
-          break;
-        case CUSTOM_LOGO_CONFIGURATION:
-          value = JsonUtils.readValue(json, LogoConfiguration.class);
-          break;
-        case LOGIN_CONFIGURATION:
-          value = JsonUtils.readValue(json, LoginConfiguration.class);
-          break;
-        case SLACK_APP_CONFIGURATION:
-          value = JsonUtils.readValue(json, String.class);
-          break;
-        case SLACK_BOT:
-        case SLACK_INSTALLER:
-          value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
-          break;
-        default:
-          throw new IllegalArgumentException("Invalid Settings Type " + configType);
-      }
+      Object value =
+          switch (configType) {
+            case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
+            case CUSTOM_LOGO_CONFIGURATION -> JsonUtils.readValue(json, LogoConfiguration.class);
+            case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
+            case SLACK_APP_CONFIGURATION -> JsonUtils.readValue(json, String.class);
+            case SLACK_BOT, SLACK_INSTALLER -> JsonUtils.readValue(
+                json, new TypeReference<HashMap<String, Object>>() {});
+            default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
+          };
       settings.setConfigValue(value);
       return settings;
     }
@@ -3778,24 +3759,13 @@ public interface CollectionDAO {
     }
 
     public static TokenInterface getToken(TokenType type, String json) {
-      TokenInterface resp;
-      switch (type) {
-        case EMAIL_VERIFICATION:
-          resp = JsonUtils.readValue(json, EmailVerificationToken.class);
-          break;
-        case PASSWORD_RESET:
-          resp = JsonUtils.readValue(json, PasswordResetToken.class);
-          break;
-        case REFRESH_TOKEN:
-          resp = JsonUtils.readValue(json, RefreshToken.class);
-          break;
-        case PERSONAL_ACCESS_TOKEN:
-          resp = JsonUtils.readValue(json, PersonalAccessToken.class);
-          break;
-        default:
-          throw new IllegalArgumentException("Invalid Token Type.");
-      }
-      return resp;
+      return switch (type) {
+        case EMAIL_VERIFICATION -> JsonUtils.readValue(json, EmailVerificationToken.class);
+        case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
+        case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
+        case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
+        default -> throw new IllegalArgumentException("Invalid Token Type.");
+      };
     }
   }
 
