@@ -538,7 +538,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setDeletionState((pre) => ({ ...pre, status: 'initial' }));
+      setDeletionState((pre) => ({
+        ...pre,
+        status: 'initial',
+        loading: false,
+      }));
     }
   }, [selectedEdge, setShowDeleteModal]);
 
