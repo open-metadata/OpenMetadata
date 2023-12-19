@@ -70,6 +70,7 @@ import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -375,7 +376,9 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceUtilClassBase.getServiceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo({
+    serviceType,
+  } as SearchSourceAlias);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;

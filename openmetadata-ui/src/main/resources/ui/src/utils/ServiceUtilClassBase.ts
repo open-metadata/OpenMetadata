@@ -143,11 +143,10 @@ class ServiceUtilClassBase {
   }
 
   public getServiceTypeLogo(
-    type: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _searchSource?: SearchSuggestions[number] | SearchSourceAlias
+    searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
     const serviceTypes = this.getSupportedServiceFromList();
+    const type = searchSource.serviceType ?? '';
     switch (type) {
       case DatabaseServiceType.Mysql:
         return MYSQL;

@@ -212,7 +212,7 @@ export const getSuggestionElement = (
           alt={serviceType}
           className="m-r-sm"
           height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(serviceType, suggestion)}
+          src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
           width="16px"
         />
       }
