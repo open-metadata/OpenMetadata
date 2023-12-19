@@ -91,6 +91,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.NotificationHandler;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
@@ -607,6 +608,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .withUpdatedAt(System.currentTimeMillis());
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
+
+    // Send WebSocket Notification
+    NotificationHandler.handleTaskNotification(thread);
   }
 
   private void closeApprovalTask(GlossaryTerm entity, String comment) {
