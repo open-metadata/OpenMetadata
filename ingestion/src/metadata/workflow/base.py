@@ -170,6 +170,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         try:
             self.execute_internal()
 
+            # TODO: SHOULD THIS HAPPEN IN THE FINALLY? HOW TO KNOW OK/KO?
             # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
             self.update_pipeline_status_at_end()
 

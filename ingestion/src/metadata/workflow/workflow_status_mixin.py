@@ -15,6 +15,8 @@ import uuid
 from datetime import datetime
 from typing import Optional, Tuple
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import IngestionStatus
+
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -76,6 +78,7 @@ class WorkflowStatusMixin:
     def set_ingestion_pipeline_status(
         self,
         state: PipelineState,
+        ingestion_status: Optional[IngestionStatus] = None,
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -94,6 +97,7 @@ class WorkflowStatusMixin:
                 # if workflow is ended then update the end date in status
                 pipeline_status.endDate = datetime.now().timestamp() * 1000
                 pipeline_status.pipelineState = state
+                pipeline_status.status = ingestion_status
 
             self.metadata.create_or_update_pipeline_status(
                 self.config.ingestionPipelineFQN, pipeline_status

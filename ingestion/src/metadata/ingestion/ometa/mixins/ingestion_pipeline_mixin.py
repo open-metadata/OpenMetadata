@@ -44,6 +44,7 @@ class OMetaIngestionPipelineMixin:
         :param ingestion_pipeline_fqn: Ingestion Pipeline FQN
         :param pipeline_status: Pipeline Status data to add
         """
+        # TODO: THIS SHOULD BE A PATCH IF THE STATUS EXISTS FOR OUR TS
         resp = self.client.put(
             f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
             data=pipeline_status.json(),
