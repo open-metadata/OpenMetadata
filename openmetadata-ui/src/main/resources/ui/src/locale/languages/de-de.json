@@ -1519,7 +1519,7 @@
     "password-error-message": "Das Passwort muss mindestens 8 und maximal 16 Zeichen lang sein und mindestens einen Großbuchstaben (A-Z), einen Kleinbuchstaben (a-z), eine Zahl und ein Sonderzeichen (z. B. !, %, @ oder #) enthalten.",
     "password-pattern-error": "Das Passwort muss mindestens 8 und maximal 16 Zeichen lang sein und mindestens einen Sonderbuchstaben, einen Großbuchstaben und einen Kleinbuchstaben enthalten.",
     "path-of-the-dbt-files-stored": "Pfad zum Ordner, in dem die dbt-Dateien gespeichert sind",
-    "permanently-delete-metadata": "Das dauerhafte Löschen dieses {{entityName}} entfernt seine Metadaten dauerhaft aus OpenMetadata.",
+    "permanently-delete-metadata": "Das dauerhafte Löschen dieses <0>{{entityName}}</0> entfernt seine Metadaten dauerhaft aus OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "Das dauerhafte Löschen dieses {{entityName}} entfernt seine Metadaten sowie die Metadaten von {{dependents}} dauerhaft aus OpenMetadata.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Beschreibung der Pipeline.",
