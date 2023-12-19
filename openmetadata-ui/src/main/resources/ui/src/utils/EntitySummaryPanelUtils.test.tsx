@@ -13,13 +13,24 @@
 
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Column } from '../generated/entity/data/table';
-import { getFormattedEntityData } from './EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+  getSummaryListItemType,
+  getTitle,
+} from './EntitySummaryPanelUtils';
 import {
   mockEntityDataWithNesting,
   mockEntityDataWithNestingResponse,
   mockEntityDataWithoutNesting,
   mockEntityDataWithoutNestingResponse,
+  mockGetSummaryListItemTypeResponse,
   mockInvalidDataResponse,
+  mockLinkBasedSummaryTitleResponse,
+  mockTagFQNsForHighlight,
+  mockTagsDataAfterSortAndHighlight,
+  mockTagsDataBeforeSortAndHighlight,
+  mockTextBasedSummaryTitleResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
 
 describe('EntitySummaryPanelUtils tests', () => {
@@ -61,5 +72,39 @@ describe('EntitySummaryPanelUtils tests', () => {
     );
 
     expect(resultFormattedData).toEqual(mockInvalidDataResponse);
+  });
+
+  it('getSortedTagsWithHighlight should return the sorted and highlighted tags data based on given tagFQN array', () => {
+    const sortedTags = getSortedTagsWithHighlight({
+      sortTagsBasedOnGivenTagFQNs: mockTagFQNsForHighlight,
+      tags: mockTagsDataBeforeSortAndHighlight,
+    });
+
+    expect(sortedTags).toEqual(mockTagsDataAfterSortAndHighlight);
+  });
+
+  it('getSummaryListItemType should return the summary item type based on given entityType', () => {
+    const summaryItemType = getSummaryListItemType(
+      SummaryEntityType.COLUMN,
+      mockEntityDataWithoutNesting[0]
+    );
+
+    expect(summaryItemType).toEqual(mockGetSummaryListItemTypeResponse);
+  });
+
+  it('getTitle should return title as link or text based on sourceUrl present or not in given data', () => {
+    const textBasedTitle = getTitle({
+      content: 'Title1',
+      sourceUrl: undefined,
+    });
+
+    expect(textBasedTitle).toEqual(mockTextBasedSummaryTitleResponse);
+
+    const linkBasedTitle = getTitle({
+      content: 'Title2',
+      sourceUrl: 'https://task1.com',
+    });
+
+    expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
   });
 });

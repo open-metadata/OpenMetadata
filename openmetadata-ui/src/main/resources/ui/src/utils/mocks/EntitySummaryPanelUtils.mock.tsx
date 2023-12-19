@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Column,
   DataType,
@@ -21,6 +22,7 @@ import {
   TagSource,
 } from '../../generated/entity/data/table';
 import { DataTypeTopic, Field } from '../../generated/entity/data/topic';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
 const { Text } = Typography;
 
@@ -307,3 +309,94 @@ export const mockInvalidDataResponse = [
     type: undefined,
   },
 ];
+
+export const mockTagsDataBeforeSortAndHighlight = [
+  {
+    tagFQN: 'gs1.term1',
+    name: 'term1',
+    displayName: '',
+    description: 'term1 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term2',
+    name: 'term2',
+    displayName: '',
+    description: 'term2 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term3',
+    name: 'term3',
+    displayName: '',
+    description: 'term3 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+];
+
+export const mockTagsDataAfterSortAndHighlight = [
+  {
+    tagFQN: 'gs1.term2',
+    name: 'term2',
+    displayName: '',
+    description: 'term2 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    isHighlighted: true,
+  },
+  {
+    tagFQN: 'gs1.term1',
+    name: 'term1',
+    displayName: '',
+    description: 'term1 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term3',
+    name: 'term3',
+    displayName: '',
+    description: 'term3 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+];
+
+export const mockTagFQNsForHighlight = ['gs1.term2'];
+
+export const mockGetSummaryListItemTypeResponse = DataType.Varchar;
+
+export const mockTextBasedSummaryTitleResponse = (
+  <Text className="entity-title" data-testid="entity-title">
+    Title1
+  </Text>
+);
+
+export const mockLinkBasedSummaryTitleResponse = (
+  <Link target="_blank" to={{ pathname: 'https://task1.com' }}>
+    <div className="d-flex">
+      <Text
+        className="entity-title text-link-color font-medium m-r-xss"
+        data-testid="entity-title"
+        ellipsis={{ tooltip: true }}>
+        Title2
+      </Text>
+      <IconExternalLink width={12} />
+    </div>
+  </Link>
+);
