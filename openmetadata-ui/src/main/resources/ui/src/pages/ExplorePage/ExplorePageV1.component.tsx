@@ -38,7 +38,6 @@ import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
-  tabsInfo,
 } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -51,6 +50,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -60,6 +60,7 @@ import {
 } from './ExplorePage.interface';
 
 const ExplorePageV1: FunctionComponent = () => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();

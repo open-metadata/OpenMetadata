@@ -54,7 +54,8 @@ public class SearchResource {
   private final Authorizer authorizer;
   private final SearchRepository searchRepository;
 
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
+  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM =
+      "eventPublisher:ElasticSearch:STREAM";
 
   public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
@@ -73,7 +74,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response search(
       @Context UriInfo uriInfo,
@@ -121,20 +125,26 @@ public class SearchResource {
           @DefaultValue("_score")
           @QueryParam("sort_field")
           String sortFieldParam,
-      @Parameter(description = "Sort order asc for ascending or desc for descending, defaults to desc")
+      @Parameter(
+              description = "Sort order asc for ascending or desc for descending, defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
           String sortOrder,
-      @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
+      @Parameter(description = "Track Total Hits")
+          @DefaultValue("false")
+          @QueryParam("track_total_hits")
           boolean trackTotalHits,
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
           @QueryParam("query_filter")
           String queryFilter,
-      @Parameter(description = "Elasticsearch query that will be used as a post_filter") @QueryParam("post_filter")
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
           String postFilter,
-      @Parameter(description = "Get document body for each hit") @DefaultValue("true") @QueryParam("fetch_source")
+      @Parameter(description = "Get document body for each hit")
+          @DefaultValue("true")
+          @QueryParam("fetch_source")
           boolean fetchSource,
       @Parameter(
               description =
@@ -171,7 +181,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response searchByField(
       @Context UriInfo uriInfo,
@@ -196,7 +209,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response searchBySourceUrl(
       @Context UriInfo uriInfo,
@@ -244,7 +260,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "Table Suggestion API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggest.class)))
       })
   public Response suggest(
       @Context UriInfo uriInfo,
@@ -271,7 +290,9 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "Get document body for each hit") @DefaultValue("true") @QueryParam("fetch_source")
+      @Parameter(description = "Get document body for each hit")
+          @DefaultValue("true")
+          @QueryParam("fetch_source")
           boolean fetchSource,
       @Parameter(
               description =
@@ -305,14 +326,19 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "Table Aggregate API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggest.class)))
       })
   public Response aggregate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("table_search_index") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
-      @Parameter(description = "value for searching in aggregation") @DefaultValue("") @QueryParam("value")
+      @Parameter(description = "value for searching in aggregation")
+          @DefaultValue("")
+          @QueryParam("value")
           String value,
       @Parameter(
               description =
@@ -352,7 +378,8 @@ public class SearchResource {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Status not found")
       })
-  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public Response reindexAllJobLastStatus(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     // Check if there is a running job for reindex for requested entity

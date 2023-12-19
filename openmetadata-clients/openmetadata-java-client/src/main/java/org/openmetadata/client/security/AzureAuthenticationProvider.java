@@ -37,7 +37,8 @@ public class AzureAuthenticationProvider implements AuthenticationProvider {
   public AzureAuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.AZURE)) {
       LOG.error("Required type to invoke is Azure for AzureAuthentication Provider");
-      throw new RuntimeException("Required type to invoke is Azure for AzureAuthentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is Azure for AzureAuthentication Provider");
     }
 
     securityConfig = (AzureSSOClientConfig) iConfig.getSecurityConfig();
@@ -55,7 +56,8 @@ public class AzureAuthenticationProvider implements AuthenticationProvider {
 
   @Override
   public String authToken() throws IOException {
-    IClientCredential credential = ClientCredentialFactory.createFromSecret(securityConfig.getClientSecret());
+    IClientCredential credential =
+        ClientCredentialFactory.createFromSecret(securityConfig.getClientSecret());
     ConfidentialClientApplication cca =
         ConfidentialClientApplication.builder(securityConfig.getClientId(), credential)
             .authority(securityConfig.getAuthority())

@@ -52,7 +52,8 @@ public class ClassConverterFactoryTest {
         Workflow.class
       })
   void testClassConverterIsSet(Class<?> clazz) {
-    assertFalse(ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
+    assertFalse(
+        ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
   }
 
   @Test

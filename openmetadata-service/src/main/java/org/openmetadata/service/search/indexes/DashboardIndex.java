@@ -31,7 +31,8 @@ public class DashboardIndex implements SearchIndex {
     List<SearchSuggest> dataModelSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
-    serviceSuggest.add(SearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard));
 
     for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
@@ -42,7 +43,9 @@ public class DashboardIndex implements SearchIndex {
       dataModelSuggest.add(SearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
     }
 
-    doc.put("displayName", dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
+    doc.put(
+        "displayName",
+        dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("followers", SearchIndexUtils.parseFollowers(dashboard.getFollowers()));
     doc.put("tier", parseTags.getTierTag());

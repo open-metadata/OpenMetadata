@@ -27,6 +27,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { SearchSourceAlias } from '../../../interface/search.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -133,7 +134,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   className="m-r-xs"
                   height="16px"
                   src={serviceUtilClassBase.getServiceTypeLogo(
-                    entity.serviceType as string
+                    entity as SearchSourceAlias
                   )}
                   width="16px"
                 />
