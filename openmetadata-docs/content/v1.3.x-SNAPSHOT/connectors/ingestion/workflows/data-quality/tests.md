@@ -499,7 +499,7 @@ This test allows us to specify how many values in a column we expect that will m
 - mariaDB
 - sqlite
 - clickhouse
-- snowfalke
+- snowflake
 
 The other databases will fall back to the `LIKE` expression
 
@@ -546,7 +546,7 @@ This test allows us to specify values in a column we expect that will not match 
 - mariaDB
 - sqlite
 - clickhouse
-- snowfalke
+- snowflake
 
 The other databases will fall back to the `LIKE` expression
 
