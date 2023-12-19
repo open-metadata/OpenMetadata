@@ -190,19 +190,27 @@ public class SubscriptionUtil {
   }
 
   public static List<Invocation.Builder> getTargetsForWebhook(
-      SubscriptionAction action, CreateEventSubscription.SubscriptionType type, Client client, ChangeEvent event) {
+      SubscriptionAction action,
+      CreateEventSubscription.SubscriptionType type,
+      Client client,
+      ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =
         buildReceiversListFromActions(
-            action, type, Entity.getCollectionDAO(), entityInterface.getId(), event.getEntityType());
+            action,
+            type,
+            Entity.getCollectionDAO(),
+            entityInterface.getId(),
+            event.getEntityType());
     for (String url : receiversUrls) {
       targets.add(client.target(url).request());
     }
     return targets;
   }
 
-  public static void postWebhookMessage(AbstractEventConsumer publisher, Invocation.Builder target, Object message)
+  public static void postWebhookMessage(
+      AbstractEventConsumer publisher, Invocation.Builder target, Object message)
       throws InterruptedException {
     long attemptTime = System.currentTimeMillis();
     Response response =
@@ -219,7 +227,8 @@ public class SubscriptionUtil {
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
       publisher.setNextBackOff();
-      publisher.setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+      publisher.setAwaitingRetry(
+          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
       Thread.sleep(publisher.getCurrentBackoffTime());
     } else if (response.getStatus() == 200) {
       publisher.setSuccessStatus(System.currentTimeMillis());

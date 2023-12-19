@@ -44,7 +44,8 @@ public class EmailPublisher extends AbstractEventConsumer {
   @Override
   protected void doInit(JobExecutionContext context) {
     if (eventSubscription.getSubscriptionType() == EMAIL) {
-      this.emailAlertConfig = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), EmailAlertConfig.class);
+      this.emailAlertConfig =
+          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), EmailAlertConfig.class);
       this.daoCollection = Entity.getCollectionDAO();
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");

@@ -44,7 +44,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     if (entity.getStatusDetails() == null) {
       entity.withStatusDetails(
           fields.contains("statusDetails")
-              ? EventSubscriptionScheduler.getInstance().getStatusForEventSubscription(entity.getId())
+              ? EventSubscriptionScheduler.getInstance()
+                  .getStatusForEventSubscription(entity.getId())
               : null);
     }
   }

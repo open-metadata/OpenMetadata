@@ -85,7 +85,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       gChatMessage.setText(headerText);
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
       String cardHeaderText =
-          String.format(headerTemplate, event.getUserName(), event.getEntityType(), entityInterface.getName());
+          String.format(
+              headerTemplate,
+              event.getUserName(),
+              event.getEntityType(),
+              entityInterface.getName());
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }

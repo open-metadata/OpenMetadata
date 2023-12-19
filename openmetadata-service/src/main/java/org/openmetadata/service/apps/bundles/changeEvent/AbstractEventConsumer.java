@@ -58,7 +58,8 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
   protected AbstractEventConsumer() {}
 
   private void init(JobExecutionContext context) {
-    EventSubscription sub = (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
+    EventSubscription sub =
+        (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
     this.offset = loadInitialOffset();
@@ -85,7 +86,8 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
             .eventSubscriptionDAO()
             .getSubscriberOffset(eventSubscription.getId().toString(), OFFSET_EXTENSION);
     if (json != null) {
-      EventSubscriptionOffset offsetFromDb = JsonUtils.readValue(json, EventSubscriptionOffset.class);
+      EventSubscriptionOffset offsetFromDb =
+          JsonUtils.readValue(json, EventSubscriptionOffset.class);
       eventSubscriptionOffset = offsetFromDb.getOffset();
     } else {
       eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
@@ -103,11 +105,13 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     List<ChangeEvent> filteredEvents = new ArrayList<>();
     for (ChangeEvent event : events) {
       boolean triggerChangeEvent =
-          AlertUtil.shouldTriggerAlert(event.getEntityType(), eventSubscription.getFilteringRules());
+          AlertUtil.shouldTriggerAlert(
+              event.getEntityType(), eventSubscription.getFilteringRules());
 
       // Evaluate ChangeEvent Alert Filtering
       if (eventSubscription.getFilteringRules() != null
-          && !AlertUtil.evaluateAlertConditions(event, eventSubscription.getFilteringRules().getRules())) {
+          && !AlertUtil.evaluateAlertConditions(
+              event, eventSubscription.getFilteringRules().getRules())) {
         triggerChangeEvent = false;
       }
 
@@ -116,7 +120,9 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
         if (event.getChangeDescription() != null) {
           filteredEvents.add(event);
         } else {
-          LOG.info("Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}", event);
+          LOG.info(
+              "Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}",
+              event);
         }
       }
     }
@@ -164,14 +170,20 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
 
   public synchronized void setSuccessStatus(Long updateTime) {
     SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
+        AlertUtil.buildSubscriptionStatus(
+            ACTIVE, updateTime, null, null, null, updateTime, updateTime);
     eventSubscription.setStatusDetails(subStatus);
   }
 
   protected synchronized void setStatus(
-      SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp) {
+      SubscriptionStatus.Status status,
+      Long attemptTime,
+      Integer statusCode,
+      String reason,
+      Long timestamp) {
     SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
+        AlertUtil.buildSubscriptionStatus(
+            status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
     eventSubscription.setStatusDetails(subStatus);
   }
 
@@ -209,7 +221,8 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     } catch (Exception e) {
       handleException(e);
     } finally {
-      LOG.debug("Committing offset for eventSubscription {}  {}", eventSubscription.getName(), offset);
+      LOG.debug(
+          "Committing offset for eventSubscription {}  {}", eventSubscription.getName(), offset);
       commitOffset(jobExecutionContext, offset);
     }
   }

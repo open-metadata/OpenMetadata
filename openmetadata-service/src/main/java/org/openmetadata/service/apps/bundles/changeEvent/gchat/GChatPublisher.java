@@ -35,7 +35,8 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class GChatPublisher extends AbstractEventConsumer {
-  private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator = new GChatMessageDecorator();
+  private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator =
+      new GChatMessageDecorator();
   private Webhook webhook;
   private Invocation.Builder target;
   private Client client;
@@ -43,7 +44,8 @@ public class GChatPublisher extends AbstractEventConsumer {
   @Override
   protected void doInit(JobExecutionContext context) {
     if (eventSubscription.getSubscriptionType() == G_CHAT_WEBHOOK) {
-      this.webhook = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+      this.webhook =
+          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
 
       // Build Client
       client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
@@ -65,7 +67,8 @@ public class GChatPublisher extends AbstractEventConsumer {
     for (ChangeEvent event : changeEvents) {
       try {
         GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
         if (target != null) {
           targets.add(target);
         }

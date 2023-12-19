@@ -89,7 +89,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       } else {
         headerTxt = "%s posted on " + eventType + " %s";
         headerText =
-            String.format(headerTxt, event.getUserName(), this.buildEntityUrl(event.getEntityType(), entityInterface));
+            String.format(
+                headerTxt,
+                event.getUserName(),
+                this.buildEntityUrl(event.getEntityType(), entityInterface));
       }
       slackMessage.setText(headerText);
     }

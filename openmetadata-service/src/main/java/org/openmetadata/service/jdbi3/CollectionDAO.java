@@ -1551,7 +1551,8 @@ public interface CollectionDAO {
       return false;
     }
 
-    @SqlQuery("SELECT json FROM event_subscription_extension where id = :id AND extension = :extension")
+    @SqlQuery(
+        "SELECT json FROM event_subscription_extension where id = :id AND extension = :extension")
     String getSubscriberOffset(@Bind("id") String id, @Bind("extension") String extension);
 
     @ConnectionAwareSqlUpdate(
@@ -3181,7 +3182,7 @@ public interface CollectionDAO {
             + "ORDER BY eventTime ASC")
     List<String> listWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
-    
+
     @SqlQuery("SELECT json FROM change_event ORDER BY eventTime ASC LIMIT :limit OFFSET :offset")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 

@@ -112,7 +112,8 @@ public class EventSubscriptionResource
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       repository.initSeedDataFromResources();
-      EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
+      EventsSubscriptionRegistry.initialize(
+          listOrEmpty(EventSubscriptionResource.getDescriptors()));
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -127,7 +128,8 @@ public class EventSubscriptionResource
           daoCollection
               .eventSubscriptionDAO()
               .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
-      List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
+      List<EventSubscription> eventSubList =
+          JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {
         if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
           EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
@@ -292,10 +294,14 @@ public class EventSubscriptionResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateEventSubscription(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription create) {
-    EventSubscription eventSub = getEventSubscription(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventSubscription create) {
+    EventSubscription eventSub =
+        getEventSubscription(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().updateEventSubscription((EventSubscription) response.getEntity());
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -326,7 +332,8 @@ public class EventSubscriptionResource
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    EventSubscriptionScheduler.getInstance().updateEventSubscription((EventSubscription) response.getEntity());
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -432,7 +439,8 @@ public class EventSubscriptionResource
           @PathParam("name")
           String name)
       throws SchedulerException {
-    EventSubscription eventSubscription = repository.getByName(null, name, repository.getFields("id"));
+    EventSubscription eventSubscription =
+        repository.getByName(null, name, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     return deleteByName(uriInfo, securityContext, name, true, true);
   }

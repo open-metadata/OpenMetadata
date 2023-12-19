@@ -42,7 +42,8 @@ public class SlackEventPublisher extends AbstractEventConsumer {
   @Override
   protected void doInit(JobExecutionContext context) {
     if (eventSubscription.getSubscriptionType() == SLACK_WEBHOOK) {
-      this.webhook = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+      this.webhook =
+          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
 
       // Build Client
       client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
@@ -64,7 +65,8 @@ public class SlackEventPublisher extends AbstractEventConsumer {
     for (ChangeEvent event : changeEvents) {
       try {
         SlackMessage slackMessage = slackMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, event);
         if (target != null) {
           targets.add(target);
         }

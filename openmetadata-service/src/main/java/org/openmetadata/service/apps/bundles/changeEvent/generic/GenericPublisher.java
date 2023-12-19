@@ -42,7 +42,8 @@ public class GenericPublisher extends AbstractEventConsumer {
   @Override
   protected void doInit(JobExecutionContext context) {
     if (eventSubscription.getSubscriptionType() == GENERIC_WEBHOOK) {
-      this.webhook = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+      this.webhook =
+          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
 
       // Build Client
       this.client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
@@ -70,7 +71,8 @@ public class GenericPublisher extends AbstractEventConsumer {
       // Post to Generic Webhook with Actions
       for (ChangeEvent event : changeEvents) {
         String eventJson = JsonUtils.pojoToJson(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, event);
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, eventJson);
         }

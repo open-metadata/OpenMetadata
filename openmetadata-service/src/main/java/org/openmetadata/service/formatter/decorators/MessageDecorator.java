@@ -40,7 +40,8 @@ public interface MessageDecorator<T> {
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
     if (CommonUtil.nullOrEmpty(fqn)) {
-      EntityInterface result = Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
+      EntityInterface result =
+          Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
       fqn = result.getFullyQualifiedName();
     }
     return getEntityUrl(entityType, fqn);

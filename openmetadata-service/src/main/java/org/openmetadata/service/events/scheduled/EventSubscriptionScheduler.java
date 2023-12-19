@@ -46,7 +46,8 @@ public class EventSubscriptionScheduler {
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
-  private static final ConcurrentHashMap<UUID, AbstractEventConsumer> alertJobMap = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<UUID, AbstractEventConsumer> alertJobMap =
+      new ConcurrentHashMap<>();
 
   private EventSubscriptionScheduler() throws SchedulerException {
     this.alertsScheduler.start();
@@ -72,15 +73,22 @@ public class EventSubscriptionScheduler {
   @Transaction
   @SneakyThrows
   public void addSubscriptionPublisher(EventSubscription eventSubscription) {
-    if (Objects.requireNonNull(eventSubscription.getAlertType()) == CreateEventSubscription.AlertType.CHANGE_EVENT) {
+    if (Objects.requireNonNull(eventSubscription.getAlertType())
+        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
       AbstractEventConsumer publisher = AlertUtil.getNotificationsPublisher(eventSubscription);
       if (Boolean.FALSE.equals(
-          eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
-        eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+          eventSubscription
+              .getEnabled())) { // Only add webhook that is enabled for publishing events
+        eventSubscription.setStatusDetails(
+            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
       } else {
-        eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
+        eventSubscription.setStatusDetails(
+            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
         JobDetail jobDetail =
-            jobBuilder(publisher, eventSubscription, String.format("%s", eventSubscription.getId().toString()));
+            jobBuilder(
+                publisher,
+                eventSubscription,
+                String.format("%s", eventSubscription.getId().toString()));
         Trigger trigger = trigger(eventSubscription);
 
         // Schedule the Job
@@ -101,7 +109,9 @@ public class EventSubscriptionScheduler {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     JobBuilder jobBuilder =
-        JobBuilder.newJob(consumer.getClass()).withIdentity(jobIdentity, ALERT_JOB_GROUP).usingJobData(dataMap);
+        JobBuilder.newJob(consumer.getClass())
+            .withIdentity(jobIdentity, ALERT_JOB_GROUP)
+            .usingJobData(dataMap);
     return jobBuilder.build();
   }
 
@@ -124,8 +134,10 @@ public class EventSubscriptionScheduler {
   @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    if (Objects.requireNonNull(eventSubscription.getAlertType()) == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      if (Boolean.TRUE.equals(eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
+    if (Objects.requireNonNull(eventSubscription.getAlertType())
+        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
+      if (Boolean.TRUE.equals(
+          eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
         // If there was a previous webhook either in disabled state or stopped due
         // to errors, update it and restart publishing
         AbstractEventConsumer previousPublisher = getPublisher(eventSubscription.getId());
@@ -142,7 +154,8 @@ public class EventSubscriptionScheduler {
       } else {
         // Remove the webhook publisher
         removeProcessorForEventSubscription(
-            eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+            eventSubscription.getId(),
+            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
       }
     } else {
       throw new IllegalArgumentException(INVALID_ALERT);
@@ -161,12 +174,15 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity) throws SchedulerException {
-    if (Objects.requireNonNull(deletedEntity.getAlertType()) == CreateEventSubscription.AlertType.CHANGE_EVENT) {
+  public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
+      throws SchedulerException {
+    if (Objects.requireNonNull(deletedEntity.getAlertType())
+        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
       AbstractEventConsumer publisher = alertJobMap.remove(deletedEntity.getId());
       if (publisher != null) {
         alertsScheduler.deleteJob(publisher.getJobDetail().getKey());
-        alertsScheduler.unscheduleJob(new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+        alertsScheduler.unscheduleJob(
+            new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
         LOG.info("Alert publisher deleted for {}", publisher.getEventSubscription().getName());
       }
     } else {

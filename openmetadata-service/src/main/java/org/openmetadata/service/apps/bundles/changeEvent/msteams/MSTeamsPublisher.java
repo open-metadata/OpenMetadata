@@ -35,7 +35,8 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class MSTeamsPublisher extends AbstractEventConsumer {
-  private final MessageDecorator<TeamsMessage> teamsMessageFormatter = new MSTeamsMessageDecorator();
+  private final MessageDecorator<TeamsMessage> teamsMessageFormatter =
+      new MSTeamsMessageDecorator();
   private Webhook webhook;
   private Invocation.Builder target;
   private Client client;
@@ -43,7 +44,8 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
   @Override
   protected void doInit(JobExecutionContext context) {
     if (eventSubscription.getSubscriptionType() == MS_TEAMS_WEBHOOK) {
-      this.webhook = JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+      this.webhook =
+          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
 
       // Build Client
       client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
@@ -65,7 +67,8 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
     for (ChangeEvent event : changeEvents) {
       try {
         TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
         if (target != null) {
           targets.add(target);
         }
