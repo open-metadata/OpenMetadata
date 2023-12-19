@@ -40,7 +40,8 @@ import org.openmetadata.service.util.RestUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 public class WebhookCallbackResource {
   private final ConcurrentHashMap<String, EventDetails> eventMap = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, List<ChangeEvent>> entityCallbackMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, List<ChangeEvent>> entityCallbackMap =
+      new ConcurrentHashMap<>();
 
   /**
    * Webhook endpoint that immediately responds to callback. The events received are collected in a queue per testName
@@ -51,7 +52,8 @@ public class WebhookCallbackResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
-      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       EventList events) {
     String payload = JsonUtils.pojoToJson(events);
@@ -113,11 +115,14 @@ public class WebhookCallbackResource {
   public Response receiveEntityEvents(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
-      @Parameter(description = "Type of event", schema = @Schema(type = "string")) @PathParam("eventType")
+      @Parameter(description = "Type of event", schema = @Schema(type = "string"))
+          @PathParam("eventType")
           String eventType,
-      @Parameter(description = "Type of entity", schema = @Schema(type = "string")) @PathParam("entityType")
+      @Parameter(description = "Type of entity", schema = @Schema(type = "string"))
+          @PathParam("entityType")
           String entityType,
       EventList events) {
     String key = eventType + ":" + entityType;
@@ -128,7 +133,8 @@ public class WebhookCallbackResource {
     } else {
       list.addAll(events.getData());
     }
-    LOG.debug("callback /{}/{} received event. Current count {}", eventType, entityType, list.size());
+    LOG.debug(
+        "callback /{}/{} received event. Current count {}", eventType, entityType, list.size());
     return Response.ok().build();
   }
 

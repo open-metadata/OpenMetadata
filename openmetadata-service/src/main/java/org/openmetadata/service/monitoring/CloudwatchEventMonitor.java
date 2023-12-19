@@ -52,7 +52,9 @@ public class CloudwatchEventMonitor extends EventMonitor {
   private final CloudWatchClient client;
 
   public CloudwatchEventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+      EventMonitorProvider eventMonitorProvider,
+      EventMonitorConfiguration config,
+      String clusterPrefix) {
     super(eventMonitorProvider, config, clusterPrefix);
 
     if (config != null
@@ -66,10 +68,14 @@ public class CloudwatchEventMonitor extends EventMonitor {
         credentialsProvider = DefaultCredentialsProvider.create();
       } else {
         credentialsProvider =
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKeyId, secretAccessKey));
       }
       this.client =
-          CloudWatchClient.builder().region(Region.of(region)).credentialsProvider(credentialsProvider).build();
+          CloudWatchClient.builder()
+              .region(Region.of(region))
+              .credentialsProvider(credentialsProvider)
+              .build();
     } else {
       this.client = CloudWatchClient.create();
     }
@@ -95,21 +101,17 @@ public class CloudwatchEventMonitor extends EventMonitor {
     List<PutMetricDataRequest> metricRequests = Collections.emptyList();
 
     try {
-      switch (event.getEventType()) {
-        case ENTITY_CREATED:
-          metricRequests = List.of(logPipelineCreated(fqn, pipelineType, timestamp));
-          break;
-        case ENTITY_UPDATED:
-          // we can have multiple updates bundled together
-          metricRequests = logPipelineUpdated(fqn, pipelineType, timestamp, event.getChangeDescription());
-          break;
-        case ENTITY_DELETED:
-        case ENTITY_SOFT_DELETED:
-          metricRequests = List.of(logPipelineDeleted(fqn, pipelineType, timestamp));
-          break;
-        default:
-          throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
-      }
+      metricRequests =
+          switch (event.getEventType()) {
+            case ENTITY_CREATED -> List.of(logPipelineCreated(fqn, pipelineType, timestamp));
+            case ENTITY_UPDATED ->
+            // we can have multiple updates bundled together
+            logPipelineUpdated(fqn, pipelineType, timestamp, event.getChangeDescription());
+            case ENTITY_DELETED, ENTITY_SOFT_DELETED -> List.of(
+                logPipelineDeleted(fqn, pipelineType, timestamp));
+            default -> throw new IllegalArgumentException(
+                "Invalid EventType " + event.getEventType());
+          };
     } catch (IllegalArgumentException | CloudWatchException e) {
       LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to " + e.getMessage());
     }
@@ -117,11 +119,13 @@ public class CloudwatchEventMonitor extends EventMonitor {
     return metricRequests;
   }
 
-  protected PutMetricDataRequest logPipelineCreated(String fqn, String pipelineType, Long timestamp) {
+  protected PutMetricDataRequest logPipelineCreated(
+      String fqn, String pipelineType, Long timestamp) {
     return logPipelineStatus(fqn, pipelineType, timestamp, INGESTION_PIPELINE_CREATED);
   }
 
-  protected PutMetricDataRequest logPipelineDeleted(String fqn, String pipelineType, Long timestamp) {
+  protected PutMetricDataRequest logPipelineDeleted(
+      String fqn, String pipelineType, Long timestamp) {
     return logPipelineStatus(fqn, pipelineType, timestamp, INGESTION_PIPELINE_DELETED);
   }
 
@@ -133,7 +137,10 @@ public class CloudwatchEventMonitor extends EventMonitor {
               if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
                 PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
                 return logPipelineStatus(
-                    fqn, pipelineType, timestamp, getMetricNameByStatus(pipelineStatus.getPipelineState()));
+                    fqn,
+                    pipelineType,
+                    timestamp,
+                    getMetricNameByStatus(pipelineStatus.getPipelineState()));
               } else {
                 LOG.debug("Ignoring Ingestion Pipeline change type " + change.getName());
               }
@@ -146,7 +153,8 @@ public class CloudwatchEventMonitor extends EventMonitor {
     return INGESTION_PIPELINE_UPDATED + statusType.toString().toUpperCase();
   }
 
-  protected PutMetricDataRequest logPipelineStatus(String fqn, String pipelineType, Long timestamp, String metricName) {
+  protected PutMetricDataRequest logPipelineStatus(
+      String fqn, String pipelineType, Long timestamp, String metricName) {
     Dimension dimension = Dimension.builder().name(pipelineType).value(fqn).build();
     Instant instant = Instant.ofEpochMilli(timestamp);
 
@@ -159,7 +167,10 @@ public class CloudwatchEventMonitor extends EventMonitor {
             .dimensions(dimension)
             .build();
 
-    return PutMetricDataRequest.builder().namespace(buildMetricNamespace(NAMESPACE)).metricData(datum).build();
+    return PutMetricDataRequest.builder()
+        .namespace(buildMetricNamespace(NAMESPACE))
+        .metricData(datum)
+        .build();
   }
 
   @Override

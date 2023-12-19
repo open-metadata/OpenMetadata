@@ -34,25 +34,33 @@ import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
   public DataProductResourceTest() {
-    super(Entity.DATA_PRODUCT, DataProduct.class, DataProductList.class, "dataProducts", DataProductResource.FIELDS);
+    super(
+        Entity.DATA_PRODUCT,
+        DataProduct.class,
+        DataProductList.class,
+        "dataProducts",
+        DataProductResource.FIELDS);
   }
 
   public void setupDataProducts(TestInfo test) throws HttpResponseException {
     DOMAIN_DATA_PRODUCT = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN_DATA_PRODUCT =
         createEntity(
-            createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+            createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void testDataProductAssets(TestInfo test) throws IOException {
     // Create Data product with Table1 as the asset
-    CreateDataProduct create = createRequest(getEntityName(test)).withAssets(List.of(TEST_TABLE1.getEntityReference()));
+    CreateDataProduct create =
+        createRequest(getEntityName(test)).withAssets(List.of(TEST_TABLE1.getEntityReference()));
     DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     entityInDataProduct(TEST_TABLE1, product, true); // Table1 is part of data product
 
     TopicResourceTest topicTest = new TopicResourceTest();
-    Topic topic = topicTest.createEntity(topicTest.createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    Topic topic =
+        topicTest.createEntity(topicTest.createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
     // Version 0.2 - Add asset topic with PUT
     create.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
@@ -68,8 +76,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
 
-    // Add topic asset with PATCH
-    // Version 0.2 - Changes from this PATCH is consolidated with the previous changes resulting in no change
+    // Add topic asset with PATCH.
+    // Version 0.2 - Changes from this PATCH is consolidated with the previous changes resulting in
+    // no change
     String json = JsonUtils.pojoToJson(product);
     change = getChangeDescription(product, REVERT);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
@@ -77,7 +86,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     entityInDataProduct(topic, product, true); // topic is part of data product
 
     // Remove asset topic with PATCH
-    // Changes from this PATCH is consolidated with the previous changes resulting in removal of topic
+    // Changes from this PATCH is consolidated with the previous changes resulting in removal of
+    // topic
     json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
     change = getChangeDescription(product, REVERT);
@@ -88,7 +98,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Test
   void testDataProductExperts(TestInfo test) throws IOException {
-    CreateDataProduct create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
+    CreateDataProduct create =
+        createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
     DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add User2 as expert using PUT
@@ -111,7 +122,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, REVERT, change);
 
     // Remove User2 as expert using PATCH
-    // Changes from this PATCH is consolidated with the previous changes resulting in deletion of USER2
+    // Changes from this PATCH is consolidated with the previous changes resulting in deletion of
+    // USER2
     json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference()));
     change = getChangeDescription(product, REVERT);
@@ -122,9 +134,13 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
     DomainResourceTest domainTest = new DomainResourceTest();
     String domain1 =
-        domainTest.createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+        domainTest
+            .createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS)
+            .getFullyQualifiedName();
     String domain2 =
-        domainTest.createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+        domainTest
+            .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
+            .getFullyQualifiedName();
     DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
     DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
     DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
@@ -144,11 +160,14 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p4.getName())));
   }
 
-  private void entityInDataProduct(EntityInterface entity, EntityInterface product, boolean inDataProduct)
+  private void entityInDataProduct(
+      EntityInterface entity, EntityInterface product, boolean inDataProduct)
       throws HttpResponseException {
     // Only table or topic is expected to assets currently in the tests
     EntityResourceTest test =
-        entity.getEntityReference().getType().equals(Entity.TABLE) ? new TableResourceTest() : new TopicResourceTest();
+        entity.getEntityReference().getType().equals(Entity.TABLE)
+            ? new TableResourceTest()
+            : new TopicResourceTest();
     entity = test.getEntity(entity.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
     TestUtils.existsInEntityReferenceList(entity.getDataProducts(), product.getId(), inDataProduct);
   }
@@ -175,7 +194,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   }
 
   @Override
-  public void compareEntities(DataProduct expected, DataProduct updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DataProduct expected, DataProduct updated, Map<String, String> authHeaders) {
     // Entity specific validation
     assertReference(expected.getDomain(), updated.getDomain());
     assertEntityReferences(expected.getExperts(), updated.getExperts());

@@ -46,29 +46,34 @@ abstract class TestEntityMasker {
 
   @Test
   void testAirflowConnectionMasker() {
-    AirflowConnection airflowConnection = new AirflowConnection().withConnection(buildMysqlConnection());
+    AirflowConnection airflowConnection =
+        new AirflowConnection().withConnection(buildMysqlConnection());
     AirflowConnection masked =
         (AirflowConnection)
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(airflowConnection, "Airflow", ServiceType.PIPELINE);
     assertNotNull(masked);
     assertEquals(
-        (JsonUtils.convertValue(((MysqlConnection) masked.getConnection()).getAuthType(), basicAuth.class)
+        (JsonUtils.convertValue(
+                ((MysqlConnection) masked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword()),
         getMaskedPassword());
     AirflowConnection unmasked =
         (AirflowConnection)
             EntityMaskerFactory.createEntityMasker()
-                .unmaskServiceConnectionConfig(masked, airflowConnection, "Airflow", ServiceType.PIPELINE);
+                .unmaskServiceConnectionConfig(
+                    masked, airflowConnection, "Airflow", ServiceType.PIPELINE);
     assertEquals(
         PASSWORD,
-        JsonUtils.convertValue(((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
+        JsonUtils.convertValue(
+                ((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword());
   }
 
   @Test
   void testBigQueryConnectionMasker() {
-    BigQueryConnection bigQueryConnection = new BigQueryConnection().withCredentials(buildGcpCredentials());
+    BigQueryConnection bigQueryConnection =
+        new BigQueryConnection().withCredentials(buildGcpCredentials());
     BigQueryConnection masked =
         (BigQueryConnection)
             EntityMaskerFactory.createEntityMasker()
@@ -78,13 +83,15 @@ abstract class TestEntityMasker {
     BigQueryConnection unmasked =
         (BigQueryConnection)
             EntityMaskerFactory.createEntityMasker()
-                .unmaskServiceConnectionConfig(masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
+                .unmaskServiceConnectionConfig(
+                    masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
     assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
   }
 
   @Test
   void testDatalakeConnectionMasker() {
-    DatalakeConnection datalakeConnection = new DatalakeConnection().withConfigSource(buildGcsConfig());
+    DatalakeConnection datalakeConnection =
+        new DatalakeConnection().withConfigSource(buildGcsConfig());
     DatalakeConnection masked =
         (DatalakeConnection)
             EntityMaskerFactory.createEntityMasker()
@@ -226,7 +233,8 @@ abstract class TestEntityMasker {
             new SourceConfig()
                 .withConfig(
                     new DbtPipeline()
-                        .withDbtConfigSource(new DbtGCSConfig().withDbtSecurityConfig(buildGcpCredentials()))))
+                        .withDbtConfigSource(
+                            new DbtGCSConfig().withDbtSecurityConfig(buildGcpCredentials()))))
         .withOpenMetadataServerConnection(buildOpenMetadataConnection());
   }
 

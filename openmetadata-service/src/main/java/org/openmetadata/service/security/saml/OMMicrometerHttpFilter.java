@@ -59,7 +59,9 @@ public class OMMicrometerHttpFilter implements Filter {
     }
     String responseStatus = String.valueOf(((HttpServletResponse) response).getStatus());
     String requestMethod = ((HttpServletRequest) request).getMethod();
-    MicrometerBundle.httpRequests.labels(requestMethod, responseStatus, requestPath).observe(elapsed);
+    MicrometerBundle.httpRequests
+        .labels(requestMethod, responseStatus, requestPath)
+        .observe(elapsed);
     timer.stop(webAnalyticEvents);
   }
 
