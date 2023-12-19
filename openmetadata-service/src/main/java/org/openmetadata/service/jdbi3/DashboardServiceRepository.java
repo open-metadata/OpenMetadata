@@ -21,7 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 
 @Slf4j
-public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
+public class DashboardServiceRepository
+    extends ServiceEntityRepository<DashboardService, DashboardConnection> {
 
   public DashboardServiceRepository() {
     super(

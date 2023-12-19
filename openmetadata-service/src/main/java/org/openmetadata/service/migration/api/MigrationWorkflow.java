@@ -62,7 +62,9 @@ public class MigrationWorkflow {
   }
 
   public List<MigrationFile> getMigrationFiles(
-      String nativeSQLScriptRootPath, ConnectionType connectionType, String extensionSQLScriptRootPath) {
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath) {
     List<MigrationFile> availableOMNativeMigrations =
         getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
 
@@ -81,7 +83,8 @@ public class MigrationWorkflow {
        - Extension: 1.1.0-extension, 1.2.0-extension
      The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
     */
-    return Stream.concat(availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+    return Stream.concat(
+            availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
         .sorted()
         .collect(Collectors.toList());
   }
@@ -93,7 +96,8 @@ public class MigrationWorkflow {
         .collect(Collectors.toList());
   }
 
-  private List<MigrationProcess> filterAndGetMigrationsToRun(List<MigrationFile> availableMigrations) {
+  private List<MigrationProcess> filterAndGetMigrationsToRun(
+      List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
     Optional<String> previousMaxMigration = migrationDAO.getMaxServerMigrationVersion();
     List<MigrationFile> applyMigrations;
@@ -111,7 +115,8 @@ public class MigrationWorkflow {
         file.parseSQLFiles();
         String clazzName = file.getMigrationProcessClassName();
         MigrationProcess process =
-            (MigrationProcess) Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+            (MigrationProcess)
+                Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
         processes.add(process);
       }
     } catch (Exception e) {
@@ -193,7 +198,8 @@ public class MigrationWorkflow {
   }
 
   public void updateMigrationStepInDB(MigrationProcess step) {
-    migrationDAO.upsertServerMigration(step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
+    migrationDAO.upsertServerMigration(
+        step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
   }
 
   public void migrateSearchIndexes() {}

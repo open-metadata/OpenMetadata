@@ -29,17 +29,14 @@ import org.openmetadata.schema.entity.teams.User;
 public class TokenUtil {
   private TokenUtil() {}
 
-  public static TokenInterface createNewTokenWithDefaults(UUID userId, UUID tokenId, TokenType type) {
-    switch (type) {
-      case EMAIL_VERIFICATION:
-        return getEmailVerificationToken(userId, tokenId);
-      case PASSWORD_RESET:
-        return getPasswordResetToken(userId, tokenId);
-      case REFRESH_TOKEN:
-        return getRefreshToken(userId, tokenId);
-      default:
-        throw new RuntimeException("Invalid Token Type.");
-    }
+  public static TokenInterface createNewTokenWithDefaults(
+      UUID userId, UUID tokenId, TokenType type) {
+    return switch (type) {
+      case EMAIL_VERIFICATION -> getEmailVerificationToken(userId, tokenId);
+      case PASSWORD_RESET -> getPasswordResetToken(userId, tokenId);
+      case REFRESH_TOKEN -> getRefreshToken(userId, tokenId);
+      default -> throw new RuntimeException("Invalid Token Type.");
+    };
   }
 
   public static EmailVerificationToken getEmailVerificationToken(UUID userId, UUID token) {

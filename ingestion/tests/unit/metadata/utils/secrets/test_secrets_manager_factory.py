@@ -24,7 +24,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.secrets.secrets_manager_factory import (
     SecretsManagerConfigException,
     SecretsManagerFactory,
@@ -40,7 +40,7 @@ class TestSecretsManagerFactory(TestCase):
     def test_get_not_implemented_secret_manager(self):
         with self.assertRaises(NotImplementedError) as not_implemented_error:
             om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-                SecretsManagerProvider.noop,
+                SecretsManagerProvider.db,
                 SecretsManagerClientLoader.noop,
             )
             om_connection.secretsManagerProvider = "aws"
@@ -54,7 +54,7 @@ class TestSecretsManagerFactory(TestCase):
     def test_invalid_config_secret_manager(self):
 
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-            SecretsManagerProvider.noop,
+            SecretsManagerProvider.db,
             SecretsManagerClientLoader.noop,
         )
         om_connection.secretsManagerLoader = "random"
@@ -66,7 +66,7 @@ class TestSecretsManagerFactory(TestCase):
 
     def test_get_none_secret_manager(self):
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-            SecretsManagerProvider.noop,
+            SecretsManagerProvider.db,
             SecretsManagerClientLoader.noop,
         )
         om_connection.secretsManagerProvider = None
@@ -77,7 +77,7 @@ class TestSecretsManagerFactory(TestCase):
         )
         assert secrets_manager_factory.get_secrets_manager() is not None
         assert isinstance(
-            secrets_manager_factory.get_secrets_manager(), NoopSecretsManager
+            secrets_manager_factory.get_secrets_manager(), DBSecretsManager
         )
 
     @patch("metadata.clients.aws_client.boto3")

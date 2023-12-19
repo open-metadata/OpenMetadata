@@ -12,14 +12,4 @@
  */
 package org.openmetadata.service.pipelineService.airflow;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
-@Getter
-@AllArgsConstructor
-public class MockResponse {
-
-  private final String body;
-  private final String contentType;
-  private final int statusCode;
-}
+public record MockResponse(String body, String contentType, int statusCode) {}

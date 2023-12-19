@@ -50,7 +50,7 @@
     },
     "secretsManagerProvider": {
       "$ref": "../../security/secrets/secretsManagerProvider.json",
-      "default": "noop"
+      "default": "db"
     }
   },
   "additionalProperties": false

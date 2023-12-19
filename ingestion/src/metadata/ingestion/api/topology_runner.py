@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
@@ -382,6 +383,19 @@ class TopologyRunnerMixin(Generic[C]):
         entity_request: Either[C],
     ) -> Iterable[Either[Entity]]:
         """Tag implementation for the context information"""
+        yield entity_request
+
+        # We'll keep the tag fqn in the context and use if required
+        self.update_context(stage=stage, context=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: OMetaCustomProperties,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Custom Property implementation for the context information"""
         yield entity_request
 
         # We'll keep the tag fqn in the context and use if required

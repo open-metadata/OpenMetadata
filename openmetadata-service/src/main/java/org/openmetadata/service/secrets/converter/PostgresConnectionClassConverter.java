@@ -22,7 +22,8 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `DatalakeConnection` object. */
 public class PostgresConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
   public PostgresConnectionClassConverter() {
     super(PostgresConnection.class);
@@ -30,9 +31,11 @@ public class PostgresConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    PostgresConnection postgresConnection = (PostgresConnection) JsonUtils.convertValue(object, this.clazz);
+    PostgresConnection postgresConnection =
+        (PostgresConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(postgresConnection::setAuthType);
+    tryToConvert(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(postgresConnection::setAuthType);
 
     return postgresConnection;
   }

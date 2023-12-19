@@ -37,7 +37,8 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
   public CustomOIDCAuthenticationProvider(OpenMetadataConnection iConfig) {
     if (!iConfig.getAuthProvider().equals(AuthProvider.CUSTOM_OIDC)) {
       LOG.error("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
-      throw new RuntimeException("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
     }
 
     securityConfig = (CustomOIDCSSOClientConfig) iConfig.getSecurityConfig();
@@ -73,7 +74,8 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
   public String authToken() {
     AccessTokenResponse resp = customSSOClient.getAccessToken();
     generatedAuthToken = resp.getAccessToken();
-    expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
+    expirationTimeMillis =
+        Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
     return generatedAuthToken;
   }
 
