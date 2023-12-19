@@ -37,6 +37,7 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import { TAG_FQN_KEY } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
@@ -84,6 +85,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
+
+  const firstEntity = searchResults?.hits
+    ?.hits[0] as SearchedDataProps['data'][number];
 
   const parsedSearch = useMemo(
     () =>
@@ -214,8 +218,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     ) {
       handleSummaryPanelDisplay(
         highlightEntityNameAndDescription(
-          searchResults?.hits?.hits[0]._source,
-          searchResults?.hits?.hits[0].highlight
+          firstEntity._source,
+          firstEntity.highlight
         )
       );
     } else {
@@ -351,13 +355,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       handleClosePanel={handleClosePanel}
                       highlights={omit(
                         {
-                          ...searchResults?.hits?.hits[0]?.highlight,
+                          ...firstEntity.highlight, // highlights of firstEntity that we get from the query api
                           'tag.name': (
                             selectedQuickFilters?.find(
-                              (filterOption) =>
-                                filterOption.key === EntityFields.TAG
+                              (filterOption) => filterOption.key === TAG_FQN_KEY
                             )?.value ?? []
-                          ).map((tagFQN) => tagFQN.key),
+                          ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
                         },
                         ['description', 'displayName']
                       )}
