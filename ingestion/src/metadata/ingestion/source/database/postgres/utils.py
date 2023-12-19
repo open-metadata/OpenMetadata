@@ -46,7 +46,7 @@ OLD_POSTGRES_VERSION = "13.0"
 def get_etable_owner(
     self, connection, table_name=None, schema=None
 ):  # pylint: disable=unused-argument
-    """Return all materialized view names in `schema`.
+    """Return all owners.
 
     :param schema: Optional, retrieve names from a non-default schema.
         For special quoting, use :class:`.quoted_name`.

@@ -44,7 +44,7 @@ def get_all_table_owners(
     self, connection, query, schema_name, **kw
 ):  # pylint: disable=unused-argument
     """
-    Method to fetch comment of all available tables
+    Method to fetch owners of all available tables
     """
     self.all_table_owners: Dict[Tuple[str, str], str] = {}
     result = connection.execute(query)

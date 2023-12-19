@@ -471,8 +471,8 @@ class DatabaseServiceSource(
         )
         return None
 
-    def process_owner(  # pylint: disable=useless-return
-        self, table_name_and_type: Tuple[str, str]
+    def process_owner(
+        self, table_name_and_type: Tuple[str, str]  # pylint: disable=unused-argument
     ):
         """Get database owner
 
