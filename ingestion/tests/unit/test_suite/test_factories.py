@@ -52,7 +52,6 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 MYSQL_CONNECTION_CONFIG = MysqlConnection(
@@ -101,7 +100,7 @@ def test_register_many():
     factory = TestSuiteInterfaceFactory()
 
     test_suite_interfaces = {
-        'base': SQATestSuiteInterface,
+        "base": SQATestSuiteInterface,
         DatalakeConnection.__name__: PandasTestSuiteInterface,
         SnowflakeConnection.__name__: SnowflakeTestSuiteInterface,
         UnityCatalogConnection.__name__: UnityCatalogTestSuiteInterface,
