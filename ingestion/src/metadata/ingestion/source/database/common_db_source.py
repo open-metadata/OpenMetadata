@@ -110,7 +110,6 @@ class CommonDbSourceService(
         self.database_source_state = set()
         self.context.table_views = []
         self.context.table_constrains = []
-        self.current_db: str = self.connection.engine.url.database
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:

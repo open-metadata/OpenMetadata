@@ -22,7 +22,6 @@ from sqlalchemy.engine import Inspector
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    Table,
     TablePartition,
     TableType,
 )
@@ -250,13 +249,13 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    def get_owner_entity_reference(self, table_name, schema):
+    def get_owner_details(self, schema_name: str, table_name: str):
         """
         Returns owner's entity reference
         """
         owner = None
         owner_name = self.inspector.get_table_owner(
-            connection=self.connection, table_name=table_name, schema=schema
+            connection=self.connection, table_name=table_name, schema=schema_name
         )
         if not owner_name:
             return owner_name
@@ -279,42 +278,3 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     f" team was found with name {owner_name}"
                 )
         return owner
-
-    def process_owner(self, table_name_and_type: Tuple[str, str]):
-        try:
-            if self.source_config.includeOwners:
-                self.inspector.get_table_owner(
-                    connection=self.connection,
-                    table_name=table_name_and_type[0],
-                    schema=self.context.database_schema,
-                )
-                schema_name = self.context.database_schema
-                table_name = table_name_and_type[0]
-
-                owner = self.get_owner_entity_reference(
-                    table_name=table_name, schema=schema_name
-                )
-
-                if owner:
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
-                        table_name=table_name,
-                    )
-                    table_entity = self.metadata.get_by_name(
-                        entity=Table, fqn=table_fqn
-                    )
-                    self.metadata.patch_owner(
-                        entity=Table,
-                        source=table_entity,
-                        owner=owner,
-                        force=False,
-                    )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
-            )

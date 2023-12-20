@@ -11,6 +11,7 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
@@ -471,19 +472,47 @@ class DatabaseServiceSource(
         )
         return None
 
-    def process_owner(
-        self, table_name_and_type: Tuple[str, str]  # pylint: disable=unused-argument
-    ):
-        """Get database owner
-
-        Args
-        schema_name, table_nam
-        Returns:
-            Optional[EntityReference]
+    def process_owner(self, table_name_and_type: Tuple[str, str]):
         """
-        logger.debug(
-            f"Processing ownership is not supported for {self.service_connection.type.name}"
-        )
+        Method to process the table owners
+        """
+        try:
+            if self.source_config.includeOwners:
+                self.inspector.get_table_owner(
+                    connection=self.connection,  # pylint: disable=no-member
+                    table_name=table_name_and_type[0],
+                    schema=self.context.database_schema,
+                )
+                schema_name = self.context.database_schema
+                table_name = table_name_and_type[0]
+
+                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                    table_name=table_name, schema_name=schema_name
+                )
+
+                if owner:
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                        table_name=table_name,
+                    )
+                    table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
+                    self.metadata.patch_owner(
+                        entity=Table,
+                        source=table_entity,
+                        owner=owner,
+                        force=False,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
+            )
 
     def mark_tables_as_deleted(self):
         """
