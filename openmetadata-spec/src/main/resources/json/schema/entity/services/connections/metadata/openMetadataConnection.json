@@ -67,26 +67,7 @@
     "securityConfig": {
       "mask": true,
       "description": "OpenMetadata Client security configuration.",
-      "oneOf": [
-        {
-          "$ref": "../../../../security/client/googleSSOClientConfig.json"
-        },
-        {
-          "$ref": "../../../../security/client/oktaSSOClientConfig.json"
-        },
-        {
-          "$ref": "../../../../security/client/auth0SSOClientConfig.json"
-        },
-        {
-          "$ref": "../../../../security/client/azureSSOClientConfig.json"
-        },
-        {
-          "$ref": "../../../../security/client/customOidcSSOClientConfig.json"
-        },
-        {
-          "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
-        }
-      ]
+      "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
     },
     "secretsManagerProvider": {
       "$ref": "./../../../../security/secrets/secretsManagerProvider.json",

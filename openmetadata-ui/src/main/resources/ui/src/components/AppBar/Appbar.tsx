@@ -31,7 +31,6 @@ import {
   ROUTES,
   TOUR_SEARCH_TERM,
 } from '../../constants/constants';
-import { tabsInfo } from '../../constants/explore.constants';
 import {
   urlGitbookDocs,
   urlGithubRepo,
@@ -45,6 +44,7 @@ import {
   isTourRoute,
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
@@ -52,6 +52,7 @@ import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
 
 const Appbar: React.FC = (): JSX.Element => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
   const { t } = useTranslation();

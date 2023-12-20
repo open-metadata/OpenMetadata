@@ -160,7 +160,7 @@ Deletes web analytics events before a timestamp
 get_aggregated_data_insight_results(
     start_ts: 'int',
     end_ts: 'int',
-    data_insight_chart_nane: 'str',
+    data_insight_chart_name: 'str',
     data_report_index: 'str',
     params: 'Optional[dict]' = None
 ) → DataInsightChartResult
@@ -174,7 +174,7 @@ _summary_
  
  - <b>`start_ts`</b> (int):  _description_ 
  - <b>`end_ts`</b> (int):  _description_ 
- - <b>`data_insight_chart_nane`</b> (str):  _description_ 
+ - <b>`data_insight_chart_name`</b> (str):  _description_ 
  - <b>`data_report_index`</b> (str):  _description_ 
  - <b>`params`</b> (Optional[dict], optional):  _description_. Defaults to None. 
 
