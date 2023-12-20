@@ -119,7 +119,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 
 ## Linking the Owner to the table
 
-After runing the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
+After running the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
 
 {% image
   src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png"

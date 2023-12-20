@@ -34,7 +34,7 @@ alt="Filter by the Type of Data Asset"
 caption="Filter by the Type of Data Asset"
 /%}
 
-Users can navigate to the Explore page for specific type of data assets and use the filter options relevant to that data assset to narrow down the search.
+Users can navigate to the Explore page for specific type of data assets and use the filter options relevant to that data asset to narrow down the search.
 
 ## Filter by Asset Owner
 A team or a user can own the data asset in OpenMetadata. Users can filter data assets by the asset owner. With information on the data asset owners, you can direct your questions to the right person or team.

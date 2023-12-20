@@ -21,7 +21,7 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-**Note:** For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+**Note:** For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 ### Python Requirements
