@@ -267,6 +267,10 @@ dev = {
     "build",
 }
 
+sample_data_generation = {
+    "Faker"
+}
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
@@ -331,5 +335,6 @@ setup(
         "slim": filter_requirements(
             {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
         ),
+        "sample_data_generation": list(sample_data_generation)
     },
 )

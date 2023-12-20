@@ -20,7 +20,8 @@ import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Union
-
+import faker
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from pydantic import ValidationError
 
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -194,6 +195,9 @@ class SampleDataSource(
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata = metadata
         self.list_policies = []
+        self.store_table_fqn = []
+        self.store_data_model_fqn = []
+        self.store_dashboard_fqn = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
             "sampleDataFolder"
@@ -546,29 +550,7 @@ class SampleDataSource(
         """Nothing to prepare"""
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
-        yield from self.ingest_teams()
-        yield from self.ingest_users()
-        yield from self.ingest_glue()
-        yield from self.ingest_tables()
-        yield from self.ingest_stored_procedures()
-        yield from self.ingest_topics()
-        yield from self.ingest_charts()
-        yield from self.ingest_data_models()
-        yield from self.ingest_dashboards()
-        yield from self.ingest_looker()
-        yield from self.ingest_pipelines()
-        yield from self.ingest_lineage()
-        yield from self.ingest_pipeline_status()
-        yield from self.ingest_mlmodels()
-        yield from self.ingest_containers()
-        yield from self.ingest_search_indexes()
-        yield from self.ingest_profiles()
-        yield from self.ingest_test_suite()
-        yield from self.ingest_test_case()
-        yield from self.ingest_test_case_results()
-        yield from self.ingest_logical_test_suite()
-        yield from self.ingest_data_insights()
-        yield from self.ingest_life_cycle()
+        yield from self.test_sample_data()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -798,7 +780,6 @@ class SampleDataSource(
 
         # Create table and stored procedure lineage
         for lineage_entities in self.stored_procedures["lineage"]:
-
             from_table = self.metadata.get_by_name(
                 entity=Table, fqn=lineage_entities["from_table_fqn"]
             )
@@ -1581,3 +1562,133 @@ class SampleDataSource(
 
     def test_connection(self) -> None:
         """Custom sources don't support testing connections"""
+
+    def test_sample_data(self):
+        fake = faker.Faker(["en-US", "zh_CN", "ja_JP", "th_TH"])
+        for _ in range(2):
+            get_name = (
+                lambda: f"Sample-@!3_(%t3st@)%_^{fake.name()}"
+            )
+            get_text = (
+                lambda: f"Sample-@!3_(%m@)%_^{fake.text()}"
+            )
+            self.database_service_json["name"] = get_name()
+            self.database_service_json["description"] = get_text()
+
+            db = CreateDatabaseRequest(
+                name=get_name(),
+                description=get_text(),
+                service=self.database_service.fullyQualifiedName.__root__,
+            )
+
+            yield Either(right=db)
+            database_entity = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.database_service.name.__root__,
+                database_name=db.name.__root__,
+            )
+            database_object = self.metadata.get_by_name(
+                entity=Database, fqn=database_entity
+            )
+            for _ in range(2):
+                schema = CreateDatabaseSchemaRequest(
+                    name=get_name(),
+                    description=get_text(),
+                    database=database_object.fullyQualifiedName,
+                )
+                yield Either(right=schema)
+                database_schema_entity = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                )
+                database_schema_object = self.metadata.get_by_name(
+                    entity=DatabaseSchema, fqn=database_schema_entity
+                )
+                for tables in self.tables["tables"]:
+                    table_request = CreateTableRequest(
+                        name=get_name(),
+                        description=get_text(),
+                        columns=tables["columns"],
+                        databaseSchema=database_schema_object.fullyQualifiedName,
+                        tableConstraints=tables.get("tableConstraints"),
+                        tableType=tables["tableType"],
+                    )
+                    yield Either(right=table_request)
+                    table_entity_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.database_service.name.__root__,
+                        database_name=db.name.__root__,
+                        schema_name=schema.name.__root__,
+                        table_name=table_request.name.__root__,
+                    )
+                    self.store_table_fqn.append(table_entity_fqn)
+                
+                self.dashboard_service_json["name"] = get_name()
+                self.dashboard_service_json["description"] = get_text()
+                
+                for datamodels in self.data_models["datamodels"]:
+                    data_model_ev = CreateDashboardDataModelRequest(
+                        name=get_name(),
+                        description=get_text(),
+                        columns=datamodels["columns"],
+                        dataModelType=datamodels["dataModelType"],
+                        sql=datamodels["sql"],
+                        serviceType=datamodels["serviceType"],
+                        service=self.dashboard_service.fullyQualifiedName,
+                    )
+                    yield Either(right=data_model_ev)
+                    data_model_entity_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.dashboard_service.name.__root__,
+                        data_model_name=data_model_ev.name.__root__,
+                    )
+                    dashboard = CreateDashboardRequest(
+                        name=get_name(),
+                        displayName=get_name(),
+                        description=get_text(),
+                        sourceUrl=get_text(),
+                        charts=[],
+                        dataModels=[data_model_entity_fqn],
+                        service=self.dashboard_service.fullyQualifiedName,
+                    )
+                    yield Either(right=dashboard)
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.dashboard_service.name.__root__,
+                        dashboard_name=dashboard.name.__root__,
+                    )
+                    self.store_dashboard_fqn.append(dashboard_fqn)
+                    self.store_data_model_fqn.append(data_model_entity_fqn)
+                    
+        for table_fqn in self.store_table_fqn:
+            from_table = self.metadata.get_by_name(
+                entity=Table, fqn=table_fqn
+            )
+            for dashboard_datamodel_fqn in self.store_data_model_fqn:
+                to_datamodel = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=dashboard_datamodel_fqn
+                )
+               
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_table.id.__root__, type="table"
+                            ),
+                            toEntity=EntityReference(id=to_datamodel.id.__root__, type="dashboardDataModel"),
+                             lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage
+                                ),
+                        )
+                       
+                    )
+                )
+                
+                
