@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,7 +28,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -67,12 +65,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("charts")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (!entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
-        // Only description field can be updated
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
-      }
       return new ChartDescriptionTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
@@ -93,6 +85,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                       new IllegalArgumentException(
                           CatalogExceptionMessage.invalidFieldName("chart", chartName)));
       Chart chart = Entity.getEntity(chartReference, "", ALL);
+      threadContext.setAbout(
+          new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), "description", null, null));
       threadContext.setAboutEntity(chart);
     }
   }
