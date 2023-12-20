@@ -99,33 +99,39 @@ const CustomNodeV1 = (props: NodeProps) => {
     return false;
   }, [node]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    setSearchValue(value);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const value = e.target.value;
+      setSearchValue(value);
 
-    if (value.trim() === '') {
-      // If search value is empty, show all columns or the default number of columns
-      const filterColumns = Object.values(columns || {}) as ModifiedColumn[];
-      setFilteredColumns(
-        showAllColumns ? filterColumns : filterColumns.slice(0, 5)
-      );
-    } else {
-      // Filter columns based on search value
-      const filtered = (
-        Object.values(columns || {}) as ModifiedColumn[]
-      ).filter((column) =>
-        getEntityName(column).toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredColumns(filtered);
-    }
-  };
+      if (value.trim() === '') {
+        // If search value is empty, show all columns or the default number of columns
+        const filterColumns = Object.values(columns || {}) as ModifiedColumn[];
+        setFilteredColumns(
+          showAllColumns ? filterColumns : filterColumns.slice(0, 5)
+        );
+      } else {
+        // Filter columns based on search value
+        const filtered = (
+          Object.values(columns || {}) as ModifiedColumn[]
+        ).filter((column) =>
+          getEntityName(column).toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredColumns(filtered);
+      }
+    },
+    [columns]
+  );
 
-  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowAllColumns(true);
-    setFilteredColumns(Object.values(columns ?? []));
-  };
+  const handleShowMoreClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      setShowAllColumns(true);
+      setFilteredColumns(Object.values(columns ?? []));
+    },
+    []
+  );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {

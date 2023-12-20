@@ -243,7 +243,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setTracedNodes(connectedNodeIds);
       setTracedColumns([]);
     },
-    [nodes, edges, selectedNode]
+    [nodes, edges]
   );
 
   const onColumnClick = useCallback(
@@ -435,14 +435,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setQueryFilter(query);
   }, []);
 
-  const onNodeClick = useCallback((node: Node) => {
-    if (node) {
-      setSelectedEdge(undefined);
-      setSelectedNode(node.data.node as SourceType);
-      setIsDrawerOpen(true);
-      handleLineageTracing(node);
-    }
-  }, []);
+  const onNodeClick = useCallback(
+    (node: Node) => {
+      if (node) {
+        setSelectedEdge(undefined);
+        setSelectedNode(node.data.node as SourceType);
+        setIsDrawerOpen(true);
+        handleLineageTracing(node);
+      }
+    },
+    [handleLineageTracing]
+  );
 
   const onPaneClick = useCallback(() => {
     setIsDrawerOpen(false);

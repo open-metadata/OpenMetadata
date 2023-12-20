@@ -107,7 +107,6 @@ export enum EdgeTypeEnum {
 }
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  onFitView?: () => void;
   handleFullScreenViewClick?: () => void;
   onExitFullScreenViewClick?: () => void;
   deleted: boolean | undefined;
