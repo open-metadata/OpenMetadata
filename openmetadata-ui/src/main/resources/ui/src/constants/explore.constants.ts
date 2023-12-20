@@ -17,6 +17,7 @@ import i18n from '../utils/i18next/LocalUtil';
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
 export const TIER_FQN_KEY = 'tier.tagFQN';
+export const TAG_FQN_KEY = 'tags.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';

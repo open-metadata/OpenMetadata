@@ -14,6 +14,7 @@
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { EntityServiceUnion } from '../../ExplorePage.interface';
 
 export interface ServiceSummaryProps {
@@ -22,4 +23,5 @@ export interface ServiceSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }

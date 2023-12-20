@@ -63,6 +63,8 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   sqlQuery: 'Select * from dim_address',
 };
 
+export const COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM = 'customer';
+
 export const SEARCH_ENTITY_TABLE = {
   table_1: {
     term: 'raw_customer',
@@ -315,6 +317,7 @@ export const NEW_GLOSSARY_1 = {
   reviewer: 'Brandy Miller',
   addReviewer: false,
 };
+
 export const CYPRESS_ASSETS_GLOSSARY = {
   name: 'Cypress Assets Glossary',
   description: 'This is the Assets Cypress Glossary',
@@ -323,10 +326,18 @@ export const CYPRESS_ASSETS_GLOSSARY = {
   tag: 'PII.None',
 };
 
+export const CYPRESS_ASSETS_GLOSSARY_1 = {
+  name: 'Cypress Assets Glossary 1',
+  description: 'Cypress Assets Glossary 1 desc',
+  reviewer: '',
+  addReviewer: false,
+  tag: 'PII.None',
+};
+
 const COMMON_ASSETS = [
   {
     name: 'dim_customer',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
   },
   {
     name: 'raw_order',
@@ -359,6 +370,37 @@ export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
     synonyms: 'tea,coffee,water',
     fullyQualifiedName: 'Cypress Assets Glossary."Cypress.Dot.GTerm"',
     displayFqn: 'Cypress Assets Glossary.&quot;Cypress.Dot.GTerm&quot;',
+    assets: COMMON_ASSETS,
+  },
+};
+
+export const CYPRESS_ASSETS_GLOSSARY_TERMS_1 = {
+  term_1: {
+    name: 'Term1',
+    description: 'term1 desc',
+    fullyQualifiedName: 'Cypress Assets Glossary 1.Term1',
+    synonyms: 'buy,collect,acquire',
+    assets: COMMON_ASSETS,
+  },
+  term_2: {
+    name: 'Term2',
+    description: 'term2 desc',
+    synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Cypress Assets Glossary 1.Term2',
+    assets: COMMON_ASSETS,
+  },
+  term_3: {
+    name: 'Term3',
+    synonyms: 'tea,coffee,water',
+    description: 'term3 desc',
+    fullyQualifiedName: 'Cypress Assets Glossary 1.Term3',
+    assets: COMMON_ASSETS,
+  },
+  term_4: {
+    name: 'Term4',
+    description: 'term4 desc',
+    synonyms: 'milk,biscuit,water',
+    fullyQualifiedName: 'Cypress Assets Glossary 1.Term4',
     assets: COMMON_ASSETS,
   },
 };

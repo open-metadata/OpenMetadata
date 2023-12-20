@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Column,
   DataType,
@@ -21,30 +22,11 @@ import {
   TagSource,
 } from '../../generated/entity/data/table';
 import { DataTypeTopic, Field } from '../../generated/entity/data/topic';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
 const { Text } = Typography;
 
 export const mockEntityDataWithoutNesting: Column[] = [
-  {
-    name: 'api_client_id',
-    dataType: DataType.Numeric,
-    dataTypeDisplay: 'numeric',
-    description:
-      'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
-    tags: [
-      {
-        tagFQN: 'PersonalData.SpecialCategory',
-        description:
-          'GDPR special category data is personal information of data subjects that is especially sensitive.',
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      },
-    ],
-    ordinalPosition: 1,
-  },
   {
     name: 'title',
     dataType: DataType.Varchar,
@@ -57,12 +39,39 @@ export const mockEntityDataWithoutNesting: Column[] = [
     tags: [],
     ordinalPosition: 2,
   },
+  {
+    name: 'api_client_id',
+    dataType: DataType.Numeric,
+    dataTypeDisplay: 'numeric',
+    description:
+      'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
+    fullyQualifiedName:
+      'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
+    tags: [
+      {
+        tagFQN: 'PersonalData.Category1',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      {
+        tagFQN: 'PersonalData.SpecialCategory',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+    ],
+    ordinalPosition: 1,
+  },
 ];
 
 export const mockEntityDataWithoutNestingResponse = [
   {
     children: [],
-    constraint: undefined,
     description:
       'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
     name: 'api_client_id',
@@ -74,20 +83,40 @@ export const mockEntityDataWithoutNestingResponse = [
         source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
+        isHighlighted: true,
+      },
+      {
+        tagFQN: 'PersonalData.Category1',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
       },
     ],
-    title: <Text className="entity-title">api_client_id</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        api_client_id
+      </Text>
+    ),
     type: 'NUMERIC',
+    tableConstraints: undefined,
+    columnConstraint: undefined,
   },
   {
     children: [],
-    constraint: undefined,
     description:
       'Full name of the app or channel. For example, Point of Sale, Online Store.',
     name: 'title',
     tags: [],
-    title: <Text className="entity-title">title</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        title
+      </Text>
+    ),
     type: 'VARCHAR',
+    tableConstraints: undefined,
+    columnConstraint: undefined,
   },
 ];
 
@@ -160,7 +189,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'id',
         tags: [],
-        title: <Text className="entity-title">id</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            id
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -168,7 +201,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'first_name',
         tags: [],
-        title: <Text className="entity-title">first_name</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            first_name
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -176,7 +213,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'last_name',
         tags: [],
-        title: <Text className="entity-title">last_name</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            last_name
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -184,7 +225,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'email',
         tags: [],
-        title: <Text className="entity-title">email</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            email
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -192,7 +237,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'address_line_1',
         tags: [],
-        title: <Text className="entity-title">address_line_1</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            address_line_1
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -200,7 +249,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'address_line_2',
         tags: [],
-        title: <Text className="entity-title">address_line_2</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            address_line_2
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -208,7 +261,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'post_code',
         tags: [],
-        title: <Text className="entity-title">post_code</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            post_code
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -216,14 +273,22 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'country',
         tags: [],
-        title: <Text className="entity-title">country</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            country
+          </Text>
+        ),
         type: 'STRING',
       },
     ],
     description: undefined,
     name: 'Customer',
     tags: [],
-    title: <Text className="entity-title">Customer</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        Customer
+      </Text>
+    ),
     type: 'RECORD',
   },
 ];
@@ -231,11 +296,107 @@ export const mockEntityDataWithNestingResponse = [
 export const mockInvalidDataResponse = [
   {
     children: [],
-    constraints: undefined,
+    columnConstraint: undefined,
+    tableConstraints: undefined,
     description: undefined,
-    name: undefined,
+    name: '',
     tags: undefined,
-    title: <Text className="entity-title">--</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        --
+      </Text>
+    ),
     type: undefined,
   },
 ];
+
+export const mockTagsDataBeforeSortAndHighlight = [
+  {
+    tagFQN: 'gs1.term1',
+    name: 'term1',
+    displayName: '',
+    description: 'term1 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term2',
+    name: 'term2',
+    displayName: '',
+    description: 'term2 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term3',
+    name: 'term3',
+    displayName: '',
+    description: 'term3 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+];
+
+export const mockTagsDataAfterSortAndHighlight = [
+  {
+    tagFQN: 'gs1.term2',
+    name: 'term2',
+    displayName: '',
+    description: 'term2 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    isHighlighted: true,
+  },
+  {
+    tagFQN: 'gs1.term1',
+    name: 'term1',
+    displayName: '',
+    description: 'term1 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+  {
+    tagFQN: 'gs1.term3',
+    name: 'term3',
+    displayName: '',
+    description: 'term3 desc',
+    style: {},
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  },
+];
+
+export const mockTagFQNsForHighlight = ['gs1.term2'];
+
+export const mockGetSummaryListItemTypeResponse = DataType.Varchar;
+
+export const mockTextBasedSummaryTitleResponse = (
+  <Text className="entity-title" data-testid="entity-title">
+    Title1
+  </Text>
+);
+
+export const mockLinkBasedSummaryTitleResponse = (
+  <Link target="_blank" to={{ pathname: 'https://task1.com' }}>
+    <div className="d-flex">
+      <Text
+        className="entity-title text-link-color font-medium m-r-xss"
+        data-testid="entity-title"
+        ellipsis={{ tooltip: true }}>
+        Title2
+      </Text>
+      <IconExternalLink width={12} />
+    </div>
+  </Link>
+);

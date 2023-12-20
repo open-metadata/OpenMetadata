@@ -70,6 +70,7 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
+  highlights,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
   const { getEntityPermission } = usePermissionProvider();
@@ -125,31 +126,67 @@ export default function EntitySummaryPanel({
     const entity = entityDetails.details;
     switch (type) {
       case EntityType.TABLE:
-        return <TableSummary entityDetails={entity as Table} />;
+        return (
+          <TableSummary
+            entityDetails={entity as Table}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.TOPIC:
-        return <TopicSummary entityDetails={entity as Topic} />;
+        return (
+          <TopicSummary
+            entityDetails={entity as Topic}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DASHBOARD:
-        return <DashboardSummary entityDetails={entity as Dashboard} />;
+        return (
+          <DashboardSummary
+            entityDetails={entity as Dashboard}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.PIPELINE:
-        return <PipelineSummary entityDetails={entity as Pipeline} />;
+        return (
+          <PipelineSummary
+            entityDetails={entity as Pipeline}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.MLMODEL:
-        return <MlModelSummary entityDetails={entity as Mlmodel} />;
+        return (
+          <MlModelSummary
+            entityDetails={entity as Mlmodel}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.CONTAINER:
-        return <ContainerSummary entityDetails={entity as Container} />;
+        return (
+          <ContainerSummary
+            entityDetails={entity as Container}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.STORED_PROCEDURE:
         return (
-          <StoredProcedureSummary entityDetails={entity as StoredProcedure} />
+          <StoredProcedureSummary
+            entityDetails={entity as StoredProcedure}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DASHBOARD_DATA_MODEL:
         return (
-          <DataModelSummary entityDetails={entity as DashboardDataModel} />
+          <DataModelSummary
+            entityDetails={entity as DashboardDataModel}
+            highlights={highlights}
+          />
         );
 
       case EntityType.GLOSSARY_TERM:
@@ -162,20 +199,34 @@ export default function EntitySummaryPanel({
         return <DataProductSummary entityDetails={entity as DataProduct} />;
 
       case EntityType.SEARCH_INDEX:
-        return <SearchIndexSummary entityDetails={entity as SearchIndex} />;
+        return (
+          <SearchIndexSummary
+            entityDetails={entity as SearchIndex}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DATABASE:
-        return <DatabaseSummary entityDetails={entity as Database} />;
+        return (
+          <DatabaseSummary
+            entityDetails={entity as Database}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DATABASE_SCHEMA:
         return (
-          <DatabaseSchemaSummary entityDetails={entity as DatabaseSchema} />
+          <DatabaseSchemaSummary
+            entityDetails={entity as DatabaseSchema}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DATABASE_SERVICE:
         return (
           <ServiceSummary
             entityDetails={entity as DatabaseService}
+            highlights={highlights}
             type={ExplorePageTabs.DATABASE_SERVICE}
           />
         );
@@ -183,6 +234,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MessagingService}
+            highlights={highlights}
             type={ExplorePageTabs.MESSAGING_SERVICE}
           />
         );
@@ -190,6 +242,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as DashboardService}
+            highlights={highlights}
             type={ExplorePageTabs.DASHBOARD_SERVICE}
           />
         );
@@ -197,6 +250,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as PipelineService}
+            highlights={highlights}
             type={ExplorePageTabs.PIPELINE_SERVICE}
           />
         );
@@ -205,6 +259,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MlmodelService}
+            highlights={highlights}
             type={ExplorePageTabs.ML_MODEL_SERVICE}
           />
         );
@@ -213,6 +268,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as StorageService}
+            highlights={highlights}
             type={ExplorePageTabs.STORAGE_SERVICE}
           />
         );
@@ -221,6 +277,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as SearchService}
+            highlights={highlights}
             type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
           />
         );

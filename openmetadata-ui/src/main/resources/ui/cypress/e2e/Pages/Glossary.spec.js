@@ -28,8 +28,11 @@ import {
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
+  COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   CYPRESS_ASSETS_GLOSSARY,
+  CYPRESS_ASSETS_GLOSSARY_1,
   CYPRESS_ASSETS_GLOSSARY_TERMS,
+  CYPRESS_ASSETS_GLOSSARY_TERMS_1,
   DELETE_TERM,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -628,6 +631,63 @@ const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
     .contains('Approved');
 };
 
+const addGlossaryTermsInEntityField = ({
+  entityTerm,
+  entityField,
+  glossaryTerms,
+}) => {
+  const glossaryContainer = `[data-row-key$="${entityTerm}.${entityField}"] [data-testid="glossary-container"]`;
+
+  cy.get(`${glossaryContainer} [data-testid="entity-tags"] .ant-tag`)
+    .scrollIntoView()
+    .click();
+
+  const tagSelector = `${glossaryContainer} [data-testid="tag-selector"]`;
+  cy.get(tagSelector).click();
+
+  glossaryTerms.forEach((term) => {
+    cy.get(`${tagSelector} .ant-select-selection-search input`).type(term.name);
+
+    cy.get(
+      `.ant-select-dropdown [data-testid='tag-${term.fullyQualifiedName}']`
+    ).click();
+    cy.get(`[data-testid="selected-tag-${term.fullyQualifiedName}"]`).should(
+      'exist'
+    );
+  });
+
+  cy.get('[data-testid="saveAssociatedTag"]').click();
+};
+
+const checkTagsSortingAndHighlighting = ({ termFQN }) => {
+  cy.get('[data-testid="tags-viewer"] [data-testid="tags"]')
+    .first()
+    .as('firstTag');
+
+  cy.get('@firstTag').within(() => {
+    cy.get(`[data-testid="tag-${termFQN}"]`).should('exist');
+  });
+  cy.get('@firstTag').should('have.class', 'tag-highlight');
+};
+
+const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
+  cy.get('#right-panelV1 [data-testid="summary-list"]')
+    .as('summaryList')
+    .scrollIntoView();
+
+  cy.get('@summaryList').within(() => {
+    cy.get('[data-testid="summary-list-item"]')
+      .first()
+      .within(() => {
+        cy.get('[data-testid="entity-title"]')
+          .first() // checking for first entity title as collapse type will have more then 1 entity-title present
+          .should('have.text', columnName);
+
+        checkTagsSortingAndHighlighting({ termFQN });
+      });
+  });
+};
+
 describe('Prerequisites', () => {
   it('Create a user with data consumer role', () => {
     signupAndLogin(
@@ -1084,6 +1144,39 @@ describe('Glossary page should work properly', () => {
       'be.visible'
     );
   });
+
+  it('Tags and entity summary columns should be sorted based on current Term Page', () => {
+    createGlossary(CYPRESS_ASSETS_GLOSSARY_1);
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
+
+    const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS_1);
+    terms.forEach((term) =>
+      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY_1, 'Approved', true)
+    );
+
+    const entityTable = SEARCH_ENTITY_TABLE.table_1;
+
+    visitEntityDetailsPage({
+      term: entityTable.term,
+      serviceName: entityTable.serviceName,
+      entity: entityTable.entity,
+    });
+
+    addGlossaryTermsInEntityField({
+      entityTerm: entityTable.term,
+      entityField: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
+      glossaryTerms: terms,
+    });
+
+    goToGlossaryPage();
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
+    goToAssetsTab(terms[0].name, terms[0].fullyQualifiedName, true);
+
+    checkSummaryListItemSorting({
+      columnName: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
+      termFQN: terms[0].fullyQualifiedName,
+    });
+  });
 });
 
 describe('Cleanup', () => {
@@ -1114,6 +1207,7 @@ describe('Cleanup', () => {
       NEW_GLOSSARY.name,
       NEW_GLOSSARY_1.name,
       CYPRESS_ASSETS_GLOSSARY.name,
+      CYPRESS_ASSETS_GLOSSARY_1.name,
     ].forEach((glossary) => {
       deleteGlossary(glossary);
     });

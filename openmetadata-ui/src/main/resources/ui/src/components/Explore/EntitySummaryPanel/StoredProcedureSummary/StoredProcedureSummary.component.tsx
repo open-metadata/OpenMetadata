@@ -12,12 +12,13 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isObject } from 'lodash';
+import { get, isObject } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { StoredProcedureCodeObject } from '../../../../generated/entity/data/storedProcedure';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -33,6 +34,7 @@ const StoredProcedureSummary = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: StoredProcedureSummaryProps) => {
   const { t } = useTranslation();
 
@@ -57,7 +59,18 @@ const StoredProcedureSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

@@ -14,10 +14,12 @@
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface DatabaseSchemaSummaryProps {
   entityDetails: DatabaseSchema;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
