@@ -46,9 +46,6 @@
           "$ref": "../database/postgresConnection.json"
         },
         {
-          "$ref": "../database/mssqlConnection.json"
-        },
-        {
           "$ref": "../database/sqliteConnection.json"
         }
       ]

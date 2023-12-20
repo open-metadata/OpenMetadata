@@ -185,6 +185,8 @@ site_menu:
     url: /deployment/upgrade/versions
   - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
     url: /deployment/upgrade/versions/100-to-110
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
+    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata

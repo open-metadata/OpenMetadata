@@ -72,7 +72,7 @@ In terms of `connection` we support the following selections:
 
 - `backend`: Should not be used from the UI. This is only applicable when ingesting Airflow metadata locally by running
   the ingestion from a DAG. It will use the current Airflow SQLAlchemy connection to extract the data.
-- `MySQL`, `Postgres`, `MSSQL` and `SQLite`: Pass the required credentials to reach out each of these services. We will
+- `MySQL`, `Postgres`, and `SQLite`: Pass the required credentials to reach out each of these services. We will
   create a connection to the pointed database and read Airflow data from there.
 
 **hostPort**: URL to the Airflow instance.
@@ -98,7 +98,7 @@ In terms of `connection` we support the following selections:
 
 - `backend`: Should not be used from the UI. This is only applicable when ingesting Airflow metadata locally by running
   the ingestion from a DAG. It will use the current Airflow SQLAlchemy connection to extract the data.
-- `MySQL`, `Postgres`, `MSSQL` and `SQLite`: Pass the required credentials to reach out each of these services. We will
+- `MySQL`, `Postgres`, and `SQLite`: Pass the required credentials to reach out each of these services. We will
   create a connection to the pointed database and read Airflow data from there.
 
 {% /codeInfo %}
@@ -128,7 +128,7 @@ source:
       numberOfStatus: 10
 ```
 ```yaml {% srNumber=6 %}
-      # Connection needs to be one of Mysql, Postgres, Mssql or Sqlite
+      # Connection needs to be one of Mysql, Postgres or Sqlite
       connection:
         type: Mysql
         username: airflow_user
@@ -141,13 +141,6 @@ source:
         # password: airflow_pass
         # database: airflow_db
         # hostPort: localhost:3306
-        # #
-        # type: Mssql
-        # username: airflow_user
-        # password: airflow_pass
-        # database: airflow_db
-        # hostPort: localhost:3306
-        # uriString: http://... (optional)
         # #
         # type: Sqlite
         # username: airflow_user
