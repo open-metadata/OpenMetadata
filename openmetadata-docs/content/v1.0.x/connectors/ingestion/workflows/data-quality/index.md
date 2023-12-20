@@ -236,7 +236,7 @@ configurations specified above.
 
 ## How to Visualize Test Results
 ### From the Test Suite View
-From the home page click on the Test Suite menu in the left pannel.
+From the home page click on the Test Suite menu in the left panel.
 
 {% image
   src="/images/v1.0/features/ingestion/workflows/data-quality/test-suite-home-page.png"
@@ -266,7 +266,7 @@ From there you can select a Test Suite and visualize the results associated with
 ### From a Table Entity
 Navigate to your table and click on the `profiler` tab. From there you'll be able to see test results at the table or column level.
 #### Table Level Test Results
-In the top pannel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
+In the top panel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
   src="/images/v1.0/features/ingestion/workflows/data-quality/table-results-entity.png"

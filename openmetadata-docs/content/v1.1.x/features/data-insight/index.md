@@ -61,7 +61,7 @@ This chart shows the top 10 data assets the most viewed in your platform. It off
  /%}
 
 **Page views by data assets**  
-This chart shows the total number of page views by asset type. This allows you to understand which asset familly drives the most interest in your organization
+This chart shows the total number of page views by asset type. This allows you to understand which asset family drives the most interest in your organization
 
 {% image
     src="/images/v1.1/features/data-insight/views-by-assets.png"

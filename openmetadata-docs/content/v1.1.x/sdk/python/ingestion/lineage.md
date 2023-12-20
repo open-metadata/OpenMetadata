@@ -437,7 +437,7 @@ workflowConfig:
     authProvider: <OpenMetadata auth provider>
 ```
 
-- **serviceName**: Name of the database service which contains tha table involved in query.
+- **serviceName**: Name of the database service which contains the table involved in query.
 - **query**: You can specify the raw sql query within the yaml file itself.
 - **filePath**: In case the query is too big then you can also save query in a file and pass the path to the file in this field. 
 - **parseTimeout**: Timeout for the lineage parsing process.

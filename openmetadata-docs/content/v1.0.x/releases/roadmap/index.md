@@ -37,7 +37,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Alerts & Notifications" %}
 - Durable queue to store ChangeEvents guaranteeing  at-least-once semantics
-- Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
+- Live BulkActions on ElasticSearch to handle Tag category deletion, owner change propagation etc..
 - Support to get notifications  via email when a user is mentioned 
 {% /tile %}
 

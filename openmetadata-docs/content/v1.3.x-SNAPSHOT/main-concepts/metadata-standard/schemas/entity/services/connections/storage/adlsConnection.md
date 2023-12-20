@@ -1,5 +1,5 @@
 ---
-title: adlsConection
+title: adlsConnection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconection
 ---
 

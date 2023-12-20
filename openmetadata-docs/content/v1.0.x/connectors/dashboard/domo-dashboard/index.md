@@ -48,7 +48,7 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Co
 custom Airflow plugins to handle the workflow deployment.
 
 {% note noteType="Warning" %}
-For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+For metadata ingestion, kindly make sure add atleast `dashboard` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 {% /note %}
 

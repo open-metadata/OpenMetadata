@@ -1402,7 +1402,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/search/opensearchconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / ServiceConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/serviceconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / AdlsConection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / AdlsConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / CustomStorageConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/customstorageconnection

@@ -10,7 +10,7 @@ OpenMetadata is a catalyst for collaboration that brings data teams together to 
 There are three important aspects of data collaboration in OpenMetadata:
 - **Conversations Threads:** Collaborate around data assets and tags by asking the right questions and discussing the details right within OpenMetadata.
 
-- **Tasks:** Create tasks around data assets to create and update descriptions, request for tags, and initaite a glossary term approval workflow. 
+- **Tasks:** Create tasks around data assets to create and update descriptions, request for tags, and initiate a glossary term approval workflow. 
 
 - **Announcements:** Announce to your entire team about the upcoming events and changes such as deprecation, deletion, or schema changes.
 

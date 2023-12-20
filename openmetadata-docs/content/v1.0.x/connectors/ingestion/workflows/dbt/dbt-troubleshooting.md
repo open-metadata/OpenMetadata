@@ -7,7 +7,7 @@ slug: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
 
 ### 1. dbt tab not displaying in the UI
 
-After the dbt workflow is finished, check the logs to see if the dbt files were successfuly validated or not. Any missing keys in the manifest.json or catalog.json files will displayed in the logs and those keys are needed to be added.
+After the dbt workflow is finished, check the logs to see if the dbt files were successfully validated or not. Any missing keys in the manifest.json or catalog.json files will displayed in the logs and those keys are needed to be added.
 
 The dbt workflow requires the below keys to be present in the node of a manifest.json file:
 - resource_type (required)
@@ -15,7 +15,7 @@ The dbt workflow requires the below keys to be present in the node of a manifest
 - schema (required)
 - description (required if description needs to be updated)
 - compiled_code/compiled_sql (required if the dbt model query is to be shown in dbt tab and for query lineage)
-- depends_on (required if lineage information needs to exctracted)
+- depends_on (required if lineage information needs to extracted)
 - columns (required if column description is to be processed)
 
 {% note %}

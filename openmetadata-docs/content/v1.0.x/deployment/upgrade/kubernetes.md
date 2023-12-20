@@ -116,7 +116,7 @@ If you are running into any issues, double-check what are the default values of 
 
 {% /note %}
 
-## Upgrade OpenMetdata
+## Upgrade OpenMetadata
 
 We upgrade OpenMetadata with the below command:
 

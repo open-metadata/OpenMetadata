@@ -51,10 +51,12 @@ You can search for the required permissions in the filter box and add them accor
 | 5    | resourcemanager.projects.get  | Metadata Ingestion      |
 | 6    | bigquery.jobs.create          | Metadata Ingestion      |
 | 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
-| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
-| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 8    | bigquery.routines.get         | Stored Procedure        |
+| 9    | bigquery.routines.list        | Stored Procedure        |
+| 10   | datacatalog.taxonomies.get    | Fetch Policy Tags       |
+| 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
+| 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% image
 src="/images/v1.2/connectors/bigquery/create-role-4.png"

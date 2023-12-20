@@ -47,7 +47,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 **Note:**
 
-For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 
@@ -63,7 +63,7 @@ pip3 install "openmetadata-ingestion[domo]"
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json)
-you can find the structure to create a connection to DomoDatbase.
+you can find the structure to create a connection to DomoDatabase.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,

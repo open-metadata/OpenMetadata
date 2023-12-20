@@ -107,7 +107,7 @@ processor:
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>
-    #         awsSecretAccessKey: <your-secrest-access-key>
+    #         awsSecretAccessKey: <your-secrets-access-key>
     #         awsSessionToken: <your-session-token>
     #         assumeRoleArn: <assume-role-arn>
     #         assumeRoleSessionName: <session-name>
@@ -125,7 +125,7 @@ processor:
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>
-    #         awsSecretAccessKey: <your-secrest-access-key>
+    #         awsSecretAccessKey: <your-secrets-access-key>
     #         awsSessionToken: <your-session-token>
     #         assumeRoleArn: <assume-role-arn>
     #         assumeRoleSessionName: <session-name>

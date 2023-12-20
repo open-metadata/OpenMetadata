@@ -13,7 +13,7 @@ connection to server at \"<host>:<port>\" (@IP),
 does not match host name \"<host>:<port>\"
 ```
 
-If you get this error that time plese pass `{'sslmode': 'verify-ca'}` in the connection arguments.
+If you get this error that time please pass `{'sslmode': 'verify-ca'}` in the connection arguments.
 
 {% image
 src="/images/v1.2/connectors/redshift/service-connection-arguments.png"

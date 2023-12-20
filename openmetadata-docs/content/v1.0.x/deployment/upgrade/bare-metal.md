@@ -16,7 +16,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 {% note noteType="Warning" %}
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/013-to-100) before starting the upgrade process. 
+It is advised to go through [openmetadata release notes](/deployment/upgrade/versions/013-to-100) before starting the upgrade process. 
 
 {% /note %}
 

@@ -23,7 +23,7 @@ It is important to leave the publicKeys configuration to have both Auth0 public 
 3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
 4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
 
-For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
+For more details, follow [Enabling JWT Authentication](deployment/security/enable-jwt-tokens)
 
 {% /note %}
 

@@ -110,7 +110,7 @@ kubectl create -f nfs-server-deployment.yml
 kubectl create -f nfs-cluster-ip-service.yml
 ```
 
-We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
+We create a ClusterIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
 
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
 

@@ -56,7 +56,7 @@ services:
     ...
 ```
 ## Volumes for ingestion container
-Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
+Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaining different directory for dag_generated_configs, dags and secrets.
 - Remove the below section from the docker-compose.yml file.
 Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
@@ -81,7 +81,7 @@ services:
     ...
 ```
 
-Once these changes are done in the docker-compose.yml file It should look simlarly in the below format
+Once these changes are done in the docker-compose.yml file It should look similarly in the below format
 
 ```commandline
 version: "3.9"

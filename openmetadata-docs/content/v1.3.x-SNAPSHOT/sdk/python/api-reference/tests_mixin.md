@@ -203,7 +203,7 @@ Get or create a test definition
  - <b>`test_definition_description`</b> (Optional[str], optional):  description for the test definition.  Defaults to None. 
  - <b>`entity_type`</b> (Optional[EntityType], optional):  entity type (COLUMN or TABLE). Defaults to None. 
  - <b>`test_platforms`</b> (Optional[List[TestPlatform]], optional):  test platforms. Defaults to None. 
- - <b>`test_case_parameter_definition`</b> (Optional[List[TestCaseParameterDefinition]], optional):  parameters for the  test case defintion. Defaults to None. 
+ - <b>`test_case_parameter_definition`</b> (Optional[List[TestCaseParameterDefinition]], optional):  parameters for the  test case definition. Defaults to None. 
 
 
 
