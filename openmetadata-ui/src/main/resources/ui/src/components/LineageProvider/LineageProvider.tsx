@@ -174,11 +174,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const loadChildNodesHandler = useCallback(
-    async (node: EntityReference) => {
+    async (node: EntityReference, direction: EdgeTypeEnum) => {
       try {
         const res = await getLineageDataByFQN(
           node.fullyQualifiedName ?? '',
-          lineageConfig,
+          {
+            upstreamDepth: direction === EdgeTypeEnum.UP_STREAM ? 1 : 0,
+            downstreamDepth: direction === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
+            nodesPerLayer: lineageConfig.nodesPerLayer,
+          }, // load only one level of child nodes
           queryFilter
         );
 
@@ -239,7 +243,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setTracedNodes(connectedNodeIds);
       setTracedColumns([]);
     },
-    [nodes, edges, selectedNode]
+    [nodes, edges]
   );
 
   const onColumnClick = useCallback(
@@ -431,14 +435,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setQueryFilter(query);
   }, []);
 
-  const onNodeClick = useCallback((node: Node) => {
-    if (node) {
-      setSelectedEdge(undefined);
-      setSelectedNode(node.data.node as SourceType);
-      setIsDrawerOpen(true);
-      handleLineageTracing(node);
-    }
-  }, []);
+  const onNodeClick = useCallback(
+    (node: Node) => {
+      if (node) {
+        setSelectedEdge(undefined);
+        setSelectedNode(node.data.node as SourceType);
+        setIsDrawerOpen(true);
+        handleLineageTracing(node);
+      }
+    },
+    [handleLineageTracing]
+  );
 
   const onPaneClick = useCallback(() => {
     setIsDrawerOpen(false);
@@ -534,7 +541,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setDeletionState((pre) => ({ ...pre, status: 'initial' }));
+      setDeletionState((pre) => ({
+        ...pre,
+        status: 'initial',
+        loading: false,
+      }));
     }
   }, [selectedEdge, setShowDeleteModal]);
 
@@ -797,21 +808,34 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onNodeCollapse = useCallback(
     (node: Node, direction: EdgeTypeEnum) => {
-      const { nodeFqn } = getConnectedNodesEdges(node, nodes, edges, direction);
+      const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
+        node,
+        nodes,
+        edges,
+        direction
+      );
 
       const updatedNodes = (entityLineage.nodes ?? []).filter(
         (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
       );
+      const updatedEdges = (entityLineage.edges ?? []).filter((val) => {
+        return !connectedEdges.some(
+          (connectedEdge) => connectedEdge.data.edge === val
+        );
+      });
 
       setEntityLineage((pre) => {
         return {
           ...pre,
           nodes: updatedNodes,
+          edges: updatedEdges,
         };
       });
 
-      const allNodes = createNodes(updatedNodes, entityLineage.edges ?? []);
+      const allNodes = createNodes(updatedNodes, updatedEdges);
+      const allEdges = createEdges(updatedNodes, updatedEdges);
       setNodes(allNodes);
+      setEdges(allEdges);
     },
     [nodes, edges, entityLineage]
   );

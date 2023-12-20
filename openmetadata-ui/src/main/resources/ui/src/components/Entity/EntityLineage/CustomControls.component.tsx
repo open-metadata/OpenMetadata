@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined, SettingOutlined } from '@ant-design/icons';
+import { RightOutlined, SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -32,7 +32,10 @@ import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lin
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
 import { PRIMERY_COLOR } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { ZOOM_TRANSITION_DURATION } from '../../../constants/Lineage.constants';
+import {
+  LINEAGE_DEFAULT_QUICK_FILTERS,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../constants/Lineage.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   QueryFieldInterface,
@@ -112,6 +115,12 @@ const CustomControls: FC<ControlProps> = ({
         ),
       }))
     );
+
+    const defaultFilterValues = dropdownItems
+      .filter((item) => LINEAGE_DEFAULT_QUICK_FILTERS.includes(item.key))
+      .map((item) => item.key);
+
+    setSelectedFilter(defaultFilterValues);
   }, []);
 
   const nodeOptions = useMemo(
@@ -258,7 +267,10 @@ const CustomControls: FC<ControlProps> = ({
                 selectedKeys: selectedFilter,
               }}
               trigger={['click']}>
-              <Button icon={<FilterOutlined />} size="small" type="primary" />
+              <Button ghost type="primary">
+                {t('label.advanced')}
+                <RightOutlined />
+              </Button>
             </Dropdown>
             <ExploreQuickFilters
               aggregations={{}}

@@ -76,20 +76,20 @@ const CustomNodeV1 = (props: NodeProps) => {
     return checkUpstreamDownstream(id, lineage ?? []);
   }, [id, lineage]);
 
-  const isLeafNode = useMemo(() => {
-    return (
-      (getOutgoers(node, nodes, edges).length === 0 && hasDownstream) ||
-      (getIncomers(node, nodes, edges).length === 0 && hasUpstream)
-    );
-  }, [nodes, edges]);
+  const hasOutgoers = useMemo(() => {
+    const outgoers = getOutgoers(node, nodes, edges);
 
-  // console.log(
-  //   node.fullyQualifiedName,
-  //   nodeType,
-  //   isLeafNode,
-  //   hasUpstream,
-  //   hasDownstream
-  // );
+    return outgoers.length > 0;
+  }, [node, nodes, edges]);
+
+  const { isUpstreamLeafNode, isDownstreamLeafNode } = useMemo(() => {
+    return {
+      isUpstreamLeafNode:
+        getIncomers(node, nodes, edges).length === 0 && hasUpstream,
+      isDownstreamLeafNode:
+        getOutgoers(node, nodes, edges).length === 0 && hasDownstream,
+    };
+  }, [node, nodes, edges]);
 
   const supportsColumns = useMemo(() => {
     if (node && node.entityType === EntityType.TABLE) {
@@ -99,33 +99,39 @@ const CustomNodeV1 = (props: NodeProps) => {
     return false;
   }, [node]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    setSearchValue(value);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const value = e.target.value;
+      setSearchValue(value);
 
-    if (value.trim() === '') {
-      // If search value is empty, show all columns or the default number of columns
-      const filterColumns = Object.values(columns || {}) as ModifiedColumn[];
-      setFilteredColumns(
-        showAllColumns ? filterColumns : filterColumns.slice(0, 5)
-      );
-    } else {
-      // Filter columns based on search value
-      const filtered = (
-        Object.values(columns || {}) as ModifiedColumn[]
-      ).filter((column) =>
-        getEntityName(column).toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredColumns(filtered);
-    }
-  };
+      if (value.trim() === '') {
+        // If search value is empty, show all columns or the default number of columns
+        const filterColumns = Object.values(columns || {}) as ModifiedColumn[];
+        setFilteredColumns(
+          showAllColumns ? filterColumns : filterColumns.slice(0, 5)
+        );
+      } else {
+        // Filter columns based on search value
+        const filtered = (
+          Object.values(columns || {}) as ModifiedColumn[]
+        ).filter((column) =>
+          getEntityName(column).toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredColumns(filtered);
+      }
+    },
+    [columns]
+  );
 
-  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowAllColumns(true);
-    setFilteredColumns(Object.values(columns ?? []));
-  };
+  const handleShowMoreClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      setShowAllColumns(true);
+      setFilteredColumns(Object.values(columns ?? []));
+    },
+    []
+  );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
@@ -165,7 +171,7 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Left}
               type="target"
             />
-            {isLeafNode && !isEditMode && (
+            {isDownstreamLeafNode && !isEditMode && (
               <Button
                 className="absolute lineage-node-handle flex-center react-flow__handle-right"
                 icon={<PlusIcon className="lineage-expand-icon" />}
@@ -173,11 +179,11 @@ const CustomNodeV1 = (props: NodeProps) => {
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  loadChildNodesHandler(node);
+                  loadChildNodesHandler(node, EdgeTypeEnum.DOWN_STREAM);
                 }}
               />
             )}
-            {hasDownstream && !isLeafNode && !isEditMode && (
+            {hasOutgoers && !isEditMode && (
               <Button
                 className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
                 icon={<MinusIcon className="lineage-expand-icon" />}
@@ -195,7 +201,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       case EntityLineageNodeType.INPUT:
         return (
           <>
-            {isLeafNode && !isEditMode && (
+            {isUpstreamLeafNode && !isEditMode && (
               <Button
                 className="absolute lineage-node-handle flex-center react-flow__handle-left"
                 icon={<PlusIcon className="lineage-expand-icon" />}
@@ -203,7 +209,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  loadChildNodesHandler(node);
+                  loadChildNodesHandler(node, EdgeTypeEnum.UP_STREAM);
                 }}
               />
             )}
@@ -214,19 +220,7 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasUpstream && !isLeafNode && !isEditMode && (
-              <Button
-                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-left"
-                icon={<MinusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNodeCollapse(props, EdgeTypeEnum.UP_STREAM);
-                }}
-              />
-            )}
-            {hasDownstream && !isLeafNode && !isEditMode && (
+            {hasOutgoers && !isEditMode && (
               <Button
                 className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
                 icon={<MinusIcon className="lineage-expand-icon" />}
@@ -261,7 +255,7 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasDownstream && !isLeafNode && !isEditMode && (
+            {hasOutgoers && !isEditMode && (
               <Button
                 className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
                 icon={<MinusIcon className="lineage-expand-icon" />}
@@ -273,19 +267,8 @@ const CustomNodeV1 = (props: NodeProps) => {
                 }}
               />
             )}
-            {hasUpstream && !isLeafNode && !isEditMode && (
-              <Button
-                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-left"
-                icon={<MinusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNodeCollapse(props, EdgeTypeEnum.UP_STREAM);
-                }}
-              />
-            )}
-            {isLeafNode && !isEditMode && (
+
+            {isDownstreamLeafNode && !isEditMode && (
               <Button
                 className="absolute lineage-node-handle flex-center react-flow__handle-right"
                 icon={<PlusIcon className="lineage-expand-icon" />}
@@ -293,14 +276,21 @@ const CustomNodeV1 = (props: NodeProps) => {
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  loadChildNodesHandler(node);
+                  loadChildNodesHandler(node, EdgeTypeEnum.DOWN_STREAM);
                 }}
               />
             )}
           </>
         );
     }
-  }, [node, nodeType, isConnectable, isLeafNode, loadChildNodesHandler]);
+  }, [
+    node,
+    nodeType,
+    isConnectable,
+    isDownstreamLeafNode,
+    isUpstreamLeafNode,
+    loadChildNodesHandler,
+  ]);
 
   useEffect(() => {
     setIsExpanded(expandedNodes.includes(id));

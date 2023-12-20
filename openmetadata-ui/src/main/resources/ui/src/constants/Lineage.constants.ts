@@ -71,3 +71,9 @@ export const ELEMENT_DELETE_STATE = {
   loading: false,
   status: 'initial' as ElementLoadingState,
 };
+
+export const LINEAGE_DEFAULT_QUICK_FILTERS = [
+  'domain.displayName.keyword',
+  'owner.displayName.keyword',
+  'tags.tagFQN',
+];
