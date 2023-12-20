@@ -146,7 +146,7 @@ class ServiceUtilClassBase {
     searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
     const serviceTypes = this.getSupportedServiceFromList();
-    const type = searchSource.serviceType ?? '';
+    const type = searchSource?.serviceType ?? '';
     switch (type) {
       case DatabaseServiceType.Mysql:
         return MYSQL;
