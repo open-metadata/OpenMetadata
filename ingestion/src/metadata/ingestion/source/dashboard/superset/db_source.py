@@ -215,7 +215,7 @@ class SupersetDBSource(SupersetSourceMixin):
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
-                if not chart_json:
+                if not chart_json or not chart_json.datasource_id:
                     logger.warning(
                         f"chart details for id: {chart_id} not found, skipped"
                     )

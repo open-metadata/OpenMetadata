@@ -230,7 +230,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         name=field.id,
                         displayName=field.column_name,
                         description=field.description,
-                        dataLength=col_parse.get("dataLength", 0),
+                        dataLength=int(col_parse.get("dataLength", 0)),
                     )
                     datasource_columns.append(parsed_fields)
             except Exception as exc:
