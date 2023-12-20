@@ -41,16 +41,30 @@ export interface HighlightedTagLabel extends TagLabel {
   isHighlighted: boolean;
 }
 
-const getTitleName = (data: EntityNameProps) =>
-  getEntityName(data) || NO_DATA_PLACEHOLDER;
+export type SummaryListItem = Column | Field | Chart | Task | MlFeature;
 
-export const getTitle = ({
-  content,
-  sourceUrl,
-}: {
-  content: string | JSX.Element | JSX.Element[] | undefined;
-  sourceUrl: string | undefined;
-}) => {
+export interface ListItemHighlights {
+  highlightedTags?: Array<TagLabel | HighlightedTagLabel>;
+  highlightedTitle?: string;
+  highlightedDescription?: string;
+}
+
+/* @param {
+    listItem: SummaryItem,
+    highlightedTitle: will be a string if the title of given summaryItem is present in highlights | undefined
+}
+
+    @return SummaryItemTitle
+*/
+export const getTitle = (
+  listItem: SummaryListItem,
+  highlightedTitle?: string
+) => {
+  const title = highlightedTitle
+    ? stringToHTML(highlightedTitle)
+    : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
+  const sourceUrl = (listItem as Chart | Task).sourceUrl;
+
   return sourceUrl ? (
     <Link target="_blank" to={{ pathname: sourceUrl }}>
       <div className="d-flex">
@@ -58,37 +72,51 @@ export const getTitle = ({
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
-          {content}
+          {title}
         </Text>
         <IconExternalLink width={12} />
       </div>
     </Link>
   ) : (
     <Text className="entity-title" data-testid="entity-title">
-      {content}
+      {title}
     </Text>
   );
 };
 
+/* @param {
+    entityType: will be any type of SummaryEntityType,
+    listItem: SummaryItem
+}
+    @return listItemType
+*/
 export const getSummaryListItemType = (
   entityType: SummaryEntityType,
-  listItemInfo: Column | Field | Chart | Task | MlFeature
+  listItem: SummaryListItem
 ) => {
   switch (entityType) {
     case SummaryEntityType.COLUMN:
     case SummaryEntityType.FIELD:
     case SummaryEntityType.MLFEATURE:
     case SummaryEntityType.SCHEMAFIELD:
-      return (listItemInfo as Column | Field | MlFeature).dataType;
+      return (listItem as Column | Field | MlFeature).dataType;
     case SummaryEntityType.CHART:
-      return (listItemInfo as Chart).chartType;
+      return (listItem as Chart).chartType;
     case SummaryEntityType.TASK:
-      return (listItemInfo as Task).taskType;
+      return (listItem as Task).taskType;
     default:
       return '';
   }
 };
 
+/*
+    @params {
+        sortTagsBasedOnGivenTagFQNs: array of TagFQNs,
+        tags: Tags array,
+    }
+
+    @return array of tags highlighted and sorted if tagFQN present in sortTagsBasedOnGivenTagFQNs
+*/
 export const getSortedTagsWithHighlight = ({
   sortTagsBasedOnGivenTagFQNs,
   tags,
@@ -114,9 +142,124 @@ export const getSortedTagsWithHighlight = ({
   return [...ColumnDataTags.tagForSort, ...ColumnDataTags.remainingTags];
 };
 
+/* 
+    @param {highlights: all the other highlights come from the query api
+        only omitted displayName and description key as it is already updated in parent component
+    }
+
+    @return {
+        listHighlights: single array of all highlights get from query api 
+        listHighlightsMap: to reduce the search time complexity in listHighlight
+    }
+
+    Todo: apply highlights on entityData in parent where we apply highlight for entityDisplayName and entityDescription
+    for that we need to update multiple summary components
+*/
+export const getMapOfListHighlights = (
+  highlights?: SearchedDataProps['data'][number]['highlight']
+): {
+  listHighlights: string[];
+  listHighlightsMap: { [key: string]: number };
+} => {
+  // checking for the all highlight key present in highlight get from query api
+  // and create a array of highlights
+  const listHighlights: string[] = [];
+  SummaryListHighlightKeys.forEach((highlightKey) => {
+    listHighlights.push(...get(highlights, highlightKey, []));
+  });
+
+  // using hashmap methodology to reduce the search time complexity of listHighlights
+  // for applying highlight from O(n) to O(1)
+  const listHighlightsMap: { [key: string]: number } = {};
+
+  listHighlights?.reduce((acc, colHighlight, index) => {
+    acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
+
+    return acc;
+  }, listHighlightsMap);
+
+  return { listHighlights, listHighlightsMap };
+};
+
+/*
+    @params {
+        listItem: SummaryItem
+        tagsHighlights: tagFQNs array to highlight and sort tags
+        listHighlights: single array of all highlights get from query api 
+        listHighlightsMap: to reduce the search time complexity in listHighlight
+    }
+    @return highlights of listItem
+*/
+export const getHighlightOfListItem = (
+  listItem: SummaryListItem,
+  tagHighlights: string[],
+  listHighlights: string[],
+  listHighlightsMap: { [key: string]: number }
+) => {
+  let highlightedTags;
+  let highlightedTitle;
+  let highlightedDescription;
+
+  // if any of the listItem.tags present in given tagHighlights list then sort and highlights the tag
+  const shouldSortListItemTags = listItem.tags?.find((tag) =>
+    tagHighlights.includes(tag.tagFQN)
+  );
+
+  if (shouldSortListItemTags) {
+    highlightedTags = getSortedTagsWithHighlight({
+      sortTagsBasedOnGivenTagFQNs: tagHighlights,
+      tags: listItem.tags,
+    });
+  }
+
+  // highlightedListItemNameIndex will be undefined if listItem.name is not present in highlights
+  const highlightedListItemNameIndex = listHighlightsMap[listItem.name ?? ''];
+
+  const shouldApplyHighlightOnTitle = !isUndefined(
+    highlightedListItemNameIndex
+  );
+
+  if (shouldApplyHighlightOnTitle) {
+    highlightedTitle = listHighlights[highlightedListItemNameIndex];
+  }
+
+  // highlightedListItemDescriptionIndex will be undefined if listItem.description is not present in highlights
+  const highlightedListItemDescriptionIndex =
+    listHighlightsMap[listItem.description ?? ''];
+
+  const shouldApplyHighlightOnDescription = !isUndefined(
+    highlightedListItemDescriptionIndex
+  );
+
+  if (shouldApplyHighlightOnDescription) {
+    highlightedDescription =
+      listHighlights[highlightedListItemDescriptionIndex];
+  }
+
+  return {
+    highlightedTags,
+    highlightedTitle,
+    highlightedDescription,
+  };
+};
+
+/*
+    @params {
+        entityType: SummaryEntityType,
+        entityInfo: Array<SummaryListItem> = [],
+        highlights: highlights get from the query api + highlights added for tags (i.e. tag.name)
+        tableConstraints: only pass for SummayEntityType.Column
+    }
+    @return sorted and highlighted listItem array, but listItem will be type of BasicEntityInfo
+    
+    Note: SummaryItem will be sort and highlight only if -
+        # if listItem.tags present in highlights.tags
+        # if listItem.name present in highlights comes from query api
+        # if listItem.description present in highlights comes from query api
+*/
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
-  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
+  entityInfo: Array<SummaryListItem> = [],
   highlights?: SearchedDataProps['data'][number]['highlight'],
   tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
@@ -124,97 +267,66 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  // sort and highlights list items based on tags and global search highlights data
+  // Only go ahead if entityType is present in SummaryEntityType enum
   if (Object.values(SummaryEntityType).includes(entityType)) {
+    // tagHighlights is the array of tagFQNs for highlighting tags
     const tagHighlights = get(highlights, 'tag.name', [] as string[]);
-    const listHighlights: string[] = [];
-    const listHighlightsMap: { [key: string]: number } = {};
-    const SummaryListData = {
-      listItemWithSortOption: [] as BasicEntityInfo[],
-      listItemWithoutSortOption: [] as BasicEntityInfo[],
-    };
 
-    SummaryListHighlightKeys.forEach((highlightKey) => {
-      listHighlights.push(...get(highlights, highlightKey, []));
-    });
+    // listHighlights i.e. highlight get from query api
+    // listHighlightsMap i.e. map of highlight get from api to reduce search time complexity in highlights array
+    const { listHighlights, listHighlightsMap } =
+      getMapOfListHighlights(highlights);
 
-    listHighlights?.reduce((acc, colHighlight, index) => {
-      acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
+    const { highlightedListItem, remainingListItem } = entityInfo.reduce(
+      (acc, listItem) => {
+        // return the highlight of listItem
+        const { highlightedTags, highlightedTitle, highlightedDescription } =
+          getHighlightOfListItem(
+            listItem,
+            tagHighlights,
+            listHighlights,
+            listHighlightsMap
+          );
 
-      return acc;
-    }, listHighlightsMap);
+        // convert listItem in BasicEntityInfo type
+        const listItemModifiedData = {
+          name: listItem.name ?? '',
+          title: getTitle(listItem, highlightedTitle),
+          type: getSummaryListItemType(entityType, listItem),
+          tags: highlightedTags ?? listItem.tags,
+          description: highlightedDescription ?? listItem.description,
+          ...(entityType === SummaryEntityType.COLUMN && {
+            columnConstraint: (listItem as Column).constraint,
+            tableConstraints: tableConstraints,
+          }),
+          ...(entityType === SummaryEntityType.MLFEATURE && {
+            algorithm: (listItem as MlFeature).featureAlgorithm,
+          }),
+          children: getFormattedEntityData(
+            entityType,
+            (listItem as Column | Field).children,
+            highlights,
+            tableConstraints
+          ),
+        };
 
-    entityInfo?.reduce((acc, listItem) => {
-      const listItemModifiedData = {
-        name: listItem.name ?? '',
-        title: getTitle({
-          content: getTitleName(listItem),
-          sourceUrl: (listItem as Chart | Task).sourceUrl,
-        }),
-        type: getSummaryListItemType(entityType, listItem),
-        tags: listItem.tags,
-        description: listItem.description,
-        ...(entityType === SummaryEntityType.COLUMN && {
-          columnConstraint: (listItem as Column).constraint,
-          tableConstraints: tableConstraints,
-        }),
-        ...(entityType === SummaryEntityType.MLFEATURE && {
-          algorithm: (listItem as MlFeature).featureAlgorithm,
-        }),
-        children: getFormattedEntityData(
-          entityType,
-          (listItem as Column | Field).children,
-          highlights,
-          tableConstraints
-        ),
-      };
-
-      const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
-        tagHighlights.includes(tag.tagFQN)
-      );
-
-      const highlightedListItemNameIndex =
-        listHighlightsMap[listItem.name ?? ''];
-      const highlightedListItemDescriptionIndex =
-        listHighlightsMap[listItem.description ?? ''];
-
-      if (
-        isTagHighlightsPresentInListItemTags ||
-        !isUndefined(highlightedListItemNameIndex) ||
-        !isUndefined(highlightedListItemDescriptionIndex)
-      ) {
-        if (isTagHighlightsPresentInListItemTags) {
-          listItemModifiedData.tags = getSortedTagsWithHighlight({
-            sortTagsBasedOnGivenTagFQNs: tagHighlights,
-            tags: listItem.tags,
-          });
+        // if highlights present in listItem then sort the listItem
+        if (highlightedTags || highlightedTitle || highlightedDescription) {
+          acc.highlightedListItem.push(listItemModifiedData);
+        } else {
+          acc.remainingListItem.push(listItemModifiedData);
         }
 
-        if (!isUndefined(highlightedListItemNameIndex)) {
-          listItemModifiedData.title = getTitle({
-            content: stringToHTML(listHighlights[highlightedListItemNameIndex]),
-            sourceUrl: (listItem as Chart | Task).sourceUrl,
-          });
-        }
-
-        if (!isUndefined(highlightedListItemDescriptionIndex)) {
-          listItemModifiedData.description =
-            listHighlights[highlightedListItemDescriptionIndex];
-        }
-
-        acc.listItemWithSortOption.push(listItemModifiedData);
-      } else {
-        acc.listItemWithoutSortOption.push(listItemModifiedData);
+        return acc;
+      },
+      {
+        highlightedListItem: [] as BasicEntityInfo[],
+        remainingListItem: [] as BasicEntityInfo[],
       }
+    );
 
-      return acc;
-    }, SummaryListData);
-
-    return [
-      ...SummaryListData.listItemWithSortOption,
-      ...SummaryListData.listItemWithoutSortOption,
-    ];
-  } else {
-    return [];
+    return [...highlightedListItem, ...remainingListItem];
   }
+
+  return [];
 };
