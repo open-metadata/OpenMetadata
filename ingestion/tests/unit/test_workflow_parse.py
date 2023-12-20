@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
@@ -56,6 +59,7 @@ from metadata.ingestion.api.parser import (
     get_connection_class,
     get_service_type,
     get_source_config_class,
+    parse_ingestion_pipeline_config_gracefully,
     parse_test_connection_request_gracefully,
     parse_workflow_config_gracefully,
 )
@@ -368,5 +372,174 @@ class TestWorkflowParse(TestCase):
             parse_test_connection_request_gracefully(config_dict_ko2)
         self.assertIn(
             "1 validation error for MysqlConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
+
+    def test_parsing_ingestion_pipeline_mysql(self):
+        """
+        Test parsing of ingestion_pipeline for MYSQL
+        """
+        config_dict = {
+            "id": "08868b3e-cd02-4257-a545-9080856371a0",
+            "name": "qwfef_metadata_SPWHTqVO",
+            "pipelineType": "metadata",
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseMetadata",
+                    "includeTags": True,
+                    "includeViews": True,
+                    "includeTables": True,
+                    "queryLogDuration": 1,
+                    "markDeletedTables": True,
+                    "tableFilterPattern": {"excludes": [], "includes": []},
+                    "useFqnForFiltering": True,
+                    "schemaFilterPattern": {"excludes": [], "includes": []},
+                    "databaseFilterPattern": {"excludes": [], "includes": []},
+                    "includeStoredProcedures": True,
+                    "queryParsingTimeoutLimit": 300,
+                    "markDeletedStoredProcedures": True,
+                }
+            },
+            "airflowConfig": {
+                "retries": 0,
+                "startDate": "2023-12-19T00:00:00.000000Z",
+                "retryDelay": 300,
+                "concurrency": 1,
+                "maxActiveRuns": 1,
+                "pausePipeline": False,
+                "pipelineCatchup": False,
+                "pipelineTimezone": "UTC",
+                "scheduleInterval": "0 * * * *",
+                "workflowDefaultView": "tree",
+                "workflowDefaultViewOrientation": "LR",
+            },
+        }
+
+        self.assertIsInstance(
+            parse_ingestion_pipeline_config_gracefully(config_dict),
+            IngestionPipeline,
+        )
+
+        config_dict_ko = {
+            "id": "08868b3e-cd02-4257-a545-9080856371a0",
+            "name": "qwfef_metadata_SPWHTqVO",
+            "pipelineType": "metadata",
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseMetadata",
+                    "includeTags": True,
+                    "includeViews": True,
+                    "includeTables": True,
+                    "viewLogDuration": 1,
+                    "markDeletedTables": True,
+                    "tFilterPattern": {"excludes": [], "includes": []},
+                    "useFqnForFiltering": True,
+                    "schemaFilterPattern": {"excludes": [], "includes": []},
+                    "databaseFilterPattern": {"excludes": [], "includes": []},
+                    "includeStoredProcedures": True,
+                    "queryParsingTimeoutLimit": 300,
+                    "markDeletedStoredProcedures": True,
+                }
+            },
+            "airflowConfig": {
+                "retries": 0,
+                "startDate": "2023-12-19T00:00:00.000000Z",
+                "retryDelay": 300,
+                "concurrency": 1,
+                "maxActiveRuns": 1,
+                "pausePipeline": False,
+                "pipelineCatchup": False,
+                "pipelineTimezone": "UTC",
+                "scheduleInterval": "0 * * * *",
+                "workflowDefaultView": "tree",
+                "workflowDefaultViewOrientation": "LR",
+            },
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_ingestion_pipeline_config_gracefully(config_dict_ko)
+        self.assertIn(
+            "2 validation errors for DatabaseServiceMetadataPipeline\ntFilterPattern\n  extra fields not permitted (type=value_error.extra)\nviewLogDuration\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
+
+    def test_parsing_ingestion_pipeline_dagster(self):
+        """
+        Test parsing of ingestion_pipeline for Dagster
+        """
+        config_dict = {
+            "id": "da50179a-02c8-42d1-a8bd-3002a49649a6",
+            "name": "dagster_dev_metadata_G6pRkj7X",
+            "pipelineType": "metadata",
+            "sourceConfig": {
+                "config": {
+                    "type": "PipelineMetadata",
+                    "includeTags": True,
+                    "includeOwners": True,
+                    "dbServiceNames": ["dev"],
+                    "includeLineage": True,
+                    "markDeletedPipelines": True,
+                    "pipelineFilterPattern": {
+                        "excludes": [],
+                        "includes": ["test_pipeline"],
+                    },
+                }
+            },
+            "airflowConfig": {
+                "retries": 0,
+                "startDate": "2023-12-19T00:00:00.000000Z",
+                "retryDelay": 300,
+                "concurrency": 1,
+                "maxActiveRuns": 1,
+                "pausePipeline": False,
+                "pipelineCatchup": False,
+                "pipelineTimezone": "UTC",
+                "scheduleInterval": "0 * * * *",
+                "workflowDefaultView": "tree",
+                "workflowDefaultViewOrientation": "LR",
+            },
+        }
+        self.assertIsInstance(
+            parse_ingestion_pipeline_config_gracefully(config_dict),
+            IngestionPipeline,
+        )
+
+        config_dict_ko = {
+            "id": "da50179a-02c8-42d1-a8bd-3002a49649a6",
+            "name": "dagster_dev_metadata_G6pRkj7X",
+            "pipelineType": "metadata",
+            "sourceConfig": {
+                "config": {
+                    "type": "PipelineMetadata",
+                    "includeTags": True,
+                    "includeOwners": True,
+                    "dbServiceNames": ["dev"],
+                    "includeViewLineage": True,
+                    "markDeletedDbs": True,
+                    "pipelineFilterPatterns": {
+                        "excludes": [],
+                        "includes": ["test_pipeline"],
+                    },
+                }
+            },
+            "airflowConfig": {
+                "retries": 0,
+                "startDate": "2023-12-19T00:00:00.000000Z",
+                "retryDelay": 300,
+                "concurrency": 1,
+                "maxActiveRuns": 1,
+                "pausePipeline": False,
+                "pipelineCatchup": False,
+                "pipelineTimezone": "UTC",
+                "scheduleInterval": "0 * * * *",
+                "workflowDefaultView": "tree",
+                "workflowDefaultViewOrientation": "LR",
+            },
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_ingestion_pipeline_config_gracefully(config_dict_ko)
+        self.assertIn(
+            "3 validation errors for PipelineServiceMetadataPipeline\nincludeViewLineage\n  extra fields not permitted (type=value_error.extra)\nmarkDeletedDbs\n  extra fields not permitted (type=value_error.extra)\npipelineFilterPatterns\n  extra fields not permitted (type=value_error.extra)",
             str(err.exception),
         )

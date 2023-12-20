@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
     MessagingServiceType,
@@ -434,3 +437,38 @@ def parse_test_connection_request_gracefully(
         )
 
     raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
+
+
+def parse_ingestion_pipeline_config_gracefully(
+    config_dict: dict,
+) -> IngestionPipeline:
+    """
+    This function either correctly parses the pydantic class, or
+    throws a scoped error while fetching the required source connection
+    class.
+
+    :param config_dict: JSON ingestion pipeline config
+    :return:Ingestion Pipeline config or scoped error
+    """
+
+    try:
+        ingestion_pipeline = IngestionPipeline.parse_obj(config_dict)
+        return ingestion_pipeline
+
+    except ValidationError:
+        source_config_type = config_dict["sourceConfig"]["config"].get("type")
+
+        if source_config_type is None:
+            raise InvalidWorkflowException("Missing type in the sourceConfig config")
+
+        source_config_class = get_source_config_class(source_config_type)
+
+        _unsafe_parse_config(
+            config=config_dict["sourceConfig"]["config"],
+            cls=source_config_class,
+            message="Error parsing the source config",
+        )
+
+    raise ParsingConfigurationError(
+        "Uncaught error when parsing the Ingestion Pipeline!"
+    )
