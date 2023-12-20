@@ -16,6 +16,8 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,6 +30,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -65,14 +68,20 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("charts")) {
-      return new ChartDescriptionTaskWorkflow(threadContext);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (entityLink.getArrayFieldValue() != null) {
+        return new ChartDescriptionAndTagTaskWorkflow(threadContext);
+      }
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
     }
     return super.getTaskWorkflow(threadContext);
   }
 
-  static class ChartDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    ChartDescriptionTaskWorkflow(ThreadContext threadContext) {
+  static class ChartDescriptionAndTagTaskWorkflow extends DescriptionTaskWorkflow {
+    ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
+      EntityLink entityLink = threadContext.getAbout();
       Dashboard dashboard =
           Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
       String chartName = threadContext.getAbout().getArrayFieldName();
@@ -85,8 +94,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                       new IllegalArgumentException(
                           CatalogExceptionMessage.invalidFieldName("chart", chartName)));
       Chart chart = Entity.getEntity(chartReference, "", ALL);
-      threadContext.setAbout(
-          new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), "description", null, null));
+      if (entityLink.getArrayFieldValue().equals(FIELD_DESCRIPTION)) {
+        threadContext.setAbout(
+            new EntityLink(
+                Entity.CHART, chart.getFullyQualifiedName(), FIELD_DESCRIPTION, null, null));
+      } else if (entityLink.getArrayFieldValue().equals(FIELD_TAGS)) {
+        threadContext.setAbout(
+            new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), FIELD_TAGS, null, null));
+      }
       threadContext.setAboutEntity(chart);
     }
   }
