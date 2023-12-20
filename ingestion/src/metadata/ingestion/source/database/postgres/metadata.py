@@ -28,11 +28,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )

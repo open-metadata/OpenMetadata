@@ -11,7 +11,6 @@
 """
 Generic source to build SQL connectors.
 """
-import random
 import traceback
 from abc import ABC
 from copy import deepcopy
