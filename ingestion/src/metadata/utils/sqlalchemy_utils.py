@@ -40,6 +40,27 @@ def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
 
 
 @reflection.cache
+def get_all_table_owners(
+    self, connection, query, schema_name, **kw
+):  # pylint: disable=unused-argument
+    """
+    Method to fetch owners of all available tables
+    """
+    self.all_table_owners: Dict[Tuple[str, str], str] = {}
+    result = connection.execute(query)
+    for table in result:
+        self.all_table_owners[(table[0], table[1])] = table[2]
+
+
+def get_table_owner_wrapper(
+    self, connection, query, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    if not hasattr(self, "all_table_owners"):
+        self.get_all_table_owners(connection, query, schema)
+    return self.all_table_owners.get((schema, table_name), "")
+
+
+@reflection.cache
 def get_all_view_definitions(self, connection, query):
     """
     Method to fetch view definition of all available views
