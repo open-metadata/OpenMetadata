@@ -17,13 +17,31 @@ from logging import Logger
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
     PandasTestSuiteInterface,
 )
+from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
+    DatabricksTestSuiteInterface,
+)
+from metadata.data_quality.interface.sqlalchemy.snowflake.test_suite_interface import (
+    SnowflakeTestSuiteInterface,
+)
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
+    UnityCatalogTestSuiteInterface,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -50,6 +68,17 @@ class TestSuiteInterfaceFactory:
             interface (TestSuiteInterface): a class that implements the TestSuiteInterface
         """
         self._interface_type[interface_type] = interface
+
+    def register_many(self, interface_dict):
+        """
+        Registers multiple profiler interfaces at once.
+
+        Args:
+            interface_dict: A dictionary mapping connection class names (strings) to their
+            corresponding profiler interface classes.
+        """
+        for interface_type, interface_class in interface_dict.items():
+            self.register(interface_type, interface_class)
 
     def create(
         self,
@@ -86,3 +115,14 @@ class TestSuiteInterfaceFactory:
 
 
 test_suite_interface_factory = TestSuiteInterfaceFactory()
+
+
+test_suite_interface = {
+    DatabaseConnection.__name__: SQATestSuiteInterface,
+    DatalakeConnection.__name__: PandasTestSuiteInterface,
+    SnowflakeConnection.__name__: SnowflakeTestSuiteInterface,
+    UnityCatalogConnection.__name__: UnityCatalogTestSuiteInterface,
+    DatabricksConnection.__name__: DatabricksTestSuiteInterface,
+}
+
+test_suite_interface_factory.register_many(test_suite_interface)

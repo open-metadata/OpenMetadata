@@ -18,11 +18,24 @@ from pytest import mark
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
     PandasTestSuiteInterface,
 )
+from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
+    DatabricksTestSuiteInterface,
+)
+from metadata.data_quality.interface.sqlalchemy.snowflake.test_suite_interface import (
+    SnowflakeTestSuiteInterface,
+)
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
+    UnityCatalogTestSuiteInterface,
+)
 from metadata.data_quality.interface.test_suite_interface_factory import (
+    TestSuiteInterfaceFactory,
     test_suite_interface_factory,
+)
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
@@ -32,6 +45,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
@@ -73,3 +92,29 @@ def test_interface_factory(
         table_entity=None,  # type: ignore
     )
     assert interface.__class__ == expected_interface
+
+
+def test_register_many():
+    # Initialize factory
+
+    factory = TestSuiteInterfaceFactory()
+
+    test_suite_interfaces = {
+        "base": SQATestSuiteInterface,
+        DatalakeConnection.__name__: PandasTestSuiteInterface,
+        SnowflakeConnection.__name__: SnowflakeTestSuiteInterface,
+        UnityCatalogConnection.__name__: UnityCatalogTestSuiteInterface,
+        DatabricksConnection.__name__: DatabricksTestSuiteInterface,
+    }
+
+    # Register profiles
+    factory.register_many(test_suite_interfaces)
+
+    # Assert all expected interfaces are registered
+    expected_interfaces = set(test_suite_interfaces.keys())
+    actual_interfaces = set(factory._interface_type.keys())
+    assert expected_interfaces == actual_interfaces
+
+    # Assert profiler classes match registered interfaces
+    for interface_type, interface_class in test_suite_interfaces.items():
+        assert factory._interface_type[interface_type] == interface_class

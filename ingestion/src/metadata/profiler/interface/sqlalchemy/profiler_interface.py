@@ -104,10 +104,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
+        self.create_session()
+
+    def create_session(self):
         self.session_factory = self._session_factory()
         self.session = self.session_factory()
-        self.set_session_tag(self.session)
-        self.set_catalog(self.session)
 
     @property
     def table(self):

@@ -24,7 +24,7 @@
         "title": "Service Type",
         "description": "Service Type",
         "$ref": "#/definitions/databricksType",
-        "default": "Databricks"
+        "default": "UnityCatalog"
       },
       "scheme": {
         "title": "Connection Scheme",
@@ -84,6 +84,10 @@
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      },
+      "supportsProfiler": {
+        "title": "Supports Profiler",
+        "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
       },
       "supportsDatabase": {
         "title": "Supports Database",

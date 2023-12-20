@@ -14,34 +14,16 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    OVERFLOW_ERROR_CODES,
-    SQAProfilerInterface,
+
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+    SQATestSuiteInterface,
 )
-from metadata.utils.logger import profiler_interface_registry_logger
-
-logger = profiler_interface_registry_logger()
 
 
-class SnowflakeProfilerInterface(SQAProfilerInterface):
-    """
-    Interface to interact with registry supporting
-    sqlalchemy.
-    """
-
+class SnowflakeTestSuiteInterface(SQATestSuiteInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def create_session(self):
         super().create_session()
         self.set_session_tag(self.session)
-
-    def _programming_error_static_metric(self, runner, column, exc, session, metrics):
-        if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-            session.bind.dialect.name
-        ):
-            logger.info(
-                f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-            )
-            return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
-        return None
