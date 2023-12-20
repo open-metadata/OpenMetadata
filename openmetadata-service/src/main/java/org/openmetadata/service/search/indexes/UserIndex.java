@@ -13,7 +13,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class UserIndex implements SearchIndex {
   final User user;
-  final List<String> excludeFields = List.of("owns", "changeDescription", "follows", "authenticationMechanism");
+  final List<String> excludeFields =
+      List.of("owns", "changeDescription", "follows", "authenticationMechanism");
 
   public UserIndex(User user) {
     this.user = user;
@@ -28,10 +29,13 @@ public class UserIndex implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            user.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
-    doc.put("displayName", CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
+    doc.put(
+        "displayName",
+        CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
     if (user.getIsBot() == null) {
       doc.put("isBot", false);
     }

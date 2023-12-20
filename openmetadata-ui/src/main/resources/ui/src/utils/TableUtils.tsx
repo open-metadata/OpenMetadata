@@ -336,7 +336,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline service-icon h-7"
-        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType ?? '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source)}
       />
     );
   }

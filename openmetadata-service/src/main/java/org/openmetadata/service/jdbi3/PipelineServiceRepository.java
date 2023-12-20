@@ -21,7 +21,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 
 @Slf4j
-public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
+public class PipelineServiceRepository
+    extends ServiceEntityRepository<PipelineService, PipelineConnection> {
 
   public PipelineServiceRepository() {
     super(

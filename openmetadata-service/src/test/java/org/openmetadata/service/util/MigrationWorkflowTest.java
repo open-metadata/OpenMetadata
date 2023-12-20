@@ -21,20 +21,29 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
   void test_getMigrationFiles() {
 
     MigrationWorkflow migrationWorkflow =
-        spy(new MigrationWorkflow(jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", false));
+        spy(
+            new MigrationWorkflow(
+                jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", false));
 
     List<MigrationFile> omMigrationList =
         List.of(
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.1.0"), null, ConnectionType.MYSQL),
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.0"), null, ConnectionType.MYSQL),
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.1"), null, ConnectionType.MYSQL));
+            new MigrationFile(
+                new File("/bootstrap/sql/migrations/native/1.1.0"), null, ConnectionType.MYSQL),
+            new MigrationFile(
+                new File("/bootstrap/sql/migrations/native/1.2.0"), null, ConnectionType.MYSQL),
+            new MigrationFile(
+                new File("/bootstrap/sql/migrations/native/1.2.1"), null, ConnectionType.MYSQL));
 
     List<MigrationFile> collateMigrationList =
         List.of(
             new MigrationFile(
-                new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"), null, ConnectionType.MYSQL),
+                new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"),
+                null,
+                ConnectionType.MYSQL),
             new MigrationFile(
-                new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"), null, ConnectionType.MYSQL));
+                new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"),
+                null,
+                ConnectionType.MYSQL));
 
     Mockito.doReturn(omMigrationList)
         .when(migrationWorkflow)

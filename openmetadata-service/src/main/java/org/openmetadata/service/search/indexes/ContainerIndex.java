@@ -49,13 +49,18 @@ public class ContainerIndex implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    serviceSuggest.add(SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
-    doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
+    doc.put(
+        "displayName",
+        container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(container.getFollowers()));

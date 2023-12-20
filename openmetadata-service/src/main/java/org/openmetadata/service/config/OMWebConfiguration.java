@@ -17,7 +17,8 @@ public class OMWebConfiguration extends WebConfiguration {
     return this.referrerPolicyHeaderFactory;
   }
 
-  public void setReferrerPolicyHeaderFactory(ReferrerPolicyHeaderFactory referrerPolicyHeaderFactory) {
+  public void setReferrerPolicyHeaderFactory(
+      ReferrerPolicyHeaderFactory referrerPolicyHeaderFactory) {
     this.referrerPolicyHeaderFactory = referrerPolicyHeaderFactory;
   }
 
@@ -25,7 +26,8 @@ public class OMWebConfiguration extends WebConfiguration {
     return this.permissionPolicyHeaderFactory;
   }
 
-  public void setPermissionPolicyHeaderFactory(PermissionPolicyHeaderFactory permissionPolicyHeaderFactory) {
+  public void setPermissionPolicyHeaderFactory(
+      PermissionPolicyHeaderFactory permissionPolicyHeaderFactory) {
     this.permissionPolicyHeaderFactory = permissionPolicyHeaderFactory;
   }
 }

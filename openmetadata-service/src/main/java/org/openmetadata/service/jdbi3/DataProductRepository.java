@@ -78,12 +78,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void storeRelationships(DataProduct entity) {
     addRelationship(
-        entity.getDomain().getId(), entity.getId(), Entity.DOMAIN, Entity.DATA_PRODUCT, Relationship.CONTAINS);
+        entity.getDomain().getId(),
+        entity.getId(),
+        Entity.DOMAIN,
+        Entity.DATA_PRODUCT,
+        Relationship.CONTAINS);
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
-      addRelationship(entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
+      addRelationship(
+          entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
     }
     for (EntityReference asset : listOrEmpty(entity.getAssets())) {
-      addRelationship(entity.getId(), asset.getId(), Entity.DATA_PRODUCT, asset.getType(), Relationship.HAS);
+      addRelationship(
+          entity.getId(), asset.getId(), Entity.DATA_PRODUCT, asset.getType(), Relationship.HAS);
     }
   }
 
@@ -112,8 +118,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   protected void postUpdate(DataProduct original, DataProduct updated) {
     super.postUpdate(original, updated);
     Map<String, EntityReference> assetsMap = new HashMap<>();
-    listOrEmpty(original.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
-    listOrEmpty(updated.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    listOrEmpty(original.getAssets())
+        .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    listOrEmpty(updated.getAssets())
+        .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
     for (EntityReference assetRef : assetsMap.values()) {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
       searchRepository.updateEntity(asset);
@@ -139,16 +147,24 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
 
-      if (!recordListChange(FIELD_ASSETS, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
+      if (!recordListChange(
+          FIELD_ASSETS, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
       // Remove assets that were deleted
       for (EntityReference asset : deleted) {
-        deleteRelationship(original.getId(), DATA_PRODUCT, asset.getId(), asset.getType(), Relationship.HAS);
+        deleteRelationship(
+            original.getId(), DATA_PRODUCT, asset.getId(), asset.getType(), Relationship.HAS);
       }
       // Add new assets
       for (EntityReference asset : added) {
-        addRelationship(original.getId(), asset.getId(), DATA_PRODUCT, asset.getType(), Relationship.HAS, false);
+        addRelationship(
+            original.getId(),
+            asset.getId(),
+            DATA_PRODUCT,
+            asset.getType(),
+            Relationship.HAS,
+            false);
       }
     }
   }

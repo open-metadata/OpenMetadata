@@ -78,7 +78,8 @@ public class SystemRepository {
   public Settings getEmailConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
-      SmtpSettings emailConfig = SystemRepository.decryptEmailSetting((SmtpSettings) setting.getConfigValue());
+      SmtpSettings emailConfig =
+          SystemRepository.decryptEmailSetting((SmtpSettings) setting.getConfigValue());
       setting.setConfigValue(emailConfig);
       return setting;
     } catch (Exception ex) {
@@ -110,9 +111,11 @@ public class SystemRepository {
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     if (oldValue == null) {
-      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
+      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+          .toResponse();
     } else {
-      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, RestUtil.ENTITY_UPDATED)).toResponse();
+      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, RestUtil.ENTITY_UPDATED))
+          .toResponse();
     }
   }
 
@@ -123,7 +126,8 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
+    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+        .toResponse();
   }
 
   @SuppressWarnings("unused")
@@ -144,20 +148,23 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED)).toResponse();
+    return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED))
+        .toResponse();
   }
 
   public void updateSetting(Settings setting) {
     try {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        SmtpSettings emailConfig =
+            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       }
-      dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      dao.insertSettings(
+          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
       SettingsCache.invalidateSettings(setting.getConfigType().value());
     } catch (Exception ex) {
