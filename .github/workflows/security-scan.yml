@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_ORGANIZATION: ${{ secrets.SNYK_ORGANIZATION_ID }}
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -58,6 +59,7 @@ jobs:
           sudo make install_antlr_cli
           sudo npm install -g snyk
           snyk auth ${SNYK_TOKEN}
+          snyk config set org=${SNYK_ORGANIZATION}
 
       - name: Install Python dependencies
         run: |

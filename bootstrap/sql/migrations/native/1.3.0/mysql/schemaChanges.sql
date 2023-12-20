@@ -31,3 +31,18 @@ set json = JSON_INSERT(
   false
 )
 where name = 'DataInsightsApplication';
+
+-- Remove mssql connection from airflow db
+UPDATE pipeline_service_entity pse 
+SET json = JSON_REMOVE(json, '$.connection.config.connection')
+WHERE serviceType = 'Airflow'
+AND JSON_EXTRACT(json, '$.connection.config.connection.type') = 'Mssql';
+
+-- Rename NOOP Secret Manager to DB
+update metadata_service_entity
+set json = JSON_REPLACE(json, '$.connection.config.secretsManagerProvider', 'db')
+where name = 'OpenMetadata'
+  and JSON_EXTRACT(json, '$.connection.config.secretsManagerProvider') = 'noop';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;

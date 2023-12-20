@@ -22,7 +22,8 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `DatalakeConnection` object. */
 public class MysqlConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
   public MysqlConnectionClassConverter() {
     super(MysqlConnection.class);
@@ -32,7 +33,8 @@ public class MysqlConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(mysqlConnection::setAuthType);
+    tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(mysqlConnection::setAuthType);
 
     return mysqlConnection;
   }

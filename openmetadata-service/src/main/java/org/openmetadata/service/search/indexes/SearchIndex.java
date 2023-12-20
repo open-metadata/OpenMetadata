@@ -41,7 +41,9 @@ public interface SearchIndex {
     }
     EntityReference cloneEntity = JsonUtils.deepCopy(entity, EntityReference.class);
     cloneEntity.setDisplayName(
-        CommonUtil.nullOrEmpty(cloneEntity.getDisplayName()) ? cloneEntity.getName() : cloneEntity.getDisplayName());
+        CommonUtil.nullOrEmpty(cloneEntity.getDisplayName())
+            ? cloneEntity.getName()
+            : cloneEntity.getDisplayName());
     return cloneEntity;
   }
 

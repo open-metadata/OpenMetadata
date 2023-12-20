@@ -19,7 +19,7 @@ export interface EntityDeleteModalProp extends HTMLAttributes<HTMLDivElement> {
   entityName: string;
   entityType: string;
   loadingState: string;
-  bodyText?: string;
+  bodyText?: string | JSX.Element;
   softDelete?: boolean;
   visible: boolean;
 }

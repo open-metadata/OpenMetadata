@@ -19,11 +19,13 @@ public class ApplicationHandler {
     runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
   }
 
-  public static void installApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+  public static void installApplication(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "install");
   }
 
-  public static void configureApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+  public static void configureApplication(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
@@ -36,14 +38,20 @@ public class ApplicationHandler {
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
+      Method initMethod =
+          resource
+              .getClass()
+              .getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call method on demand
       Method scheduleMethod = resource.getClass().getMethod(methodName);
       scheduleMethod.invoke(resource);
 
-    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+    } catch (NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);
     } catch (ClassNotFoundException e) {

@@ -38,6 +38,10 @@ jest.mock('../../rest/teamsAPI', () => ({
   ),
 }));
 
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockImplementation(() => 'entityName'),
+}));
+
 describe('TeamsSelectable component test', () => {
   it('TeamsSelectable component should render properly', async () => {
     const { findByText } = render(<TeamsSelectable {...mockProps} />, {

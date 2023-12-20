@@ -14,7 +14,8 @@ public interface DataInsightAggregatorInterface {
   String TIMESTAMP = "timestamp";
   String ENTITY_TIER = "entityTier";
 
-  default DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType) throws ParseException {
+  default DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType)
+      throws ParseException {
     List<Object> data = this.aggregate();
     return new DataInsightChartResult().withData(data).withChartType(chartType);
   }

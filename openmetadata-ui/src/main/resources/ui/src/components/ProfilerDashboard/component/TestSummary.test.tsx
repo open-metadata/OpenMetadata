@@ -19,6 +19,7 @@ import {
   MOCK_TEST_CASE_RESULT,
 } from '../../../mocks/TestSuite.mock';
 import { getListTestCaseResults } from '../../../rest/testAPI';
+import { getEpochMillisForPastDays } from '../../../utils/date-time/DateTimeUtils';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
@@ -61,6 +62,13 @@ jest.mock('../../Loader/Loader', () => {
 });
 jest.mock('../../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
+});
+jest.mock('../../../utils/date-time/DateTimeUtils', () => {
+  return {
+    formatDateTime: jest.fn(),
+    getCurrentMillis: jest.fn(),
+    getEpochMillisForPastDays: jest.fn(),
+  };
 });
 
 describe('TestSummary component', () => {
@@ -148,5 +156,13 @@ describe('TestSummary component', () => {
     userEvent.click(fullScreenBtn);
 
     expect(mockHistory.goBack).toHaveBeenCalled();
+  });
+
+  it('default time range should be 30 days', async () => {
+    const MockGetEpochMillisForPastDays =
+      getEpochMillisForPastDays as jest.Mock;
+    render(<TestSummary data={MOCK_SQL_TEST_CASE} />);
+
+    expect(MockGetEpochMillisForPastDays).toHaveBeenCalledWith(30);
   });
 });

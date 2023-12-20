@@ -12,6 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
+import { SearchSuggestions } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -92,6 +93,7 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { SearchSourceAlias } from '../interface/search.interface';
 import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
 import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { customServiceComparator } from './StringsUtils';
@@ -140,8 +142,11 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceTypeLogo(type: string) {
+  public getServiceTypeLogo(
+    searchSource: SearchSuggestions[number] | SearchSourceAlias
+  ) {
     const serviceTypes = this.getSupportedServiceFromList();
+    const type = searchSource.serviceType ?? '';
     switch (type) {
       case DatabaseServiceType.Mysql:
         return MYSQL;
