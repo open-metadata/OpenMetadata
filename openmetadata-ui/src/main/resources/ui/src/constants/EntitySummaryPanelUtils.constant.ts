@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Database } from '../../../../generated/entity/data/database';
-import { TagLabel } from '../../../../generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
-
-export interface DatabaseSummaryProps {
-  entityDetails: Database;
-  componentType?: DRAWER_NAVIGATION_OPTIONS;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-  highlights?: SearchedDataProps['data'][number]['highlight'];
-}
+export const SummaryListHighlightKeys = [
+  'columns.name',
+  'columns.children.name',
+  'synonyms',
+  'dataModel.columns.name',
+  'dataModel.columns.description',
+  'dataModel.columns.children.name',
+  'charts.name',
+  'charts.description',
+  'tasks.name',
+  'tasks.description',
+  'mlFeatures.name',
+  'mlFeatures.description',
+];
