@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEqual } from 'lodash';
+import { isEqual, orderBy } from 'lodash';
 import React, {
   createContext,
   ReactNode,
@@ -23,14 +23,17 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
+  TaskType,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import {
@@ -42,6 +45,10 @@ import {
   updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
+import {
+  getListTestCaseIncidentByStateId,
+  getTestCaseIncidentById,
+} from '../../../rest/incidentManagerAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -69,10 +76,43 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
+  const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
+    TestCaseResolutionStatus[]
+  >([]);
   const { currentUser } = useAuthContext();
+
+  const fetchTestCaseResolution = useCallback(async (id: string) => {
+    try {
+      const res = await getTestCaseIncidentById(id);
+      const { data } = await getListTestCaseIncidentByStateId(
+        res.stateId ?? '',
+        {
+          limit: PAGE_SIZE_LARGE,
+        }
+      );
+
+      setTestCaseResolutionStatus(
+        orderBy(data, (item) => item.timestamp, ['asc'])
+      );
+    } catch (error) {
+      setTestCaseResolutionStatus([]);
+    }
+  }, []);
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
+    if (
+      active &&
+      active.task?.type === TaskType.RequestTestCaseFailureResolution &&
+      active.task?.testCaseResolutionStatusId
+    ) {
+      setLoading(true);
+      fetchTestCaseResolution(active.task.testCaseResolutionStatusId).finally(
+        () => {
+          setLoading(false);
+        }
+      );
+    }
   }, []);
 
   const getFeedDataById = useCallback(async (id) => {
@@ -360,6 +400,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       setActiveThread,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
+      testCaseResolutionStatus,
     };
   }, [
     entityThread,
@@ -381,6 +422,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     entityPaging,
     user,
     currentUser,
+    testCaseResolutionStatus,
   ]);
 
   return (

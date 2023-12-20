@@ -20,6 +20,7 @@ import {
   Row,
   Select,
   Space,
+  Steps,
   Tooltip,
   Typography,
 } from 'antd';
@@ -28,7 +29,14 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, noop, startCase } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  noop,
+  startCase,
+  toLower,
+} from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -57,7 +65,10 @@ import {
   TaskDetails,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { TestCaseFailureReasonType } from '../../../generated/tests/testCase';
+import {
+  TestCaseFailureReasonType,
+  TestCaseResolutionStatusTypes,
+} from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
@@ -70,6 +81,7 @@ import {
 } from '../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
@@ -108,7 +120,8 @@ export const TaskTab = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
-  const { postFeed, setActiveThread } = useActivityFeedProvider();
+  const { postFeed, setActiveThread, testCaseResolutionStatus } =
+    useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -126,6 +139,43 @@ export const TaskTab = ({
         name: assignee.name,
       })) ?? [],
     [taskDetails]
+  );
+
+  const testCaseResolutionStepper = useMemo(
+    () =>
+      testCaseResolutionStatus.map((status) => ({
+        className: toLower(status.testCaseResolutionStatusType),
+        title: (
+          <div>
+            <Typography.Paragraph className="m-b-0">
+              {status.testCaseResolutionStatusType}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0">
+              {TestCaseResolutionStatusTypes.Assigned ===
+                status.testCaseResolutionStatusType && (
+                <Typography.Text className="text-grey-muted text-xss">
+                  {`To ${getEntityName(
+                    status.testCaseResolutionStatusDetails?.assignee
+                  )} on `}
+                </Typography.Text>
+              )}
+              {TestCaseResolutionStatusTypes.Resolved ===
+                status.testCaseResolutionStatusType && (
+                <Typography.Text className="text-grey-muted text-xss">
+                  {`By ${getEntityName(
+                    status.testCaseResolutionStatusDetails?.resolvedBy
+                  )} on `}
+                </Typography.Text>
+              )}
+              <Typography.Text className="text-grey-muted text-xss">
+                {formatDateTime(status.updatedAt)}
+              </Typography.Text>
+            </Typography.Paragraph>
+          </div>
+        ),
+        key: status.testCaseResolutionStatusType,
+      })),
+    [testCaseResolutionStatus]
   );
 
   const taskField = useMemo(() => {
@@ -552,24 +602,37 @@ export const TaskTab = ({
   }, [initialAssignees]);
 
   const taskHeader = isTaskTestCaseResult ? (
-    <div className={classNames('d-flex justify-between')}>
-      <div className={classNames('gap-2', 'flex-center')}>
-        <Typography.Text className="text-grey-muted">
-          {t('label.assignee-plural')}:{' '}
-        </Typography.Text>
-        <AssigneeList assignees={taskDetails?.assignees ?? []} />
-      </div>
-      <div className={classNames('gap-2', 'flex-center')}>
-        <Typography.Text className="text-grey-muted">
-          {t('label.created-by')}:{' '}
-        </Typography.Text>
-        <OwnerLabel
-          hasPermission={false}
-          owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
-          onUpdate={noop}
+    <Row gutter={[8, 8]}>
+      <Col span={24}>
+        <Steps
+          className="task-resolution-steps w-full"
+          current={testCaseResolutionStatus.length}
+          items={testCaseResolutionStepper}
+          labelPlacement="vertical"
+          size="small"
         />
-      </div>
-    </div>
+      </Col>
+      <Col span={24}>
+        <Space className="justify-between w-full">
+          <div className={classNames('gap-2', 'flex-center')}>
+            <Typography.Text className="text-grey-muted">
+              {t('label.assignee')}:{' '}
+            </Typography.Text>
+            <AssigneeList assignees={taskDetails?.assignees ?? []} />
+          </div>
+          <div className={classNames('gap-2', 'flex-center')}>
+            <Typography.Text className="text-grey-muted">
+              {t('label.created-by')}:{' '}
+            </Typography.Text>
+            <OwnerLabel
+              hasPermission={false}
+              owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
+              onUpdate={noop}
+            />
+          </div>
+        </Space>
+      </Col>
+    </Row>
   ) : (
     <div
       className={classNames('d-flex justify-between', {

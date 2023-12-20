@@ -20,6 +20,7 @@ import {
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
 import { Paging } from '../../../generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
@@ -62,4 +63,5 @@ export interface ActivityFeedProviderContextType {
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
   ) => void;
+  testCaseResolutionStatus: TestCaseResolutionStatus[];
 }

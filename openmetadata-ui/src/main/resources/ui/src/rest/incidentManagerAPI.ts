@@ -44,18 +44,21 @@ export const getListTestCaseIncidentStatus = async ({
   return response.data;
 };
 
-export const getListTestCaseIncidentById = async (id: string) => {
-  const response = await APIClient.get<
-    PagingResponse<TestCaseResolutionStatus[]>
-  >(`${testCaseIncidentUrl}/${id}`);
+export const getTestCaseIncidentById = async (id: string) => {
+  const response = await APIClient.get<TestCaseResolutionStatus>(
+    `${testCaseIncidentUrl}/${id}`
+  );
 
   return response.data;
 };
 
-export const getListTestCaseIncidentByStateId = async (stateId: number) => {
+export const getListTestCaseIncidentByStateId = async (
+  stateId: string,
+  params?: ListParams
+) => {
   const response = await APIClient.get<
     PagingResponse<TestCaseResolutionStatus[]>
-  >(`${testCaseIncidentUrl}/stateId/${stateId}`);
+  >(`${testCaseIncidentUrl}/stateId/${stateId}`, { params });
 
   return response.data;
 };
