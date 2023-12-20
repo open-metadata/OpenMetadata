@@ -21,13 +21,15 @@ from metadata.generated.schema.entity.applications.configuration.applicationConf
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
@@ -139,10 +141,10 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
             and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
         ):
             raise WorkflowExecutionError(
-                "Source reported errors", self.source.get_status()
+                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
             )
 
         if raise_warnings and self.runner.get_status().warnings:
             raise WorkflowExecutionError(
-                "Runner reported warnings", self.runner.get_status()
+                f"{self.runner.name} reported warning: {Summary.from_step(self.runner)}"
             )

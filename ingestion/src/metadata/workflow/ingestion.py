@@ -30,13 +30,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.utils.class_helper import (
@@ -145,17 +147,17 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
         ):
             raise WorkflowExecutionError(
-                "Source reported errors", self.source.get_status()
+                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
             )
 
         for step in self.steps:
             if step.status.failures:
                 raise WorkflowExecutionError(
-                    f"{step.__class__.__name__} reported errors", step.get_status()
+                    f"{step.name} reported errors: {Summary.from_step(step)}"
                 )
             if raise_warnings and step.status.warnings:
                 raise WorkflowExecutionError(
-                    f"{step.__class__.__name__} reported warnings", step.get_status()
+                    f"{step.name} reported warnings: {Summary.from_step(step)}"
                 )
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:

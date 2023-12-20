@@ -14,8 +14,10 @@ Delete methods
 import traceback
 from typing import Dict, Iterable, Optional, Type
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.ingestion.api.models import Either
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.utils.logger import utils_logger

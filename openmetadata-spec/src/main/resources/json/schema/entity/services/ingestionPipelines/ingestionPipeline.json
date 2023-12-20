@@ -42,7 +42,7 @@
         },
         "status": {
           "description": "Ingestion Pipeline summary status. Informed at the end of the execution.",
-          "$ref": "status.json"
+          "$ref": "status.json#/definitions/ingestionStatus"
         }
       },
       "additionalProperties": false

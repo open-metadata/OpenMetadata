@@ -33,8 +33,10 @@ from metadata.data_insight.processor.reports.web_analytic_report_data_processor 
 )
 from metadata.data_insight.producer.producer_factory import producer_factory
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.ingestion.api.models import Either
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

@@ -14,7 +14,7 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -44,7 +44,6 @@ class OMetaIngestionPipelineMixin:
         :param ingestion_pipeline_fqn: Ingestion Pipeline FQN
         :param pipeline_status: Pipeline Status data to add
         """
-        # TODO: THIS SHOULD BE A PATCH IF THE STATUS EXISTS FOR OUR TS
         resp = self.client.put(
             f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
             data=pipeline_status.json(),
@@ -70,18 +69,6 @@ class OMetaIngestionPipelineMixin:
             return PipelineStatus(**resp)
         return None
 
-    def run_pipeline(self, ingestion_pipeline_id: str) -> IngestionPipeline:
-        """Run ingestion pipeline workflow
-
-        Args:
-            ingestion_pipeline_id (str): ingestion pipeline uuid
-        """
-        resp = self.client.post(
-            f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
-        )
-
-        return IngestionPipeline.parse_obj(resp)
-
     def get_pipeline_status_between_ts(
         self,
         ingestion_pipeline_fqn: str,
@@ -105,27 +92,4 @@ class OMetaIngestionPipelineMixin:
 
         if resp:
             return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
-        return None
-
-    def get_ingestion_pipeline_by_name(
-        self,
-        fields: Optional[List[str]] = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> Optional[IngestionPipeline]:
-        """
-        Get ingestion pipeline statues based on name
-
-        Args:
-            name (str): Ingestion Pipeline Name
-            fields (List[str]): List of all the fields
-        """
-        fields_str = "?fields=" + ",".join(fields) if fields else ""
-        resp = self.client.get(
-            f"{self.get_suffix(IngestionPipeline)}{fields_str}",
-            data=params,
-        )
-
-        if hasattr(resp, "sourceConfig"):
-            return IngestionPipeline.parse_obj(resp)
-
         return None

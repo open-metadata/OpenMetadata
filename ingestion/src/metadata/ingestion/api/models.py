@@ -13,8 +13,11 @@ Generic models
 """
 from typing import Generic, Optional, TypeVar
 
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 
 # Entities are instances of BaseModel
 Entity = BaseModel

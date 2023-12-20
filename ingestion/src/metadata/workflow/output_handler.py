@@ -18,15 +18,14 @@ from logging import Logger
 from pathlib import Path
 from typing import Dict, List
 
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StepSummary, Failure
 from pydantic import BaseModel
 from tabulate import tabulate
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
-from metadata.ingestion.api.status import Status
-from metadata.ingestion.api.step import Step
-from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.ingestion.api.step import Summary
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
@@ -34,17 +33,13 @@ WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
 WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
 
 
-class Summary(StepSummary):
+class Failure(BaseModel):
     """
-    Auxiliary class to calculate the summary of all statuses
+    Auxiliary class to print the error per status
     """
 
-    def __add__(self, other):
-        self.records += other.records
-        self.warnings += other.warnings
-        self.errors += other.errors
-        self.filtered += other.filtered
-        return self
+    name: str
+    failures: List[StackTraceError]
 
 
 class WorkflowType(Enum):
@@ -97,14 +92,6 @@ def print_error_msg(msg: str) -> None:
     log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
 
 
-def get_summary(status: Status) -> Summary:
-    records = len(status.records)
-    warnings = len(status.warnings)
-    errors = len(status.failures)
-    filtered = len(status.filtered)
-    return Summary(records=records, warnings=warnings, errors=errors, filtered=filtered)
-
-
 def get_failures(failure: Failure) -> List[Dict[str, str]]:
     return [
         {
@@ -141,20 +128,6 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
         )
 
 
-def get_generic_step_name(step: Step) -> str:
-    """
-    Since we cannot directly log the step name
-    as step.__class__.__name__ since it brings too
-    much internal info (e.g., MetadataRestSink), we'll
-    just check here for the simplification.
-    """
-    for step_type in (Source, Processor, Stage, Sink, BulkSink):
-        if isinstance(step, step_type):
-            return step_type.__name__
-
-    return type(step).__name__
-
-
 def is_debug_enabled(workflow) -> bool:
     return (
         hasattr(workflow, "config")
@@ -180,18 +153,12 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
     total_records = 0
     total_errors = 0
     for step in workflow.workflow_steps():
-        step_summary = get_summary(step.get_status())
+        step_summary = Summary.from_step(step)
         total_records += step_summary.records
         total_errors += step_summary.errors
-        failures.append(
-            Failure(
-                name=get_generic_step_name(step), failures=step.get_status().failures
-            )
-        )
+        failures.append(Failure(name=step.name, failures=step.get_status().failures))
 
-        log_ansi_encoded_string(
-            bold=True, message=f"Workflow {get_generic_step_name(step)} Summary:"
-        )
+        log_ansi_encoded_string(bold=True, message=f"Workflow {step.name} Summary:")
         log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
         log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
         if step_summary.filtered:
@@ -213,9 +180,7 @@ def print_workflow_status_debug(workflow: "BaseWorkflow") -> None:
     """Print the statuses from each workflow step"""
     log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
     for step in workflow.workflow_steps():
-        log_ansi_encoded_string(
-            bold=True, message=f"{get_generic_step_name(step)} Status:"
-        )
+        log_ansi_encoded_string(bold=True, message=f"{step.name} Status:")
         log_ansi_encoded_string(message=step.get_status().as_string())
 
 
@@ -226,7 +191,7 @@ def report_ingestion_status(logger: Logger, workflow: "BaseWorkflow") -> None:
     try:
         for step in workflow.workflow_steps():
             logger.info(
-                f"{get_generic_step_name(step)}: Processed {len(step.status.records)} records,"
+                f"{step.name}: Processed {len(step.status.records)} records,"
                 f" filtered {len(step.status.filtered)} records,"
                 f" found {len(step.status.failures)} errors"
             )

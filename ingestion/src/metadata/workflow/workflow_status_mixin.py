@@ -15,18 +15,20 @@ import uuid
 from datetime import datetime
 from typing import Optional, Tuple
 
-from metadata.generated.schema.entity.services.ingestionPipelines.status import IngestionStatus
-
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineState,
     PipelineStatus,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    IngestionStatus,
+    StepSummary,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -86,32 +88,23 @@ class WorkflowStatusMixin:
 
         # if we don't have a related Ingestion Pipeline FQN, no status is set.
         if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
-            if state in (PipelineState.queued, PipelineState.running):
+            pipeline_status = self.metadata.get_pipeline_status(
+                self.config.ingestionPipelineFQN, self.run_id
+            )
+            if not pipeline_status:
+                # We need to crete the status
                 pipeline_status = self._new_pipeline_status(state)
             else:
-                pipeline_status = self.metadata.get_pipeline_status(
-                    self.config.ingestionPipelineFQN, self.run_id
-                )
-                if not pipeline_status:
-                    pipeline_status = self._new_pipeline_status(state)
                 # if workflow is ended then update the end date in status
                 pipeline_status.endDate = datetime.now().timestamp() * 1000
                 pipeline_status.pipelineState = state
-                pipeline_status.status = ingestion_status
+                pipeline_status.status = (
+                    ingestion_status if ingestion_status else pipeline_status.status
+                )
 
             self.metadata.create_or_update_pipeline_status(
                 self.config.ingestionPipelineFQN, pipeline_status
             )
-
-    def update_pipeline_status_at_end(self):
-        """
-        Once the execute method is done, update the status
-        as OK or KO depending on the success rate.
-        """
-        pipeline_state = PipelineState.success
-        if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
-            pipeline_state = PipelineState.partialSuccess
-        self.set_ingestion_pipeline_status(pipeline_state)
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -131,3 +124,16 @@ class WorkflowStatusMixin:
         if self.get_failures():
             return 1
         return 0
+
+    def build_ingestion_status(self) -> Optional[IngestionStatus]:
+        """
+        Get the results from the steps and prep the payload
+        we'll send to the API
+        """
+
+        return IngestionStatus(
+            __root__=[
+                StepSummary.parse_obj(Summary.from_step(step).dict())
+                for step in self.workflow_steps()
+            ]
+        )
