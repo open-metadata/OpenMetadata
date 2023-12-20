@@ -22,6 +22,10 @@ Please follow the instructions below
 
 #### Metadata Ingestion Options
 
+{% note %}
+If the owner's name is openmetadata, you need to enter `openmetadata@domain.com` in the name section of add team/user form, click [here](/connectors/ingestion/workflows/dbt/ingest-dbt-owner#following-steps-shows-adding-a-user-to-openmetadata) for more info.
+{% /note %}
+
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
 - **Database Filter Pattern (Optional)**: Use to database filter patterns to control whether or not to include database as part of metadata ingestion.
     - **Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
@@ -35,7 +39,7 @@ Please follow the instructions below
 - **Include views (toggle)**: Set the Include views toggle to control whether to include views as part of metadata ingestion.
 - **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug.
-
+- **Include Owner(toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
