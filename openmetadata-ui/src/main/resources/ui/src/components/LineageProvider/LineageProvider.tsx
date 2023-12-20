@@ -30,6 +30,7 @@ import {
   Edge,
   getConnectedEdges,
   Node,
+  NodeProps,
   ReactFlowInstance,
   useEdgesState,
   useNodesState,
@@ -89,12 +90,13 @@ import {
 } from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { useTourProvider } from '../TourProvider/TourProvider';
+import { LineageContextType } from './LineageProvider.interface';
 
 interface LineageProviderProps {
   children: ReactNode;
 }
 
-export const LineageContext = createContext({} as any);
+export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
@@ -358,12 +360,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const removeNodeHandler = useCallback(
-    (node: Node) => {
+    (node: Node | NodeProps) => {
       if (!entityLineage) {
         return;
       }
       // Get edges connected to selected node
-      const edgesToRemove = getConnectedEdges([node], edges);
+      const edgesToRemove = getConnectedEdges([node as Node], edges);
       edgesToRemove.forEach((edge) => {
         removeEdgeHandler(edge, true);
       });
@@ -806,9 +808,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onNodeCollapse = useCallback(
-    (node: Node, direction: EdgeTypeEnum) => {
+    (node: Node | NodeProps, direction: EdgeTypeEnum) => {
       const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
-        node,
+        node as Node,
         nodes,
         edges,
         direction

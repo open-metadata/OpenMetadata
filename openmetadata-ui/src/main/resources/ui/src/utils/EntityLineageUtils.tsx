@@ -777,14 +777,20 @@ export const getLineageEdgeForAPI = (
 };
 
 export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
-  const { data } = edge;
+  const {
+    sqlQuery = '',
+    columns = [],
+    description = '',
+    pipeline,
+    source = '',
+  } = edge.data?.edge || {};
 
   return {
-    sqlQuery: data?.edge?.sqlQuery ?? '',
-    columnsLineage: data?.edge?.columns ?? [],
-    description: data?.edge?.description ?? '',
-    pipeline: data?.edge?.pipeline ?? undefined,
-    source: data?.edge?.source ?? '',
+    sqlQuery,
+    columnsLineage: columns,
+    description,
+    pipeline,
+    source,
   };
 };
 

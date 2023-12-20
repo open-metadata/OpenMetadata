@@ -109,7 +109,10 @@ const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={(_e) =>
-              onNodeDrop(_e, reactFlowWrapper.current?.getBoundingClientRect())
+              onNodeDrop(
+                _e,
+                reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
+              )
             }
             onEdgeClick={(_e, data) => {
               onEdgeClick(data);
