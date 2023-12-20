@@ -205,9 +205,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Only retain add operation for restrict_update_fields fields
         """
         path = patch_ops.get("path")
-        op = patch_ops.get("op")
+        operation = patch_ops.get("op")
         for field in restrict_update_fields or []:
-            if field in path and op != PatchOperation.ADD.value:
+            if field in path and operation != PatchOperation.ADD.value:
                 return False
         return True
 
