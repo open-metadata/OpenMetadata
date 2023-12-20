@@ -11,7 +11,7 @@ slug: /main-concepts/metadata-standard/schemas/type/function
 
 - **`name`** *(string)*: Name of the function.
 - **`input`** *(string)*: Description of input taken by the function.
-- **`description`** *(string)*: Description fo the function.
+- **`description`** *(string)*: Description for the function.
 - **`examples`** *(array)*: Examples of the function to help users author conditions.
 - **`parameterInputType`**: List of receivers to send mail to. Refer to *#/definitions/parameterType*.
 - **`paramAdditionalContext`**: Refer to *#/definitions/paramAdditionalContext*.

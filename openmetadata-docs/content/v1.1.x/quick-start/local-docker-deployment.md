@@ -95,7 +95,7 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
 - Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
   - Once installed, please follow the steps [here](https://docs.docker.com/desktop/windows/wsl/) and complete all the pre-requisites for a seamless installation and deployment.
   - After completion of the pre-requisites, please install `python3-pip` and `python3-venv` on your Ubuntu system.
-    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the priviledge to install packages, if not, please use Super User.)
+    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the privilege to install packages, if not, please use Super User.)
 
 
 ## Procedure

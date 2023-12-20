@@ -4,7 +4,7 @@ slug: /developers/architecture/code-layout
 ---
 
 # Understand Code Layout
-Use this document as a quick start guide to begin developing in OpenMetdata. Below, we address the following topics:
+Use this document as a quick start guide to begin developing in OpenMetadata. Below, we address the following topics:
 
 1. Schema (Metadata Models)
 2. APIs
