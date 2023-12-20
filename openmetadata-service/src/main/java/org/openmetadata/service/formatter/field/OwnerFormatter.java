@@ -44,10 +44,12 @@ public class OwnerFormatter extends DefaultFieldFormatter {
     String spanRemoveClose = this.getMessageDecorator().getRemoveMarkerClose();
     diff =
         this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
+            .replaceMarkers(
+                diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     diff =
         this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
+            .replaceMarkers(
+                diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
     if (CommonUtil.nullOrEmpty(diff)) {
       return StringUtils.EMPTY;
     } else {

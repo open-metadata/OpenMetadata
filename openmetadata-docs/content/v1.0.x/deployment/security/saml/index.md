@@ -75,7 +75,7 @@ Every IDP provides this information, we can download the XML Metadata and config
 
 1. EntityId/Authority -> Normally a Url providing info about the provider.
 2. SignOn Url -> Url to be used for signing purpose.
-3. X509 Certificate -> In case the SP expects a signed reponse from IDP, the IDP can be configured with Signing Certificate given by SP.
+3. X509 Certificate -> In case the SP expects a signed response from IDP, the IDP can be configured with Signing Certificate given by SP.
 4. Private Key -> In case SP expects a encrypted response from the IDP , the IDP can be  configured with SPs public key for encryption and the Private Key can be used for SP for decrypting.
 
 SP Metadata XML is available at "http://localhost:8585/api/v1/saml/metadata", `localhost` needs to be updated with the correct URI.

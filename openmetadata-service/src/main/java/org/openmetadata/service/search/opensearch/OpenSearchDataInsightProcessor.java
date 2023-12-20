@@ -21,7 +21,8 @@ import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
-public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>> {
+public class OpenSearchDataInsightProcessor
+    implements Processor<BulkRequest, ResultList<ReportData>> {
   private final StepStats stats = new StepStats();
 
   public OpenSearchDataInsightProcessor(int total) {
@@ -29,14 +30,18 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
   }
 
   @Override
-  public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData) throws ProcessorException {
+  public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData)
+      throws ProcessorException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
-      throw new IllegalArgumentException("[EsDataInsightProcessor] entityType cannot be null or empty.");
+      throw new IllegalArgumentException(
+          "[EsDataInsightProcessor] entityType cannot be null or empty.");
     }
 
     LOG.debug(
-        "[EsDataInsightProcessor] Processing a Batch of Size: {}, EntityType: {} ", input.getData().size(), entityType);
+        "[EsDataInsightProcessor] Processing a Batch of Size: {}, EntityType: {} ",
+        input.getData().size(),
+        entityType);
     BulkRequest requests;
     try {
       requests = buildBulkRequests(entityType, input.getData());
@@ -53,7 +58,8 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
           0,
           input.getData().size());
       updateStats(0, input.getData().size());
-      throw new ProcessorException("[EsDataInsightProcessor] Batch encountered Exception. Failing Completely.", e);
+      throw new ProcessorException(
+          "[EsDataInsightProcessor] Batch encountered Exception. Failing Completely.", e);
     }
     return requests;
   }
@@ -69,8 +75,10 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
 
   private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), reportData.getId().toString());
-    updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
+    UpdateRequest updateRequest =
+        new UpdateRequest(indexMapping.getIndexName(), reportData.getId().toString());
+    updateRequest.doc(
+        JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }

@@ -1520,7 +1520,7 @@
     "password-error-message": "Le mot de passe doit comporter au moins 8 caractères et au plus 16 caractères et doit contenir au moins une lettre majuscule (A-Z), une lettre minuscule (a-z), un chiffre et un caractère spécial (tel que !, %, @ ou #).",
     "password-pattern-error": "Le mot de passe doit comporter au moins 8 caractères et au plus 16 caractères, avec un caractère spécial, une lettre majuscule et une lettre minuscule.",
     "path-of-the-dbt-files-stored": "Chemin du dossier où sont situés les fichiers dbt.",
-    "permanently-delete-metadata": "La suppression permanente de cette {{entityName}} supprimera ses métadonnées de façon permanente d'OpenMetadata.",
+    "permanently-delete-metadata": "La suppression permanente de cette <0>{{entityName}}</0> supprimera ses métadonnées de façon permanente d'OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "La suppression permanente de cette {{entityName}} supprimera ses métadonnées ainsi que les métadonnées de {{dependents}} de façon permanente d'OpenMetadata.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Description du pipeline.",

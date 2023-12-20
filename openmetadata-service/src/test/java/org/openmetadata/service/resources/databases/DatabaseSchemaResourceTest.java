@@ -56,29 +56,37 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   @Test
   void post_schemaWithoutRequiredDatabase_400(TestInfo test) {
     CreateDatabaseSchema create = createRequest(test).withDatabase(null);
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
   }
 
   @Test
   void delete_schemaWithTables_200(TestInfo test) throws IOException {
-    CreateDatabaseSchema create = createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
+    CreateDatabaseSchema create =
+        createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
     DatabaseSchema createdSchema = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable createTable =
-        tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+        tableResourceTest
+            .createRequest("t1", "", "", null)
+            .withDatabaseSchema(createdSchema.getFullyQualifiedName());
     Table table1 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     createTable =
-        tableResourceTest.createRequest("t2", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+        tableResourceTest
+            .createRequest("t2", "", "", null)
+            .withDatabaseSchema(createdSchema.getFullyQualifiedName());
     Table table2 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // recursively soft delete schema
     deleteAndCheckEntity(createdSchema, true, false, ADMIN_AUTH_HEADERS);
 
     // Restore one of the tables.
-    tableResourceTest.restoreEntity(new RestoreEntity().withId(table2.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
+    tableResourceTest.restoreEntity(
+        new RestoreEntity().withId(table2.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
 
     // Restore Schema
-    restoreEntity(new RestoreEntity().withId(createdSchema.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
+    restoreEntity(
+        new RestoreEntity().withId(createdSchema.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
     DatabaseSchema schema = getEntity(createdSchema.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(schema);
   }
@@ -90,7 +98,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     if (nullOrEmpty(schema.getTables())) {
       TableResourceTest tableResourceTest = new TableResourceTest();
       CreateTable create =
-          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getFullyQualifiedName());
+          tableResourceTest
+              .createRequest("t1", "", "", null)
+              .withDatabaseSchema(schema.getFullyQualifiedName());
       tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
       create.withName("t2");
@@ -121,7 +131,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public CreateDatabaseSchema createRequest(String name) {
-    return new CreateDatabaseSchema().withName(name).withDatabase(getContainer().getFullyQualifiedName());
+    return new CreateDatabaseSchema()
+        .withName(name)
+        .withDatabase(getContainer().getFullyQualifiedName());
   }
 
   @Override
@@ -146,7 +158,8 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   }
 
   @Override
-  public void compareEntities(DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(

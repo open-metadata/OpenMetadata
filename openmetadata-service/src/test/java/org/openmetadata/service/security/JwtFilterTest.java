@@ -60,7 +60,8 @@ class JwtFilterTest {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(512);
     KeyPair keyPair = keyPairGenerator.generateKeyPair();
-    algorithm = Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
+    algorithm =
+        Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
 
     // Mock a JwkProvider that has a single JWK containing the public key from the algorithm above
     // This is used to verify the JWT
@@ -99,7 +100,8 @@ class JwtFilterTest {
 
     jwtFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument = ArgumentCaptor.forClass(SecurityContext.class);
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
@@ -112,8 +114,13 @@ class JwtFilterTest {
             .sign(algorithm);
     ContainerRequestContext newContext = createRequestContextWithJwt(jwt);
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(newContext));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("email does not match the principal domain"));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(newContext));
+    assertTrue(
+        exception
+            .getMessage()
+            .toLowerCase(Locale.ROOT)
+            .contains("email does not match the principal domain"));
   }
 
   @Test
@@ -128,7 +135,8 @@ class JwtFilterTest {
 
     jwtFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument = ArgumentCaptor.forClass(SecurityContext.class);
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
@@ -146,7 +154,8 @@ class JwtFilterTest {
 
     jwtFilter.filter(context);
 
-    ArgumentCaptor<SecurityContext> securityContextArgument = ArgumentCaptor.forClass(SecurityContext.class);
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
@@ -159,7 +168,8 @@ class JwtFilterTest {
     when(context.getUriInfo()).thenReturn(mockRequestURIInfo);
     when(context.getHeaders()).thenReturn(headers);
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("token not present"));
   }
 
@@ -167,7 +177,8 @@ class JwtFilterTest {
   void testInvalidToken() {
     ContainerRequestContext context = createRequestContextWithJwt("invalid-token");
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
   }
 
@@ -181,7 +192,8 @@ class JwtFilterTest {
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("expired"));
   }
 
@@ -195,7 +207,8 @@ class JwtFilterTest {
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("claim"));
   }
 
@@ -215,7 +228,8 @@ class JwtFilterTest {
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
-    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
   }
 
@@ -225,7 +239,8 @@ class JwtFilterTest {
    */
   private static ContainerRequestContext createRequestContextWithJwt(String jwt) {
     MultivaluedHashMap<String, String> headers =
-        new MultivaluedHashMap<>(Map.of(JwtFilter.AUTHORIZATION_HEADER, format("%s %s", JwtFilter.TOKEN_PREFIX, jwt)));
+        new MultivaluedHashMap<>(
+            Map.of(JwtFilter.AUTHORIZATION_HEADER, format("%s %s", JwtFilter.TOKEN_PREFIX, jwt)));
 
     ContainerRequestContext context = mock(ContainerRequestContext.class);
     when(context.getUriInfo()).thenReturn(mockRequestURIInfo);

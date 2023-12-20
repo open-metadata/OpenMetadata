@@ -70,7 +70,7 @@ information received in the shape of an `IngestionPipeline` Entity, and the spec
 
 After creating a new workflow from the UI or when editing it, there are two calls happening:
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
-- `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
+- `/deploy` HTTP call to the `IngestionPipelineResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
 {% image
   src="/images/v1.1/features/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"
