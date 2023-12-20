@@ -135,7 +135,7 @@ Once you have picked the `Interval Type` you will need to define the configurati
   - `YEAR`
 
 `COLUMN-VALUE`
-- `Value`: a list of value to use for the partitionning logic
+- `Value`: a list of value to use for the partitioning logic
 
 `INTEGER-RANGE`
 - `Start Range`: the start of the range (inclusive)
@@ -376,7 +376,7 @@ Profiling all the tables in your data platform might not be the most optimized a
 
 When setting up a profiler workflow, you have the possibility to filter out/in certain databases, schemas, or tables. Using this feature will greatly help you narrow down which table you want to profile.
 
-### 2. Sampling and Partitionning your Tables
+### 2. Sampling and Partitioning your Tables
 On a table asset, you have the possibility to add a sample percentage/rows and a partitioning logic. Doing so will significantly reduce the amount of data scanned and the computing power required to perform the different operations. 
 
 For sampling, you can set a sampling percentage at the workflow level.

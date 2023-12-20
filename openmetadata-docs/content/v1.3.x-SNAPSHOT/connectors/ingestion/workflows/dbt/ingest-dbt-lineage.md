@@ -7,7 +7,7 @@ slug: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
 
 Ingest the lineage information from dbt `manifest.json` file into OpenMetadata.
 
-OpenMetadata exctracts the lineage information from the `depends_on` and `compiled_query/compiled_code` keys from the manifest file.
+OpenMetadata extracts the lineage information from the `depends_on` and `compiled_query/compiled_code` keys from the manifest file.
 
 ### 1. Lineage information from dbt "depends_on" key
 Openmetadata fetches the lineage information from the `manifest.json` file. Below is a sample `manifest.json` file node containing lineage information under `node_name->depends_on->nodes`.

@@ -48,7 +48,7 @@ Test Definitions are generic tests definition elements specific to a test such a
 Test Cases specify a Test Definition. It will define what condition a test must meet to be successful (e.g. `max=n`, etc.). One Test Definition can be linked to multiple Test Cases.
 
 ## Adding Test Cases to an Entity
-Tests cases are actual test that will be ran and executed against your entity. This is where you will define the excution time and logic of these tests
+Tests cases are actual test that will be ran and executed against your entity. This is where you will define the execution time and logic of these tests
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ## Step 1: Creating a Test Case
@@ -157,7 +157,7 @@ processor:
 ```
 The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/connectors/ingestion/workflows/data-quality/tests).
 
-### Key referece:
+### Key reference:
 - `forceUpdate`: if the test case exists (base on the test case name) for the entity, implements the strategy to follow when running the test (i.e. whether or not to update parameters)
 - `testCases`: list of test cases to execute against the entity referenced
 - `name`: test case name
@@ -184,7 +184,7 @@ processor:
   config:
     forceUpdate: false
     testCases:
-      - name: column_value_lenght_tagFQN
+      - name: column_value_length_tagFQN
         testDefinitionName: columnValueLengthsToBeBetween
         columnName: tagFQN
         parameterValues:
@@ -304,7 +304,7 @@ From there you can select a Test Suite and visualize the results associated with
 ### From a Table Entity
 Navigate to your table and click on the `profiler & Data Quality` tab. From there you'll be able to see test results at the table or column level.
 #### Table Level Test Results
-In the top pannel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
+In the top panel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
   src="/images/v1.3/features/ingestion/workflows/data-quality/table-results-entity.png"
