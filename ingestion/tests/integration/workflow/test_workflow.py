@@ -15,12 +15,44 @@ import re
 from unittest import TestCase
 
 from metadata.config.common import ConfigurationError, load_config_file
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import Loggers
 from metadata.workflow.metadata import MetadataWorkflow
 
 
 class WorkflowTest(TestCase):
+    """
+    Validate workflow methods
+    """
+
+    server_config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
+    metadata = OpenMetadata(server_config)
+
+    assert metadata.health_check()
+
+    def delete_service(self):
+        service_id = str(
+            self.metadata.get_by_name(
+                entity=DatabaseService, fqn="local_mysql_test"
+            ).id.__root__
+        )
+
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
     def test_get_200(self):
         key = "metadata.ingestion.sink.metadata_rest.MetadataRestSink"
         if key.find(".") >= 0:
@@ -66,18 +98,14 @@ class WorkflowTest(TestCase):
         workflow = MetadataWorkflow.create(workflow_config)
         workflow.execute()
         workflow.stop()
-        config = workflow.config.workflowConfig.openMetadataServerConfig
-        client = OpenMetadata(config).client
 
         self.assertIsNotNone(
-            client.get("/services/databaseServices/name/local_mysql_test")
+            self.metadata.get_by_name(
+                entity=DatabaseService, fqn="local_mysql_test"
+            )
         )
 
-        client.delete(
-            f"/services/databaseServices/"
-            f"{client.get('/services/databaseServices/name/local_mysql_test')['id']}"
-            f"?hardDelete=true&recursive=true"
-        )
+        self.delete_service()
 
     def test_execute_4xx(self):
         config_file = pathlib.Path("/tmp/mysql_test123")
@@ -116,10 +144,4 @@ class WorkflowTest(TestCase):
             )
         workflow.stop()
 
-        config = workflow.config.workflowConfig.openMetadataServerConfig
-        client = OpenMetadata(config).client
-        client.delete(
-            f"/services/databaseServices/"
-            f"{client.get('/services/databaseServices/name/local_mysql_test')['id']}"
-            f"?hardDelete=true&recursive=true"
-        )
+        self.delete_service()

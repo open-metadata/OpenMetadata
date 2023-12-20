@@ -259,6 +259,7 @@ def test_db2():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:50000",
+                "database": "db",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -334,7 +335,7 @@ def test_dynamo_db():
                     "awsRegion": "us-east-2",
                     "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
                 },
-                "database": "custom_database_name",
+                "databaseName": "custom_database_name",
             }
         },
         "sourceConfig": {
@@ -349,10 +350,6 @@ def test_dynamo_db():
     assert isinstance(config.serviceConnection.__root__.config, DynamoDBConnection)
 
 
-def test_gcp():
-    """TODO"""
-
-
 def test_glue():
     source = {
         "type": "glue",
@@ -364,7 +361,7 @@ def test_glue():
                     "awsAccessKeyId": "aws accessKey id",
                     "awsSecretAccessKey": "aws secret access key",
                     "awsRegion": "aws region",
-                    "endPointURL": "https://glue.<region_name>.amazonaws.com/",
+                    "endPointURL": "https://glue.region.amazonaws.com",
                 },
             }
         },
@@ -546,7 +543,9 @@ def test_oracle():
                 "username": "username",
                 "password": "password",
                 "type": "Oracle",
-                "oracleServiceName": "TESTDB",
+                "oracleConnectionType": {
+                    "oracleServiceName": "TESTDB"
+                }
             }
         },
         "sourceConfig": {"config": {}},
@@ -564,7 +563,9 @@ def test_postgres():
             "config": {
                 "type": "Postgres",
                 "username": "openmetadata_user",
-                "password": "openmetadata_password",
+                "authType": {
+                    "password": "openmetadata_password",
+                },
                 "hostPort": "localhost:5432",
                 "database": "pagila",
             }
@@ -680,11 +681,10 @@ def test_salesforce():
         "serviceConnection": {
             "config": {
                 "type": "Salesforce",
-                "hostPort": "localhost",
+                "salesforceDomain": "localhost",
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "scheme": "salesforce",
                 "sobjectName": "sobjectName",
             }
         },
@@ -702,7 +702,10 @@ def test_sample_data():
         "serviceConnection": {
             "config": {
                 "type": "CustomDatabase",
-                "sampleDataFolder": "./examples/sample_data",
+                "sourcePythonClass": "metadata.ingestion.source.database.sample_data.SampleDataSource",
+                "connectionOptions": {
+                  "sampleDataFolder": "./examples/sample_data"
+                }
             }
         },
         "sourceConfig": {},
@@ -786,8 +789,11 @@ def test_superset():
         "serviceConnection": {
             "config": {
                 "hostPort": "http://localhost:8080",
-                "username": "admin",
-                "password": "admin",
+                "connection": {
+                    "provider": "db",
+                    "username": "admin",
+                    "password": "admin",
+                },
                 "type": "Superset",
             }
         },
