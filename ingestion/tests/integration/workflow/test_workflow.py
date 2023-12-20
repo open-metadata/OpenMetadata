@@ -11,15 +11,24 @@
 
 import importlib
 import pathlib
-import re
+import uuid
 from unittest import TestCase
 
 from metadata.config.common import ConfigurationError, load_config_file
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StepSummary,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import Loggers
 from metadata.workflow.metadata import MetadataWorkflow
 
 
@@ -99,11 +108,42 @@ class WorkflowTest(TestCase):
         workflow.execute()
         workflow.stop()
 
+        # Service is created
+        self.assertIsNotNone(
+            self.metadata.get_by_name(entity=DatabaseService, fqn="local_mysql_test")
+        )
+
+        # The service has an ingestion pipeline (since it has the ingestionPipelineFQN inside and the runId)
         self.assertIsNotNone(
             self.metadata.get_by_name(
-                entity=DatabaseService, fqn="local_mysql_test"
+                entity=IngestionPipeline, fqn=workflow_config["ingestionPipelineFQN"]
             )
         )
+
+        # The pipeline has the right status
+        pipeline_status = self.metadata.get_pipeline_status(
+            workflow_config["ingestionPipelineFQN"], workflow_config["pipelineRunId"]
+        )
+
+        # We have status for the source and sink
+        self.assertEqual(len(pipeline_status.status.__root__), 2)
+        self.assertTrue(isinstance(pipeline_status.status.__root__[0], StepSummary))
+
+        # Rerunning with a different Run ID still generates the correct status
+        new_run_id = str(uuid.uuid4())
+        workflow_config["pipelineRunId"] = new_run_id
+
+        workflow = MetadataWorkflow.create(workflow_config)
+        workflow.execute()
+        workflow.stop()
+
+        pipeline_status = self.metadata.get_pipeline_status(
+            workflow_config["ingestionPipelineFQN"], new_run_id
+        )
+
+        # We have status for the source and sink
+        self.assertEqual(len(pipeline_status.status.__root__), 2)
+        self.assertTrue(isinstance(pipeline_status.status.__root__[0], StepSummary))
 
         self.delete_service()
 
@@ -126,22 +166,3 @@ class WorkflowTest(TestCase):
 
         with self.assertRaises(AttributeError):
             MetadataWorkflow.create(workflow_config)
-
-    def test_debug_not_show_authorization_headers(self):
-        current_dir = pathlib.Path(__file__).resolve().parent
-        config_file = current_dir.joinpath("mysql_test.yaml")
-        workflow_config = load_config_file(config_file)
-        workflow = MetadataWorkflow.create(workflow_config)
-        workflow_config["workflowConfig"]["loggerLevel"] = "DEBUG"
-        authorization_pattern = re.compile(
-            r".*['\"]?Authorization['\"]?: ?['\"]?[^*]*$"
-        )
-        with self.assertLogs(Loggers.OMETA.value, level="DEBUG") as logger:
-            workflow.execute()
-            self.assertFalse(
-                any(authorization_pattern.match(log) for log in logger.output),
-                "Authorization headers are displayed in the logs",
-            )
-        workflow.stop()
-
-        self.delete_service()

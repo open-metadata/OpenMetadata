@@ -543,9 +543,7 @@ def test_oracle():
                 "username": "username",
                 "password": "password",
                 "type": "Oracle",
-                "oracleConnectionType": {
-                    "oracleServiceName": "TESTDB"
-                }
+                "oracleConnectionType": {"oracleServiceName": "TESTDB"},
             }
         },
         "sourceConfig": {"config": {}},
@@ -703,9 +701,7 @@ def test_sample_data():
             "config": {
                 "type": "CustomDatabase",
                 "sourcePythonClass": "metadata.ingestion.source.database.sample_data.SampleDataSource",
-                "connectionOptions": {
-                  "sampleDataFolder": "./examples/sample_data"
-                }
+                "connectionOptions": {"sampleDataFolder": "./examples/sample_data"},
             }
         },
         "sourceConfig": {},
