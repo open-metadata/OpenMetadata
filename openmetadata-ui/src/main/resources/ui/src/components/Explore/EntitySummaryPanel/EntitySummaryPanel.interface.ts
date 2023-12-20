@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
