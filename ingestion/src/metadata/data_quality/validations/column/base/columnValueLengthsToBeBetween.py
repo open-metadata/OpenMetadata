@@ -15,7 +15,7 @@ Validator for column value length to be between test case
 
 import traceback
 from abc import abstractmethod
-from typing import Union
+from typing import Tuple, Union
 
 from sqlalchemy import Column
 
@@ -65,6 +65,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         min_bound = self.get_min_bound("minLength")
         max_bound = self.get_max_bound("maxLength")
 
+        row_count, failed_rows = self.compute_row_count(column, min_bound, max_bound)
+
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(min_bound <= min_res and max_bound >= max_res),
@@ -74,6 +76,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
                 TestResultValue(name=MIN, value=str(min_res)),
                 TestResultValue(name=MAX, value=str(max_res)),
             ],
+            row_count=row_count,
+            failed_rows=failed_rows,
         )
 
     @abstractmethod
@@ -83,3 +87,31 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
     @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
         raise NotImplementedError
+
+    @abstractmethod
+    def compute_row_count(
+        self, column: Union[SQALikeColumn, Column], min_bound, max_bound
+    ):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+            min_bound (_type_): min bound to filter out rows within the bound
+            max_bound (_type_): max bound to filter out rows within the bound
+
+        Raises:
+            NotImplementedError:
+        """
+        raise NotImplementedError
+
+    def get_row_count(self, min_bound, max_bound) -> Tuple[int, int]:
+        """Get row count
+
+        Args:
+            min_bound (_type_): min bound to filter out rows within the bound
+            max_bound (_type_): max bound to filter out rows within the bound
+
+        Returns:
+            Tuple[int, int]:
+        """
+        return self.compute_row_count(self._get_column_name(), min_bound, max_bound)
