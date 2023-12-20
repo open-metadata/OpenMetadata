@@ -24,6 +24,7 @@ import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   ChangePasswordRequest,
   RequestType,
@@ -36,6 +37,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../../common/Chip/Chip.component';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { PersonaSelectableList } from '../../../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import UserProfileImage from '../UserProfileImage/UserProfileImage.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
@@ -216,6 +218,28 @@ const UserProfileDetails = ({
     [userData.email]
   );
 
+  const userDomainRender = useMemo(
+    () => (
+      <Space align="center">
+        <Typography.Text
+          className="text-grey-muted"
+          data-testid="user-domain-label">{`${t(
+          'label.domain'
+        )} :`}</Typography.Text>
+        <Space align="center">
+          <DomainLabel
+            domain={userData?.domain}
+            entityFqn={userData.fullyQualifiedName ?? ''}
+            entityId={userData.id ?? ''}
+            entityType={EntityType.USER}
+            hasPermission={false}
+          />
+        </Space>
+      </Space>
+    ),
+    [userData.domain]
+  );
+
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
       await updateUserDetails({ ...userData, defaultPersona });
@@ -271,6 +295,9 @@ const UserProfileDetails = ({
           <Divider type="vertical" />
 
           {defaultPersonaRender}
+          <Divider type="vertical" />
+
+          {userDomainRender}
         </Space>
 
         {changePasswordRenderComponent}
