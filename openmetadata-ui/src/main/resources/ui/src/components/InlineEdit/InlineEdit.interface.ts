@@ -20,4 +20,5 @@ export interface InlineEditProps {
   // onSave it can be API call or normal function
   onSave: () => void | Promise<void>;
   direction?: SpaceProps['direction'];
+  isLoading?: boolean;
 }

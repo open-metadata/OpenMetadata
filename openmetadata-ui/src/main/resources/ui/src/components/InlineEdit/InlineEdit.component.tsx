@@ -22,6 +22,7 @@ const InlineEdit = ({
   onSave,
   direction,
   className,
+  isLoading,
 }: InlineEditProps) => {
   return (
     <Space
@@ -33,6 +34,7 @@ const InlineEdit = ({
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
         <Button
           data-testid="inline-cancel-btn"
+          disabled={isLoading}
           icon={<CloseOutlined />}
           size="small"
           type="primary"
@@ -41,6 +43,7 @@ const InlineEdit = ({
         <Button
           data-testid="inline-save-btn"
           icon={<CheckOutlined />}
+          loading={isLoading}
           size="small"
           type="primary"
           onClick={onSave}
