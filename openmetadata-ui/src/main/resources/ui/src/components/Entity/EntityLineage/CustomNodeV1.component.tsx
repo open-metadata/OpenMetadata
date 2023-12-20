@@ -30,8 +30,8 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.sv
 import { BORDER_COLOR } from '../../../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { checkUpstreamDownstream } from '../../../utils/LineageV1Utils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';

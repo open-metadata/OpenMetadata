@@ -51,10 +51,17 @@ import {
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
+  createEdges,
+  createNodes,
   getAllTracedColumnEdge,
   getAllTracedNodes,
   getClassifiedEdge,
+  getColumnLineageData,
+  getConnectedNodesEdges,
   getLayoutedElements,
+  getLineageDetailsObject,
+  getLineageEdge,
+  getLineageEdgeForAPI,
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
@@ -62,15 +69,7 @@ import {
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
-import {
-  createEdges,
-  createNodes,
-  getColumnLineageData,
-  getConnectedNodesEdges,
-  getLineageDetailsObject,
-  getLineageEdge,
-  getLineageEdgeForAPI,
-} from '../../utils/LineageV1Utils';
+
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
