@@ -68,9 +68,18 @@ public class EntityCsvTest {
       int expectedRowsPassed,
       int expectedRowsFailed) {
     assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
-    assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed(), importResult.getImportResultsCsv());
-    assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed(), importResult.getImportResultsCsv());
-    assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed(), importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsProcessed,
+        importResult.getNumberOfRowsProcessed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsPassed,
+        importResult.getNumberOfRowsPassed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsFailed,
+        importResult.getNumberOfRowsFailed(),
+        importResult.getImportResultsCsv());
   }
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {
@@ -92,7 +101,8 @@ public class EntityCsvTest {
   private static List<CsvHeader> getHeaders(Object[][] headers) {
     List<CsvHeader> csvHeaders = new ArrayList<>();
     for (Object[] header : headers) {
-      csvHeaders.add(new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
+      csvHeaders.add(
+          new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
     }
     return csvHeaders;
   }
@@ -102,7 +112,8 @@ public class EntityCsvTest {
     return String.join(LINE_SEPARATOR, records) + LINE_SEPARATOR;
   }
 
-  public static String createCsv(List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
+  public static String createCsv(
+      List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     // Create CSV
     List<String> csvRecords = new ArrayList<>();
     if (!nullOrEmpty(createRecords)) {

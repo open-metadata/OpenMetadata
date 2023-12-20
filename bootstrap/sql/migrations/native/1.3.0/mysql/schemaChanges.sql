@@ -37,3 +37,6 @@ update metadata_service_entity
 set json = JSON_REPLACE(json, '$.connection.config.secretsManagerProvider', 'db')
 where name = 'OpenMetadata'
   and JSON_EXTRACT(json, '$.connection.config.secretsManagerProvider') = 'noop';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;

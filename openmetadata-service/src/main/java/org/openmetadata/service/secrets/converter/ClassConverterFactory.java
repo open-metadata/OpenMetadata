@@ -30,7 +30,6 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GcsConnection;
@@ -59,11 +58,12 @@ public final class ClassConverterFactory {
             Map.entry(GcsConnection.class, new GcpConnectionClassConverter()),
             Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
-            Map.entry(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
-            Map.entry(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter()),
+            Map.entry(
+                TestServiceConnectionRequest.class,
+                new TestServiceConnectionRequestClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()));
   }
 

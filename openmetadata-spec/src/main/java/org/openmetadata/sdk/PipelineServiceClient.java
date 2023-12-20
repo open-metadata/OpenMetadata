@@ -108,7 +108,8 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  public PipelineServiceClient(
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     this.pipelineServiceClientEnabled = pipelineServiceClientConfiguration.getEnabled();
     this.hostIp = pipelineServiceClientConfiguration.getHostIp();
     this.ingestionIpInfoEnabled = pipelineServiceClientConfiguration.getIngestionIpInfoEnabled();
@@ -145,7 +146,8 @@ public abstract class PipelineServiceClient {
           .findFirst()
           .orElseThrow(
               () ->
-                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+                  new PipelineServiceVersionException(
+                      String.format("Cannot extract version x.y.z from %s", version)));
     } else {
       throw new PipelineServiceVersionException("Received version as null");
     }
@@ -176,7 +178,10 @@ public abstract class PipelineServiceClient {
 
   /** To build the response of getServiceStatus */
   public PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
-    return new PipelineServiceClientResponse().withCode(500).withReason(reason).withPlatform(this.getPlatform());
+    return new PipelineServiceClientResponse()
+        .withCode(500)
+        .withReason(reason)
+        .withPlatform(this.getPlatform());
   }
 
   public final Response getHostIp() {
@@ -255,7 +260,8 @@ public abstract class PipelineServiceClient {
 
   public abstract PipelineServiceClientResponse runApplicationFlow(App application);
 
-  public abstract PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app);
+  public abstract PipelineServiceClientResponse validateAppRegistration(
+      AppMarketPlaceDefinition app);
 
   /* Deploy a pipeline to the pipeline service */
   public abstract PipelineServiceClientResponse deployPipeline(
@@ -269,13 +275,16 @@ public abstract class PipelineServiceClient {
   public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
-  public abstract List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline);
+  public abstract List<PipelineStatus> getQueuedPipelineStatusInternal(
+      IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
-  public abstract PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
+  public abstract PipelineServiceClientResponse toggleIngestion(
+      IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
+  public abstract Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);

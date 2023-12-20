@@ -65,7 +65,8 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
-  private final ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
+  private final ClassificationResourceTest classificationResourceTest =
+      new ClassificationResourceTest();
 
   public TagResourceTest() {
     super(Entity.TAG, Tag.class, TagList.class, "tags", TagResource.FIELDS);
@@ -87,7 +88,8 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
             null,
             PERSONAL_DATA_TAG_LABEL.getTagFQN(),
             PII_SENSITIVE_TAG_LABEL.getTagFQN());
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_CLASSIFICATION.getName(), "Address"));
+    USER_ADDRESS_TAG_LABEL =
+        getTagLabel(FullyQualifiedName.add(USER_CLASSIFICATION.getName(), "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
@@ -114,12 +116,17 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   void post_newTagsOnNonExistentParents_404() {
     String nonExistent = "nonExistent";
     assertResponse(
-        () -> createTag("primary", nonExistent, null), NOT_FOUND, entityNotFound(Entity.CLASSIFICATION, nonExistent));
+        () -> createTag("primary", nonExistent, null),
+        NOT_FOUND,
+        entityNotFound(Entity.CLASSIFICATION, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
     String parentFqn = FullyQualifiedName.build(USER_CLASSIFICATION.getName(), nonExistent);
     CreateTag create1 = createRequest(nonExistent).withParent(parentFqn);
-    assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, parentFqn));
+    assertResponse(
+        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, parentFqn));
   }
 
   @Test
@@ -159,10 +166,14 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         CatalogExceptionMessage.systemEntityDeleteNotAllowed(tag.getName(), Entity.TAG));
   }
 
-  private Tag createOrUpdate(String classificationName, Tag parent, String name, Status status) throws IOException {
+  private Tag createOrUpdate(String classificationName, Tag parent, String name, Status status)
+      throws IOException {
     String parentFqn = parent != null ? parent.getFullyQualifiedName() : null;
     CreateTag createTag =
-        createRequest(name).withParent(parentFqn).withClassification(classificationName).withDescription("description");
+        createRequest(name)
+            .withParent(parentFqn)
+            .withClassification(classificationName)
+            .withDescription("description");
     return updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
@@ -198,15 +209,18 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   @Override
-  public void validateCreatedEntity(Tag createdEntity, CreateTag request, Map<String, String> authHeaders) {
-    assertEquals(request.getClassification(), createdEntity.getClassification().getFullyQualifiedName());
+  public void validateCreatedEntity(
+      Tag createdEntity, CreateTag request, Map<String, String> authHeaders) {
+    assertEquals(
+        request.getClassification(), createdEntity.getClassification().getFullyQualifiedName());
     if (request.getParent() == null) {
       assertNull(createdEntity.getParent());
     } else {
       assertEquals(request.getParent(), createdEntity.getParent().getFullyQualifiedName());
     }
     assertEquals(
-        request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
+        request.getProvider() == null ? ProviderType.USER : request.getProvider(),
+        createdEntity.getProvider());
     assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
@@ -214,7 +228,9 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   public void compareEntities(Tag expected, Tag updated, Map<String, String> authHeaders) {
     assertReference(expected.getClassification(), updated.getClassification());
     assertReference(expected.getParent(), updated.getParent());
-    assertEquals(expected.getProvider() == null ? ProviderType.USER : expected.getProvider(), updated.getProvider());
+    assertEquals(
+        expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
+        updated.getProvider());
     assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
@@ -243,7 +259,8 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   @Override
-  public Tag createAndCheckEntity(CreateTag create, Map<String, String> authHeaders) throws IOException {
+  public Tag createAndCheckEntity(CreateTag create, Map<String, String> authHeaders)
+      throws IOException {
     int termCount = getClassification(create.getClassification()).getTermCount();
     Tag tag = super.createAndCheckEntity(create, authHeaders);
     assertEquals(termCount + 1, getClassification(create.getClassification()).getTermCount());
@@ -259,14 +276,16 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
       ChangeDescription changeDescription)
       throws IOException {
     int termCount = getClassification(request.getClassification()).getTermCount();
-    Tag tag = super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
+    Tag tag =
+        super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
     if (status == Response.Status.CREATED) {
       assertEquals(termCount + 1, getClassification(request.getClassification()).getTermCount());
     }
     return tag;
   }
 
-  public Tag createTag(String name, String classification, String parentFqn, String... associatedTags)
+  public Tag createTag(
+      String name, String classification, String parentFqn, String... associatedTags)
       throws IOException {
     List<String> associatedTagList = associatedTags.length == 0 ? null : listOf(associatedTags);
     CreateTag createTag =

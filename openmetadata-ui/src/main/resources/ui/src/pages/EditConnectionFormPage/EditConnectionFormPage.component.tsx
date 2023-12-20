@@ -28,6 +28,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
+import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
@@ -103,7 +104,9 @@ function EditConnectionFormPage() {
         },
         {
           name: getEntityName(response),
-          imgSrc: serviceUtilClassBase.getServiceTypeLogo(response.serviceType),
+          imgSrc: serviceUtilClassBase.getServiceTypeLogo(
+            response as SearchSourceAlias
+          ),
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
