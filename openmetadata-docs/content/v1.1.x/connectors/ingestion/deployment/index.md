@@ -62,8 +62,8 @@ While the endpoints are directly defined in the `IngestionPipelineResource`, the
 that decouples how OpenMetadata communicates with the Orchestrator, as different external systems will need different
 calls and data to be sent.
 
-- You can find the `PipelineServiceClient` abstraction [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/util/PipelineServiceClient.java),
-- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/airflow/AirflowRESTClient.java).
+- You can find the `PipelineServiceClient` abstraction [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/java/org/openmetadata/sdk/PipelineServiceClient.java),
+- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/airflow/AirflowRESTClient.java).
 
 The clients that implement the abstractions from the `PipelineServiceClient` are merely a translation layer between the
 information received in the shape of an `IngestionPipeline` Entity, and the specific requirements of each Orchestrator.

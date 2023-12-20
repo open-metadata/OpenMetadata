@@ -119,12 +119,12 @@ as well). You might also need to validate if the query logs are available in the
 
 You can check the queries being used here:
 
-- [BigQuery](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L428)
-- [Snowflake](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L197)
-- [MSSQL](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L350)
-- [Redshift](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L18)
-- [Clickhouse](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L376)
-- [Postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/sql_queries.py#L467)
+- [BigQuery](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/bigquery/queries.py)
+- [Snowflake](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/snowflake/queries.py)
+- [MSSQL](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/mssql/queries.py)
+- [Redshift](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/redshift/queries.py)
+- [Clickhouse](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/clickhouse/queries.py)
+- [Postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/queries.py)
 
 By default, we apply a result limit of 1000 records. You might also need to increase that for databases with big volumes
 of queries.

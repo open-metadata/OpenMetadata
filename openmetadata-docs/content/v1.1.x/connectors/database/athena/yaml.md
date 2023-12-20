@@ -784,9 +784,10 @@ You can learn more about how to ingest lineage [here](/connectors/ingestion/work
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/athena/airflow"
-  / %}
+   icon="mediation"
+   title="Configure Ingestion Externally"
+   description="Deploy, configure, and manage the ingestion workflows externally."
+   link="/deployment/ingestion"
+ / %}
 
 {% /tilesContainer %}

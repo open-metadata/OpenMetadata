@@ -107,7 +107,7 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-relea
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
 
-In the previous [step](#2-download-docker-compose-file-from-github-release-branch), we download the `docker-compose` file.
+In the previous [step](#2-download-docker-compose-file-from-github-releases), we download the `docker-compose` file.
 
 Identify and update the environment variables in the file to prepare openmetadata configurations.
 
@@ -367,7 +367,7 @@ installation.
 
 ## Next Steps
 
-1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+1. Refer the [How-to Guides](/how-to-guides) for an overview of all the features in OpenMetadata.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.

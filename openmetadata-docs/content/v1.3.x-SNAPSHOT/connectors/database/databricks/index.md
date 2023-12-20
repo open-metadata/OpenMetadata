@@ -30,7 +30,6 @@ In this section, we provide guides and references to use the Databricks connecto
 
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
 - [Unity Catalog](#unity-catalog)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)

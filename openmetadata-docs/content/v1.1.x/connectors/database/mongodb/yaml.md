@@ -233,9 +233,10 @@ you will be able to extract metadata from different sources.
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mongodb/airflow"
-  / %}
+   icon="mediation"
+   title="Configure Ingestion Externally"
+   description="Deploy, configure, and manage the ingestion workflows externally."
+   link="/deployment/ingestion"
+ / %}
 
 {% /tilesContainer %}

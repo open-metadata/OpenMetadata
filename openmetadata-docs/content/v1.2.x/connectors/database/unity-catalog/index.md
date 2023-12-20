@@ -41,6 +41,8 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 {% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
 
+## Requirements
+
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
