@@ -25,6 +25,7 @@ const TagSelectForm = ({
   onSubmit,
   onCancel,
   tagData,
+  tagType,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -69,6 +70,7 @@ const TagSelectForm = ({
               initialOptions={tagData}
               mode="multiple"
               placeholder={placeholder}
+              tagType={tagType}
             />
           </Form.Item>
         </Col>
