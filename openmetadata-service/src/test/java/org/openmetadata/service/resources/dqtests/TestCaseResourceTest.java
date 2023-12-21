@@ -1156,20 +1156,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Get the test case failure statuses by sequence ID
     ResultList<TestCaseResolutionStatus> storedTestCaseResolutions =
         getTestCaseFailureStatusByStateId(stateId);
-    assertEquals(storedTestCaseResolutions.getData().size(), 4);
+    assertEquals(4, storedTestCaseResolutions.getData().size());
     assertEquals(stateId, storedTestCaseResolutions.getData().get(0).getStateId());
 
     // Get the test case resolution statuses by status type
     storedTestCaseResolutions =
         getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Assigned);
-    assertEquals(storedTestCaseResolutions.getData().size(), 2);
+    assertEquals(2, storedTestCaseResolutions.getData().size());
     assertEquals(
         TestCaseResolutionStatusTypes.Assigned,
         storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
 
     // Get test case resolution statuses by assignee name
     storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, USER1.getName(), null);
-    assertEquals(storedTestCaseResolutions.getData().size(), 2);
+    assertEquals(2, storedTestCaseResolutions.getData().size());
   }
 
   @Test

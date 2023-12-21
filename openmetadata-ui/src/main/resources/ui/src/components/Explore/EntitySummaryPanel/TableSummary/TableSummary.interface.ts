@@ -17,12 +17,14 @@ import {
   TagLabel,
 } from '../../../../generated/entity/data/table';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface TableSummaryProps {
   entityDetails: Table;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 export interface BasicTableInfo {

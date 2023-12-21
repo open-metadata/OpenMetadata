@@ -18,6 +18,9 @@ from typing import cast
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -30,6 +33,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
@@ -37,6 +43,9 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
     BigQueryProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
+    DatabricksProfilerInterface,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -50,6 +59,9 @@ from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import 
 from metadata.profiler.interface.sqlalchemy.trino.profiler_interface import (
     TrinoProfilerInterface,
 )
+from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
+    UnityCatalogProfilerInterface,
+)
 
 
 class ProfilerInterfaceFactory:
@@ -62,6 +74,17 @@ class ProfilerInterfaceFactory:
         """Register a new interface"""
         self._interface_type[interface_type] = interface_class
 
+    def register_many(self, interface_dict):
+        """
+        Registers multiple profiler interfaces at once.
+
+        Args:
+            interface_dict: A dictionary mapping connection class names (strings) to their
+            corresponding profiler interface classes.
+        """
+        for interface_type, interface_class in interface_dict.items():
+            self.register(interface_type, interface_class)
+
     def create(self, interface_type: str, *args, **kwargs):
         """Create interface object based on interface type"""
         interface_class = self._interface_type.get(interface_type)
@@ -72,17 +95,15 @@ class ProfilerInterfaceFactory:
 
 
 profiler_interface_factory = ProfilerInterfaceFactory()
-profiler_interface_factory.register(DatabaseConnection.__name__, SQAProfilerInterface)
-profiler_interface_factory.register(
-    BigQueryConnection.__name__, BigQueryProfilerInterface
-)
-profiler_interface_factory.register(
-    SingleStoreConnection.__name__, SingleStoreProfilerInterface
-)
-profiler_interface_factory.register(
-    DatalakeConnection.__name__, PandasProfilerInterface
-)
-profiler_interface_factory.register(
-    SnowflakeConnection.__name__, SnowflakeProfilerInterface
-)
-profiler_interface_factory.register(TrinoConnection.__name__, TrinoProfilerInterface)
+profilers = {
+    DatabaseConnection.__name__: SQAProfilerInterface,
+    BigQueryConnection.__name__: BigQueryProfilerInterface,
+    SingleStoreConnection.__name__: SingleStoreProfilerInterface,
+    DatalakeConnection.__name__: PandasProfilerInterface,
+    SnowflakeConnection.__name__: SnowflakeProfilerInterface,
+    TrinoConnection.__name__: TrinoProfilerInterface,
+    UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
+    DatabricksConnection.__name__: DatabricksProfilerInterface,
+}
+
+profiler_interface_factory.register_many(profilers)
