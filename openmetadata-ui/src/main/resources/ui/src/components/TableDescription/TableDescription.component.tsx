@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Button, Space } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
@@ -51,15 +51,18 @@ const TableDescription = ({
       {!isReadOnly ? (
         <Space align="baseline" size="middle">
           {hasEditPermission && (
-            <EditIcon
+            <Button
               className="cursor-pointer hover-cell-icon"
               data-testid="edit-button"
-              height={14}
-              name={t('label.edit')}
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-              onClick={onClick}
-            />
+              style={{
+                color: DE_ACTIVE_COLOR,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+              }}
+              onClick={onClick}>
+              <EditIcon />
+            </Button>
           )}
 
           <EntityTasks

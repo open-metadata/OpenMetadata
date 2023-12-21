@@ -412,6 +412,7 @@ export const DataAssetsHeader = ({
 
                 {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod
+                    permissions={permissions}
                     retentionPeriod={(dataAsset as Table).retentionPeriod}
                     onUpdate={onUpdateRetentionPeriod}
                   />
