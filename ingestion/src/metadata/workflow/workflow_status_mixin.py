@@ -98,10 +98,10 @@ class WorkflowStatusMixin:
                 # if workflow is ended then update the end date in status
                 pipeline_status.endDate = datetime.now().timestamp() * 1000
                 pipeline_status.pipelineState = state
-                pipeline_status.status = (
-                    ingestion_status if ingestion_status else pipeline_status.status
-                )
 
+            pipeline_status.status = (
+                ingestion_status if ingestion_status else pipeline_status.status
+            )
             self.metadata.create_or_update_pipeline_status(
                 self.config.ingestionPipelineFQN, pipeline_status
             )
