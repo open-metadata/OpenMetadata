@@ -123,6 +123,16 @@ describe('Test User Profile Details Component', () => {
     expect(screen.getByTestId('default-persona-label')).toBeInTheDocument();
     expect(screen.getByText('PersonaSelectableList')).toBeInTheDocument();
 
+    // user domain
+    expect(screen.getByTestId('user-domain-label')).toContainHTML(
+      'label.domain'
+    );
+    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-link')).toHaveAttribute(
+      'href',
+      '/domain/Engineering'
+    );
+
     expect(screen.getByTestId('change-password-button')).toBeInTheDocument();
   });
 

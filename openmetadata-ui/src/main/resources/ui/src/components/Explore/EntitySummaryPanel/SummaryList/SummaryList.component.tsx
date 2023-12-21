@@ -30,7 +30,7 @@ export default function SummaryList({
   const { t } = useTranslation();
 
   return (
-    <Row align="middle">
+    <Row align="middle" data-testid="summary-list">
       {isEmpty(formattedEntityData) ? (
         <div>
           <Text className="text-grey-body">

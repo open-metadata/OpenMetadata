@@ -29,7 +29,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
@@ -151,13 +150,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   @SneakyThrows
   public void storeRelationships(DashboardDataModel dashboardDataModel) {
-    EntityReference service = dashboardDataModel.getService();
-    addRelationship(
-        service.getId(),
-        dashboardDataModel.getId(),
-        service.getType(),
-        Entity.DASHBOARD_DATA_MODEL,
-        Relationship.CONTAINS);
+    addServiceRelationship(dashboardDataModel, dashboardDataModel.getService());
   }
 
   @Override

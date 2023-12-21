@@ -47,7 +47,6 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "roles");
     mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
     mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
-    // TODO tier, lineage, statues, reviewers, tests, queries, data profile, sample data
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
