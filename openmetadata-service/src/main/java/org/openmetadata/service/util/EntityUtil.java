@@ -165,7 +165,6 @@ public final class EntityUtil {
     return entity;
   }
 
-  // TODO delete
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -177,7 +176,6 @@ public final class EntityUtil {
     return list;
   }
 
-  // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
@@ -490,7 +488,7 @@ public final class EntityUtil {
     }
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
+  public static MetadataOperation createOrUpdateOperation(ResourceContext<?> resourceContext) {
     return resourceContext.getEntity() == null
         ? MetadataOperation.CREATE
         : MetadataOperation.EDIT_ALL;

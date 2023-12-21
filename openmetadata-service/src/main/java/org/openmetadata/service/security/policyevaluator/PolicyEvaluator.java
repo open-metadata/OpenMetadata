@@ -245,8 +245,7 @@ public class PolicyEvaluator {
       if ((p.getOperation().equals(MetadataOperation.VIEW_ALL)
           && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY)))) {
         viewAllPermission = true;
-      }
-      if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
+      } else if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
           && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))) {
         editAllPermission = true;
       }

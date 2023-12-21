@@ -47,7 +47,7 @@ const UserPage = () => {
     try {
       const res = await getUserByName(
         username,
-        'profile,roles,teams,personas,defaultPersona'
+        'profile,roles,teams,personas,defaultPersona,domain'
       );
       setUserData(res);
     } catch (error) {
