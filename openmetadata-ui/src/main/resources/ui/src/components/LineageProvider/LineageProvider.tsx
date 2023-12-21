@@ -71,6 +71,7 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 
+import { useParams } from 'react-router-dom';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -100,6 +101,7 @@ export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
   const { isTourOpen } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -129,7 +131,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
-  const [entityFqn, setEntityFqn] = useState('');
+  // const [entityFqn, setEntityFqn] = useState('');
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
@@ -485,10 +487,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onZoomUpdate = useCallback((value) => {
     setZoomValue(value);
-  }, []);
-
-  const onEntityFqnUpdate = useCallback((value) => {
-    setEntityFqn(value);
   }, []);
 
   const toggleColumnView = useCallback(() => {
@@ -879,7 +877,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       toggleColumnView,
       loadChildNodesHandler,
       fetchLineageData,
-      onEntityFqnUpdate,
       removeNodeHandler,
       onNodeClick,
       onEdgeClick,
@@ -918,7 +915,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onDrawerClose,
     loadChildNodesHandler,
     fetchLineageData,
-    onEntityFqnUpdate,
+
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,

@@ -14,7 +14,7 @@ import { Card } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import Qs from 'qs';
-import React, { DragEvent, useCallback, useEffect, useRef } from 'react';
+import React, { DragEvent, useCallback, useRef } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import {
@@ -34,7 +34,7 @@ import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.comp
 import { useLineageProvider } from '../LineageProvider/LineageProvider';
 import { LineageProps } from './Lineage.interface';
 
-const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
+const Lineage = ({ deleted, hasEditAccess }: LineageProps) => {
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -52,7 +52,6 @@ const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
     onConnect,
     onZoomUpdate,
     onInitReactFlow,
-    onEntityFqnUpdate,
   } = useLineageProvider();
   const { fqn: entityFQN } = useParams<{ fqn: string }>();
   const queryParams = new URLSearchParams(location.search);
@@ -78,12 +77,6 @@ const Lineage = ({ entity, deleted, hasEditAccess }: LineageProps) => {
   const handleZoomLevel = debounce((value: number) => {
     onZoomUpdate(value);
   }, 150);
-
-  useEffect(() => {
-    if (entity) {
-      onEntityFqnUpdate(entity.fullyQualifiedName ?? '');
-    }
-  }, [entity]);
 
   return (
     <Card

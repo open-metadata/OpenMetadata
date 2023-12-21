@@ -53,7 +53,6 @@ export interface LineageContextType {
   onColumnClick: (node: string) => void;
   onLineageEditClick: () => void;
   onZoomUpdate: (value: number) => void;
-  onEntityFqnUpdate: (value: string) => void;
   onLineageConfigUpdate: (config: any) => void;
   onQueryFilterUpdate: (query: string) => void;
   onDrawerClose: () => void;

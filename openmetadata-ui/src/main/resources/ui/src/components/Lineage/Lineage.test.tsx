@@ -87,7 +87,6 @@ jest.mock('../LineageProvider/LineageProvider', () => ({
     tracedNodes: [],
     tracedColumns: [],
     entityLineage: entityLineage,
-    onEntityFqnUpdate: jest.fn(),
   })),
 }));
 
