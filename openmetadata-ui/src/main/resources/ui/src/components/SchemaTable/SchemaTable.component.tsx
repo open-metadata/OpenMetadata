@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -36,7 +35,10 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -365,11 +367,18 @@ const SchemaTable = ({
               ) : null}
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) && (
-                <Icon
-                  className="hover-cell-icon text-left m-t-xss"
-                  component={IconEdit}
-                  onClick={() => handleEditDisplayNameClick(record)}
-                />
+                <Button
+                  className="cursor-pointer hover-cell-icon w-fit-content"
+                  data-testid="edit-displayName-button"
+                  style={{
+                    color: DE_ACTIVE_COLOR,
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                  onClick={() => handleEditDisplayNameClick(record)}>
+                  <IconEdit />
+                </Button>
               )}
             </div>
           );

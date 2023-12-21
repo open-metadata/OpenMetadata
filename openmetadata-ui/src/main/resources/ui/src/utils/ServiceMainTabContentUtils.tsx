@@ -35,8 +35,8 @@ export const getServiceMainTabColumns = (
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
-    dataIndex: 'displayName',
-    key: 'displayName',
+    dataIndex: 'name',
+    key: 'name',
     width: 280,
     render: (_, record: ServicePageData) => {
       return (
