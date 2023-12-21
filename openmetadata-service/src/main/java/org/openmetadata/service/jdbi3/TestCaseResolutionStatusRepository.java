@@ -111,10 +111,6 @@ public class TestCaseResolutionStatusRepository
     TestCaseResolutionStatus latestTestCaseFailure =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
 
-    boolean isLatestTestCaseResolutionStatus = latestTestCaseFailure != null;
-    TestCaseResolutionStatusTypes latestTestCaseResolutionStatusType =
-        isLatestTestCaseResolutionStatus ? latestTestCaseFailure.getTestCaseResolutionStatusType() : null;
-
     recordEntity.setStateId(
         ((latestTestCaseFailure != null)
                 && (latestTestCaseFailure.getTestCaseResolutionStatusType()
