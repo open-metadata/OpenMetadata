@@ -40,14 +40,12 @@ import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -60,10 +58,14 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
@@ -80,34 +82,43 @@ const SchemaTable = ({
   tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
 
-  const editDisplayNamePermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.EditDisplayName,
-        ResourceEntity.TABLE,
-        permissions
-      ),
-    [permissions]
-  );
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
+  const [topicPermissions, setTopicPermissions] =
+    useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
   );
 
+  const fetchResourcePermission = async (entityFqn: string) => {
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+      setTopicPermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
+      );
+    }
+  };
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
-
+  useEffect(() => {
+    fetchResourcePermission(entityFqn);
+  }, [entityFqn]);
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
   };
@@ -353,7 +364,8 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              {editDisplayNamePermission && (
+              {(topicPermissions?.EditAll ||
+                topicPermissions?.EditDisplayName) && (
                 <Icon
                   className="hover-cell-icon text-left m-t-xss"
                   component={IconEdit}
