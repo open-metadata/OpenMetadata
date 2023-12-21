@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CustomPropertyType } from '../common/Utils/CustomProperty';
 import ContainerClass from './base/ContainerClass';
 import DashboardClass from './base/DashboardClass';
 import MlModelClass from './base/MlModelClass';
@@ -25,8 +26,6 @@ const entities = [
   new TopicClass(),
   new MlModelClass(),
   new ContainerClass(),
-  // TODO: add tests for metadata service tests
-  //   new MetadataServiceClass(),
 ];
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
@@ -54,15 +53,15 @@ entities.forEach((entity) => {
     });
 
     it(`Assign domain`, () => {
-      entity.assignDomain(this.domainDetails1.displayName);
+      entity.assignDomain(entity.domainDetails1.displayName);
     });
 
     it(`Update domain`, () => {
-      entity.updateDomain(this.domainDetails2.displayName);
+      entity.updateDomain(entity.domainDetails2.displayName);
     });
 
     it(`Remove domain`, () => {
-      entity.removeDomain(this.domainDetails2.displayName);
+      entity.removeDomain(entity.domainDetails2.displayName);
     });
 
     it(`Assign user Owner`, () => {
@@ -147,6 +146,22 @@ entities.forEach((entity) => {
 
     it(`Remove inactive annoucement`, () => {
       entity.removeInactiveAnnouncement();
+    });
+
+    Object.values(CustomPropertyType).forEach((type) => {
+      it(`Set ${type} Custom Property `, () => {
+        entity.setCustomProperty(
+          entity.customPropertyValue[type].property,
+          entity.customPropertyValue[type].value
+        );
+      });
+
+      it(`Update ${type} Custom Property`, () => {
+        entity.updateCustomProperty(
+          entity.customPropertyValue[type].property,
+          entity.customPropertyValue[type].newValue
+        );
+      });
     });
 
     it(`Soft delete`, () => {

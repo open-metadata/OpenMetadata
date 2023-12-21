@@ -143,7 +143,7 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.mlModels:
+      case ENTITY_PATH.mlmodels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.containers:

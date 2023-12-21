@@ -173,7 +173,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.ML_MODEL_SERVICE,
             permissions
           ),
-          key: 'services.mlModels',
+          key: 'services.mlmodels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
@@ -329,7 +329,7 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: i18next.t('label.ml-model-plural'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.mlModels',
+          key: 'customAttributes.mlmodels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {

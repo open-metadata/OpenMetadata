@@ -12,13 +12,8 @@
  */
 
 import { uuid } from '../common/common';
-import {
-  createEntityViaREST,
-  deleteEntityViaREST,
-} from '../common/Utils/Entity';
 import DashboardServiceClass from './base/DashboardServiceClass';
 import DatabaseServiceClass from './base/DatabaseServiceClass';
-import { EntityType } from './base/EntityClass';
 import MessagingServiceClass from './base/MessagingServiceClass';
 import MlModelServiceClass from './base/MlModelServiceClass';
 import PipelineServiceClass from './base/PipelineServiceClass';
@@ -64,47 +59,13 @@ entities.forEach((entity) => {
   describe(`${entity.name} page`, () => {
     before(() => {
       cy.login();
-      entity.createEntity();
 
-      // Create domain
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-
-        createEntityViaREST({
-          token,
-          body: domainDetails1,
-          endPoint: EntityType.Domain,
-        });
-
-        createEntityViaREST({
-          token,
-          body: domainDetails2,
-          endPoint: EntityType.Domain,
-        });
-      });
+      entity.prepareForTests();
     });
 
     after(() => {
       cy.login();
-
-      // Delete domain
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-
-        // Domain 1 to test
-        deleteEntityViaREST({
-          token,
-          entityName: domainDetails1.name,
-          endPoint: EntityType.Domain,
-        });
-
-        // Domain 2 to test
-        deleteEntityViaREST({
-          token,
-          entityName: domainDetails2.name,
-          endPoint: EntityType.Domain,
-        });
-      });
+      entity.cleanup();
     });
 
     beforeEach(() => {

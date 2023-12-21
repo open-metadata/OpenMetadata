@@ -21,42 +21,39 @@ import {
 export const createEntityViaREST = ({
   body,
   endPoint,
+  token,
 }: {
   body: Cypress.RequestBody;
   endPoint: EntityType;
+  token: Cypress.Storable;
 }) => {
-  cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
-    // Create entity
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/${endPoint}`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: body,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-    });
+  // Create entity
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/${endPoint}`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: body,
+  }).then((response) => {
+    expect(response.status).to.eq(201);
   });
 };
 
 export const deleteEntityViaREST = ({
   entityName,
   endPoint,
+  token,
 }: {
   entityName: string;
   endPoint: EntityType;
+  token: Cypress.Storable;
 }) => {
-  cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
-
-    // Create entity
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/${endPoint}/name/${entityName}?recursive=true&hardDelete=true`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
+  // Create entity
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/${endPoint}/name/${entityName}?recursive=true&hardDelete=true`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    expect(response.status).to.eq(200);
   });
 };
 

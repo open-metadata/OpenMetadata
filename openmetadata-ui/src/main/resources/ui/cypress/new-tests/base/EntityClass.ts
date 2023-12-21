@@ -18,13 +18,19 @@ import {
   deleteAnnoucement,
 } from '../../common/Utils/Annoucement';
 import {
+  createCustomPropertyForEntity,
+  CustomProperty,
+  CustomPropertyType,
+  deleteCustomPropertyForEntity,
+  generateCustomProperty,
+  setValueForProperty,
+} from '../../common/Utils/CustomProperty';
+import {
   addDomainToEntity,
   removeDomainFromEntity,
 } from '../../common/Utils/Domain';
 import {
-  createEntityViaREST,
   deleteEntity,
-  deleteEntityViaREST,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
   updateDescriptioForEntity,
@@ -62,6 +68,7 @@ export enum EntityType {
   PipelineService = 'services/pipelineServices',
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
+  Database = 'database',
 }
 
 const description =
@@ -74,6 +81,15 @@ class EntityClass {
   entityDetails: unknown;
   endPoint: EntityType;
   protected name: string;
+
+  intergerPropertyDetails: CustomProperty;
+  stringPropertyDetails: CustomProperty;
+  markdownPropertyDetails: CustomProperty;
+
+  customPropertyValue: Record<
+    CustomPropertyType,
+    { value: string; newValue: string; property: CustomProperty }
+  >;
 
   domainDetails1 = {
     name: `cypress-domain-${uuid()}`,
@@ -148,6 +164,34 @@ class EntityClass {
     this.entityName = entityName;
     this.entityDetails = entityDetails;
     this.endPoint = endPoint;
+
+    this.intergerPropertyDetails = generateCustomProperty(
+      CustomPropertyType.INTEGER
+    );
+    this.stringPropertyDetails = generateCustomProperty(
+      CustomPropertyType.STRING
+    );
+    this.markdownPropertyDetails = generateCustomProperty(
+      CustomPropertyType.MARKDOWN
+    );
+
+    this.customPropertyValue = {
+      Integer: {
+        value: '123',
+        newValue: '456',
+        property: this.intergerPropertyDetails,
+      },
+      String: {
+        value: '123',
+        newValue: '456',
+        property: this.stringPropertyDetails,
+      },
+      Markdown: {
+        value: '**Bold statement**',
+        newValue: '__Italic statement__',
+        property: this.markdownPropertyDetails,
+      },
+    };
   }
 
   async setToken() {
@@ -165,90 +209,135 @@ class EntityClass {
   prepareForTests() {
     this.createEntity();
 
-    // Create domain
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
 
-    createEntityViaREST({
-      body: this.domainDetails1,
-      endPoint: EntityType.Domain,
-    });
+      // Create domain
 
-    createEntityViaREST({
-      body: this.domainDetails2,
-      endPoint: EntityType.Domain,
-    });
+      createEntityViaREST({
+        body: this.domainDetails1,
+        endPoint: EntityType.Domain,
+        token,
+      });
 
-    // Create glossary
+      createEntityViaREST({
+        body: this.domainDetails2,
+        endPoint: EntityType.Domain,
+        token,
+      });
 
-    createEntityViaREST({
-      body: this.glossaryDetails1,
-      endPoint: EntityType.Glossary,
-    });
+      // Create glossary
 
-    createEntityViaREST({
-      body: this.glossaryDetails2,
-      endPoint: EntityType.Glossary,
-    });
+      createEntityViaREST({
+        body: this.glossaryDetails1,
+        endPoint: EntityType.Glossary,
+        token,
+      });
 
-    // Create glossary term
+      createEntityViaREST({
+        body: this.glossaryDetails2,
+        endPoint: EntityType.Glossary,
+        token,
+      });
 
-    createEntityViaREST({
-      body: this.glossaryTermDetails1,
-      endPoint: EntityType.GlossaryTerm,
-    });
+      // Create glossary term
 
-    createEntityViaREST({
-      body: this.glossaryTermDetails2,
-      endPoint: EntityType.GlossaryTerm,
+      createEntityViaREST({
+        body: this.glossaryTermDetails1,
+        endPoint: EntityType.GlossaryTerm,
+        token,
+      });
+
+      createEntityViaREST({
+        body: this.glossaryTermDetails2,
+        endPoint: EntityType.GlossaryTerm,
+        token,
+      });
+
+      createCustomPropertyForEntity({
+        property: this.intergerPropertyDetails,
+        type: this.endPoint,
+      });
+
+      createCustomPropertyForEntity({
+        property: this.stringPropertyDetails,
+        type: this.endPoint,
+      });
+
+      createCustomPropertyForEntity({
+        property: this.markdownPropertyDetails,
+        type: this.endPoint,
+      });
     });
   }
 
   cleanup() {
-    // Domain 1 to test
-    deleteEntityViaREST({
-      entityName: this.domainDetails1.name,
-      endPoint: EntityType.Domain,
-    });
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      // Domain 1 to test
+      deleteEntityViaREST({
+        entityName: this.domainDetails1.name,
+        endPoint: EntityType.Domain,
+        token,
+      });
+      // Domain 2 to test
+      deleteEntityViaREST({
+        entityName: this.domainDetails2.name,
+        endPoint: EntityType.Domain,
+        token,
+      });
+      // Glossary 1 to test
+      deleteEntityViaREST({
+        entityName: `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+        endPoint: EntityType.GlossaryTerm,
+        token,
+      });
+      // Glossary 2 to test
+      deleteEntityViaREST({
+        entityName: `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+        endPoint: EntityType.GlossaryTerm,
+        token,
+      });
+      // Glossary 2 to test
+      deleteEntityViaREST({
+        entityName: this.glossaryDetails1.name,
+        endPoint: EntityType.Glossary,
+        token,
+      });
+      deleteEntityViaREST({
+        entityName: this.glossaryDetails2.name,
+        endPoint: EntityType.Glossary,
+        token,
+      });
 
-    // Domain 2 to test
-    deleteEntityViaREST({
-      entityName: this.domainDetails2.name,
-      endPoint: EntityType.Domain,
-    });
+      deleteCustomPropertyForEntity({
+        property: this.intergerPropertyDetails,
+        type: this.endPoint,
+      });
 
-    // Glossary 1 to test
+      deleteCustomPropertyForEntity({
+        property: this.stringPropertyDetails,
+        type: this.endPoint,
+      });
 
-    deleteEntityViaREST({
-      entityName: `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
-      endPoint: EntityType.GlossaryTerm,
-    });
-
-    // Glossary 2 to test
-
-    deleteEntityViaREST({
-      entityName: `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
-      endPoint: EntityType.GlossaryTerm,
-    });
-
-    // Glossary 2 to test
-
-    deleteEntityViaREST({
-      entityName: this.glossaryDetails1.name,
-      endPoint: EntityType.Glossary,
-    });
-
-    deleteEntityViaREST({
-      entityName: this.glossaryDetails2.name,
-      endPoint: EntityType.Glossary,
+      deleteCustomPropertyForEntity({
+        property: this.markdownPropertyDetails,
+        type: this.endPoint,
+      });
     });
   }
 
   // Creation
 
-  createEntity() {}
+  createEntity() {
+    // Override for entity creation
+  }
 
   // Visit entity
 
-  visitEntity() {}
+  visitEntity() {
+    // Override for entity visit
+  }
 
   // Navigate to entity
 
@@ -379,35 +468,12 @@ class EntityClass {
 
   // Custom property
 
-  createCustomProperty() {
-    // interceptURL(
-    //   'GET',
-    //   `/api/v1/metadata/types/name/${entity.name}*`,
-    //   'getEntity'
-    // );
-    // // Selecting the entity
-    // cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-    //   .scrollIntoView()
-    //   .should('be.visible')
-    //   .click();
-    // verifyResponseStatusCode('@getEntity', 200);
-    // // Getting the property
-    // addCustomPropertiesForEntity(
-    //   propertyName,
-    //   entity,
-    //   'Integer',
-    //   entity.integerValue,
-    //   entity.entityObj
-    // );
-    // // Navigating back to custom properties page
-    // cy.get('[data-testid="app-bar-item-settings"]').click();
-    // cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-    //   .scrollIntoView()
-    //   .click();
-    // verifyResponseStatusCode('@getEntity', 200);
+  setCustomProperty(propertydetails: CustomProperty, value: string) {
+    setValueForProperty(propertydetails.name, value);
   }
-  updateCustomProperty() {}
-  removeCustomProperty() {}
+  updateCustomProperty(propertydetails: CustomProperty, value: string) {
+    setValueForProperty(propertydetails.name, value);
+  }
 }
 
 export default EntityClass;
