@@ -42,7 +42,7 @@ import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.util.ClassUtil;
+import org.openmetadata.service.util.ReflectionUtil;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
@@ -117,7 +117,7 @@ public final class CollectionRegistry {
     try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
         List<Method> methods =
-            ClassUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
+            ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
         for (Method method : methods) {
           Function annotation = method.getAnnotation(Function.class);
           List<org.openmetadata.schema.type.Function> functionList =
@@ -181,12 +181,12 @@ public final class CollectionRegistry {
     int order = 0;
     CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
-      if (a instanceof Path) {
+      if (a instanceof Path path) {
         // Use @Path annotation to compile href
-        collectionInfo.withHref(URI.create(((Path) a).value()));
-      } else if (a instanceof Api) {
+        collectionInfo.withHref(URI.create(path.value()));
+      } else if (a instanceof Api api) {
         // Use @Api annotation to get documentation about the collection
-        collectionInfo.withDocumentation(((Api) a).value());
+        collectionInfo.withDocumentation(api.value());
       } else if (a instanceof Collection collection) {
         // Use @Collection annotation to get initialization information for the class
         collectionInfo.withName(collection.name());

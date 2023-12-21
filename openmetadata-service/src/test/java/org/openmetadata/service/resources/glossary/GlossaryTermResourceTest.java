@@ -503,7 +503,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void createGlossaryTerm_LanguageTest(TestInfo test) throws IOException {
+  void createGlossaryTerm_LanguageTest() throws IOException {
     // Create glossary term1 in glossary g1
     for (String name : getAllHelloWorldTranslations()) {
       CreateGlossaryTerm create = createRequest(name);

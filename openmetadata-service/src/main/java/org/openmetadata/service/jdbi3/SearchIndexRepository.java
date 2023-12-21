@@ -39,7 +39,6 @@ import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
@@ -111,7 +110,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   @Override
   public void storeRelationships(SearchIndex searchIndex) {
-    setService(searchIndex, searchIndex.getService());
+    addServiceRelationship(searchIndex, searchIndex.getService());
   }
 
   @Override
@@ -133,18 +132,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public SearchIndexUpdater getUpdater(
       SearchIndex original, SearchIndex updated, Operation operation) {
     return new SearchIndexUpdater(original, updated, operation);
-  }
-
-  public void setService(SearchIndex searchIndex, EntityReference service) {
-    if (service != null && searchIndex != null) {
-      addRelationship(
-          service.getId(),
-          searchIndex.getId(),
-          service.getType(),
-          Entity.SEARCH_INDEX,
-          Relationship.CONTAINS);
-      searchIndex.setService(service);
-    }
   }
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {

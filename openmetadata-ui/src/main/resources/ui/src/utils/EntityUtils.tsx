@@ -116,7 +116,7 @@ import {
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -353,7 +353,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
         'label.url-uppercase'
       )}`,
       dataTestId: 'pipeline-url-label',
-      value: displayName ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -404,7 +404,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: displayName ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -602,7 +602,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: displayName || NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
       isLink: true,
       visible: [
@@ -1755,4 +1755,36 @@ export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
   } else {
     return QueryVoteType.unVoted;
   }
+};
+
+export const highlightEntityNameAndDescription = (
+  entity: SearchedDataProps['data'][number]['_source'],
+  highlight: SearchedDataProps['data'][number]['highlight']
+): SearchedDataProps['data'][number]['_source'] => {
+  let entityDescription = entity.description ?? '';
+  const descHighlights = highlight?.description ?? [];
+
+  if (descHighlights.length > 0) {
+    const matchTextArr = descHighlights.map((val: string) =>
+      val.replace(/<\/?span(.*?)>/g, '')
+    );
+
+    matchTextArr.forEach((text: string, i: number) => {
+      entityDescription = entityDescription.replace(text, descHighlights[i]);
+    });
+  }
+
+  let entityDisplayName = getEntityName(entity);
+  if (!isUndefined(highlight)) {
+    entityDisplayName =
+      highlight?.displayName?.join(' ') ||
+      highlight?.name?.join(' ') ||
+      entityDisplayName;
+  }
+
+  return {
+    ...entity,
+    displayName: entityDisplayName,
+    description: entityDescription,
+  };
 };

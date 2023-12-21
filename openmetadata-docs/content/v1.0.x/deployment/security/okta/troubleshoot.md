@@ -5,7 +5,7 @@ slug: /deployment/security/okta/troubleshoot
 
 # Troubleshooting Okta SSO
 
-### Troubleshooting Ingesion with Okta SSO via CLI or Ariflow
+### Troubleshooting Ingesion with Okta SSO via CLI or Airflow
 
 - **AuthenticationException**: During metadata ingestion process if you face the see the error `AuthenticationException` with message `Could not fetch the access token please validate the orgURL & clientId in configuration`, One of the possible reason for this error could be that you are passing incorrect `clientId` in the `securityConfig`, Make sure you are passing `clientId` of the Ingestion Client (i.e the service application) and not the Single Page Application. If the `clientId` provided is correct and you are still facing this error then please also validate the `orgURL`, expected value for `orgURL` field is `<ISSUER-URL>/v1/token`
 
