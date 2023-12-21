@@ -145,8 +145,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     filter.addQueryParam("testSuiteType", testSuiteType);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
-    ResourceContext resourceContext;
-    resourceContext = getResourceContext();
+    ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
 
@@ -316,8 +315,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(type = "String", format = "uuid"))
           @QueryParam("testSuiteId")
           UUID testSuiteId) {
-    ResourceContext resourceContext;
-    resourceContext = getResourceContext();
+    ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);

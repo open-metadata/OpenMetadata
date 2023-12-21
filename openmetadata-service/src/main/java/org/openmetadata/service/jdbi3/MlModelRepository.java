@@ -181,11 +181,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) {
-    EntityReference service = mlModel.getService();
-    addRelationship(
-        service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
-
-    setDashboard(mlModel, mlModel.getDashboard());
+    addServiceRelationship(mlModel, mlModel.getService());
 
     if (mlModel.getDashboard() != null) {
       // Add relationship from MlModel --- uses ---> Dashboard
@@ -319,17 +315,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
-  public void setDashboard(MlModel mlModel, EntityReference dashboard) {
-    if (dashboard != null) {
-      addRelationship(
-          mlModel.getId(),
-          mlModel.getDashboard().getId(),
-          Entity.MLMODEL,
-          Entity.DASHBOARD,
-          Relationship.USES);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
     public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
@@ -353,11 +338,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {
       // Updating an algorithm should be flagged for an ML Model
       // Algorithm is a required field. Cannot be null.
-      if (updated.getAlgorithm() != null) {
-        if (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm())) {
-          // Mark the EntityUpdater version change to major
-          majorVersionChange = true;
-        }
+      if (updated.getAlgorithm() != null
+          && (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm()))) {
+        // Mark the EntityUpdater version change to major
+        majorVersionChange = true;
       }
     }
 

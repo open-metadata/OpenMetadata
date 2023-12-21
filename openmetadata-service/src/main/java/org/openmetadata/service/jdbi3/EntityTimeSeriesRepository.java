@@ -20,8 +20,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
 
-  protected final boolean supportsSearchIndex = true;
-
   protected EntityTimeSeriesRepository(
       String collectionPath,
       EntityTimeSeriesDAO timeSeriesDao,
@@ -48,9 +46,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   protected void postCreate(T entity) {
-    if (supportsSearchIndex) {
-      searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
-    }
+    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
   }
 
   public final ResultList<T> getResultList(
@@ -100,14 +96,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   public ResultList<T> list(
       String offset, Long startTs, Long endTs, int limitParam, ListFilter filter, boolean latest) {
     return listWithOffset(offset, filter, limitParam, startTs, endTs, latest);
-  }
-
-  public T getLatestRecord(String recordFQN, String extension) {
-    String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
-    if (jsonRecord == null) {
-      return null;
-    }
-    return JsonUtils.readValue(jsonRecord, entityClass);
   }
 
   public T getLatestRecord(String recordFQN) {
