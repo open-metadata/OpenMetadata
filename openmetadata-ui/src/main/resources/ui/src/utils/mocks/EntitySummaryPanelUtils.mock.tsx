@@ -381,9 +381,27 @@ export const mockTagFQNsForHighlight = ['gs1.term2'];
 
 export const mockGetSummaryListItemTypeResponse = DataType.Varchar;
 
+export const mockListItemForTextBasedTitle = {
+  name: 'Title1',
+  dataType: DataType.Varchar,
+  dataLength: 100,
+  dataTypeDisplay: 'varchar',
+  description:
+    'Full name of the app or channel. For example, Point of Sale, Online Store.',
+  fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.api/client".title',
+  tags: [],
+  ordinalPosition: 2,
+};
+
+export const mockListItemForLinkBasedTitle = {
+  ...mockListItemForTextBasedTitle,
+  name: 'Title2',
+  sourceUrl: 'https://task1.com',
+};
+
 export const mockTextBasedSummaryTitleResponse = (
   <Text className="entity-title" data-testid="entity-title">
-    Title1
+    <span className="text-highlight">Title1</span>
   </Text>
 );
 

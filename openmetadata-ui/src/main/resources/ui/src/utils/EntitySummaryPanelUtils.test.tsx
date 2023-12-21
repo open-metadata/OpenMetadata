@@ -27,6 +27,8 @@ import {
   mockGetSummaryListItemTypeResponse,
   mockInvalidDataResponse,
   mockLinkBasedSummaryTitleResponse,
+  mockListItemForLinkBasedTitle,
+  mockListItemForTextBasedTitle,
   mockTagFQNsForHighlight,
   mockTagsDataAfterSortAndHighlight,
   mockTagsDataBeforeSortAndHighlight,
@@ -92,18 +94,15 @@ describe('EntitySummaryPanelUtils tests', () => {
     expect(summaryItemType).toEqual(mockGetSummaryListItemTypeResponse);
   });
 
-  it('getTitle should return title as link or text based on sourceUrl present or not in given data', () => {
-    const textBasedTitle = getTitle({
-      content: 'Title1',
-      sourceUrl: undefined,
-    });
+  it('getTitle should return title as link or text based on sourceUrl present and also apply highlight is present', () => {
+    const textBasedTitle = getTitle(
+      mockListItemForTextBasedTitle,
+      "<span className='text-highlight'>Title1</span>"
+    );
 
     expect(textBasedTitle).toEqual(mockTextBasedSummaryTitleResponse);
 
-    const linkBasedTitle = getTitle({
-      content: 'Title2',
-      sourceUrl: 'https://task1.com',
-    });
+    const linkBasedTitle = getTitle(mockListItemForLinkBasedTitle);
 
     expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
   });
