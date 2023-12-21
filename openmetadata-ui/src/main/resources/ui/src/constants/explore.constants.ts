@@ -12,6 +12,7 @@
  */
 
 import { SortingField } from '../components/Explore/SortingDropDown';
+import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
@@ -56,4 +57,19 @@ export interface ExploreTabInfo {
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
+];
+
+export const TABS_SEARCH_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+  SearchIndex.TAG,
+  SearchIndex.DATA_PRODUCT,
 ];
