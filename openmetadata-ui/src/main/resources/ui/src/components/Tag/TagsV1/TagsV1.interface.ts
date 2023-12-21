@@ -13,7 +13,7 @@
 
 import { TagProps } from 'antd';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 
 export type TagsV1Props = {
   tag: TagLabel;
@@ -24,4 +24,5 @@ export type TagsV1Props = {
   tagProps?: TagProps;
   disabled?: boolean;
   tooltipOverride?: string;
+  tagType?: TagSource;
 };

@@ -37,6 +37,7 @@ const TagsV1 = ({
   isVersionPage = false,
   tagProps,
   tooltipOverride,
+  tagType,
 }: TagsV1Props) => {
   const history = useHistory();
   const color = useMemo(
@@ -87,12 +88,12 @@ const TagsV1 = ({
 
   const redirectLink = useCallback(
     () =>
-      tag.source === TagSource.Glossary
+      (tagType ?? tag.source) === TagSource.Glossary
         ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
         : history.push(
             `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
           ),
-    [tag.source, tag.tagFQN]
+    [tagType, tag.source, tag.tagFQN]
   );
 
   const tagColorBar = useMemo(
