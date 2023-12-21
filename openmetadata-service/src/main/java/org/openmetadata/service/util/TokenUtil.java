@@ -16,7 +16,6 @@ package org.openmetadata.service.util;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -28,16 +27,6 @@ import org.openmetadata.schema.entity.teams.User;
 
 public class TokenUtil {
   private TokenUtil() {}
-
-  public static TokenInterface createNewTokenWithDefaults(
-      UUID userId, UUID tokenId, TokenType type) {
-    return switch (type) {
-      case EMAIL_VERIFICATION -> getEmailVerificationToken(userId, tokenId);
-      case PASSWORD_RESET -> getPasswordResetToken(userId, tokenId);
-      case REFRESH_TOKEN -> getRefreshToken(userId, tokenId);
-      default -> throw new RuntimeException("Invalid Token Type.");
-    };
-  }
 
   public static EmailVerificationToken getEmailVerificationToken(UUID userId, UUID token) {
     EmailVerificationToken emailVerificationToken = new EmailVerificationToken();

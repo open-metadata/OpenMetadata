@@ -60,8 +60,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return getResponse(UNAUTHORIZED, ex.getLocalizedMessage());
     } else if (ex instanceof AuthorizationException) {
       return getResponse(FORBIDDEN, ex.getLocalizedMessage());
-    } else if (ex instanceof WebServiceException) {
-      final Response response = ((WebServiceException) ex).getResponse();
+    } else if (ex instanceof WebServiceException webServiceException) {
+      final Response response = webServiceException.getResponse();
       Family family = response.getStatusInfo().getFamily();
       if (family.equals(Response.Status.Family.REDIRECTION)) {
         return response;

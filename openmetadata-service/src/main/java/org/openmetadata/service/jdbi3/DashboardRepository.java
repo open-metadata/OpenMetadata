@@ -136,19 +136,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setServiceType(service.getServiceType());
   }
 
-  public void setService(Dashboard dashboard, EntityReference service) {
-    if (service != null && dashboard != null) {
-      // TODO remove this
-      addRelationship(
-          service.getId(),
-          dashboard.getId(),
-          service.getType(),
-          Entity.DASHBOARD,
-          Relationship.CONTAINS);
-      dashboard.setService(service);
-    }
-  }
-
   @Override
   public void prepare(Dashboard dashboard, boolean update) {
     populateService(dashboard);
@@ -171,26 +158,22 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void storeRelationships(Dashboard dashboard) {
-    setService(dashboard, dashboard.getService());
+    addServiceRelationship(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart
-    if (dashboard.getCharts() != null) {
-      for (EntityReference chart : dashboard.getCharts()) {
-        addRelationship(
-            dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
+    for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+      addRelationship(
+          dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
     }
 
     // Add relationship from dashboard to data models
-    if (dashboard.getDataModels() != null) {
-      for (EntityReference dataModel : dashboard.getDataModels()) {
-        addRelationship(
-            dashboard.getId(),
-            dataModel.getId(),
-            Entity.DASHBOARD,
-            Entity.DASHBOARD_DATA_MODEL,
-            Relationship.HAS);
-      }
+    for (EntityReference dataModel : listOrEmpty(dashboard.getDataModels())) {
+      addRelationship(
+          dashboard.getId(),
+          dataModel.getId(),
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Relationship.HAS);
     }
   }
 

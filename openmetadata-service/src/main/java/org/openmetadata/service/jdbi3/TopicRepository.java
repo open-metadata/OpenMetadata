@@ -41,16 +41,12 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.EntityRepository.DescriptionTaskWorkflow;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
-import org.openmetadata.service.jdbi3.EntityRepository.TagTaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -115,7 +111,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void storeRelationships(Topic topic) {
-    setService(topic, topic.getService());
+    addServiceRelationship(topic, topic.getService());
   }
 
   @Override
@@ -139,14 +135,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public TopicUpdater getUpdater(Topic original, Topic updated, Operation operation) {
     return new TopicUpdater(original, updated, operation);
-  }
-
-  public void setService(Topic topic, EntityReference service) {
-    if (service != null && topic != null) {
-      addRelationship(
-          service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
-      topic.setService(service);
-    }
   }
 
   public Topic getSampleData(UUID topicId, boolean authorizePII) {

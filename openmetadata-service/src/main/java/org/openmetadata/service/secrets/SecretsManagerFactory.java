@@ -33,9 +33,7 @@ public class SecretsManagerFactory {
         new SecretsManager.SecretsConfig(
             clusterName, config.getPrefix(), config.getTags(), config.getParameters());
     SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null
-            ? config.getSecretsManager()
-            : SecretsManagerProvider.DB;
+        config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.DB;
 
     switch (secretsManagerProvider) {
       case DB, AWS_SSM, AWS ->
@@ -54,7 +52,6 @@ public class SecretsManagerFactory {
       case MANAGED_AWS -> secretsManager = AWSSecretsManager.getInstance(secretsConfig);
       case MANAGED_AWS_SSM -> secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
       case IN_MEMORY -> secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
-      default -> {}
     }
     return secretsManager;
   }

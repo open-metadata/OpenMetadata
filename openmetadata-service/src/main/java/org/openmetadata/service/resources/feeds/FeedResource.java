@@ -558,7 +558,6 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
-    // TODO fix this
     OperationContext operationContext =
         new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new PostResourceContext(post.getFrom());

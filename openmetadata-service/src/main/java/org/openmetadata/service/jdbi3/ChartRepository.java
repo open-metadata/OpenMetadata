@@ -21,7 +21,6 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -65,9 +64,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   @SneakyThrows
   public void storeRelationships(Chart chart) {
-    EntityReference service = chart.getService();
-    addRelationship(
-        service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addServiceRelationship(chart, chart.getService());
   }
 
   @Override

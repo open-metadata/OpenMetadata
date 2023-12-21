@@ -246,27 +246,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  protected final List<EntityReference> getUserOrTeamEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
-      throws IOException {
-    String fqns = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
-    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    List<EntityReference> refs = new ArrayList<>();
-    for (String fqn : fqnList) {
-      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
-      if (!processRecord) {
-        return null;
-      }
-      if (ref != null) {
-        refs.add(ref);
-      }
-    }
-    return refs.isEmpty() ? null : refs;
-  }
-
   protected final List<TagLabel> getTagLabels(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
     List<EntityReference> refs = getEntityReferences(printer, csvRecord, fieldNumber, Entity.TAG);

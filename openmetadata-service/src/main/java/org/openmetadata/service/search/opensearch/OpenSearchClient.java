@@ -1449,8 +1449,7 @@ public class OpenSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS_COUNT:
-      case AGGREGATED_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_UNUSED_ASSETS_COUNT, AGGREGATED_UNUSED_ASSETS_SIZE:
         boolean isSize =
             dataInsightChartName.equals(
                 DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
@@ -1485,8 +1484,7 @@ public class OpenSearchClient implements SearchClient {
             .subAggregation(sixtyDaysAgg)
             .subAggregation(totalUnused)
             .subAggregation(totalUsed);
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE, AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
         boolean isSizeReport =
             dataInsightChartName.equals(
                 DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);

@@ -13,8 +13,12 @@ import java.security.cert.CertificateException;
 import javax.net.ssl.SSLContext;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class SSLUtil {
+  private SSLUtil() {
+    /* Hidden constructor */
+  }
 
   public static SSLContext createSSLContext(
       String truststorePath, String trustStorePassword, String client) throws KeyStoreException {
@@ -34,7 +38,7 @@ public class SSLUtil {
           | CertificateException
           | KeyStoreException
           | KeyManagementException e) {
-        throw new RuntimeException(
+        throw new UnhandledServerException(
             String.format("Failed to create SSLContext for [%s]", client), e);
       }
     }

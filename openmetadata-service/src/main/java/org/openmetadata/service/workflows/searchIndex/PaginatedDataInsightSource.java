@@ -60,9 +60,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
         isDone = true;
       }
       return data;
-    } else {
-      return null;
     }
+    return null;
   }
 
   @Override

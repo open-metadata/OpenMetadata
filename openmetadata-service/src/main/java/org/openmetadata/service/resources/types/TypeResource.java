@@ -427,7 +427,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid CustomProperty property) {
-    // TODO fix this is the typeID correct? Why are we not doing this by name?
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<Type> response =

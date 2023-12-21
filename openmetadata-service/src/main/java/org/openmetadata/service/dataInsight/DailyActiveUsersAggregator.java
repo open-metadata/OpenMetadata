@@ -9,7 +9,7 @@ public abstract class DailyActiveUsersAggregator<A, H, B>
     implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public DailyActiveUsersAggregator(A aggregations) {
+  protected DailyActiveUsersAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

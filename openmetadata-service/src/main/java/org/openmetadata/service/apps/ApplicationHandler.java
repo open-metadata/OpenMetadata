@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -53,9 +54,9 @@ public class ApplicationHandler {
         | IllegalAccessException
         | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
-      throw new RuntimeException(e);
+      throw new UnhandledServerException("Exception encountered", e);
     } catch (ClassNotFoundException e) {
-      throw new RuntimeException(e);
+      throw new UnhandledServerException("Exception encountered", e);
     }
   }
 }

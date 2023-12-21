@@ -71,13 +71,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeRelationships(Database database) {
-    EntityReference service = database.getService();
-    addRelationship(
-        service.getId(),
-        database.getId(),
-        service.getType(),
-        Entity.DATABASE,
-        Relationship.CONTAINS);
+    addServiceRelationship(database, database.getService());
   }
 
   private List<EntityReference> getSchemas(Database database) {

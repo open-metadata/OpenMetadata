@@ -9,7 +9,7 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
     implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public PageViewsByEntitiesAggregator(A aggregations) {
+  protected PageViewsByEntitiesAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

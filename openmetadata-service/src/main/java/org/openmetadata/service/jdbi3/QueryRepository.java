@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.*;
@@ -112,12 +111,7 @@ public class QueryRepository extends EntityRepository<Query> {
     // Store Query Used in Relation
     storeQueryUsedIn(queryEntity.getId(), queryEntity.getQueryUsedIn(), null);
     // The service contains the query
-    addRelationship(
-        queryEntity.getService().getId(),
-        queryEntity.getId(),
-        DATABASE_SERVICE,
-        Entity.QUERY,
-        Relationship.CONTAINS);
+    addServiceRelationship(queryEntity, queryEntity.getService());
   }
 
   @Override

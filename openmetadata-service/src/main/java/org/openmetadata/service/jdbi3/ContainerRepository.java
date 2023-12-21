@@ -155,9 +155,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void storeRelationships(Container container) {
     // store each relationship separately in the entity_relationship table
-    EntityReference service = container.getService();
-    addRelationship(
-        service.getId(), container.getId(), service.getType(), CONTAINER, Relationship.CONTAINS);
+    addServiceRelationship(container, container.getService());
 
     // parent container if exists
     EntityReference parentReference = container.getParent();

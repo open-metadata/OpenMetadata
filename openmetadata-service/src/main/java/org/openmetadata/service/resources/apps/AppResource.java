@@ -100,8 +100,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
 
-  private final Authorizer authorizer;
-
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
@@ -155,7 +153,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   public AppResource(Authorizer authorizer) {
     super(Entity.APPLICATION, authorizer);
-    this.authorizer = authorizer;
   }
 
   public static class AppList extends ResultList<App> {
@@ -271,23 +268,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
       return Response.status(Response.Status.OK)
           .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
           .build();
-    } else {
-      if (!installation.getPipelines().isEmpty()) {
-        EntityReference pipelineRef = installation.getPipelines().get(0);
-        IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-        IngestionPipeline ingestionPipeline =
-            ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-        return Response.ok(
-                ingestionPipelineRepository.listPipelineStatus(
-                    ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
-                MediaType.APPLICATION_JSON_TYPE)
-            .build();
-      } else {
-        throw new RuntimeException("App does not have an associated pipeline.");
-      }
     }
+    if (!installation.getPipelines().isEmpty()) {
+      EntityReference pipelineRef = installation.getPipelines().get(0);
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      IngestionPipeline ingestionPipeline =
+          ingestionPipelineRepository.get(
+              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+      return Response.ok(
+              ingestionPipelineRepository.listPipelineStatus(
+                  ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
+              MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+    throw new IllegalArgumentException("App does not have an associated pipeline.");
   }
 
   @GET

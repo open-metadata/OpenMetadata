@@ -1448,8 +1448,7 @@ public class ElasticSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS_SIZE:
-      case AGGREGATED_UNUSED_ASSETS_COUNT:
+      case AGGREGATED_UNUSED_ASSETS_SIZE, AGGREGATED_UNUSED_ASSETS_COUNT:
         boolean isSize =
             dataInsightChartName.equals(
                 DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
@@ -1482,8 +1481,7 @@ public class ElasticSearchClient implements SearchClient {
         }
 
         return dateHistogramAggregationBuilder;
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE, AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
         boolean isSizeReport =
             dataInsightChartName.equals(
                 DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);

@@ -135,7 +135,7 @@ public class PermissionsResource {
           String resource,
       @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    ResourceContext resourceContext = new ResourceContext(resource, id, null);
+    ResourceContext<?> resourceContext = new ResourceContext(resource, id, null);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -168,7 +168,7 @@ public class PermissionsResource {
       @Parameter(description = "Name of the entity", schema = @Schema(type = "String"))
           @PathParam("name")
           String name) {
-    ResourceContext resourceContext = new ResourceContext(resource, null, name);
+    ResourceContext<?> resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -195,7 +195,7 @@ public class PermissionsResource {
     OperationContext operationContext =
         new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
     for (UUID id : ids) {
-      ResourceContext resourceContext = new ResourceContext(Entity.POLICY, id, null);
+      ResourceContext<?> resourceContext = new ResourceContext(Entity.POLICY, id, null);
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
     List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);

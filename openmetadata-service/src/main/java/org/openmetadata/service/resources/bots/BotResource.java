@@ -48,6 +48,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
@@ -61,6 +62,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -452,21 +454,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private User retrieveUser(Bot bot) {
-    // TODO fix this code - don't depend on exception
-    try {
-      return Entity.getEntityByName(
-          Entity.USER, bot.getBotUser().getFullyQualifiedName(), "", Include.NON_DELETED);
-    } catch (Exception exception) {
-      return null;
-    }
+    EntityRepository<? extends EntityInterface> userRepository =
+        Entity.getEntityRepository(Entity.USER);
+    return (User)
+        userRepository.findByNameOrNull(
+            bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
   }
 
   private Bot retrieveBot(String botName) {
-    // TODO fix this code - don't depend on exception
-    try {
-      return repository.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
-    } catch (Exception e) {
-      return null;
-    }
+    return repository.findByNameOrNull(botName, Include.NON_DELETED);
   }
 }
