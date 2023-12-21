@@ -11,12 +11,12 @@
 """
 Helper to parse workflow configurations
 """
-from typing import Optional, Type, TypeVar, Union
+from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.generated.schema.entity.automations.testServiceConnection import (
-    TestServiceConnectionRequest,
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -273,13 +273,11 @@ def _parse_inner_connection(config_dict: dict, source_type: str) -> None:
     :param config_dict: JSON configuration
     :param source_type: source type name, e.g., Airflow.
     """
-    inner_source_type = config_dict["source"]["serviceConnection"]["config"][
-        "connection"
-    ]["type"]
+    inner_source_type = config_dict["type"]
     inner_service_type = get_service_type(inner_source_type)
     inner_connection_class = get_connection_class(inner_source_type, inner_service_type)
     _unsafe_parse_config(
-        config=config_dict["source"]["serviceConnection"]["config"]["connection"],
+        config=config_dict,
         cls=inner_connection_class,
         message=f"Error parsing the inner service connection for {source_type}",
     )
@@ -306,7 +304,12 @@ def parse_service_connection(config_dict: dict) -> None:
 
     if source_type in HAS_INNER_CONNECTION:
         # We will first parse the inner `connection` configuration
-        _parse_inner_connection(config_dict, source_type)
+        _parse_inner_connection(
+            config_dict["source"]["serviceConnection"]["config"]["connection"][
+                "config"
+            ]["connection"],
+            source_type,
+        )
 
     # Parse the service connection dictionary with the scoped class
     _unsafe_parse_config(
@@ -403,42 +406,6 @@ def parse_workflow_config_gracefully(
     raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
 
 
-def parse_test_connection_request_gracefully(
-    config_dict: dict,
-) -> Optional[TestServiceConnectionRequest]:
-    """
-    This function either correctly parses the pydantic class,
-    or throws a scoped error while fetching the required source
-    connection class
-
-    :param config_dict: JSON workflow config
-    :return: TestServiceConnectionRequest or scoped error
-    """
-
-    try:
-        test_service_connection = TestServiceConnectionRequest.parse_obj(config_dict)
-        return test_service_connection
-
-    except ValidationError as err:
-        # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-        source_type = config_dict["connection"]["config"]["type"]
-        logger.warning(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion: {err}"
-        )
-
-        service_type = get_service_type(source_type)
-        connection_class = get_connection_class(source_type, service_type)
-
-        # Parse the dictionary with the scoped class
-        _unsafe_parse_config(
-            config=config_dict["connection"]["config"],
-            cls=connection_class,
-            message="Error parsing the connection config",
-        )
-
-    raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
-
-
 def parse_ingestion_pipeline_config_gracefully(
     config_dict: dict,
 ) -> IngestionPipeline:
@@ -467,6 +434,54 @@ def parse_ingestion_pipeline_config_gracefully(
             config=config_dict["sourceConfig"]["config"],
             cls=source_config_class,
             message="Error parsing the source config",
+        )
+
+    raise ParsingConfigurationError(
+        "Uncaught error when parsing the Ingestion Pipeline!"
+    )
+
+
+def parse_automation_workflow_gracefully(
+    config_dict: dict,
+) -> AutomationWorkflow:
+    """
+    This function either correctly parses the pydantic class, or
+    throws a scoped error while fetching the required source connection
+    class.
+
+    :param config_dict: JSON AutomationWorkflow config
+    :return: AutomationWorkflow config or scoped error
+    """
+
+    try:
+        automation_workflow = AutomationWorkflow.parse_obj(config_dict)
+        return automation_workflow
+
+    except ValidationError:
+        source_type = config_dict["request"]["connection"]["config"].get("type")
+
+        if source_type is None:
+            raise InvalidWorkflowException("Missing type in the connection config")
+
+        logger.debug(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion"
+        )
+
+        service_type = get_service_type(source_type)
+        connection_class = get_connection_class(source_type, service_type)
+
+        if source_type in HAS_INNER_CONNECTION:
+            # We will first parse the inner `connection` configuration
+            _parse_inner_connection(
+                config_dict["request"]["connection"]["config"]["connection"],
+                source_type,
+            )
+
+        # Parse the service connection dictionary with the scoped class
+        _unsafe_parse_config(
+            config=config_dict["request"]["connection"]["config"],
+            cls=connection_class,
+            message="Error parsing the service connection",
         )
 
     raise ParsingConfigurationError(
