@@ -30,7 +30,9 @@ import {
   removeDomainFromEntity,
 } from '../../common/Utils/Domain';
 import {
+  createEntityViaREST,
   deleteEntity,
+  deleteEntityViaREST,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
   updateDescriptioForEntity,
