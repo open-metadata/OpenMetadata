@@ -22,7 +22,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 
 
-**Note:** For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+**Note:** For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 ### Python Requirements

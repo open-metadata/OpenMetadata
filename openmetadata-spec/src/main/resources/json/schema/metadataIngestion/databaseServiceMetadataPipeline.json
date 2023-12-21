@@ -49,6 +49,12 @@
       "default": true,
       "title": "Include Tags"
     },
+    "includeOwners":{
+      "title": "Include Owners",
+      "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
+      "type": "boolean",
+      "default": false
+    },
     "includeStoredProcedures": {
       "description": "Optional configuration to toggle the Stored Procedures ingestion.",
       "type": "boolean",

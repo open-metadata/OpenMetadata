@@ -22,6 +22,7 @@ import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
@@ -105,7 +106,7 @@ const TagsV1 = ({
 
   const tagContent = useMemo(
     () => (
-      <div className="d-flex w-full">
+      <div className="d-flex w-full h-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
           {tag.style?.iconURL ? (
@@ -135,7 +136,15 @@ const TagsV1 = ({
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames(className, 'tag-chip tag-chip-content')}
+        className={classNames(
+          className,
+          {
+            'tag-highlight': Boolean(
+              (tag as HighlightedTagLabel).isHighlighted
+            ),
+          },
+          'tag-chip tag-chip-content'
+        )}
         data-testid="tags"
         style={
           color

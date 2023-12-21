@@ -25,6 +25,7 @@ const mockProp: PropertyInputProps = {
   propertyName: 'yNumber',
   onCancel,
   onSave,
+  isLoading: false,
 };
 
 jest.mock('../../../components/InlineEdit/InlineEdit.component', () => {

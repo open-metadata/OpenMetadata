@@ -211,7 +211,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO make this common implementation
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
