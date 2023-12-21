@@ -65,7 +65,10 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         min_bound = self.get_min_bound("minLength")
         max_bound = self.get_max_bound("maxLength")
 
-        row_count, failed_rows = self.compute_row_count(column, min_bound, max_bound)
+        if self.test_case.computePassedFailedRowCount:
+            row_count, failed_rows = self.compute_row_count(column, min_bound, max_bound)
+        else:
+            row_count, failed_rows = None, None
 
         return self.get_test_case_result_object(
             self.execution_date,

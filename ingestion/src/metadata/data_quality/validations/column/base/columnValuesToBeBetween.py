@@ -100,7 +100,10 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             pre_processor=convert_timestamp if is_date_time(column.type) else None,
         )
 
-        row_count, failed_rows = self.get_row_count(min_bound, max_bound)
+        if self.test_case.computePassedFailedRowCount:
+            row_count, failed_rows = self.get_row_count(min_bound, max_bound)
+        else:
+            row_count, failed_rows = None, None
 
         return self.get_test_case_result_object(
             self.execution_date,

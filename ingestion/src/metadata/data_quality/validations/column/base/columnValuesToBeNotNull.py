@@ -57,7 +57,10 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
                 [TestResultValue(name=NULL_COUNT, value=None)],
             )
 
-        row_count = self.get_row_count()
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self.get_row_count()
+        else:
+            row_count = None
 
         return self.get_test_case_result_object(
             self.execution_date,
