@@ -1771,7 +1771,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   public ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
-      Long startTs, Long endTs, String assignee, TestCaseResolutionStatusTypes testCaseResolutionStatusType)
+      Long startTs,
+      Long endTs,
+      String assignee,
+      TestCaseResolutionStatusTypes testCaseResolutionStatusType)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
     target = target.queryParam("startTs", startTs);
