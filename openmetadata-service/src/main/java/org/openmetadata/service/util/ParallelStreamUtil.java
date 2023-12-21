@@ -93,8 +93,8 @@ public final class ParallelStreamUtil {
   private static void handleExecutionException(ExecutionException e) {
     Throwable t = e.getCause();
     if (t != null) {
-      if (t instanceof RuntimeException) {
-        throw (RuntimeException) t;
+      if (t instanceof RuntimeException runtimeException) {
+        throw runtimeException;
       } else {
         throw new RuntimeException(t);
       }

@@ -74,7 +74,7 @@ AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+**Note:** Follow [this](/developers/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.
 
 ## 2. Start Docker

@@ -34,7 +34,6 @@ import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flywaydb.core.Flyway;
@@ -44,6 +43,7 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -195,7 +195,7 @@ public final class TablesInitializer {
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
-      throw new RuntimeException("No database in config file");
+      throw new UnhandledServerException("No database in config file");
     }
 
     // Check for db auth providers.
@@ -376,11 +376,6 @@ public final class TablesInitializer {
         throw new SQLException(
             "SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
-  }
-
-  private static void usage() {
-    HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
   }
 
   private static void printToConsoleInDebug(String message) {

@@ -51,7 +51,7 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
-    condition = addCondition(condition, getDisabledCondition(tableName));
+    condition = addCondition(condition, getDisabledCondition());
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
@@ -135,15 +135,14 @@ public class ListFilter {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
   }
 
-  public String getDisabledCondition(String tableName) {
-    String disabled = queryParams.get("disabled");
-    return disabled == null ? "" : getDisabledCondition(tableName, disabled);
-  }
-
-  public String getDisabledCondition(String tableName, String disabledStr) {
+  public String getDisabledCondition() {
+    String disabledStr = queryParams.get("disabled");
+    if (disabledStr == null) {
+      return "";
+    }
     boolean disabled = Boolean.parseBoolean(disabledStr);
     String disabledCondition;
-    if (DatasourceConfig.getInstance().isMySQL()) {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       if (disabled) {
         disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";
       } else {

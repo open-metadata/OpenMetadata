@@ -58,12 +58,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self.ometa_client = ometa_client
         self.table_entity = table_entity
         self.service_connection_config = service_connection_config
-        self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
-        )
-        self.set_session_tag(self.session)
-        self.set_catalog(self.session)
-
+        self.create_session()
         self._table = self._convert_table_to_orm_object(sqa_metadata)
 
         (
@@ -74,6 +69,11 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
         self._sampler = self._create_sampler()
         self._runner = self._create_runner()
+
+    def create_session(self):
+        self.session = create_and_bind_session(
+            get_connection(self.service_connection_config)
+        )
 
     @property
     def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
