@@ -138,8 +138,8 @@ const TestCaseIssueTab = () => {
   };
 
   return (
-    <div className="activity-feed-tab">
-      <div className="center-container" id="center-container">
+    <div className="incident-page-issue-tab">
+      <div className="left-container" id="left-container">
         <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
           <Typography.Text
             className={classNames(

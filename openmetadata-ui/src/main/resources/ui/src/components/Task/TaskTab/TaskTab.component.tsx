@@ -20,7 +20,6 @@ import {
   Row,
   Select,
   Space,
-  Steps,
   Tooltip,
   Typography,
 } from 'antd';
@@ -29,14 +28,7 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  noop,
-  startCase,
-  toLower,
-} from 'lodash';
+import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -65,10 +57,7 @@ import {
   TaskDetails,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import {
-  TestCaseFailureReasonType,
-  TestCaseResolutionStatusTypes,
-} from '../../../generated/tests/testCase';
+import { TestCaseFailureReasonType } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
@@ -81,7 +70,6 @@ import {
 } from '../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
@@ -98,6 +86,7 @@ import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
+import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -120,8 +109,7 @@ export const TaskTab = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
-  const { postFeed, setActiveThread, testCaseResolutionStatus } =
-    useActivityFeedProvider();
+  const { postFeed, setActiveThread } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -139,43 +127,6 @@ export const TaskTab = ({
         name: assignee.name,
       })) ?? [],
     [taskDetails]
-  );
-
-  const testCaseResolutionStepper = useMemo(
-    () =>
-      testCaseResolutionStatus.map((status) => ({
-        className: toLower(status.testCaseResolutionStatusType),
-        title: (
-          <div>
-            <Typography.Paragraph className="m-b-0">
-              {status.testCaseResolutionStatusType}
-            </Typography.Paragraph>
-            <Typography.Paragraph className="m-b-0">
-              {TestCaseResolutionStatusTypes.Assigned ===
-                status.testCaseResolutionStatusType && (
-                <Typography.Text className="text-grey-muted text-xss">
-                  {`To ${getEntityName(
-                    status.testCaseResolutionStatusDetails?.assignee
-                  )} on `}
-                </Typography.Text>
-              )}
-              {TestCaseResolutionStatusTypes.Resolved ===
-                status.testCaseResolutionStatusType && (
-                <Typography.Text className="text-grey-muted text-xss">
-                  {`By ${getEntityName(
-                    status.testCaseResolutionStatusDetails?.resolvedBy
-                  )} on `}
-                </Typography.Text>
-              )}
-              <Typography.Text className="text-grey-muted text-xss">
-                {formatDateTime(status.updatedAt)}
-              </Typography.Text>
-            </Typography.Paragraph>
-          </div>
-        ),
-        key: status.testCaseResolutionStatusType,
-      })),
-    [testCaseResolutionStatus]
   );
 
   const taskField = useMemo(() => {
@@ -439,8 +390,7 @@ export const TaskTab = ({
   }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const testCaseResultFlow = useMemo(() => {
-    // const hasApprovalAccess =
-    //   isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    const hasApprovalAccess = isAssignee || isCreator;
 
     return (
       <Space
@@ -448,33 +398,23 @@ export const TaskTab = ({
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
-        // title={
-        //   !hasApprovalAccess
-        //     ? t('message.only-assignee-can-reassign-or-resolve')
-        //     : ''
-        // }
-        >
+          title={!hasApprovalAccess && t('message.no-access-placeholder')}>
           <Button
             data-testid="reject-task"
-            // disabled={!hasApprovalAccess}
+            disabled={!hasApprovalAccess}
             onClick={() => setIsEditAssignee(true)}>
             {t('label.re-assign')}
           </Button>
         </Tooltip>
 
         <Tooltip
-        // title={
-        //   !hasApprovalAccess
-        //     ? t('message.only-assignee-can-reassign-or-resolve')
-        //     : ''
-        // }
-        >
+          title={!hasApprovalAccess && t('message.no-access-placeholder')}>
           <Button
             data-testid="approve-task"
             // disabled={!hasApprovalAccess}
             type="primary"
             onClick={() => setShowEditTaskModel(true)}>
-            {t('label.resolved')}
+            {t('label.resolve')}
           </Button>
         </Tooltip>
       </Space>
@@ -602,37 +542,7 @@ export const TaskTab = ({
   }, [initialAssignees]);
 
   const taskHeader = isTaskTestCaseResult ? (
-    <Row gutter={[8, 8]}>
-      <Col span={24}>
-        <Steps
-          className="task-resolution-steps w-full"
-          current={testCaseResolutionStatus.length}
-          items={testCaseResolutionStepper}
-          labelPlacement="vertical"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        <Space className="justify-between w-full">
-          <div className={classNames('gap-2', 'flex-center')}>
-            <Typography.Text className="text-grey-muted">
-              {t('label.assignee')}:{' '}
-            </Typography.Text>
-            <AssigneeList assignees={taskDetails?.assignees ?? []} />
-          </div>
-          <div className={classNames('gap-2', 'flex-center')}>
-            <Typography.Text className="text-grey-muted">
-              {t('label.created-by')}:{' '}
-            </Typography.Text>
-            <OwnerLabel
-              hasPermission={false}
-              owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
-              onUpdate={noop}
-            />
-          </div>
-        </Space>
-      </Col>
-    </Row>
+    <TaskTabIncidentManagerHeader thread={taskThread} />
   ) : (
     <div
       className={classNames('d-flex justify-between', {
@@ -703,9 +613,7 @@ export const TaskTab = ({
           {t('label.created-by')}:{' '}
         </Typography.Text>
         <OwnerLabel
-          hasPermission={false}
           owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
-          onUpdate={noop}
         />
       </div>
     </div>
@@ -766,124 +674,138 @@ export const TaskTab = ({
 
         {actionButtons}
       </Col>
-      <Modal
-        maskClosable
-        closable={false}
-        closeIcon={null}
-        open={showEditTaskModel}
-        title={`${t('label.edit-entity', {
-          entity: t('label.task-lowercase'),
-        })} #${taskDetails?.id} ${taskThread.message}`}
-        width={768}
-        onCancel={() => setShowEditTaskModel(false)}
-        onOk={form.submit}>
-        <Form
-          form={form}
-          initialValues={initialFormValue}
-          layout="vertical"
-          onFinish={onEditAndSuggest}>
-          {isTaskTestCaseResult ? (
-            <>
+      {isTaskTestCaseResult ? (
+        <Modal
+          maskClosable
+          closable={false}
+          closeIcon={null}
+          open={showEditTaskModel}
+          title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
+          width={768}
+          onCancel={() => setShowEditTaskModel(false)}
+          onOk={form.submit}>
+          <Form
+            form={form}
+            initialValues={initialFormValue}
+            layout="vertical"
+            onFinish={onEditAndSuggest}>
+            <Form.Item
+              label={t('label.reason')}
+              name="testCaseFailureReason"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.reason'),
+                  }),
+                },
+              ]}>
+              <Select
+                placeholder={t('label.please-select-entity', {
+                  entity: t('label.reason'),
+                })}>
+                {Object.values(TestCaseFailureReasonType).map((value) => (
+                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              label={t('label.comment')}
+              name="testCaseFailureComment"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.comment'),
+                  }),
+                },
+              ]}>
+              <RichTextEditor
+                height="200px"
+                initialValue=""
+                placeHolder={t('message.write-your-text', {
+                  text: t('label.comment'),
+                })}
+                ref={markdownRef}
+                onTextChange={(value) =>
+                  form.setFieldValue('testCaseFailureComment', value)
+                }
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      ) : (
+        <Modal
+          maskClosable
+          closable={false}
+          closeIcon={null}
+          open={showEditTaskModel}
+          title={`${t('label.edit-entity', {
+            entity: t('label.task-lowercase'),
+          })} #${taskDetails?.id} ${taskThread.message}`}
+          width={768}
+          onCancel={() => setShowEditTaskModel(false)}
+          onOk={form.submit}>
+          <Form
+            form={form}
+            initialValues={initialFormValue}
+            layout="vertical"
+            onFinish={onEditAndSuggest}>
+            {isTaskTags ? (
               <Form.Item
-                label={t('label.reason')}
-                name="testCaseFailureReason"
+                data-testid="tags-label"
+                label={t('label.tag-plural')}
+                name="updatedTags"
                 rules={[
                   {
                     required: true,
-                    message: t('label.field-required', {
-                      field: t('label.reason'),
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.tag-plural'),
                     }),
                   },
-                ]}>
-                <Select
-                  placeholder={t('label.please-select-entity', {
-                    entity: t('label.reason'),
-                  })}>
-                  {Object.values(TestCaseFailureReasonType).map((value) => (
-                    <Select.Option key={value}>
-                      {startCase(value)}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                label={t('label.comment')}
-                name="testCaseFailureComment"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.comment'),
-                    }),
-                  },
-                ]}>
-                <RichTextEditor
-                  height="200px"
-                  initialValue=""
-                  placeHolder={t('message.write-your-text', {
-                    text: t('label.comment'),
-                  })}
-                  ref={markdownRef}
-                  onTextChange={(value) =>
-                    form.setFieldValue('testCaseFailureComment', value)
-                  }
+                ]}
+                trigger="onChange">
+                <TagsTask
+                  isTaskActionEdit
+                  hasEditAccess={hasEditAccess}
+                  task={taskDetails}
+                  onChange={(value) => form.setFieldValue('updatedTags', value)}
                 />
               </Form.Item>
-            </>
-          ) : isTaskTags ? (
-            <Form.Item
-              data-testid="tags-label"
-              label={t('label.tag-plural')}
-              name="updatedTags"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.tag-plural'),
-                  }),
-                },
-              ]}
-              trigger="onChange">
-              <TagsTask
-                isTaskActionEdit
-                hasEditAccess={hasEditAccess}
-                task={taskDetails}
-                onChange={(value) => form.setFieldValue('updatedTags', value)}
-              />
-            </Form.Item>
-          ) : (
-            <Form.Item
-              data-testid="tags-label"
-              label={t('label.description')}
-              name="description"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.description'),
-                  }),
-                },
-              ]}
-              trigger="onTextChange">
-              <DescriptionTask
-                isTaskActionEdit
-                hasEditAccess={hasEditAccess}
-                taskThread={taskThread}
-                onChange={(value) => form.setFieldValue('description', value)}
-              />
-            </Form.Item>
-          )}
-        </Form>
-      </Modal>
+            ) : (
+              <Form.Item
+                data-testid="tags-label"
+                label={t('label.description')}
+                name="description"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.description'),
+                    }),
+                  },
+                ]}
+                trigger="onTextChange">
+                <DescriptionTask
+                  isTaskActionEdit
+                  hasEditAccess={hasEditAccess}
+                  taskThread={taskThread}
+                  onChange={(value) => form.setFieldValue('description', value)}
+                />
+              </Form.Item>
+            )}
+          </Form>
+        </Modal>
+      )}
       {isTaskTestCaseResult && (
         <Modal
           maskClosable
           closable={false}
           closeIcon={null}
           open={isEditAssignee}
-          title={`${t('label.edit-entity', {
-            entity: t('label.task-lowercase'),
-          })} #${taskDetails?.id} ${taskThread.message}`}
+          title={`${t('label.re-assign')} ${t('label.task')} #${
+            taskDetails?.id
+          }`}
           width={768}
           onCancel={() => setIsEditAssignee(false)}
           onOk={assigneesForm.submit}>
@@ -902,7 +824,6 @@ export const TaskTab = ({
               ]}>
               <Assignees
                 isSingleSelect
-                disabled={Boolean(owner)}
                 options={options}
                 value={updatedAssignees}
                 onChange={(values) =>

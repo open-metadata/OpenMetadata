@@ -901,7 +901,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={IncidentManagerPage}
         hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
+          ResourceEntity.TEST_CASE,
           permissions
         )}
         path={ROUTES.INCIDENT_MANAGER}
@@ -911,7 +911,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={IncidentManagerDetailPage}
         hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
+          ResourceEntity.TEST_CASE,
           permissions
         )}
         path={ROUTES.INCIDENT_MANAGER_DETAILS}
@@ -921,7 +921,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={IncidentManagerDetailPage}
         hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
+          ResourceEntity.TEST_CASE,
           permissions
         )}
         path={ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB}

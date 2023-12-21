@@ -31,7 +31,6 @@ import Severity from '../../components/IncidentManager/Severity/Severity.compone
 import TestCaseIncidentManagerStatus from '../../components/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
@@ -41,7 +40,6 @@ import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import {
   Assigned,
@@ -67,7 +65,6 @@ import {
 } from '../../utils/CommonUtils';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -98,14 +95,6 @@ const IncidentManagerPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
-
-  const testCaseEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
 
   const {
     paging,
@@ -407,7 +396,7 @@ const IncidentManagerPage = () => {
         ),
       },
     ],
-    [testCaseEditPermission, testCaseListData.data]
+    [testCaseListData.data]
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {

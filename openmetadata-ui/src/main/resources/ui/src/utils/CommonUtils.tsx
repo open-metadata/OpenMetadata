@@ -71,10 +71,12 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getEncodedFqn } from './StringsUtils';
@@ -857,6 +859,12 @@ export const getEntityDetailLink = (
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
 
       break;
+
+    case EntityType.TEST_CASE:
+      path = getIncidentManagerDetailPagePath(fqn, IncidentManagerTabs.ISSUES);
+
+      break;
+
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       path = getGlossaryTermDetailsPath(fqn, tab, subTab);

@@ -10,18 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Severities } from '../../../generated/tests/testCaseResolutionStatus';
-
-export interface SeverityFormProps {
-  onSubmit?: (severity: Severities) => Promise<void>;
+@import (reference) url('../../../styles/variables.less');
+.task-resolution-steps {
+  overflow-x: auto;
 }
 
-export interface SeverityProps extends SeverityFormProps {
-  severity?: Severities;
-}
-
-export interface SeverityModalProps extends SeverityFormProps {
-  initialSeverity?: Severities;
-  onCancel: () => void;
+.task-resolution-steps-container {
+  border-radius: 10px;
+  background-color: @grey-1;
+  padding: 10px;
 }

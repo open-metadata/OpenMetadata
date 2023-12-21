@@ -45,7 +45,7 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
 
   const handleSubmit = useCallback(
     async (data) => {
-      await onSubmit(data);
+      await onSubmit?.(data);
       onCancel();
     },
     [onSubmit]
@@ -62,7 +62,7 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
         ) : (
           NO_DATA_PLACEHOLDER
         )}
-        {hasEditPermission && (
+        {onSubmit && hasEditPermission && (
           <Icon
             component={EditIcon}
             data-testid="edit-description-icon"
