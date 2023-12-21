@@ -12,7 +12,10 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "tag.json#/definitions/tagName"
+      "description": "Name of the Classification.",
+      "minLength": 2,
+      "maxLength": 64,
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
