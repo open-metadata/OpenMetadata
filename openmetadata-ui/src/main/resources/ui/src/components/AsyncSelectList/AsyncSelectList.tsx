@@ -47,6 +47,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   initialOptions,
   filterOptions = [],
   className,
+  tagType,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -222,6 +223,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
+        tagType={tagType}
         tooltipOverride={
           isDerived ? t('message.derived-tag-warning') : undefined
         }

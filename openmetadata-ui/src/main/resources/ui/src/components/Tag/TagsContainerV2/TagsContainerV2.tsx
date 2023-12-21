@@ -23,7 +23,11 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import {
+  GLOSSARY_CONSTANT,
+  TAG_CONSTANT,
+  TAG_START_WITH,
+} from '../../../constants/Tag.constants';
 import { LabelType } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
@@ -152,7 +156,11 @@ const TagsContainerV2 = ({
     () =>
       showAddTagButton ? (
         <Col className="m-t-xss" onClick={handleAddClick}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+          <TagsV1
+            startWith={TAG_START_WITH.PLUS}
+            tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+            tagType={tagType}
+          />
         </Col>
       ) : null,
     [showAddTagButton]
@@ -164,6 +172,7 @@ const TagsContainerV2 = ({
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
+          tagType={tagType}
           tags={tags?.[tagType] ?? []}
         />
       </Col>
@@ -178,6 +187,7 @@ const TagsContainerV2 = ({
         fetchApi={fetchAPI}
         placeholder={getTagPlaceholder(isGlossaryType)}
         tagData={initialOptions}
+        tagType={tagType}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -316,7 +326,11 @@ const TagsContainerV2 = ({
       <Space>
         {showAddTagButton ? (
           <div onClick={handleAddClick}>
-            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+            <TagsV1
+              startWith={TAG_START_WITH.PLUS}
+              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+              tagType={tagType}
+            />
           </div>
         ) : null}
         <TagsViewer

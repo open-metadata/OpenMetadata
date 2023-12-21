@@ -14,6 +14,7 @@
 import { DefaultOptionType } from 'antd/lib/select';
 import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
 import { Paging } from '../../../generated/type/paging';
+import { TagSource } from '../../../generated/type/tagLabel';
 
 export type TagsSelectFormProps = {
   placeholder: string;
@@ -22,6 +23,7 @@ export type TagsSelectFormProps = {
   onChange?: (value: string[]) => void;
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
+  tagType?: TagSource;
   fetchApi: (
     search: string,
     page: number
