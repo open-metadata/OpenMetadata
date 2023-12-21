@@ -114,7 +114,7 @@ const GlossaryTermTab = ({
           const name = getEntityName(record);
 
           return (
-            <div className="d-inline-flex items-center w-max-90">
+            <div className="d-inline-flex items-center w-max-85">
               {record.style?.iconURL && (
                 <img
                   className="m-r-xss"
