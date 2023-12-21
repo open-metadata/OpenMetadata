@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -36,7 +35,10 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -58,8 +60,14 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
@@ -79,21 +87,40 @@ const SchemaTable = ({
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
+  const [tablePermissions, setTablePermissions] =
+    useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
   );
 
+  const fetchResourcePermission = async (entityFqn: string) => {
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+      setTablePermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
+      );
+    }
+  };
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
-
+  useEffect(() => {
+    fetchResourcePermission(entityFqn);
+  }, [entityFqn]);
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
   };
@@ -314,8 +341,8 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-full">
-              <div className="d-inline-flex">
+            <div className="d-inline-flex flex-column hover-icon-group">
+              <div className="inline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
@@ -339,11 +366,21 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              <Icon
-                className="hover-cell-icon text-left m-t-xss"
-                component={IconEdit}
-                onClick={() => handleEditDisplayNameClick(record)}
-              />
+              {(tablePermissions?.EditAll ||
+                tablePermissions?.EditDisplayName) && (
+                <Button
+                  className="cursor-pointer hover-cell-icon w-fit-content"
+                  data-testid="edit-displayName-button"
+                  style={{
+                    color: DE_ACTIVE_COLOR,
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                  onClick={() => handleEditDisplayNameClick(record)}>
+                  <IconEdit />
+                </Button>
+              )}
             </div>
           );
         },
