@@ -559,9 +559,10 @@ source:
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/trino/airflow"
-  / %}
+   icon="mediation"
+   title="Configure Ingestion Externally"
+   description="Deploy, configure, and manage the ingestion workflows externally."
+   link="/deployment/ingestion"
+ / %}
 
 {% /tilesContainer %}
