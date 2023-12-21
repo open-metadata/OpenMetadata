@@ -399,6 +399,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 table,
                 sample,
             )
+            row = None
 
             try:
                 row = self._get_metric_fn[metric_type.value](
@@ -412,7 +413,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 error = f"{column if column is not None else runner.table.__tablename__} metric_type.value: {exc}"
                 logger.error(error)
                 self.status.failed_profiler(error, traceback.format_exc())
-                row = None
 
             if column is not None:
                 column = column.name
