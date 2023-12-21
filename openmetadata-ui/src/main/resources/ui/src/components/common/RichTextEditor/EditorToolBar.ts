@@ -68,6 +68,7 @@ const toggleEditorDirection = (button: HTMLButtonElement) => {
 };
 
 const rtlButton = (): HTMLButtonElement => {
+  const dir = i18n.dir();
   const button = document.createElement('button');
 
   button.onclick = () => toggleEditorDirection(button);
@@ -76,7 +77,7 @@ const rtlButton = (): HTMLButtonElement => {
   button.id = 'rtl-button';
   button.style.cssText = 'background-image: none; margin: 0; margin-top: 4px;';
   button.type = 'button';
-  button.innerHTML = getRTLButtonIcon('rtl');
+  button.innerHTML = getRTLButtonIcon(dir === 'rtl' ? 'ltr' : 'rtl');
 
   return button;
 };
