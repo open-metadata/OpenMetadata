@@ -34,7 +34,7 @@ export const removeTier = () => {
   interceptURL('PATCH', `/api/v1/**`, 'patchTier');
 
   cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="clear-tier"]').click();
+  cy.get('[data-testid="clear-tier"]').scrollIntoView().click();
 
   verifyResponseStatusCode('@patchTier', 200);
   cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
