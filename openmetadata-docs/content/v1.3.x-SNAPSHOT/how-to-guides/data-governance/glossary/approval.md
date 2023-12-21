@@ -9,7 +9,7 @@ The business glossary plays a vital role in standardizing terminology in an orga
 
 Watch the video to learn more about **[Glossary Approval Workflow](https://www.youtube.com/watch?v=PgTcKQtpAks&t=4s)**
 
-{% youtube videoId="PgTcKQtpAsk" start="0:00" end="2:51" width="560px" height="315px" /%}
+{% youtube videoId="PgTcKQtpAks" start="0:00" end="2:51" width="560px" height="315px" /%}
 
 To automate the approval workflow, ensure that your Glossary has **Reviewers** assigned. If you glossary has reviewers assigned, the glossary approval workflow gets triggered when a **New Term** is added.
 

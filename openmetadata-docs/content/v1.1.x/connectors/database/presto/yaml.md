@@ -484,9 +484,10 @@ Note now instead of running `ingest`, we are using the `profile` command to sele
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/presto/airflow"
-  / %}
+   icon="mediation"
+   title="Configure Ingestion Externally"
+   description="Deploy, configure, and manage the ingestion workflows externally."
+   link="/deployment/ingestion"
+ / %}
 
 {% /tilesContainer %}
