@@ -134,7 +134,7 @@ public class FeedRepository {
 
   public static class ThreadContext {
     @Getter protected final Thread thread;
-    @Getter protected final EntityLink about;
+    @Getter @Setter protected EntityLink about;
     @Getter @Setter protected EntityInterface aboutEntity;
     @Getter private final EntityReference createdBy;
 
