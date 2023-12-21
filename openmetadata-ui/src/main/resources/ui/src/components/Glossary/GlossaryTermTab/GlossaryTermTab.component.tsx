@@ -109,14 +109,16 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        className: 'glossary-name-column w-max-400 truncate',
+        className: 'glossary-name-column w-max-400',
+        ellipsis: true,
         render: (_, record) => {
           const name = getEntityName(record);
 
           return (
-            <Space align="center">
+            <>
               {record.style?.iconURL && (
                 <img
+                  className="m-r-xss"
                   data-testid="tag-icon"
                   src={record.style.iconURL}
                   width={16}
@@ -129,7 +131,7 @@ const GlossaryTermTab = ({
                 to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
                 {name}
               </Link>
-            </Space>
+            </>
           );
         },
       },
