@@ -22,7 +22,7 @@ Data is a shared responsibility of the organization and requires an end-to-end a
 
 ### 1. Data Needs Clear Ownership
 
-All important data must be owned. Individuals should not own important data assets. Team ownership is preffered over User ownership. It also pushes the data responsibility to a team instead of an individual user.
+All important data must be owned. Individuals should not own important data assets. Team ownership is preferred over User ownership. It also pushes the data responsibility to a team instead of an individual user.
 
 ### 2. Measure What Matters
 
@@ -60,7 +60,7 @@ Data without description is hard to use, resulting in the loss of productivity. 
 
 ### 4. Develop Data Vocabulary
 
-Data vocabulary helps in the consistent understanding of data. In OpenMetdata, using the [Glossary](/how-to-guides/data-governance/glossary-classification) feature, you can describe business terms and concepts in a single place. Also, the data assets can be labelled using these glossary terms in order to provide semantic meaning.
+Data vocabulary helps in the consistent understanding of data. In OpenMetadata, using the [Glossary](/how-to-guides/data-governance/glossary-classification) feature, you can describe business terms and concepts in a single place. Also, the data assets can be labelled using these glossary terms in order to provide semantic meaning.
 
 ### 5 Identify Important Data with Tiers
 
@@ -83,4 +83,4 @@ OpenMetadata helps customers understand their data with a 360° view. Admins can
 Go ahead, leverage Data Insights to transform the data culture of your organization!
 Watch the video to learn more about proactively honing the data culture of your company by setting targets, monitoring, and boosting teams to accomplish data goals with OpenMetadata.
 
-{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" /%}
+{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" width="560px" height="315px" /%}

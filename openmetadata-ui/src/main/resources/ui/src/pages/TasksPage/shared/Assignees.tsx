@@ -13,7 +13,7 @@
 
 import { Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
-import { groupBy, isUndefined } from 'lodash';
+import { debounce, groupBy, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
@@ -77,7 +77,7 @@ const Assignees: FC<Props> = ({
             <div data-testid={`assignee-option-${user.label}`}>
               <UserTag
                 className="assignee-item"
-                id={user.value}
+                id={user.name ?? ''}
                 name={user.label}
                 size={UserTagSize.small}
               />
@@ -105,7 +105,7 @@ const Assignees: FC<Props> = ({
       showArrow={false}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
-      onSearch={onSearch}
+      onSearch={debounce(onSearch, 300)}
     />
   );
 };

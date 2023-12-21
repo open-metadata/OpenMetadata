@@ -42,12 +42,15 @@ public class FeedFilter {
         condition1 = addCondition(condition1, condition2);
       }
     }
-    condition1 = addCondition(condition1, resolved == null ? "" : String.format("resolved = %s", resolved));
+    condition1 =
+        addCondition(condition1, resolved == null ? "" : String.format("resolved = %s", resolved));
     if (paginationType != null && includePagination) {
       String paginationCondition =
           paginationType == PaginationType.BEFORE
               ? String.format("updatedAt > %s", Long.parseLong(decodeCursor(before)))
-              : String.format("updatedAt < %s", after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
+              : String.format(
+                  "updatedAt < %s",
+                  after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
       condition1 = addCondition(condition1, paginationCondition);
     }
     return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;

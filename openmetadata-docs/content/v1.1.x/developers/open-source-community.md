@@ -29,6 +29,6 @@ You can watch all of our previous meetings on [YouTube](https://www.youtube.com/
 
 You’ll also find some short feature videos there. Here’s what’s most recent. Take a look!
 
-{% youtube videoId="cZdIobCpI9U" start="0:00" end="58:24" /%}
+{% youtube videoId="cZdIobCpI9U" start="0:00" end="58:24" width="560px" height="315px" /%}
 
-{% youtube videoId="5hA5dr5iVgw" start="0:00" end="54:47" /%}
+{% youtube videoId="5hA5dr5iVgw" start="0:00" end="54:47" width="560px" height="315px" /%}

@@ -443,7 +443,7 @@ const NavBar = ({
             }}
             placement="bottomRight"
             trigger={['click']}>
-            <Row gutter={6}>
+            <Row data-testid="domain-dropdown" gutter={6}>
               <Col className="flex-center">
                 <DomainIcon
                   className="d-flex text-base-color"

@@ -13,14 +13,14 @@
 
 import { Pagination } from 'antd';
 import classNames from 'classnames';
-import { isNumber, isUndefined } from 'lodash';
+import { isNumber } from 'lodash';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../Loader/Loader';
@@ -48,27 +48,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
-      let tDesc = table.description ?? '';
-      const highLightedTexts = highlight?.description || [];
-
-      if (highLightedTexts.length > 0) {
-        const matchTextArr = highLightedTexts.map((val) =>
-          val.replace(/<\/?span(.*?)>/g, '')
-        );
-
-        matchTextArr.forEach((text, i) => {
-          tDesc = tDesc.replace(text, highLightedTexts[i]);
-        });
-      }
-
-      let displayName = getEntityName(table);
-      if (!isUndefined(highlight)) {
-        displayName =
-          highlight?.displayName?.join(' ') ||
-          highlight?.name?.join(' ') ||
-          displayName;
-      }
-
       const matches = highlight
         ? Object.entries(highlight)
             .map((d) => {
@@ -90,7 +69,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];
 
-      const source = { ...table, description: tDesc, displayName };
+      const source = highlightEntityNameAndDescription(table, highlight);
 
       return (
         <div className="m-b-md" key={`tabledatacard${index}`}>

@@ -20,6 +20,7 @@ authenticationConfiguration:
   providerName: "KeyCloak"
   publicKeyUrls:
     - "http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs"
+    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
   authority: "http://localhost:8081/auth/realms/data-sec"
   clientId: "open-metadata"
   callbackUrl: "http://localhost:8585/callback"

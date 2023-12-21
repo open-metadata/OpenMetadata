@@ -48,7 +48,7 @@
               "$ref": "connections/storage/s3Connection.json"
             },
             {
-              "$ref": "connections/storage/adlsConection.json"
+              "$ref": "connections/storage/adlsConnection.json"
             },
             {
               "$ref": "connections/storage/customStorageConnection.json"

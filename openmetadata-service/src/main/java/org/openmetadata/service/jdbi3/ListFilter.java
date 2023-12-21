@@ -51,7 +51,7 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
-    condition = addCondition(condition, getDisabledCondition(tableName));
+    condition = addCondition(condition, getDisabledCondition());
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
@@ -72,7 +72,9 @@ public class ListFilter {
 
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
-    return testFailureStatus == null ? "" : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
+    return testFailureStatus == null
+        ? ""
+        : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
   }
 
   public String getIncludeCondition(String tableName) {
@@ -98,14 +100,17 @@ public class ListFilter {
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
+    return service == null
+        ? ""
+        : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
   }
 
   public String getTestSuiteFQNCondition() {
     String testSuiteName = queryParams.get("testSuite");
     return testSuiteName == null
         ? ""
-        : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
+        : String.format(
+            "fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
   }
 
   private String getDomainCondition() {
@@ -120,7 +125,9 @@ public class ListFilter {
 
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
-    return entityFQN == null ? "" : String.format("entityFQNHash = '%s'", FullyQualifiedName.buildHash(entityFQN));
+    return entityFQN == null
+        ? ""
+        : String.format("entityFQNHash = '%s'", FullyQualifiedName.buildHash(entityFQN));
   }
 
   public String getParentCondition(String tableName) {
@@ -128,25 +135,26 @@ public class ListFilter {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
   }
 
-  public String getDisabledCondition(String tableName) {
-    String disabled = queryParams.get("disabled");
-    return disabled == null ? "" : getDisabledCondition(tableName, disabled);
-  }
-
-  public String getDisabledCondition(String tableName, String disabledStr) {
+  public String getDisabledCondition() {
+    String disabledStr = queryParams.get("disabled");
+    if (disabledStr == null) {
+      return "";
+    }
     boolean disabled = Boolean.parseBoolean(disabledStr);
-    String disabledCondition = "";
-    if (DatasourceConfig.getInstance().isMySQL()) {
+    String disabledCondition;
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       if (disabled) {
         disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";
       } else {
-        disabledCondition = "(JSON_EXTRACT(json, '$.disabled') IS NULL OR JSON_EXTRACT(json, '$.disabled') = FALSE)";
+        disabledCondition =
+            "(JSON_EXTRACT(json, '$.disabled') IS NULL OR JSON_EXTRACT(json, '$.disabled') = FALSE)";
       }
     } else {
       if (disabled) {
         disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
       } else {
-        disabledCondition = "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+        disabledCondition =
+            "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
       }
     }
     return disabledCondition;
@@ -221,9 +229,11 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
+        ? String.format(
+            "fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
         : String.format(
-            "%s.fqnHash LIKE '%s%s%%'", tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
+            "%s.fqnHash LIKE '%s%s%%'",
+            tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
@@ -239,7 +249,8 @@ public class ListFilter {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
           ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)", inCondition)
+              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+              inCondition)
           : String.format(
               "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
               tableName, inCondition);
@@ -250,7 +261,9 @@ public class ListFilter {
   }
 
   private String getInConditionFromString(String condition) {
-    return Arrays.stream(condition.split(",")).map(s -> String.format("'%s'", s)).collect(Collectors.joining(","));
+    return Arrays.stream(condition.split(","))
+        .map(s -> String.format("'%s'", s))
+        .collect(Collectors.joining(","));
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {

@@ -34,7 +34,8 @@ public class Migration extends MigrationProcessImpl {
     removeDuplicateTestCases(collectionDAO, handle, getSql);
 
     String updateSql = "UPDATE test_suite SET json = :json, fqnHash = :fqnHash WHERE id = :id";
-    String resultListSql = "select json from test_suite  where JSON_EXTRACT(json, '$.executable') = true";
+    String resultListSql =
+        "select json from test_suite  where JSON_EXTRACT(json, '$.executable') = true";
     runTestSuiteMigration(collectionDAO, handle, getSql, updateSql, resultListSql);
   }
 }

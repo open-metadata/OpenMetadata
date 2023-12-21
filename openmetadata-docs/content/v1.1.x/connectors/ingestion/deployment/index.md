@@ -62,15 +62,15 @@ While the endpoints are directly defined in the `IngestionPipelineResource`, the
 that decouples how OpenMetadata communicates with the Orchestrator, as different external systems will need different
 calls and data to be sent.
 
-- You can find the `PipelineServiceClient` abstraction [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/util/PipelineServiceClient.java),
-- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/airflow/AirflowRESTClient.java).
+- You can find the `PipelineServiceClient` abstraction [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/java/org/openmetadata/sdk/PipelineServiceClient.java),
+- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/airflow/AirflowRESTClient.java).
 
 The clients that implement the abstractions from the `PipelineServiceClient` are merely a translation layer between the
 information received in the shape of an `IngestionPipeline` Entity, and the specific requirements of each Orchestrator.
 
 After creating a new workflow from the UI or when editing it, there are two calls happening:
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
-- `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
+- `/deploy` HTTP call to the `IngestionPipelineResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
 {% image
   src="/images/v1.1/features/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"

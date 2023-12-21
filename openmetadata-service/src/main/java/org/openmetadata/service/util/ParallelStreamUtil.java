@@ -45,7 +45,8 @@ public final class ParallelStreamUtil {
     }
   }
 
-  public static <T> T executeWithTimeout(int timeoutInSeconds, Supplier<T> supplier, Executor executor) {
+  public static <T> T executeWithTimeout(
+      int timeoutInSeconds, Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     LOG.debug("execute start");
 
@@ -92,8 +93,8 @@ public final class ParallelStreamUtil {
   private static void handleExecutionException(ExecutionException e) {
     Throwable t = e.getCause();
     if (t != null) {
-      if (t instanceof RuntimeException) {
-        throw (RuntimeException) t;
+      if (t instanceof RuntimeException runtimeException) {
+        throw runtimeException;
       } else {
         throw new RuntimeException(t);
       }

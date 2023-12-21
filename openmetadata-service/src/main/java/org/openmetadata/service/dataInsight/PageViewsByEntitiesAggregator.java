@@ -5,10 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
 
-public abstract class PageViewsByEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public PageViewsByEntitiesAggregator(A aggregations) {
+  protected PageViewsByEntitiesAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

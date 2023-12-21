@@ -51,6 +51,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -58,6 +59,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
     PatchRequest,
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -167,8 +169,17 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             source=record.original_entity,
             destination=record.new_entity,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
         )
         return Either(right=entity)
+
+    @_run_dispatch.register
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
+        """
+        Create or update the custom properties
+        """
+        custom_property = self.metadata.create_or_update_custom_property(record)
+        return Either(right=custom_property)
 
     @_run_dispatch.register
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:

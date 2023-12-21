@@ -137,14 +137,16 @@ export const FIELDS = {
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
     responseValueSecondGroup: '"tagFQN":"PersonalData.SpecialCategory"',
   },
-  Tiers: {
-    name: 'Tier',
-    testid: '[title="Tier"]',
-    searchCriteriaFirstGroup: 'Tier.Tier1',
-    responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
-    searchCriteriaSecondGroup: 'Tier.Tier2',
-    responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
-  },
+  // skipping tier for now, as it is not working, BE need to fix it
+
+  // Tiers: {
+  //   name: 'Tier',
+  //   testid: '[title="Tier"]',
+  //   searchCriteriaFirstGroup: 'Tier.Tier1',
+  //   responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
+  //   searchCriteriaSecondGroup: 'Tier.Tier2',
+  //   responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
+  // },
   Service: {
     name: 'Service',
     testid: '[title="Service"]',

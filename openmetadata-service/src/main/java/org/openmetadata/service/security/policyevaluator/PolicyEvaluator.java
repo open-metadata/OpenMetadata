@@ -75,13 +75,17 @@ public class PolicyEvaluator {
   }
 
   private static void evaluateDenySubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, true);
   }
 
   private static void evaluateAllowSubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, false);
   }
@@ -120,7 +124,11 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        LOG.debug(
+            "evaluating {}:{}:{}\n",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
@@ -134,7 +142,11 @@ public class PolicyEvaluator {
     while (policyIterator.hasNext()) {
       PolicyContext policyContext = policyIterator.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        LOG.debug("Evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        LOG.debug(
+            "Evaluating {}:{}:{}\n",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
@@ -142,16 +154,22 @@ public class PolicyEvaluator {
   }
 
   /** Returns a list of operations that a user can perform on the given resource/entity type */
-  public static ResourcePermission getPermission(@NonNull SubjectContext subjectContext, String resourceType) {
+  public static ResourcePermission getPermission(
+      @NonNull SubjectContext subjectContext, String resourceType) {
     // Initialize all permissions to NOT_ALLOW
     ResourcePermission resourcePermission = getResourcePermission(resourceType, Access.NOT_ALLOW);
 
-    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or
+    // CONDITIONAL_ALLOW
     Iterator<PolicyContext> policies = subjectContext.getPolicies(null);
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        LOG.debug(
+            "evaluating {}:{}:{}\n",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
         rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
@@ -161,14 +179,20 @@ public class PolicyEvaluator {
   public static ResourcePermission getPermission(
       @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     // Initialize all permissions to NOT_ALLOW
-    ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
+    ResourcePermission resourcePermission =
+        getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
 
-    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or
+    // CONDITIONAL_ALLOW
     Iterator<PolicyContext> policies = subjectContext.getPolicies(resourceContext.getOwner());
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        LOG.debug(
+            "evaluating {}:{}:{}\n",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
         rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
@@ -221,8 +245,7 @@ public class PolicyEvaluator {
       if ((p.getOperation().equals(MetadataOperation.VIEW_ALL)
           && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY)))) {
         viewAllPermission = true;
-      }
-      if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
+      } else if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
           && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))) {
         editAllPermission = true;
       }
@@ -247,7 +270,8 @@ public class PolicyEvaluator {
     return resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
   }
 
-  public static List<ResourcePermission> trimResourcePermissions(List<ResourcePermission> resourcePermissions) {
+  public static List<ResourcePermission> trimResourcePermissions(
+      List<ResourcePermission> resourcePermissions) {
     for (ResourcePermission resourcePermission : resourcePermissions) {
       trimResourcePermission(resourcePermission);
     }

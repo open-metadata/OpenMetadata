@@ -64,7 +64,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
         const querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
         }*query_filter=*should*${filter.key}*${encodeURI(
-          filter.selectOption1
+          Cypress._.toLower(filter.selectOption1)
         )}*`;
 
         interceptURL('GET', querySearchURL, 'querySearchAPI');

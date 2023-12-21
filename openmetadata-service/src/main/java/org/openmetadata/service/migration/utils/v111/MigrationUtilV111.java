@@ -27,7 +27,8 @@ public class MigrationUtilV111 {
     /* Cannot create object  util class*/
   }
 
-  public static void removeDuplicateTestCases(CollectionDAO collectionDAO, Handle handle, String getSql) {
+  public static void removeDuplicateTestCases(
+      CollectionDAO collectionDAO, Handle handle, String getSql) {
     List<Map<String, Object>> resultList = handle.createQuery(getSql).mapToMap().list();
     Map<String, String> resultMap = new HashMap<>();
     for (Map<String, Object> idMap : resultList) {
@@ -43,19 +44,26 @@ public class MigrationUtilV111 {
 
           // Get all the relationship of id1
           List<CollectionDAO.EntityRelationshipRecord> records =
-              collectionDAO.relationshipDAO().findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
+              collectionDAO
+                  .relationshipDAO()
+                  .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
 
           List<CollectionDAO.EntityRelationshipRecord> ingestionRecords =
               collectionDAO
                   .relationshipDAO()
                   .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
 
-          for (CollectionDAO.EntityRelationshipRecord record : records) {
-            UUID toId = record.getId();
+          for (CollectionDAO.EntityRelationshipRecord relationRecord : records) {
+            UUID toId = relationRecord.getId();
             // Store the relationship to be with id2 so that the test Cases are not lost
             collectionDAO
                 .relationshipDAO()
-                .insert(UUID.fromString(v), toId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal());
+                .insert(
+                    UUID.fromString(v),
+                    toId,
+                    TEST_SUITE,
+                    TEST_CASE,
+                    Relationship.CONTAINS.ordinal());
           }
 
           // Delete Test Suite
@@ -67,9 +75,9 @@ public class MigrationUtilV111 {
             // maybe already deleted
           }
 
-          for (CollectionDAO.EntityRelationshipRecord record : ingestionRecords) {
+          for (CollectionDAO.EntityRelationshipRecord relationshipRecord : ingestionRecords) {
             try {
-              UUID toId = record.getId();
+              UUID toId = relationshipRecord.getId();
               collectionDAO.ingestionPipelineDAO().delete(toId);
               collectionDAO.relationshipDAO().deleteAllWithId(toId);
             } catch (Exception ex) {
@@ -80,37 +88,43 @@ public class MigrationUtilV111 {
   }
 
   public static void runTestSuiteMigration(
-      CollectionDAO collectionDAO, Handle handle, String getSql, String updateSql, String resultListSql) {
+      CollectionDAO collectionDAO,
+      Handle handle,
+      String getSql,
+      String updateSql,
+      String resultListSql) {
     List<Map<String, Object>> resultList = handle.createQuery(resultListSql).mapToMap().list();
     for (Map<String, Object> row : resultList) {
-      if (row.containsKey("json")) {
-        TestSuite suite = null;
-        if (row.get("json") instanceof String) {
-          suite = JsonUtils.readValue((String) row.get("json"), TestSuite.class);
-        } else if (row.get("json") instanceof PGobject) {
-          suite = JsonUtils.readValue(((PGobject) row.get("json")).getValue(), TestSuite.class);
-        }
-        // Only Test Suite which are executable needs to be updated
-        if (Boolean.TRUE.equals(suite.getExecutable())) {
-          if (suite.getExecutableEntityReference() != null) {
+      Object json = row.get("json");
+      if (json == null) {
+        continue;
+      }
+      TestSuite suite = null;
+      if (json instanceof String str) {
+        suite = JsonUtils.readValue(str, TestSuite.class);
+      } else if (json instanceof PGobject pgObject) {
+        suite = JsonUtils.readValue(pgObject.getValue(), TestSuite.class);
+      }
+      // Only Test Suite which are executable needs to be updated
+      if (Boolean.TRUE.equals(suite.getExecutable())) {
+        if (suite.getExecutableEntityReference() != null) {
+          updateTestSuite(handle, suite, updateSql);
+        } else {
+          String entityName = StringUtils.replaceOnce(suite.getDisplayName(), ".testSuite", "");
+          try {
+            Table table = collectionDAO.tableDAO().findEntityByName(entityName, Include.ALL);
+            // Update Test Suite
+            suite.setExecutable(true);
+            suite.setExecutableEntityReference(table.getEntityReference());
             updateTestSuite(handle, suite, updateSql);
-          } else {
-            String entityName = StringUtils.replaceOnce(suite.getDisplayName(), ".testSuite", "");
+            removeDuplicateTestCases(collectionDAO, handle, getSql);
+          } catch (Exception ex) {
             try {
-              Table table = collectionDAO.tableDAO().findEntityByName(entityName, Include.ALL);
-              // Update Test Suite
-              suite.setExecutable(true);
-              suite.setExecutableEntityReference(table.getEntityReference());
-              updateTestSuite(handle, suite, updateSql);
-              removeDuplicateTestCases(collectionDAO, handle, getSql);
-            } catch (Exception ex) {
-              try {
-                collectionDAO.testSuiteDAO().delete(suite.getId());
-                // Delete Relationship
-                collectionDAO.relationshipDAO().deleteAllWithId(suite.getId());
-              } catch (Exception ex1) {
-                // Ignore
-              }
+              collectionDAO.testSuiteDAO().delete(suite.getId());
+              // Delete Relationship
+              collectionDAO.relationshipDAO().deleteAllWithId(suite.getId());
+            } catch (Exception ex1) {
+              // Ignore
             }
           }
         }
@@ -124,7 +138,8 @@ public class MigrationUtilV111 {
         EntityReference executableEntityRef = suite.getExecutableEntityReference();
         // Run new Migrations
         suite.setName(String.format("%s.testSuite", executableEntityRef.getName()));
-        suite.setFullyQualifiedName(String.format("%s.testSuite", executableEntityRef.getFullyQualifiedName()));
+        suite.setFullyQualifiedName(
+            String.format("%s.testSuite", executableEntityRef.getFullyQualifiedName()));
         int result =
             handle
                 .createUpdate(updateSql)

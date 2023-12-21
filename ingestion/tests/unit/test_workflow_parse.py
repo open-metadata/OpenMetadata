@@ -153,7 +153,8 @@ class TestWorkflowParse(TestCase):
                 "loggerLevel": "WARN",
                 "openMetadataServerConfig": {
                     "hostPort": "http://localhost:8585/api",
-                    "authProvider": "no-auth",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
                 },
             },
         }

@@ -95,7 +95,8 @@ public interface ElasticSearchApi extends ApiClient.Api {
   @Headers({
     "Accept: application/json",
   })
-  Response getAggregateFieldsWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
+  Response getAggregateFieldsWithHttpInfo(
+      @QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
    * A convenience class for generating query parameters for the <code>getAggregateFields</code> method in a fluent
@@ -251,7 +252,8 @@ public interface ElasticSearchApi extends ApiClient.Api {
   @Headers({
     "Accept: application/json",
   })
-  Response getSuggestedEntitiesWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
+  Response getSuggestedEntitiesWithHttpInfo(
+      @QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
    * A convenience class for generating query parameters for the <code>getSuggestedEntities</code> method in a fluent
@@ -476,7 +478,8 @@ public interface ElasticSearchApi extends ApiClient.Api {
   @Headers({
     "Accept: application/json",
   })
-  Response searchEntitiesWithQueryWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
+  Response searchEntitiesWithQueryWithHttpInfo(
+      @QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
    * A convenience class for generating query parameters for the <code>searchEntitiesWithQuery</code> method in a fluent
