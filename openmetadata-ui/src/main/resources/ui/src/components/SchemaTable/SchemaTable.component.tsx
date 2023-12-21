@@ -85,7 +85,7 @@ const SchemaTable = ({
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [topicPermissions, setTopicPermissions] =
+  const [tablePermissions, setTablePermissions] =
     useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
 
@@ -103,7 +103,7 @@ const SchemaTable = ({
         ResourceEntity.TABLE,
         entityFqn
       );
-      setTopicPermissions(permissions);
+      setTablePermissions(permissions);
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -364,8 +364,8 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              {(topicPermissions?.EditAll ||
-                topicPermissions?.EditDisplayName) && (
+              {(tablePermissions?.EditAll ||
+                tablePermissions?.EditDisplayName) && (
                 <Icon
                   className="hover-cell-icon text-left m-t-xss"
                   component={IconEdit}
