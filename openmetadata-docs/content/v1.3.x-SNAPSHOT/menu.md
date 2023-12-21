@@ -185,6 +185,8 @@ site_menu:
     url: /deployment/upgrade/versions
   - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
     url: /deployment/upgrade/versions/100-to-110
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
+    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
@@ -1402,8 +1404,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/search/opensearchconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / ServiceConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/serviceconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / AdlsConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / adlsConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsConnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / CustomStorageConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/customstorageconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / GcsConnection
