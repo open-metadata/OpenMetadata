@@ -37,6 +37,7 @@ import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
+  TABS_SEARCH_INDEXES,
 } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -340,8 +341,9 @@ const ExplorePageV1: FunctionComponent = () => {
       }).then((res) => {
         const buckets = res.aggregations[`index_count`].buckets;
         const counts: Record<string, number> = {};
+
         buckets.forEach((item) => {
-          if (item) {
+          if (item && TABS_SEARCH_INDEXES.includes(item.key)) {
             counts[item.key ?? ''] = item.doc_count;
           }
         });

@@ -55,7 +55,7 @@ public class PasswordUtil {
     PasswordData password = new PasswordData(pwd);
     RuleResult result = VALIDATOR.validate(password);
     if (!result.isValid()) {
-      throw new RuntimeException(PASSWORD_INVALID_FORMAT);
+      throw new IllegalArgumentException(PASSWORD_INVALID_FORMAT);
     }
   }
 
