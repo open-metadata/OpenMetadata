@@ -146,3 +146,18 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
 export const ALL_EXPLORE_SEARCH_INDEX =
   // eslint-disable-next-line max-len
   `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX},${SearchIndex.DATA_PRODUCT}` as SearchIndex;
+
+export const TABS_SEARCH_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+  SearchIndex.TAG,
+  SearchIndex.DATA_PRODUCT,
+];
