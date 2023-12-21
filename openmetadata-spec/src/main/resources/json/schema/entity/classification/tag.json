@@ -6,14 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Tag",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "tagName": {
-      "description": "Name of the tag.",
-      "type": "string",
-      "minLength": 2,
-      "maxLength": 64,
-      "pattern": "(?U)^[\\w'\\- .&()]+$"
-    }
+"definitions": {
   },
   "properties": {
     "id": {
@@ -22,7 +15,7 @@
     },
     "name": {
       "description": "Name of the tag.",
-      "$ref": "#/definitions/tagName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag.",
