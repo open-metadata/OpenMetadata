@@ -109,12 +109,12 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        className: 'glossary-name-column',
+        className: 'glossary-name-column w-max-400',
         render: (_, record) => {
           const name = getEntityName(record);
 
           return (
-            <div className="d-inline-flex items-center w-max-400">
+            <div className="d-inline-flex items-center w-max-90">
               {record.style?.iconURL && (
                 <img
                   className="m-r-xss"
