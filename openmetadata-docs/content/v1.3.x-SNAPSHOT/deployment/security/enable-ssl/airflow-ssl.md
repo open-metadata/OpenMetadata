@@ -118,6 +118,45 @@ pipelineServiceClientConfiguration:
 Update the `truststorePath` and `truststorePassword` accordingly, pointing to the `keystore` in your server host
 holding the certificates we created.
 
+For docker deployments, you will provide OpenMetadata Server Application with the self signed certificates of Airflow bundled in JVM keystore.
+These will be passed to the application using `AIRFLOW_TRUST_STORE_PATH` and `AIRFLOW_TRUST_STORE_PASSWORD` environment variable.
+
+```
+AIRFLOW_TRUST_STORE_PATH="<path/to/truststore.jks>"
+AIRFLOW_TRUST_STORE_PASSWORD="<JVM_TRUSTSTORE_PASSWORD>"
+```
+Please make sure to have the the truststore file mounted and available as part of Docker Deployments.
+
+For kubernetes deployments, update the helm values as below -
+
+```yaml
+extraEnvs:
+- name: AIRFLOW_TRUST_STORE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: truststore-password-secret
+      key: password
+- name: AIRFLOW_TRUST_STORE_PATH
+  value: "/etc/openmetadata/certs/truststore.jks>"
+extraVolumes:
+- name: jks-vol
+  secret:
+    secretName: jks-certs
+extraVolumeMounts:
+- name: jks-vol
+  mountPath: /etc/openmetadata/certs
+  readOnly: true
+```
+
+In the above code snippet, we are mounting the volumes of truststore file from a kubernetes secret. You can create the secret from `truststore.jks` file from the below `kubectl` command -
+
+```bash
+kubectl create secret generic jks-certs --from-file truststore.jks --namespace <NAMESPACE_NAME>
+kubectl create secret generic truststore-password-secret --from-literal password=<YOUR_TRUSTSTORE_PASSWORD> --namespace <NAMESPACE_NAME>
+```
+
+Next, restart or redeploy openmetadata application to take the above configs in effect.
+
 ### Example: Setting it locally
 
 For example, if we are running the server locally, we need to add the certificate to the JVM `cacerts` store:
