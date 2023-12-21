@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { isEmpty } from 'lodash';
 import {
   addOwner,
   addTier,
@@ -110,7 +111,7 @@ describe('Version page tests for data assets', () => {
           cy.login();
         });
 
-        it(`${entityType} version page should show description and tag changes properly`, () => {
+        it(`${entityType} version page should show description, tag and child field name changes properly`, () => {
           visitEntityDetailsVersionPage(
             entityDetails,
             entityId,
@@ -133,6 +134,13 @@ describe('Version page tests for data assets', () => {
           )
             .scrollIntoView()
             .should('be.visible');
+
+          // Check if child field names are displayed properly on version page
+          if (!isEmpty(entityDetails.childFieldNameToCheck)) {
+            cy.get(
+              `[${entityDetails.childSelector}="${entityDetails.childFieldNameToCheck}"]`
+            ).should('contain', entityDetails.childFieldNameToCheck);
+          }
 
           if (entityDetails.isChildrenExist) {
             cy.get(
@@ -158,6 +166,60 @@ describe('Version page tests for data assets', () => {
               .should('be.visible');
           }
         });
+
+        if (entityType === 'Table') {
+          it(`${entityType} version page should show column display name changes properly`, () => {
+            visitEntityDetailsPage({
+              term: entityDetails.name,
+              serviceName: entityDetails.serviceName,
+              entity: entityDetails.entity,
+            });
+
+            cy.get('[data-testid="version-button"]').as('versionButton');
+
+            cy.get('@versionButton').contains('0.2');
+
+            cy.get(
+              `[data-row-key$="${entityDetails.childFieldNameToCheck}"] [data-testid="edit-displayName-button"]`
+            ).click({ waitForAnimations: true });
+
+            cy.get('#displayName')
+              .clear()
+              .type(entityDetails.columnDisplayNameToUpdate);
+
+            interceptURL('PATCH', `/api/v1/tables/*`, `updateColumnName`);
+
+            cy.get('.ant-modal-footer [data-testid="save-button"]').click();
+
+            verifyResponseStatusCode(`@updateColumnName`, 200);
+
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+              `get${entityType}Details`
+            );
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+              'getVersionsList'
+            );
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/${entityId}/versions/0.2`,
+              'getSelectedVersionDetails'
+            );
+
+            cy.get('@versionButton').contains('0.2').click();
+
+            verifyResponseStatusCode(`@get${entityType}Details`, 200);
+            verifyResponseStatusCode('@getVersionsList', 200);
+            verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+            cy.get(
+              `[data-row-key$="${entityDetails.childFieldNameToCheck}"] [data-testid="diff-added"]`
+            ).should('contain', entityDetails.columnDisplayNameToUpdate);
+          });
+        }
 
         it(`${entityType} version page should show owner changes properly`, () => {
           visitEntityDetailsPage({

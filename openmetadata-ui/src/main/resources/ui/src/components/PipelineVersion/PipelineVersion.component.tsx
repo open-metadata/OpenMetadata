@@ -32,6 +32,7 @@ import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription, Task } from '../../generated/entity/data/pipeline';
 import { TagSource } from '../../generated/type/schema';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -104,11 +105,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.task-entity', {
           entity: t('label.column-plural'),
         }),
-        dataIndex: 'displayName',
-        key: 'displayName',
+        dataIndex: 'name',
+        key: 'name',
         width: 250,
-        render: (displayName) => (
-          <RichTextEditorPreviewer markdown={displayName} />
+        render: (_, record) => (
+          <RichTextEditorPreviewer markdown={getEntityName(record)} />
         ),
       },
       {

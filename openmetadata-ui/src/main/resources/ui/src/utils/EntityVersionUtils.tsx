@@ -59,6 +59,7 @@ import {
 } from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs, getEntityName } from './EntityUtils';
 import {
+  AssetsChildForVersionPages,
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
@@ -428,9 +429,7 @@ export const removeDuplicateTags = (a: TagLabel[], b: TagLabel[]): TagLabel[] =>
     (item) => !b.map((secondItem) => secondItem.tagFQN).includes(item.tagFQN)
   );
 
-export function getEntityDescriptionDiff<
-  A extends TableColumn | ContainerColumn | Field
->(
+export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   entityDiff: EntityDiffProps,
   changedEntityName?: string,
   entityList: A[] = []
@@ -445,6 +444,35 @@ export function getEntityDescriptionDiff<
           oldDescription ?? '',
           newDescription ?? '',
           i.description
+        );
+      } else {
+        formatEntityData(i?.children as Array<A>);
+      }
+    });
+  };
+
+  formatEntityData(entityList);
+
+  return entityList;
+}
+
+export function getEntityDisplayNameDiff<
+  A extends TableColumn | ContainerColumn | Field
+>(
+  entityDiff: EntityDiffProps,
+  changedEntityName?: string,
+  entityList: A[] = []
+) {
+  const oldDisplayName = getChangedEntityOldValue(entityDiff);
+  const newDisplayName = getChangedEntityNewValue(entityDiff);
+
+  const formatEntityData = (arr: Array<A>) => {
+    arr?.forEach((i) => {
+      if (isEqual(i.name, changedEntityName)) {
+        i.displayName = getTextDiff(
+          oldDisplayName ?? '',
+          newDisplayName ?? '',
+          i.displayName
         );
       } else {
         formatEntityData(i?.children as Array<A>);
@@ -621,26 +649,31 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
 ) {
-  const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+  try {
+    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
 
-  newCol.forEach((col) => {
-    const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, col.name) || updateAll) {
-          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', i.description ?? '');
-          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', i.name);
-          if (!isEmpty(i.children)) {
-            formatColumnData(i?.children as Array<A>, true);
+    newCol.forEach((col) => {
+      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, col.name) || updateAll) {
+            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getTextDiff('', i.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', i.name);
+            if (!isEmpty(i.children)) {
+              formatColumnData(i?.children as Array<A>, true);
+            }
+          } else {
+            formatColumnData(i?.children as Array<A>);
           }
-        } else {
-          formatColumnData(i?.children as Array<A>);
-        }
-      });
-    };
-    formatColumnData(colList);
-  });
+        });
+      };
+      formatColumnData(colList);
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+  }
 }
 
 export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -648,27 +681,32 @@ export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
   colList: A[] = [],
   changedEntity = ''
 ) {
-  const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-  const newColumns = getNewColumnFromColDiff(newCol);
+  try {
+    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
+    const newColumns = getNewColumnFromColDiff(newCol);
 
-  const insertNewColumn = (
-    changedEntityField: string,
-    colArray: Array<TableColumn | ContainerColumn>
-  ) => {
-    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
-    if (isEmpty(changedEntityField)) {
-      const nonExistingColumns = newColumns.filter((newColumn) =>
-        isUndefined(colArray.find((col) => col.name === newColumn.name))
-      );
-      colArray.unshift(...nonExistingColumns);
-    } else {
-      const parentField = fieldsArray.shift();
-      const arr = colArray.find((col) => col.name === parentField)?.children;
+    const insertNewColumn = (
+      changedEntityField: string,
+      colArray: Array<TableColumn | ContainerColumn>
+    ) => {
+      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+      if (isEmpty(changedEntityField)) {
+        const nonExistingColumns = newColumns.filter((newColumn) =>
+          isUndefined(colArray.find((col) => col.name === newColumn.name))
+        );
+        colArray.unshift(...nonExistingColumns);
+      } else {
+        const parentField = fieldsArray.shift();
+        const arr = colArray.find((col) => col.name === parentField)?.children;
 
-      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
-    }
-  };
-  insertNewColumn(changedEntity, colList);
+        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+      }
+    };
+    insertNewColumn(changedEntity, colList);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+  }
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -756,6 +794,10 @@ export function getColumnsDataWithVersionChanges<
     } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
       newColumnsList = [
         ...getEntityTagDiff(columnDiff, changedColName, colList),
+      ];
+    } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityDisplayNameDiff(columnDiff, changedColName, colList),
       ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName

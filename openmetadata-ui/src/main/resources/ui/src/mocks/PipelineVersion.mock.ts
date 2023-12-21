@@ -78,7 +78,6 @@ export const mockPipelineData = {
   tasks: [
     {
       name: 'snowflake_task',
-      displayName: 'Snowflake Task',
       fullyQualifiedName: 'sample_airflow.snowflake_etl.snowflake_task',
       sourceUrl:
         'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
