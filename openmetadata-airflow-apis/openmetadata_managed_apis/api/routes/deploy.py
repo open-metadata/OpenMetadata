@@ -20,9 +20,7 @@ from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
+from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 
 logger = routes_logger()
 
@@ -61,7 +59,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error=f"Did not receive any JSON request to deploy",
                 )
 
-            ingestion_pipeline = IngestionPipeline.parse_obj(json_request)
+            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(
+                json_request
+            )
 
             deployer = DagDeployer(ingestion_pipeline)
             response = deployer.deploy()

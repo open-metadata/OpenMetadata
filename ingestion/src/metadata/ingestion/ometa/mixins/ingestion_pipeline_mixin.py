@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineStatus,
 )
+from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -79,7 +80,7 @@ class OMetaIngestionPipelineMixin:
             f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
         )
 
-        return IngestionPipeline.parse_obj(resp)
+        return parse_ingestion_pipeline_config_gracefully(resp)
 
     def get_pipeline_status_between_ts(
         self,
@@ -125,6 +126,6 @@ class OMetaIngestionPipelineMixin:
         )
 
         if hasattr(resp, "sourceConfig"):
-            return IngestionPipeline.parse_obj(resp)
+            return parse_ingestion_pipeline_config_gracefully(resp)
 
         return None
