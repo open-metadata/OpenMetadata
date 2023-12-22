@@ -14,13 +14,6 @@ Test status callback
 from datetime import datetime, timezone
 from unittest import TestCase
 
-from integration.integration_base import (
-    generate_name,
-    get_create_entity,
-    get_create_service,
-    get_test_dag,
-    int_admin_ometa,
-)
 from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.status import add_status, get_dag_status
@@ -30,6 +23,14 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+
+from ..integration_base import (
+    generate_name,
+    get_create_entity,
+    get_create_service,
+    get_test_dag,
+    int_admin_ometa,
+)
 
 
 class MockDagRun(BaseModel):

@@ -20,7 +20,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
-from integration.integration_base import int_admin_ometa
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -66,6 +65,8 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQu
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
+
+from ..integration_base import int_admin_ometa
 
 BAD_RESPONSE = {
     "data": [
