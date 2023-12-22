@@ -505,7 +505,7 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="items-center inline">
+        <div className="items-center inline-flex">
           {isDraggable && (
             <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
           )}
