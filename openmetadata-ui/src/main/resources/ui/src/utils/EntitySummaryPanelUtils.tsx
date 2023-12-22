@@ -305,8 +305,7 @@ export const getFormattedEntityData = (
           children: getFormattedEntityData(
             entityType,
             (listItem as Column | Field).children,
-            highlights,
-            tableConstraints
+            highlights
           ),
         };
 
