@@ -17,7 +17,6 @@ from unittest.mock import patch
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from integration.integration_base import int_admin_ometa
 
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -45,6 +44,8 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     OMEntity,
     get_xlets_from_dag,
 )
+
+from ..integration_base import int_admin_ometa
 
 SLEEP = "sleep 1"
 PIPELINE_SERVICE_NAME = "test-lineage-runner"
