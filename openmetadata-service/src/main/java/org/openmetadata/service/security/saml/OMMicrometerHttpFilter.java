@@ -12,8 +12,8 @@
  */
 package org.openmetadata.service.security.saml;
 
+import static org.openmetadata.service.util.MicrometerBundleSingleton.getWebAnalyticEvents;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
-import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
@@ -62,7 +62,7 @@ public class OMMicrometerHttpFilter implements Filter {
     MicrometerBundle.httpRequests
         .labels(requestMethod, responseStatus, requestPath)
         .observe(elapsed);
-    timer.stop(webAnalyticEvents);
+    timer.stop(getWebAnalyticEvents());
   }
 
   @Override

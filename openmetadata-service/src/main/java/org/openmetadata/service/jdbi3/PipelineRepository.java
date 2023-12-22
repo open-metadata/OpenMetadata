@@ -148,7 +148,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(
+        getLatestExtensionFromTimeSeries(
             pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
