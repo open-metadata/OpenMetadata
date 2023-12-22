@@ -38,7 +38,12 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
 
 jest.mock(
   '../../components/common/RichTextEditor/RichTextEditorPreviewer',
-  () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ markdown }) => (
+        <div data-testid="rich-text-editor-previewer">{markdown}</div>
+      ))
 );
 
 jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
@@ -154,5 +159,17 @@ describe('PipelineVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/pipeline/sample_airflow.snowflake_etl/versions/0.3/custom_properties'
     );
+  });
+
+  it('Should show task name if no displayName is present', async () => {
+    await act(async () => {
+      render(<PipelineVersion {...pipelineVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const taskWithoutDisplayName = screen.getByText('snowflake_task');
+
+    expect(taskWithoutDisplayName).toBeInTheDocument();
   });
 });

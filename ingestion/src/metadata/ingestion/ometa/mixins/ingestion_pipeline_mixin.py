@@ -14,12 +14,13 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineStatus,
 )
+from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -69,6 +70,18 @@ class OMetaIngestionPipelineMixin:
             return PipelineStatus(**resp)
         return None
 
+    def run_pipeline(self, ingestion_pipeline_id: str) -> IngestionPipeline:
+        """Run ingestion pipeline workflow
+
+        Args:
+            ingestion_pipeline_id (str): ingestion pipeline uuid
+        """
+        resp = self.client.post(
+            f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
+        )
+
+        return parse_ingestion_pipeline_config_gracefully(resp)
+
     def get_pipeline_status_between_ts(
         self,
         ingestion_pipeline_fqn: str,
@@ -92,4 +105,27 @@ class OMetaIngestionPipelineMixin:
 
         if resp:
             return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
+        return None
+
+    def get_ingestion_pipeline_by_name(
+        self,
+        fields: Optional[List[str]] = None,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Optional[IngestionPipeline]:
+        """
+        Get ingestion pipeline statues based on name
+
+        Args:
+            name (str): Ingestion Pipeline Name
+            fields (List[str]): List of all the fields
+        """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        resp = self.client.get(
+            f"{self.get_suffix(IngestionPipeline)}{fields_str}",
+            data=params,
+        )
+
+        if hasattr(resp, "sourceConfig"):
+            return parse_ingestion_pipeline_config_gracefully(resp)
+
         return None

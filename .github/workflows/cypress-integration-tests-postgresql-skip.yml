@@ -14,7 +14,7 @@ name: PostgreSQL Cypress Integration Tests
 on:
   schedule:
     - cron: '30 0 * * *'
-  pull_request:
+  pull_request_target:
     types:
       - labeled
       - opened
