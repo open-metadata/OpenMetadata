@@ -30,12 +30,10 @@ import {
   mockHighlights,
   mockInvalidDataResponse,
   mockLinkBasedSummaryTitleResponse,
-  mockListItemForLinkBasedTitle,
-  mockListItemForTextBasedTitle,
+  mockListItemNameHighlight,
   mockTagFQNsForHighlight,
-  mockTagsDataAfterSortAndHighlight,
-  mockTagsDataBeforeSortAndHighlight,
   mockTextBasedSummaryTitleResponse,
+  TagsSortAndHighlightResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
 
 jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
@@ -44,32 +42,28 @@ jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
     'columns.name',
     'columns.description',
     'columns.children.name',
-    'tag.name',
   ],
 }));
 
 describe('EntitySummaryPanelUtils tests', () => {
   describe('getFormattedEntityData', () => {
-    it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
-      const highlights = {
-        'tag.name': ['PersonalData.SpecialCategory'],
-      };
+    it('getFormattedEntityData should return formatted data properly for table columns data with nesting, and also sort the data based on highlights', () => {
       const resultFormattedData = getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        mockEntityDataWithoutNesting,
-        highlights
-      );
-
-      expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);
-    });
-
-    it('getFormattedEntityData should return formatted data properly for topic fields data with nesting', () => {
-      const resultFormattedData = getFormattedEntityData(
-        SummaryEntityType.COLUMN,
-        mockEntityDataWithNesting
+        mockEntityDataWithNesting,
+        mockHighlights
       );
 
       expect(resultFormattedData).toEqual(mockEntityDataWithNestingResponse);
+    });
+
+    it('getFormattedEntityData should return formatted data properly for pipeline data without nesting', () => {
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.TASK,
+        mockEntityDataWithoutNesting
+      );
+
+      expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);
     });
 
     it('getFormattedEntityData should return empty array in case entityType is given other than from type SummaryEntityType', () => {
@@ -92,20 +86,20 @@ describe('EntitySummaryPanelUtils tests', () => {
   });
 
   describe('getSortedTagsWithHighlight', () => {
-    it('getSortedTagsWithHighligh should return the sorted and highlighted tags data based on given tagFQN array', () => {
+    it('getSortedTagsWithHighlight should return the sorted and highlighted tags data based on given tagFQN array', () => {
       const sortedTags = getSortedTagsWithHighlight({
         sortTagsBasedOnGivenTagFQNs: mockTagFQNsForHighlight,
-        tags: mockTagsDataBeforeSortAndHighlight,
+        tags: mockEntityDataWithNesting[2].tags,
       });
 
-      expect(sortedTags).toEqual(mockTagsDataAfterSortAndHighlight);
+      expect(sortedTags).toEqual(TagsSortAndHighlightResponse);
     });
   });
 
   describe('getSummaryListItemType', () => {
     it('getSummaryListItemType should return the summary item type based on given entityType', () => {
       const summaryItemType = getSummaryListItemType(
-        SummaryEntityType.COLUMN,
+        SummaryEntityType.TASK,
         mockEntityDataWithoutNesting[0]
       );
 
@@ -116,15 +110,15 @@ describe('EntitySummaryPanelUtils tests', () => {
   describe('getTitle', () => {
     it('getTitle should return title as text if sourceUrl not present in listItem and also apply highlight if present', () => {
       const textBasedTitle = getTitle(
-        mockListItemForTextBasedTitle,
-        "<span className='text-highlight'>Title1</span>"
+        mockEntityDataWithNesting[0],
+        mockListItemNameHighlight
       );
 
       expect(textBasedTitle).toEqual(mockTextBasedSummaryTitleResponse);
     });
 
     it('getTitle should return title as link if sourceUrl present in listItem', () => {
-      const linkBasedTitle = getTitle(mockListItemForLinkBasedTitle);
+      const linkBasedTitle = getTitle(mockEntityDataWithoutNesting[0]);
 
       expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
     });
