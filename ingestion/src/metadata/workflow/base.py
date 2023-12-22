@@ -28,10 +28,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineState,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -45,7 +47,10 @@ from metadata.utils.class_helper import (
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.output_handler import report_ingestion_status
-from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from metadata.workflow.workflow_status_mixin import (
+    SUCCESS_THRESHOLD_VALUE,
+    WorkflowStatusMixin,
+)
 
 logger = ingestion_logger()
 
@@ -93,8 +98,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # We create the ometa client at the workflow level and pass it to the steps
         self.metadata_config = metadata_config
         self.metadata = create_ometa_client(metadata_config)
-
-        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
 
@@ -164,22 +167,30 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
     def execute(self) -> None:
         """
-        Main entrypoint
+        Main entrypoint:
+        1. Start logging timer. It will be closed at `stop`
+        2. Execute the workflow
+        3. Validate the pipeline status
+        4. Update the pipeline status at the end
         """
+        pipeline_state = PipelineState.success
         self.timer.trigger()
         try:
+            self.set_ingestion_pipeline_status(state=PipelineState.running)
             self.execute_internal()
 
-            # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
-            self.update_pipeline_status_at_end()
+            if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
+                pipeline_state = PipelineState.partialSuccess
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:
-            self.set_ingestion_pipeline_status(PipelineState.failed)
+            pipeline_state = PipelineState.failed
             raise err
 
         # Force resource closing. Required for killing the threading
         finally:
+            ingestion_status = self.build_ingestion_status()
+            self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             self.stop()
 
     @property

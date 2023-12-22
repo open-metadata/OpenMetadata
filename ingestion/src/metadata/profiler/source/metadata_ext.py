@@ -27,6 +27,9 @@ from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -36,7 +39,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.source.metadata import (
@@ -159,7 +162,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     left=StackTraceError(
                         name=database_name,
                         error=f"Error listing source and entities for database due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -255,7 +258,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     StackTraceError(
                         name=table.fullyQualifiedName.__root__,
                         error=f"Unexpected error filtering entities for table [{table}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
