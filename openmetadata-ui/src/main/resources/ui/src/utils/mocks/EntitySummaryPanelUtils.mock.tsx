@@ -418,3 +418,26 @@ export const mockLinkBasedSummaryTitleResponse = (
     </div>
   </Link>
 );
+
+export const mockHighlights = {
+  'columns.name': ['<span>customer_id</span>', '<span>customer_name</span>'],
+  'columns.description': [
+    '<span>customer details</span>',
+    '<span>customer address</span>',
+  ],
+};
+
+export const mockGetMapOfListHighlightsResponse = {
+  listHighlights: [
+    '<span>customer_id</span>',
+    '<span>customer_name</span>',
+    '<span>customer details</span>',
+    '<span>customer address</span>',
+  ],
+  listHighlightsMap: {
+    customer_id: 0,
+    customer_name: 1,
+    'customer details': 2,
+    'customer address': 3,
+  },
+};

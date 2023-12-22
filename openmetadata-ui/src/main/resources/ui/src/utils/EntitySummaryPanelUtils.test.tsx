@@ -15,6 +15,7 @@ import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Column } from '../generated/entity/data/table';
 import {
   getFormattedEntityData,
+  getMapOfListHighlights,
   getSortedTagsWithHighlight,
   getSummaryListItemType,
   getTitle,
@@ -24,7 +25,9 @@ import {
   mockEntityDataWithNestingResponse,
   mockEntityDataWithoutNesting,
   mockEntityDataWithoutNestingResponse,
+  mockGetMapOfListHighlightsResponse,
   mockGetSummaryListItemTypeResponse,
+  mockHighlights,
   mockInvalidDataResponse,
   mockLinkBasedSummaryTitleResponse,
   mockListItemForLinkBasedTitle,
@@ -34,6 +37,16 @@ import {
   mockTagsDataBeforeSortAndHighlight,
   mockTextBasedSummaryTitleResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
+
+jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
+  ...jest.requireActual('../constants/EntitySummaryPanelUtils.constant'),
+  SummaryListHighlightKeys: [
+    'columns.name',
+    'columns.description',
+    'columns.children.name',
+    'tag.name',
+  ],
+}));
 
 describe('EntitySummaryPanelUtils tests', () => {
   it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
@@ -105,5 +118,18 @@ describe('EntitySummaryPanelUtils tests', () => {
     const linkBasedTitle = getTitle(mockListItemForLinkBasedTitle);
 
     expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
+  });
+
+  it('getMapOfListHighlights should returns empty arrays and map when highlights is undefined', () => {
+    const result = getMapOfListHighlights();
+
+    expect(result.listHighlights).toEqual([]);
+    expect(result.listHighlightsMap).toEqual({});
+  });
+
+  it('getMapOfListHighlights should returns listHighlights and listHighlightsMap correctly', () => {
+    const result = getMapOfListHighlights(mockHighlights);
+
+    expect(result).toEqual(mockGetMapOfListHighlightsResponse);
   });
 });
