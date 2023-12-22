@@ -51,7 +51,7 @@ class BigQuerySampler(SQASampler):
         self.table_type: TableType = table_type
 
     @partition_filter_handler(build_sample=True)
-    def get_sample_query(self) -> Query:
+    def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
         if (
@@ -59,11 +59,11 @@ class BigQuerySampler(SQASampler):
             and self.table_type != TableType.View
         ):
             return (
-                self._base_sample_query()
+                self._base_sample_query(column)
                 .suffix_with(
                     f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
                 )
                 .cte(f"{self.table.__tablename__}_sample")
             )
 
-        return super().get_sample_query()
+        return super().get_sample_query(column=column)
