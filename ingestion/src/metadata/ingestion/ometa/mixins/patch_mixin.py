@@ -18,7 +18,6 @@ import traceback
 from copy import deepcopy
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
-import jsonpatch
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -36,6 +35,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
@@ -137,52 +137,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-            # remove change descriptions from entities
-            if source.changeDescription is not None:
-                source.changeDescription = None
-            if destination.changeDescription is not None:
-                destination.changeDescription = None
 
-            # Get the difference between source and destination
-            if allowed_fields:
-                patch = jsonpatch.make_patch(
-                    json.loads(
-                        source.json(
-                            exclude_unset=True,
-                            exclude_none=True,
-                            include=allowed_fields,
-                        )
-                    ),
-                    json.loads(
-                        destination.json(
-                            exclude_unset=True,
-                            exclude_none=True,
-                            include=allowed_fields,
-                        )
-                    ),
-                )
-            else:
-                patch = jsonpatch.make_patch(
-                    json.loads(source.json(exclude_unset=True, exclude_none=True)),
-                    json.loads(destination.json(exclude_unset=True, exclude_none=True)),
-                )
+            patch = build_patch(
+                source=source,
+                destination=destination,
+                allowed_fields=allowed_fields,
+                restrict_update_fields=restrict_update_fields,
+            )
+
             if not patch:
-                logger.debug(
-                    "Nothing to update when running the patch. Are you passing `force=True`?"
-                )
                 return None
-
-            # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
-            # we will remove the other operations for replace, remove from here
-            if restrict_update_fields:
-                patch.patch = [
-                    patch_ops
-                    for patch_ops in patch.patch
-                    if self._determine_restricted_operation(
-                        patch_ops=patch_ops,
-                        restrict_update_fields=restrict_update_fields,
-                    )
-                ]
 
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
@@ -197,19 +161,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
 
         return None
-
-    def _determine_restricted_operation(
-        self, patch_ops: Dict, restrict_update_fields: Optional[List] = None
-    ) -> bool:
-        """
-        Only retain add operation for restrict_update_fields fields
-        """
-        path = patch_ops.get("path")
-        op = patch_ops.get("op")
-        for field in restrict_update_fields or []:
-            if field in path and op != PatchOperation.ADD.value:
-                return False
-        return True
 
     def patch_description(
         self,
