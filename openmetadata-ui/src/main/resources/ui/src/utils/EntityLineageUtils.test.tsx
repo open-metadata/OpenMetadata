@@ -226,7 +226,7 @@ describe('Test EntityLineageUtils utility', () => {
     expect(result.edge.toEntity.type).toBe('table');
   });
 
-  it.skip('should handle different scenarios for getColumnLineageData', () => {
+  it('should handle different scenarios for getColumnLineageData', () => {
     const mockEdge = {
       data: { targetHandle: 'target', sourceHandle: 'source' },
     } as Edge;
@@ -254,14 +254,17 @@ describe('Test EntityLineageUtils utility', () => {
       mockEdge
     );
 
-    // Assert
     expect(resultUndefined).toEqual([]);
     expect(resultNoMatch).toEqual(columnsDataNoMatch);
     expect(resultRemoveSource).toEqual([
-      { toColumn: 'column1', fromColumns: ['column2', 'column3'] },
+      { toColumn: 'column1', fromColumns: ['column2', 'column3', 'source'] },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
     expect(resultEmptyResult).toEqual([
+      {
+        fromColumns: ['source'],
+        toColumn: 'column1',
+      },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
   });
