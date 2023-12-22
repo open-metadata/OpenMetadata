@@ -302,11 +302,14 @@ export const getFormattedEntityData = (
           ...(entityType === SummaryEntityType.MLFEATURE && {
             algorithm: (listItem as MlFeature).featureAlgorithm,
           }),
-          children: getFormattedEntityData(
-            entityType,
-            (listItem as Column | Field).children,
-            highlights
-          ),
+          ...((entityType === SummaryEntityType.COLUMN ||
+            entityType === SummaryEntityType.FIELD) && {
+            children: getFormattedEntityData(
+              entityType,
+              (listItem as Column | Field).children,
+              highlights
+            ),
+          }),
         };
 
         // if highlights present in listItem then sort the listItem
