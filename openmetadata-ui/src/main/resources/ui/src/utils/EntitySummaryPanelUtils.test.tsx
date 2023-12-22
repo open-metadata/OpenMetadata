@@ -49,87 +49,99 @@ jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
 }));
 
 describe('EntitySummaryPanelUtils tests', () => {
-  it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
-    const highlights = {
-      'tag.name': ['PersonalData.SpecialCategory'],
-    };
-    const resultFormattedData = getFormattedEntityData(
-      SummaryEntityType.COLUMN,
-      mockEntityDataWithoutNesting,
-      highlights
-    );
+  describe('getFormattedEntityData', () => {
+    it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
+      const highlights = {
+        'tag.name': ['PersonalData.SpecialCategory'],
+      };
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        mockEntityDataWithoutNesting,
+        highlights
+      );
 
-    expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);
-  });
-
-  it('getFormattedEntityData should return formatted data properly for topic fields data with nesting', () => {
-    const resultFormattedData = getFormattedEntityData(
-      SummaryEntityType.COLUMN,
-      mockEntityDataWithNesting
-    );
-
-    expect(resultFormattedData).toEqual(mockEntityDataWithNestingResponse);
-  });
-
-  it('getFormattedEntityData should return empty array in case entityType is given other than from type SummaryEntityType', () => {
-    const resultFormattedData = getFormattedEntityData(
-      'otherType' as SummaryEntityType,
-      mockEntityDataWithNesting
-    );
-
-    expect(resultFormattedData).toEqual([]);
-  });
-
-  it('getFormattedEntityData should not throw error if entityDetails sent does not have fields present', () => {
-    const resultFormattedData = getFormattedEntityData(
-      SummaryEntityType.COLUMN,
-      [{}] as Column[]
-    );
-
-    expect(resultFormattedData).toEqual(mockInvalidDataResponse);
-  });
-
-  it('getSortedTagsWithHighlight should return the sorted and highlighted tags data based on given tagFQN array', () => {
-    const sortedTags = getSortedTagsWithHighlight({
-      sortTagsBasedOnGivenTagFQNs: mockTagFQNsForHighlight,
-      tags: mockTagsDataBeforeSortAndHighlight,
+      expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);
     });
 
-    expect(sortedTags).toEqual(mockTagsDataAfterSortAndHighlight);
+    it('getFormattedEntityData should return formatted data properly for topic fields data with nesting', () => {
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        mockEntityDataWithNesting
+      );
+
+      expect(resultFormattedData).toEqual(mockEntityDataWithNestingResponse);
+    });
+
+    it('getFormattedEntityData should return empty array in case entityType is given other than from type SummaryEntityType', () => {
+      const resultFormattedData = getFormattedEntityData(
+        'otherType' as SummaryEntityType,
+        mockEntityDataWithNesting
+      );
+
+      expect(resultFormattedData).toEqual([]);
+    });
+
+    it('getFormattedEntityData should not throw error if entityDetails sent does not have fields present', () => {
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        [{}] as Column[]
+      );
+
+      expect(resultFormattedData).toEqual(mockInvalidDataResponse);
+    });
   });
 
-  it('getSummaryListItemType should return the summary item type based on given entityType', () => {
-    const summaryItemType = getSummaryListItemType(
-      SummaryEntityType.COLUMN,
-      mockEntityDataWithoutNesting[0]
-    );
+  describe('getSortedTagsWithHighlight', () => {
+    it('getSortedTagsWithHighligh should return the sorted and highlighted tags data based on given tagFQN array', () => {
+      const sortedTags = getSortedTagsWithHighlight({
+        sortTagsBasedOnGivenTagFQNs: mockTagFQNsForHighlight,
+        tags: mockTagsDataBeforeSortAndHighlight,
+      });
 
-    expect(summaryItemType).toEqual(mockGetSummaryListItemTypeResponse);
+      expect(sortedTags).toEqual(mockTagsDataAfterSortAndHighlight);
+    });
   });
 
-  it('getTitle should return title as link or text based on sourceUrl present and also apply highlight is present', () => {
-    const textBasedTitle = getTitle(
-      mockListItemForTextBasedTitle,
-      "<span className='text-highlight'>Title1</span>"
-    );
+  describe('getSummaryListItemType', () => {
+    it('getSummaryListItemType should return the summary item type based on given entityType', () => {
+      const summaryItemType = getSummaryListItemType(
+        SummaryEntityType.COLUMN,
+        mockEntityDataWithoutNesting[0]
+      );
 
-    expect(textBasedTitle).toEqual(mockTextBasedSummaryTitleResponse);
-
-    const linkBasedTitle = getTitle(mockListItemForLinkBasedTitle);
-
-    expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
+      expect(summaryItemType).toEqual(mockGetSummaryListItemTypeResponse);
+    });
   });
 
-  it('getMapOfListHighlights should returns empty arrays and map when highlights is undefined', () => {
-    const result = getMapOfListHighlights();
+  describe('getTitle', () => {
+    it('getTitle should return title as text if sourceUrl not present in listItem and also apply highlight if present', () => {
+      const textBasedTitle = getTitle(
+        mockListItemForTextBasedTitle,
+        "<span className='text-highlight'>Title1</span>"
+      );
 
-    expect(result.listHighlights).toEqual([]);
-    expect(result.listHighlightsMap).toEqual({});
+      expect(textBasedTitle).toEqual(mockTextBasedSummaryTitleResponse);
+    });
+
+    it('getTitle should return title as link if sourceUrl present in listItem', () => {
+      const linkBasedTitle = getTitle(mockListItemForLinkBasedTitle);
+
+      expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
+    });
   });
 
-  it('getMapOfListHighlights should returns listHighlights and listHighlightsMap correctly', () => {
-    const result = getMapOfListHighlights(mockHighlights);
+  describe('getMapOfListHighlights', () => {
+    it('getMapOfListHighlights should returns empty arrays and map when highlights is undefined', () => {
+      const result = getMapOfListHighlights();
 
-    expect(result).toEqual(mockGetMapOfListHighlightsResponse);
+      expect(result.listHighlights).toEqual([]);
+      expect(result.listHighlightsMap).toEqual({});
+    });
+
+    it('getMapOfListHighlights should returns listHighlights and listHighlightsMap correctly', () => {
+      const result = getMapOfListHighlights(mockHighlights);
+
+      expect(result).toEqual(mockGetMapOfListHighlightsResponse);
+    });
   });
 });
