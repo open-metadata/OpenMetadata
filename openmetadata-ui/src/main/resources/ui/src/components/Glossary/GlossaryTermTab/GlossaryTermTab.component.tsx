@@ -121,8 +121,8 @@ const GlossaryTermTab = ({
                 <img
                   className="m-r-xss vertical-baseline"
                   data-testid="tag-icon"
+                  height={12}
                   src={record.style.iconURL}
-                  width={16}
                 />
               )}
               <Link
