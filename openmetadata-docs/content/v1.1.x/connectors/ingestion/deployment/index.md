@@ -284,7 +284,7 @@ pipelineServiceClient.deployPipeline(ingestionPipeline);
 ```
 
 Then, the actual deployment logic is handled by the class implementing the Pipeline Service Client. For this example,
-it will be the [AirflowRESTClient](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/airflow/AirflowRESTClient.java).
+it will be the [AirflowRESTClient](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/airflow/AirflowRESTClient.java).
 
 First, let's see what it is needed to instantiate the Airflow REST Client:
 
