@@ -380,7 +380,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;https://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Approved"),
@@ -390,14 +390,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;https://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
                 ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Approved"),
             String.format("importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team11, "Draft"));
 
     // Add new row to existing rows
-    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Approved");
+    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;https://term0,Tier.Tier3,,,Approved");
     testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 

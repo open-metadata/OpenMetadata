@@ -27,8 +27,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
   private static TableResourceTest tableResourceTest;
@@ -45,9 +43,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType("alert");
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
-    assertTrue(evaluateExpression("matchAnySource('alert')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnySource('bot')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnySource('alert')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnySource('bot')", alertsRuleEvaluator));
   }
 
   @Test
@@ -65,10 +62,9 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Owner Name Present in list and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(
-        evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", evaluationContext));
+        evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", alertsRuleEvaluator));
   }
 
   // issue: https://github.com/open-metadata/OpenMetadata/issues/10376
@@ -85,10 +81,9 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Entity Fqn in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     String fqn = createdTable.getFullyQualifiedName();
-    assertTrue(evaluateExpression("matchAnyEntityFqn('" + fqn + "')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyEntityFqn('testFQN1')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnyEntityFqn('" + fqn + "')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnyEntityFqn('testFQN1')", alertsRuleEvaluator));
   }
 
   @Test
@@ -105,10 +100,9 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test Entity Id in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     String id = createdTable.getId().toString();
-    assertTrue(evaluateExpression("matchAnyEntityId('" + id + "')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnyEntityId('" + id + "')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", alertsRuleEvaluator));
   }
 
   @Test
@@ -119,9 +113,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Check if eventType present in list or absent from the list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
-    assertTrue(evaluateExpression("matchAnyEventType('entityCreated')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyEventType('entityUpdated')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnyEventType('entityCreated')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnyEventType('entityUpdated')", alertsRuleEvaluator));
   }
 
   @Test
@@ -142,9 +135,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test If Test Result status matches in list and if status not matches
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
-    assertTrue(evaluateExpression("matchTestResult('Success')", evaluationContext));
-    assertFalse(evaluateExpression("matchTestResult('Failed')", evaluationContext));
+    assertTrue(evaluateExpression("matchTestResult('Success')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchTestResult('Failed')", alertsRuleEvaluator));
   }
 
   @Test
@@ -155,9 +147,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test if the username is in list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
-    assertTrue(evaluateExpression("matchUpdatedBy('test')", evaluationContext));
-    assertFalse(evaluateExpression("matchUpdatedBy('test1')", evaluationContext));
+    assertTrue(evaluateExpression("matchUpdatedBy('test')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchUpdatedBy('test1')", alertsRuleEvaluator));
   }
 
   @Test
@@ -172,12 +163,11 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
 
     // Test if the updated field matches from the list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
-    assertTrue(evaluateExpression("matchAnyFieldChange('test')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyFieldChange('temp')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnyFieldChange('test')", alertsRuleEvaluator));
+    assertFalse(evaluateExpression("matchAnyFieldChange('temp')", alertsRuleEvaluator));
   }
 
-  private Boolean evaluateExpression(String condition, EvaluationContext evaluationContext) {
-    return parseExpression(condition).getValue(evaluationContext, Boolean.class);
+  private Boolean evaluateExpression(String condition, AlertsRuleEvaluator alertsRuleEvaluator) {
+    return parseExpression(condition).getValue(alertsRuleEvaluator, Boolean.class);
   }
 }
