@@ -12,7 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -32,7 +32,10 @@ import {
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -60,6 +63,7 @@ function TableSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -173,6 +177,7 @@ function TableSummary({
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
         tableDetails.columns,
+        highlights,
         tableDetails.tableConstraints
       ),
     [tableDetails]
@@ -240,7 +245,18 @@ function TableSummary({
 
         <SummaryTagsDescription
           entityDetail={tableDetails}
-          tags={tags ?? tableDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: tableDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

@@ -370,6 +370,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return parent != null ? inheritDomain(entity, fields, parent) : entity;
   }
 
+  public final void addServiceRelationship(T entity, EntityReference service) {
+    if (service != null) {
+      addRelationship(
+          service.getId(), entity.getId(), service.getType(), entityType, Relationship.CONTAINS);
+    }
+  }
+
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already

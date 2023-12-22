@@ -263,7 +263,6 @@ const PIPELINE_DETAILS_FOR_VERSION_TEST = {
   tasks: [
     {
       name: 'cypress_task_1',
-      displayName: 'cypress_task_1',
       fullyQualifiedName: `sample_airflow.${PIPELINE_NAME}.cypress_task_1`,
       sourceUrl:
         'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
@@ -273,7 +272,6 @@ const PIPELINE_DETAILS_FOR_VERSION_TEST = {
     },
     {
       name: 'cypress_task_2',
-      displayName: 'cypress_task_2',
       fullyQualifiedName: `sample_airflow.${PIPELINE_NAME}.cypress_task_2`,
       description: 'Description for task cypress_task_2',
       sourceUrl:
@@ -746,6 +744,8 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TABLE_PATCH_PAYLOAD,
     isChildrenExist: true,
+    childFieldNameToCheck: 'shop_id',
+    columnDisplayNameToUpdate: 'Shop Id',
     childSelector: 'data-row-key',
     entityAddedDescription: `Description for ${TABLE_NAME}`,
     updatedTagEntityChildName: 'user_id',
@@ -759,6 +759,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TOPIC_PATCH_PAYLOAD,
     isChildrenExist: true,
+    childFieldNameToCheck: 'first_name',
     childSelector: 'data-row-key',
     entityAddedDescription: `Description for ${TOPIC_NAME}`,
     updatedTagEntityChildName: 'default',
@@ -781,6 +782,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: PIPELINE_PATCH_PAYLOAD,
     isChildrenExist: true,
+    childFieldNameToCheck: 'cypress_task_2',
     childSelector: 'data-row-key',
     entityAddedDescription: `Description for ${PIPELINE_NAME}`,
     updatedTagEntityChildName: 'cypress_task_1',
@@ -807,6 +809,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: CONTAINER_PATCH_PAYLOAD,
     isChildrenExist: true,
+    childFieldNameToCheck: 'column_2',
     childSelector: 'data-row-key',
     entityAddedDescription: `Description for ${CONTAINER_NAME}`,
     updatedTagEntityChildName: 'column_1',
@@ -820,6 +823,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityCreationDetails: SEARCH_INDEX_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: SEARCH_INDEX_PATCH_PAYLOAD,
     isChildrenExist: true,
+    childFieldNameToCheck: 'description',
     childSelector: 'data-row-key',
     entityAddedDescription: `Description for ${SEARCH_INDEX_NAME}`,
     updatedTagEntityChildName: 'name',

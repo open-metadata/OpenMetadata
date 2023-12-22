@@ -1,6 +1,6 @@
 ---
-title: adlsConection
-slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconection
+title: adlsConnection
+slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsConnection
 ---
 
 # ADLS Connection

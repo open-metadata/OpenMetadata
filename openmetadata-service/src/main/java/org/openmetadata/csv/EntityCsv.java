@@ -56,9 +56,9 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 /**
- * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
- * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
- * record.
+ * EntityCsv provides export and import capabilities for an entity. Each entity must implement the
+ * abstract methods to provide entity specific processing functionality to export an entity to a CSV
+ * record, and import an entity from a CSV record.
  */
 @Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {
@@ -226,27 +226,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
-      throws IOException {
-    String fqns = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
-    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    List<EntityReference> refs = new ArrayList<>();
-    for (String fqn : fqnList) {
-      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
-      if (!processRecord) {
-        return null;
-      }
-      if (ref != null) {
-        refs.add(ref);
-      }
-    }
-    return refs.isEmpty() ? null : refs;
-  }
-
-  protected final List<EntityReference> getUserOrTeamEntityReferences(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     String fqns = csvRecord.get(fieldNumber);
