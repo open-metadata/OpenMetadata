@@ -12,14 +12,19 @@
  */
 
 import { Edge } from 'reactflow';
+import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { AddLineage } from '../generated/api/lineage/addLineage';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
+import { addLineage } from '../rest/miscAPI';
 import {
+  addLineageHandler,
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
   getClassifiedEdge,
   getColumnLineageData,
+  getConnectedNodesEdges,
   getEdgeStyle,
   getLineageDetailsObject,
   getLineageEdge,
@@ -27,6 +32,10 @@ import {
   isColumnLineageTraced,
   isTracedEdge,
 } from './EntityLineageUtils';
+
+jest.mock('../rest/miscAPI', () => ({
+  addLineage: jest.fn(),
+}));
 
 describe('Test EntityLineageUtils utility', () => {
   it('getAllTracedNodes & isTracedEdge function should work properly', () => {
@@ -267,5 +276,108 @@ describe('Test EntityLineageUtils utility', () => {
       },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
+  });
+
+  it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for downstream', () => {
+    const selectedNode = { id: '1', position: { x: 0, y: 0 }, data: {} };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '2' } },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '3' } },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+      { id: '3', source: '2', target: '3' },
+    ];
+    const direction = EdgeTypeEnum.DOWN_STREAM;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(result).toHaveProperty('nodeFqn');
+
+    expect(result.nodes).toContainEqual(nodes[1]);
+    expect(result.nodes).toContainEqual(nodes[2]);
+    expect(result.edges).toContainEqual(edges[1]);
+    expect(result.edges).toContainEqual(edges[2]);
+
+    const emptyResult = getConnectedNodesEdges(selectedNode, [], [], direction);
+
+    expect(emptyResult.nodes).toEqual([]);
+    expect(emptyResult.edges).toEqual([]);
+  });
+
+  it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for upstream', () => {
+    const selectedNode = { id: '1', position: { x: 0, y: 0 }, data: {} };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '2' } },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '3' } },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+      { id: '3', source: '2', target: '3' },
+    ];
+    const direction = EdgeTypeEnum.UP_STREAM;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(result).toHaveProperty('nodeFqn');
+
+    expect(result.nodes).toEqual([]);
+    expect(result.edges).toEqual([]);
+
+    const emptyResult = getConnectedNodesEdges(selectedNode, [], [], direction);
+
+    expect(emptyResult.nodes).toEqual([]);
+    expect(emptyResult.edges).toEqual([]);
+  });
+
+  it('should call addLineage with the provided edge', async () => {
+    const edge = {
+      edge: { fromEntity: {}, toEntity: {} },
+    } as AddLineage;
+    await addLineageHandler(edge);
+
+    expect(addLineage).toHaveBeenCalledWith(edge);
   });
 });

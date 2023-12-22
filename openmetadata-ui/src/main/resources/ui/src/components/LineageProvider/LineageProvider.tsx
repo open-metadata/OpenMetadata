@@ -955,6 +955,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       {showDeleteModal && (
         <Modal
+          data-testid="delete-edge-confirmation-modal"
           maskClosable={false}
           okText={getLoadingStatusValue(
             t('label.confirm'),

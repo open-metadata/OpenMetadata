@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { Edge } from 'reactflow';
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
 import { EdgeTypeEnum } from '../Entity/EntityLineage/EntityLineage.interface';
 import LineageProvider, { useLineageProvider } from './LineageProvider';
@@ -22,7 +23,7 @@ const mockLocation = {
 };
 
 const DummyChildrenComponent = () => {
-  const { loadChildNodesHandler, onNodeClick } = useLineageProvider();
+  const { loadChildNodesHandler, onEdgeClick } = useLineageProvider();
 
   const nodeData = {
     name: 'table1',
@@ -30,11 +31,23 @@ const DummyChildrenComponent = () => {
     fullyQualifiedName: 'table1',
     id: 'table1',
   };
-  const nodeObj = {
-    id: 'dummyId',
-    position: { x: 100, y: 100 },
+
+  const MOCK_EDGE = {
+    id: 'test',
+    source: 'test',
+    target: 'test',
+    type: 'test',
     data: {
-      ...nodeData,
+      edge: {
+        fromEntity: {
+          id: 'test',
+          type: 'test',
+        },
+        toEntity: {
+          id: 'test',
+          type: 'test',
+        },
+      },
     },
   };
   const handleButtonClick = () => {
@@ -47,8 +60,13 @@ const DummyChildrenComponent = () => {
       <button data-testid="load-nodes" onClick={handleButtonClick}>
         Load Nodes
       </button>
-      <button data-testid="node1" onClick={() => onNodeClick(nodeObj)}>
-        Node
+      <button
+        data-testid="edge-click"
+        onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
+        On Edge Click
+      </button>
+      <button data-testid="openConfirmationModal">
+        Close Confirmation Modal
       </button>
     </div>
   );
@@ -61,6 +79,12 @@ jest.mock('react-router-dom', () => ({
     fqn: 'table1',
   }),
 }));
+
+jest.mock('../Entity/EntityInfoDrawer/EdgeInfoDrawer.component', () => {
+  return jest.fn().mockImplementation(() => {
+    return <p>Edge Info Drawer</p>;
+  });
+});
 
 jest.mock('../../rest/lineageAPI', () => ({
   getLineageDataByFQN: jest.fn(),
@@ -98,7 +122,7 @@ describe('LineageProvider', () => {
     expect(getLineageDataByFQN).toHaveBeenCalled();
   });
 
-  it.skip('should call onNodeClick', async () => {
+  it('should show delete modal', async () => {
     await act(async () => {
       render(
         <LineageProvider>
@@ -107,7 +131,11 @@ describe('LineageProvider', () => {
       );
     });
 
-    const nodeClick = await screen.getByTestId('node1');
-    fireEvent.click(nodeClick);
+    const edgeClick = await screen.getByTestId('edge-click');
+    fireEvent.click(edgeClick);
+
+    const edgeDrawer = screen.getByText('Edge Info Drawer');
+
+    expect(edgeDrawer).toBeInTheDocument();
   });
 });
