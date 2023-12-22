@@ -19,6 +19,7 @@ No sample data is required beforehand
 
 import os
 from copy import deepcopy
+from pathlib import Path
 from unittest import TestCase
 
 import boto3
@@ -42,12 +43,13 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 
+SERVICE_NAME = Path(__file__).stem
 REGION = "us-west-1"
 BUCKET_NAME = "MyBucket"
 INGESTION_CONFIG = {
     "source": {
         "type": "datalake",
-        "serviceName": "datalake_for_integration_tests",
+        "serviceName": SERVICE_NAME,
         "serviceConnection": {
             "config": {
                 "type": "Datalake",
@@ -160,13 +162,13 @@ class DatalakeProfilerTestE2E(TestCase):
         assert status == 0
 
         table_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
         )
 
         column_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".first_name',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".first_name',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
             profile_type=ColumnProfile,
@@ -188,7 +190,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "first_name",
@@ -209,7 +211,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -232,7 +234,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "birthdate",
@@ -254,7 +256,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -277,7 +279,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "profileSample": 100,
                         "partitionConfig": {
                             "enablePartitioning": "true",
@@ -300,7 +302,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -336,7 +338,7 @@ class DatalakeProfilerTestE2E(TestCase):
                 },
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "columnConfig": {
                             "includeColumns": [
                                 {"columnName": "id", "metrics": id_metrics},
@@ -357,12 +359,12 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
         id_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".id',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".id',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
             profile_type=ColumnProfile,
@@ -381,7 +383,7 @@ class DatalakeProfilerTestE2E(TestCase):
         assert id_metric_ln == len(id_metrics)
 
         age_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".age',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".age',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
             profile_type=ColumnProfile,
@@ -401,7 +403,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         latest_exc_timestamp = latest_age_profile.timestamp.__root__
         first_name_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".first_name_profile',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".first_name_profile',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
             profile_type=ColumnProfile,
@@ -430,7 +432,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         service_id = str(
             self.metadata.get_by_name(
-                entity=DatabaseService, fqn="datalake_for_integration_tests"
+                entity=DatabaseService, fqn=SERVICE_NAME
             ).id.__root__
         )
 
