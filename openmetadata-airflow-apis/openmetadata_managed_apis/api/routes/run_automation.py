@@ -20,9 +20,7 @@ from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.automations.runner import execute
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
+from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = routes_logger()
@@ -53,9 +51,8 @@ def get_fn(blueprint: Blueprint) -> Callable:
         json_request = request.get_json(cache=False)
 
         try:
-            # TODO: Prepare `parse_automation_workflow_gracefully`
-            automation_workflow: AutomationWorkflow = AutomationWorkflow.parse_obj(
-                json_request
+            automation_workflow = parse_automation_workflow_gracefully(
+                config_dict=json_request
             )
 
             # we need to instantiate the secret manager in case secrets are passed
