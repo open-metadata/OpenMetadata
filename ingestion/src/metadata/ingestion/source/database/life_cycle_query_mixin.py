@@ -20,10 +20,12 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
-from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -78,7 +80,7 @@ class LifeCycleQueryMixin:
                     StackTraceError(
                         name="Life Cycle Queries",
                         error=f"Error trying to get life cycle information due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
