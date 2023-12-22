@@ -122,7 +122,7 @@ class AtlasSource(Source):
                     left=StackTraceError(
                         name=service,
                         error=f"Cannot find service for {service} - type DatabaseService",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -142,7 +142,7 @@ class AtlasSource(Source):
                     left=StackTraceError(
                         name=service,
                         error=f"Cannot find service for {service} - type MessagingService",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -184,7 +184,7 @@ class AtlasSource(Source):
                         left=StackTraceError(
                             name="Topic",
                             error=f"Failed to parse topi entry [{topic_entity}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -279,7 +279,7 @@ class AtlasSource(Source):
                         left=StackTraceError(
                             name="Database",
                             error=f"Failed to parse for database : {db_entity} - table {table}: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -420,7 +420,7 @@ class AtlasSource(Source):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"failed to parse lineage due to {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

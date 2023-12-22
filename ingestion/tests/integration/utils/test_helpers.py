@@ -39,7 +39,6 @@ class HelpersTest(TestCase):
         table = Table(
             id=uuid.uuid4(),
             name="test",
-            databaseSchema="test-service-table.test-db.test-schema",
             fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[
                 Column(name="id", dataType=DataType.BIGINT),

@@ -22,7 +22,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 from unittest import TestCase
 
-import pytest
 import requests
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -55,6 +54,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+# These variables are just here to validate elements in the local deployment
 OM_HOST_PORT = "http://localhost:8585/api"
 OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 AIRFLOW_HOST_API_ROOT = "http://localhost:8080/api/v1/"
@@ -188,7 +188,6 @@ class AirflowLineageTest(TestCase):
             hard_delete=True,
         )
 
-    @pytest.mark.order(1)
     def test_dag_runs(self) -> None:
         """
         Trigger the Airflow DAG and wait until it runs.
@@ -249,7 +248,6 @@ class AirflowLineageTest(TestCase):
         if state != "success":
             raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time.")
 
-    @pytest.mark.order(2)
     def test_pipeline_created(self) -> None:
         """
         Validate that the pipeline has been created
@@ -284,7 +282,6 @@ class AirflowLineageTest(TestCase):
             get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
         )
 
-    @pytest.mark.order(3)
     def test_pipeline_lineage(self) -> None:
         """
         Validate that the pipeline has proper lineage

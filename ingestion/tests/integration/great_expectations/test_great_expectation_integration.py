@@ -32,12 +32,15 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 
 Base = declarative_base()
 
-START_TIMESTAMP = int((datetime.now() - timedelta(days=1)).timestamp()) * 1000
 TEST_CASE_FQN = (
     "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
 )
@@ -218,8 +221,8 @@ class TestGreatExpectationIntegration(TestCase):
 
         test_case_results = self.metadata.get_test_case_results(
             test_case_fqn=TEST_CASE_FQN,
-            start_ts=START_TIMESTAMP,
-            end_ts=int(datetime.now().timestamp()) * 1000,
+            start_ts=get_beginning_of_day_timestamp_mill(),
+            end_ts=get_end_of_day_timestamp_mill(),
         )
 
         assert test_case_results

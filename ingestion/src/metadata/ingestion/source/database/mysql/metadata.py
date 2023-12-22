@@ -42,8 +42,6 @@ class MysqlSource(CommonDbSourceService):
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        if config.serviceConnection is None:
-            raise InvalidSourceException("Missing service connection")
         connection = cast(MysqlConnection, config.serviceConnection.__root__.config)
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(

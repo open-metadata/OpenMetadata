@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -47,7 +50,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -266,7 +269,7 @@ class DbtSource(DbtServiceSource):
                         left=StackTraceError(
                             name=key,
                             error=f"Unable to process DBT tags for node: f{key} - {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
             try:
@@ -294,7 +297,7 @@ class DbtSource(DbtServiceSource):
                     left=StackTraceError(
                         name="Tags and Classification",
                         error=f"Unexpected exception creating DBT tags: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -465,7 +468,7 @@ class DbtSource(DbtServiceSource):
                         left=StackTraceError(
                             name=key,
                             error=f"Unexpected exception parsing DBT node due to {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -673,7 +676,7 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
                         f" to capture lineage: {exc}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -779,7 +782,7 @@ class DbtSource(DbtServiceSource):
                 left=StackTraceError(
                     name="Test Definition",
                     error=f"Failed to parse the node to capture tests {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -817,7 +820,7 @@ class DbtSource(DbtServiceSource):
                 left=StackTraceError(
                     name="Test Cases",
                     error=f"Failed to parse the node to capture tests {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

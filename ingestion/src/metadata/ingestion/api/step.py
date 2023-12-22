@@ -16,6 +16,9 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, Optional
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StepSummary,
+)
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.status import Status
@@ -49,9 +52,38 @@ class Step(ABC, Closeable):
     def get_status(self) -> Status:
         return self.status
 
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
     @abstractmethod
     def close(self) -> None:
         pass
+
+
+class Summary(StepSummary):
+    """
+    Auxiliary class to calculate the summary of all statuses
+    """
+
+    @classmethod
+    def from_step(cls, step: Step) -> "Summary":
+        """Compute summary from Step"""
+        return Summary(
+            name=step.name,
+            records=len(step.status.records),
+            warnings=len(step.status.warnings),
+            errors=len(step.status.failures),
+            filtered=len(step.status.filtered),
+            failures=step.status.failures[0:10] if step.status.failures else None,
+        )
+
+    def __str__(self):
+        return (
+            f"{self.name} Summary: [{self.records} Records, {self.warnings} Warnings,"
+            f" {self.errors} Errors, {self.filtered} Filtered]"
+        )
 
 
 class ReturnStep(Step, ABC):
@@ -90,7 +122,7 @@ class ReturnStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -98,7 +130,7 @@ class ReturnStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -145,7 +177,7 @@ class StageStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -153,7 +185,7 @@ class StageStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -194,7 +226,7 @@ class IterStep(Step, ABC):
                 StackTraceError(
                     name="Not an Either",
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as exc:
@@ -202,7 +234,7 @@ class IterStep(Step, ABC):
             logger.warning(error)
             self.status.failed(
                 StackTraceError(
-                    name="Unhandled", error=error, stack_trace=traceback.format_exc()
+                    name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
 

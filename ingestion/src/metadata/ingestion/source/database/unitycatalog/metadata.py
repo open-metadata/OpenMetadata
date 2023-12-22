@@ -41,13 +41,16 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -164,7 +167,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                         StackTraceError(
                             name=catalog_name,
                             error=f"Unexpected exception to get database name [{catalog_name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -210,7 +213,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     StackTraceError(
                         name=schema.name,
                         error=f"Unexpected exception to get database schema [{schema.name}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -281,7 +284,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     StackTraceError(
                         name=table.Name,
                         error=f"Unexpected exception to get table [{table.Name}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -343,7 +346,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

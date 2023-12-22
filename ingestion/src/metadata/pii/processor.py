@@ -16,6 +16,9 @@ import traceback
 from typing import List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import Column, TableData
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -28,7 +31,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
@@ -170,7 +173,7 @@ class PIIProcessor(Processor):
                     StackTraceError(
                         name=record.table.fullyQualifiedName.__root__,
                         error=f"Error computing PII tags for [{column}] - [{err}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

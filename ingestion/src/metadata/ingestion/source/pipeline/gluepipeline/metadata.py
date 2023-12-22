@@ -28,10 +28,13 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
     GluePipelineConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -183,7 +186,7 @@ class GluepipelineSource(PipelineServiceSource):
                     left=StackTraceError(
                         name=pipeline_fqn,
                         error=f"Failed to yield pipeline status: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

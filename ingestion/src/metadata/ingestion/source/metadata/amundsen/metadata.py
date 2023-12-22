@@ -43,13 +43,16 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.teams import team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
@@ -174,7 +177,7 @@ class AmundsenSource(Source):
                 left=StackTraceError(
                     name=user.name,
                     error=f"Failed to create user entity [{user}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -222,7 +225,7 @@ class AmundsenSource(Source):
                     left=StackTraceError(
                         name=user.get("full_name") or "User",
                         error=f"Failed to add table from user [{user}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -257,7 +260,7 @@ class AmundsenSource(Source):
                 left=StackTraceError(
                     name="Database",
                     error=f"Failed to Ingest database due to - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -284,7 +287,7 @@ class AmundsenSource(Source):
                 left=StackTraceError(
                     name="Database Schema",
                     error=f"Failed to Ingest database schema due to - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -354,7 +357,7 @@ class AmundsenSource(Source):
                 left=StackTraceError(
                     name=table.get("name") or "Table",
                     error=f"Failed to create table entity [{table}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -397,7 +400,7 @@ class AmundsenSource(Source):
                 left=StackTraceError(
                     name=dashboard.get("name") or "Dashboard",
                     error=f"Failed to create dashboard entity [{dashboard}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

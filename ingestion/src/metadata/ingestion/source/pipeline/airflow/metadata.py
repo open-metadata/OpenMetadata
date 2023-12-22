@@ -33,13 +33,16 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -247,7 +250,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=f"{pipeline_details.dag_id} Pipeline Status",
                     error=f"Wild error trying to extract status from DAG {pipeline_details.dag_id} - {exc}.",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -394,7 +397,7 @@ class AirflowSource(PipelineServiceSource):
                         f"Error building DAG information from {pipeline_details}. There might be Airflow version"
                         f" incompatibilities - {err}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except ValidationError as err:
@@ -403,7 +406,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
                     error=f"Error building pydantic model for {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -413,7 +416,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
                     error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

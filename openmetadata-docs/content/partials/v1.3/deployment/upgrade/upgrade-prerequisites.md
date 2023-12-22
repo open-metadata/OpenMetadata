@@ -27,7 +27,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 ```python
 python -m venv venv
 source venv/bin/activate
-pip install openmetadata-ingestion~=1.2.0
+pip install openmetadata-ingestion~=1.3.0
 ```
 
 Validate the installed metadata version with `python -m metadata --version`
@@ -104,166 +104,72 @@ After the migration is finished, you can revert this changes.
 
 # Deprecation Notice
 
-- OpenMetadata only supports Python version 3.8 to 3.10. We will add support for 3.11 in the release 1.3.
-- OpenMetadata version 0.13.x is deprecated.
+- Check the updated [docs](/connectors/pipeline/airflow/configuring-lineage#configuring-dag-lineage) on how to configure Airflow DAG's lineage.
+  We will deprecate the dictionary annotation in the 1.4 release, since the new annotation allows you to define lineage between
+  assets other than Tables.
 
 # Breaking Changes
 
-## 1.2.1
+## 1.3.0
 
-### Application Logo and Login Configuration Migrated to UI
+### Secrets Manager
 
-The following configuration block has been removed from `openmetadata.yaml`:
+The Secrets Manager `noop` option has been renamed to `db`. You can find this in the config below:
 
 ```yaml
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""}
-    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
-  loginConfig:
-    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws", "managed-aws-ssm"
+  prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
+  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource, e.g., in AWS. Format is `[key1:value1,key2:value2,...]`
 ```
 
-This change removes the traditional way of providing **Custom URL** logos configurations as part of OpenMetadata Configurations 
-file and migrate this to be driven and configured right from UI from `Settings` > `OpenMetadata` > `Custom Logo`.
+Either update your YAMLs or the env var you are using under `SECRET_MANAGER`.
 
-The same applies to the **Login Configuration**, which can now be configured under `Settings` > `OpenMetadata` > `Login Configuration`.
+Note how we also added the possibility to add `prefix` when defining the secret key ID in the external secrets managers and
+the option to tag the created resources.
 
-Note that these environment variables will now have no effect. If you are deploying on Bare Metal, make sure to use the latest `openmetadata.yaml` file.
+### Elasticsearch reindex from Python
 
+In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
+removed triggering ES job from Python workflows. Everything happens in the server now. The image will not ship the `metadata_to_es` DAG anymore.
 
-### OpenMetadata Helm Chart Dependencies Migrate from ElasticSearch to OpenSearch Charts
+### Python SDK Auth Mechanisms
 
-As part of `1.2.1`, we migrated the base dependencies for OpenMetadata Helm Chart to use OpenSearch version `2.7` instead of ElasticSearch `8.X`. This is a reactive change done as community driven [ElasticSearch Helm Chart](https://github.com/elastic/helm-charts) project has been deprecated in the favor of Elastic Stack Operator which cannot be added as an helm chart dependency.
+We cleaned all the Python SDK code related to any auth system that is not JWT token. Bots deprecated that behavior 2 releases ago
+and only supported JWT. This is now reflected in the code.
 
-For new users, this is an unnoticeable change who will be installing the OpenMetadata dependencies using quickstart guides.
+### Airflow Connection
 
-For existing users, who have their proof-of-concept environments using the OpenMetadata Dependencies and are looking to upgrade to newer helm release - 
-- The default OpenMetadata helm values for `openmetadata.config.elasticsearch.*` has been updated to connect to OpenSearch from OpenMetadata Dependencies Helm Chart. Please refer to the [helm values](/deployment/kubernetes/helm-values) and update your custom installation accordingly.
-- Post upgrade, you will need to follow the steps here to [rebuild and reindex your search indexing](/deployment/upgrade#reindex).
+Removed the `MSSQL` connection option from airflow backend database. This is due to the option being experimental and
+will be deprecated by the Airflow team. For more information refer to the [link](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#choosing-database-backend).
 
-## 1.2.0
+If you are using airflow with `MSSQL` backend, we recommend switching it to the supported backends e.g., `MYSQL` or `POSTGRES`.
 
-### Database connection SSL Configuration
+This is what has been removed:
 
-With 1.2.X, the environment variable `DB_USE_SSL` is deprecated in favour of `DB_PARAMS`.
-For Bare Metal and Docker Deployment, Add / Update the variable `DB_PARAMS` to `allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC` to enable ssl security to connect to database.
-For Kubernetes Deployment, `openmetadata.config.database.dbParams` is available to pass the above values as helm values.
-
-### Version Upgrades
-
-- The OpenMetadata Server is now based on **JDK 17**
-- OpenMetadata now **requires** **Elasticsearch** version **8.10.2** or **Opensearch** version **2.7**
-
-There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
-
+```yaml
+...
+  connection:
+    type: Mssql
+    username: user
+    password: pass
+    hostPort: localhost:1433
+    database: dev
 ```
-java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1]
-ERROR: Elasticsearch did not exit normally - check the logs at /usr/share/elasticsearch/logs/elasticsearch.log
-ERROR: Elasticsearch exited unexpectedly
-```
-
-In order to move forward, **you must remove the volumes or delete the indexes** directly from your search instances. Note that
-OpenMetadata stores everything in the database, so indexes can be recreated from the UI. We will
-show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
-
-### Helm Chart Values
-
-- Added a new key `openmetadata.config.database.dbParams` to pass extra database parameters as string format, e.g., `useSSL=true&serverTimezone=UTC`.
-- Removed the entry for `openmetadata.config.database.dbUseSSL`. You should use `openmetadata.config.database.dbParams` instead.
-- Updated the ElasticSearch Helm Chart Dependencies to version 8.5.1
-
-### Query Entity
-
-The Query Entity now has the `service` property, linking the Query to the Database Service that it belongs to. Note
-that `service` is a required property both for the Query Entity and the Create Query Entity.
-
-During the migrations, we pick up the service from the tables from `queryUsedIn`. If this information is not available,
-then there is no way to link a query to a service and the query will be removed.
-
-### Service Connection Changes
-
-- Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
-- The `DatabaseMetadata` configuration renamed `viewParsingTimeoutLimit` to `queryParsingTimeoutLimit`.
-- The `DatabaseMetadata` configuration removed the `markAllDeletedTables` option. For simplicity, we'll only
-  mark as deleted the tables coming from the filtered ingestion results.
-
-### Ingestion Framework Changes
-
-We have reorganized the structure of the `Workflow` classes, which requires updated imports:
-
-- **Metadata Workflow**
-  - From: `from metadata.ingestion.api.workflow import Workflow`
-  - To: `from metadata.workflow.metadata import MetadataWorkflow`
-
-- **Lineage Workflow**
-  - From: `from metadata.ingestion.api.workflow import Workflow`
-  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
-
-- **Usage Workflow**
-  - From: `from metadata.ingestion.api.workflow import Workflow`
-  - To: `from metadata.workflow.usage import UsageWorkflow`
-
-- **Profiler Workflow**
-  - From: `from metadata.profiler.api.workflow import ProfilerWorkflow`
-  - To: `from metadata.workflow.profiler import ProfilerWorkflow`
-
-- **Data Quality Workflow**
-  - From: `from metadata.data_quality.api.workflow import TestSuiteWorkflow`
-  - To: `from metadata.workflow.data_quality import TestSuiteWorkflow`
-
-- **Data Insights Workflow**
-  - From: `from metadata.data_insight.api.workflow import DataInsightWorkflow`
-  - To: `from metadata.workflow.data_insight import DataInsightWorkflow`
-
-- **Elasticsearch Reindex Workflow**
-  - From: `from metadata.ingestion.api.workflow import Workflow`
-  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
-
-The `Workflow` class that you import can then be called as follows:
-
-```python
-from metadata.workflow.workflow_output_handler import print_status
-
-workflow = workflow_class.create(workflow_config)
-workflow.execute()
-workflow.raise_from_status()
-print_status(workflow)  # This method has been updated. Before it was `workflow.print_status()`
-workflow.stop()
-```
-
-If you try to run your workflows externally and start noticing `ImportError`s, you will need to review the points above.
-
-### Metadata CLI Changes
-
-In 1.1.7 and below you could run the Usage Workflow as `metadata ingest -c <path to yaml>`. Now, the Usage Workflow
-has its own command `metadata usage -c <path to yaml>`.
 
 ### Custom Connectors
 
-In 1.2.0 we have reorganized the internals of our Workflow handling to centralize status & exception management. This
-will simplify how you need to take care of status and exceptions on your Custom Connectors code, while helping developers
-to make decisions on those errors that need to be shared in the Workflow.
+In 1.3.0 we started registered more information from Ingestion Pipelines status' in the platform. This required
+us to create new JSON Schemas for the added properties, that before were only used in the Ingestion Framework.
 
-{% note %}
+Due to this, we need to update one import and one of its properties' names.
 
-If you want to take a look at an updated Custom Connector and its changes, you can review the demo [PR](https://github.com/open-metadata/openmetadata-demo/pull/34/files).
+**StackTraceError**
+- From `from metadata.ingestion.api.models import StackTraceError` 
+- To `from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError`
 
-{% /note %}
-
-Let's list the changes down:
-1. You don't need to handle the `SourceStatus` anymore. The new basic Workflow class will take care of things for you. Therefore, this import
-  `from metadata.ingestion.api.source import SourceStatus` is deprecated.
-2. The `Source` class is now imported from `from metadata.ingestion.api.steps import Source` (instead of `from metadata.ingestion.api.source import Source`)
-3. We are now initializing the `OpenMetadata` object at the Workflow level (to share it better in each step). Therefore,
-   the source `__init__` method signature is now `def __init__(self, config: WorkflowSource, metadata: OpenMetadata):`. Make sure to store the `self.metadata` object
-   during the `__init__` and don't forget to call `super().__init__()`.
-4. We are updating how the status & exception management happens in the connectors. Now each `yield` result is wrapped by
-   an `Either` (imported from `from metadata.ingestion.api.models import Either`). Your correct data will be `yield`ed in a `right`, while
-   the errors are tracked in a `left`. Read more about the Workflow management [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/workflow/README.md).
+And we renamed its property `stack_trace` to `stackTrace` to follow the naming conventions in JSON Schemas.
 
 ### Other Changes
 
-- Pipeline Status are now timestamps in milliseconds.
+- ...
