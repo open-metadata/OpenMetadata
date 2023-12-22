@@ -34,6 +34,6 @@
         "$ref": "../type/entityReference.json"
       }
   },
-  "required": ["testCaseFailureReason", "resolvedBy", "testCaseFailureComment"],
+  "required": ["testCaseFailureReason", "testCaseFailureComment"],
   "additionalProperties": false
 }
