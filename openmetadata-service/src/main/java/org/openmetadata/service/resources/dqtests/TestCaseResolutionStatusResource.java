@@ -55,9 +55,8 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
 @Tag(
-    name = "Test Case Failure Status",
-    description = "APIs to test case failure status from resolution center.")
-@Hidden
+    name = "Test Case Incident Manager",
+    description = "APIs to test case incident status from incident manager.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
