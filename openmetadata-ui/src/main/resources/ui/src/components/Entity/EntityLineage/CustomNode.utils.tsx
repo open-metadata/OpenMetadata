@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from 'antd';
+import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
+import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getColumnHandle = (
   nodeType: string,
@@ -52,6 +57,52 @@ export const getHandleByType = (
       isConnectable={isConnectable}
       position={position}
       type={type}
+    />
+  );
+};
+
+export const getExpandHandle = (
+  direction: EdgeTypeEnum,
+  onClickHandler: () => void
+) => {
+  return (
+    <Button
+      className={classNames(
+        'absolute lineage-node-handle flex-center',
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'react-flow__handle-right'
+          : 'react-flow__handle-left'
+      )}
+      icon={<PlusIcon className="lineage-expand-icon" />}
+      shape="circle"
+      size="small"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClickHandler();
+      }}
+    />
+  );
+};
+
+export const getCollapseHandle = (
+  direction: EdgeTypeEnum,
+  onClickHandler: () => void
+) => {
+  return (
+    <Button
+      className={classNames(
+        'absolute lineage-node-minus lineage-node-handle flex-center',
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'react-flow__handle-right'
+          : 'react-flow__handle-left'
+      )}
+      icon={<MinusIcon className="lineage-expand-icon" />}
+      shape="circle"
+      size="small"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClickHandler();
+      }}
     />
   );
 };

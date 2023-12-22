@@ -25,18 +25,20 @@ import {
   Position,
   useUpdateNodeInternals,
 } from 'reactflow';
-import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { checkUpstreamDownstream } from '../../../utils/LineageV1Utils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import './custom-node.less';
-import { getColumnHandle } from './CustomNode.utils';
+import {
+  getCollapseHandle,
+  getColumnHandle,
+  getExpandHandle,
+} from './CustomNode.utils';
 import './entity-lineage.style.less';
 import { EdgeTypeEnum, ModifiedColumn } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
@@ -133,6 +135,17 @@ const CustomNodeV1 = (props: NodeProps) => {
     []
   );
 
+  const onExpand = useCallback(
+    (direction: EdgeTypeEnum) => {
+      loadChildNodesHandler(node, direction);
+    },
+    [loadChildNodesHandler, node]
+  );
+
+  const onCollapse = useCallback(() => {
+    onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
+  }, [loadChildNodesHandler, props]);
+
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
       return label;
@@ -151,7 +164,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                 />
               }
               type="link"
-              onClick={() => removeNodeHandler?.(props)}
+              onClick={() => removeNodeHandler(props)}
             />
           ) : null}
         </>
@@ -171,48 +184,25 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Left}
               type="target"
             />
-            {isDownstreamLeafNode && !isEditMode && (
-              <Button
-                className="absolute lineage-node-handle flex-center react-flow__handle-right"
-                icon={<PlusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadChildNodesHandler(node, EdgeTypeEnum.DOWN_STREAM);
-                }}
-              />
-            )}
-            {hasOutgoers && !isEditMode && (
-              <Button
-                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
-                icon={<MinusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
-                }}
-              />
-            )}
+            {isDownstreamLeafNode &&
+              !isEditMode &&
+              getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
+                onExpand(EdgeTypeEnum.DOWN_STREAM)
+              )}
+            {hasOutgoers &&
+              !isEditMode &&
+              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
           </>
         );
 
       case EntityLineageNodeType.INPUT:
         return (
           <>
-            {isUpstreamLeafNode && !isEditMode && (
-              <Button
-                className="absolute lineage-node-handle flex-center react-flow__handle-left"
-                icon={<PlusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadChildNodesHandler(node, EdgeTypeEnum.UP_STREAM);
-                }}
-              />
-            )}
+            {isUpstreamLeafNode &&
+              !isEditMode &&
+              getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
+                onExpand(EdgeTypeEnum.UP_STREAM)
+              )}
             <Handle
               className="lineage-node-handle"
               id={id}
@@ -220,18 +210,9 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasOutgoers && !isEditMode && (
-              <Button
-                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
-                icon={<MinusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
-                }}
-              />
-            )}
+            {hasOutgoers &&
+              !isEditMode &&
+              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
           </>
         );
 
@@ -255,31 +236,15 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasOutgoers && !isEditMode && (
-              <Button
-                className="absolute lineage-node-minus lineage-node-handle flex-center react-flow__handle-right"
-                icon={<MinusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
-                }}
-              />
-            )}
+            {hasOutgoers &&
+              !isEditMode &&
+              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
 
-            {isDownstreamLeafNode && !isEditMode && (
-              <Button
-                className="absolute lineage-node-handle flex-center react-flow__handle-right"
-                icon={<PlusIcon className="lineage-expand-icon" />}
-                shape="circle"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadChildNodesHandler(node, EdgeTypeEnum.DOWN_STREAM);
-                }}
-              />
-            )}
+            {isDownstreamLeafNode &&
+              !isEditMode &&
+              getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
+                onExpand(EdgeTypeEnum.UP_STREAM)
+              )}
           </>
         );
     }
@@ -398,7 +363,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                   <div className="border rounded-4">
                     {filteredColumns.map((column) => {
                       const isColumnTraced = tracedColumns.includes(
-                        column.fullyQualifiedName
+                        column.fullyQualifiedName ?? ''
                       );
 
                       return (
@@ -413,7 +378,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                           key={column.fullyQualifiedName}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onColumnClick(column.fullyQualifiedName);
+                            onColumnClick(column.fullyQualifiedName ?? '');
                           }}>
                           {getColumnHandle(
                             column.type,

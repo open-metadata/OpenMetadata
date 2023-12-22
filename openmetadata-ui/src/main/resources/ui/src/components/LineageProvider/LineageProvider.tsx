@@ -30,6 +30,7 @@ import {
   Edge,
   getConnectedEdges,
   Node,
+  NodeProps,
   ReactFlowInstance,
   useEdgesState,
   useNodesState,
@@ -51,10 +52,17 @@ import {
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
+  createEdges,
+  createNodes,
   getAllTracedColumnEdge,
   getAllTracedNodes,
   getClassifiedEdge,
+  getColumnLineageData,
+  getConnectedNodesEdges,
   getLayoutedElements,
+  getLineageDetailsObject,
+  getLineageEdge,
+  getLineageEdgeForAPI,
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
@@ -62,15 +70,8 @@ import {
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
-import {
-  createEdges,
-  createNodes,
-  getColumnLineageData,
-  getConnectedNodesEdges,
-  getLineageDetailsObject,
-  getLineageEdge,
-  getLineageEdgeForAPI,
-} from '../../utils/LineageV1Utils';
+
+import { useParams } from 'react-router-dom';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -90,15 +91,17 @@ import {
 } from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { useTourProvider } from '../TourProvider/TourProvider';
+import { LineageContextType } from './LineageProvider.interface';
 
 interface LineageProviderProps {
   children: ReactNode;
 }
 
-export const LineageContext = createContext({} as any);
+export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
   const { isTourOpen } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -128,7 +131,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
-  const [entityFqn, setEntityFqn] = useState('');
+  // const [entityFqn, setEntityFqn] = useState('');
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
@@ -359,12 +362,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const removeNodeHandler = useCallback(
-    (node: Node) => {
+    (node: Node | NodeProps) => {
       if (!entityLineage) {
         return;
       }
       // Get edges connected to selected node
-      const edgesToRemove = getConnectedEdges([node], edges);
+      const edgesToRemove = getConnectedEdges([node as Node], edges);
       edgesToRemove.forEach((edge) => {
         removeEdgeHandler(edge, true);
       });
@@ -484,10 +487,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onZoomUpdate = useCallback((value) => {
     setZoomValue(value);
-  }, []);
-
-  const onEntityFqnUpdate = useCallback((value) => {
-    setEntityFqn(value);
   }, []);
 
   const toggleColumnView = useCallback(() => {
@@ -807,9 +806,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onNodeCollapse = useCallback(
-    (node: Node, direction: EdgeTypeEnum) => {
+    (node: Node | NodeProps, direction: EdgeTypeEnum) => {
       const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
-        node,
+        node as Node,
         nodes,
         edges,
         direction
@@ -878,7 +877,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       toggleColumnView,
       loadChildNodesHandler,
       fetchLineageData,
-      onEntityFqnUpdate,
       removeNodeHandler,
       onNodeClick,
       onEdgeClick,
@@ -917,7 +915,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onDrawerClose,
     loadChildNodesHandler,
     fetchLineageData,
-    onEntityFqnUpdate,
+
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,

@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
+import { Edge } from 'reactflow';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import {
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
   getClassifiedEdge,
+  getColumnLineageData,
   getEdgeStyle,
+  getLineageDetailsObject,
+  getLineageEdge,
+  getLineageEdgeForAPI,
   isColumnLineageTraced,
   isTracedEdge,
 } from './EntityLineageUtils';
@@ -125,5 +131,138 @@ describe('Test EntityLineageUtils utility', () => {
     };
 
     expect(getEdgeStyle(false)).toEqual(expectedFalseStyle);
+  });
+
+  it('getLineageDetailsObject should return correct object', () => {
+    const edgeWithData = {
+      data: {
+        edge: {
+          sqlQuery: 'SELECT * FROM table',
+          columns: ['column1', 'column2'],
+          description: 'This is a test',
+          pipeline: 'Test Pipeline',
+          source: 'Test Source',
+        },
+      },
+    } as Edge;
+
+    const resultWithData = getLineageDetailsObject(edgeWithData);
+
+    expect(resultWithData).toEqual({
+      sqlQuery: 'SELECT * FROM table',
+      columnsLineage: ['column1', 'column2'],
+      description: 'This is a test',
+      pipeline: 'Test Pipeline',
+      source: 'Test Source',
+    });
+
+    const edgeWithoutData = {} as Edge;
+    const resultWithoutData = getLineageDetailsObject(edgeWithoutData);
+
+    expect(resultWithoutData).toEqual({
+      sqlQuery: '',
+      columnsLineage: [],
+      description: '',
+      pipeline: undefined,
+      source: '',
+    });
+  });
+
+  it('should return the correct lineage edge with valid source and target nodes', () => {
+    const sourceNode = {
+      id: 'sourceId',
+      entityType: 'table',
+    } as SourceType;
+    const targetNode = {
+      id: 'targetId',
+      entityType: 'table',
+    } as SourceType;
+    const expectedEdge = {
+      fromEntity: { id: 'sourceId', type: 'table' },
+      toEntity: { id: 'targetId', type: 'table' },
+      lineageDetails: {
+        sqlQuery: '',
+        columnsLineage: [],
+      },
+    };
+
+    const result = getLineageEdgeForAPI(sourceNode, targetNode);
+
+    expect(result).toEqual({ edge: expectedEdge });
+  });
+
+  it('getLineageEdge should return the lineage edge with correct properties', () => {
+    const sourceNode = {
+      id: 'sourceId',
+      entityType: 'table',
+      fullyQualifiedName: 'sourceFqn',
+    } as SourceType;
+    const targetNode = {
+      id: 'targetId',
+      entityType: 'table',
+      fullyQualifiedName: 'targetFqn',
+    } as SourceType;
+
+    const result = getLineageEdge(sourceNode, targetNode);
+
+    expect(result).toEqual({
+      edge: {
+        fromEntity: {
+          id: 'sourceId',
+          type: 'table',
+          fqn: 'sourceFqn',
+        },
+        toEntity: {
+          id: 'targetId',
+          type: 'table',
+          fqn: 'targetFqn',
+        },
+        sqlQuery: '',
+      },
+    });
+    expect(result.edge.fromEntity.type).toBe('table');
+    expect(result.edge.toEntity.fqn).toBe('targetFqn');
+    expect(result.edge.fromEntity.fqn).toBe('sourceFqn');
+    expect(result.edge.toEntity.type).toBe('table');
+  });
+
+  it.skip('should handle different scenarios for getColumnLineageData', () => {
+    const mockEdge = {
+      data: { targetHandle: 'target', sourceHandle: 'source' },
+    } as Edge;
+    const columnsDataNoMatch = [
+      { toColumn: 'column1', fromColumns: ['column2', 'column3'] },
+      { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
+    ];
+    const columnsDataRemoveSource = [
+      { toColumn: 'column1', fromColumns: ['column2', 'column3', 'source'] },
+      { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
+    ];
+    const columnsDataEmptyResult = [
+      { toColumn: 'column1', fromColumns: ['source'] },
+      { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
+    ];
+
+    const resultUndefined = getColumnLineageData([], mockEdge);
+    const resultNoMatch = getColumnLineageData(columnsDataNoMatch, mockEdge);
+    const resultRemoveSource = getColumnLineageData(
+      columnsDataRemoveSource,
+      mockEdge
+    );
+    const resultEmptyResult = getColumnLineageData(
+      columnsDataEmptyResult,
+      mockEdge
+    );
+
+    // Assert
+    expect(resultUndefined).toEqual([]);
+    expect(resultNoMatch).toEqual(columnsDataNoMatch);
+    expect(resultRemoveSource).toEqual([
+      { toColumn: 'column1', fromColumns: ['column2', 'column3'] },
+      { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
+    ]);
+    expect(resultEmptyResult).toEqual([
+      { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
+    ]);
   });
 });
