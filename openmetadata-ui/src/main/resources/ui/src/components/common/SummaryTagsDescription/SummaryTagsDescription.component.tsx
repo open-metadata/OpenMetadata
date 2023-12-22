@@ -15,6 +15,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
@@ -22,7 +23,7 @@ const SummaryTagsDescription = ({
   tags,
   entityDetail,
 }: {
-  tags: TagLabel[];
+  tags: Array<TagLabel | HighlightedTagLabel>;
   entityDetail: EntityUnion;
 }) => {
   const { t } = useTranslation();
