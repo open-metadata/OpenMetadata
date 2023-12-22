@@ -109,28 +109,30 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        className: 'glossary-name-column w-max-400',
+        className: 'glossary-name-column',
+        ellipsis: true,
+        width: '40%',
         render: (_, record) => {
           const name = getEntityName(record);
 
           return (
-            <div className="inline-flex items-center w-max-85">
+            <>
               {record.style?.iconURL && (
                 <img
-                  className="m-r-xss"
+                  className="m-r-xss vertical-baseline"
                   data-testid="tag-icon"
                   src={record.style.iconURL}
                   width={16}
                 />
               )}
               <Link
-                className="cursor-pointer help-text truncate"
+                className="cursor-pointer vertical-baseline"
                 data-testid={name}
                 style={{ color: record.style?.color }}
                 to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
                 {name}
               </Link>
-            </div>
+            </>
           );
         },
       },
@@ -138,6 +140,7 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: permissions.Create ? '21%' : '33%',
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewer
@@ -153,12 +156,14 @@ const GlossaryTermTab = ({
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
+        width: '15%',
         render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
+        width: '12%',
         filterIcon: FilterIcon,
         filters: StatusFilters,
         render: (_, record) => {
@@ -179,7 +184,7 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: 80,
+        width: '12%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -397,9 +402,8 @@ const GlossaryTermTab = ({
               loading={isTableLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
-              scroll={{ x: true }}
               size="small"
-              tableLayout="auto"
+              tableLayout="fixed"
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />
