@@ -71,8 +71,6 @@ disallow_incomplete_defs = false
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
-# To avoid PytestCollectionWarning on generated classes such as `TestCase(BaseModel)`
-python_files = "test_*.py"
 
 [tool.pylint.BASIC]
 # W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
