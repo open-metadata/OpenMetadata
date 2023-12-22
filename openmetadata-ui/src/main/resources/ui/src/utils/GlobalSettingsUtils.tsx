@@ -205,7 +205,6 @@ export const getGlobalSettingsMenuWithPermission = (
         },
       ],
     },
-
     {
       category: i18next.t('label.integration-plural'),
       key: 'integrations',
