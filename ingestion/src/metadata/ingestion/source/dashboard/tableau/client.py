@@ -67,7 +67,7 @@ class TableauClient:
     ):
         # ssl_verify is typed as a `bool` in TableauServerConnection
         # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
-        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
+        # In requests (https://requests.readthedocs.io/en/latest/user/advanced.html?highlight=ssl#ssl-cert-verification)
         # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
         self._client = TableauServerConnection(
             config_json=config,
