@@ -250,14 +250,6 @@ class AirflowLineageTest(TestCase):
         if state != "success":
             raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time.")
 
-        # curl -XGET http://localhost:8080/api/v1/openmetadata/last_dag_logs?dag_id=lineage_tutorial_operator&task_id=lineage_op
-        res = requests.get(
-            AIRFLOW_HOST_API_ROOT + f"openmetadata/last_dag_logs?dag_id=lineage_tutorial_operator&task_id=lineage_op",
-            headers=DEFAULT_AIRFLOW_HEADERS,
-        )
-        print("EXECUTION LOG")
-        print(res.text)
-
     @pytest.mark.order(2)
     def test_pipeline_created(self) -> None:
         """
