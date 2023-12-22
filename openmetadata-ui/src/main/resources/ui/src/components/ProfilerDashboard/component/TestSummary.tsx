@@ -85,7 +85,7 @@ export interface DateRangeObject {
 
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
-  showDescription = true,
+  showOnlyGraph = false,
   showExpandIcon = true,
 }) => {
   const defaultRange = useMemo(
@@ -395,39 +395,41 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           </Row>
         )}
       </Col>
-      <Col span={24}>
-        <Row align="top" data-testid="params-container" gutter={[16, 16]}>
-          {showParameters && (
-            <Col>
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.parameter')}:`}
-              </Typography.Text>
-              {!isEmpty(parameterValuesWithoutSqlExpression) ? (
-                <Row className="parameter-value-container" gutter={[4, 4]}>
-                  {parameterValuesWithoutSqlExpression?.map(showParamsData)}
-                </Row>
-              ) : (
-                <Typography.Text className="m-l-xs" type="secondary">
-                  {t('label.no-parameter-available')}
-                </Typography.Text>
-              )}
-            </Col>
-          )}
-          {!isUndefined(parameterValuesWithSqlExpression) ? (
-            <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
-          ) : null}
-          {data.description && showDescription && (
-            <Col>
-              <Space direction="vertical" size={4}>
+      {showOnlyGraph ? null : (
+        <Col span={24}>
+          <Row align="top" data-testid="params-container" gutter={[16, 16]}>
+            {showParameters && (
+              <Col>
                 <Typography.Text className="text-grey-muted">
-                  {`${t('label.description')}:`}
+                  {`${t('label.parameter')}:`}
                 </Typography.Text>
-                <RichTextEditorPreviewer markdown={data.description} />
-              </Space>
-            </Col>
-          )}
-        </Row>
-      </Col>
+                {!isEmpty(parameterValuesWithoutSqlExpression) ? (
+                  <Row className="parameter-value-container" gutter={[4, 4]}>
+                    {parameterValuesWithoutSqlExpression?.map(showParamsData)}
+                  </Row>
+                ) : (
+                  <Typography.Text className="m-l-xs" type="secondary">
+                    {t('label.no-parameter-available')}
+                  </Typography.Text>
+                )}
+              </Col>
+            )}
+            {!isUndefined(parameterValuesWithSqlExpression) ? (
+              <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
+            ) : null}
+            {data.description && (
+              <Col>
+                <Space direction="vertical" size={4}>
+                  <Typography.Text className="text-grey-muted">
+                    {`${t('label.description')}:`}
+                  </Typography.Text>
+                  <RichTextEditorPreviewer markdown={data.description} />
+                </Space>
+              </Col>
+            )}
+          </Row>
+        </Col>
+      )}
     </Row>
   );
 };

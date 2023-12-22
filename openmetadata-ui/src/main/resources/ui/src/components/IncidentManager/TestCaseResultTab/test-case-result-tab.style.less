@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
-
-.task-resolution-steps-container {
-  border-radius: 10px;
-  background-color: @grey-1;
-  padding: 24px;
-  overflow-x: auto;
+.test-case-result-tab {
+  .test-case-result-tab-graph {
+    background-color: @grey-5;
+    padding: 16px;
+  }
+  .CodeMirror-gutters {
+    background-color: @grey-5;
+  }
+  .parameter-value {
+    background-color: @grey-5;
+  }
 }

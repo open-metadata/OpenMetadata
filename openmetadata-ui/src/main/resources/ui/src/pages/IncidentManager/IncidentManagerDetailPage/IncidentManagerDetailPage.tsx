@@ -37,6 +37,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
@@ -47,6 +48,7 @@ import { TestCaseData } from './IncidentManagerDetailPage.interface';
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+
   const {
     fqn: testCaseFQN,
     tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
@@ -228,9 +230,18 @@ const IncidentManagerDetailPage = () => {
                 </Typography.Text>
               </>
             )}
+
+            <Divider className="self-center m-x-sm" type="vertical" />
+            <Typography.Text className="self-center text-xs whitespace-nowrap">
+              <span className="text-grey-muted">{`${t(
+                'label.test-type'
+              )}: `}</span>
+              <span className="font-medium">
+                {getEntityName(testCaseData?.data?.testDefinition)}
+              </span>
+            </Typography.Text>
           </Space>
         </Col>
-
         <Col span={24}>
           <Tabs
             destroyInactiveTabPane

@@ -20,10 +20,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { updateTestCaseById } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
@@ -31,7 +31,9 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import TestSummary from '../../ProfilerDashboard/component/TestSummary';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import '../incident-manager.style.less';
+import './test-case-result-tab.style.less';
 import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
 
 const TestCaseResultTab = ({
@@ -55,6 +57,16 @@ const TestCaseResultTab = ({
       testCaseData?.parameterValues && testCaseData.parameterValues.length > 0
         ? testCaseData.parameterValues.filter(
             (param) => param.name !== 'sqlExpression'
+          )
+        : undefined,
+    [testCaseData?.parameterValues]
+  );
+
+  const parameterValuesWithSqlExpression = useMemo(
+    () =>
+      testCaseData?.parameterValues && testCaseData.parameterValues.length > 0
+        ? testCaseData.parameterValues.filter(
+            (param) => param.name === 'sqlExpression'
           )
         : undefined,
     [testCaseData?.parameterValues]
@@ -98,7 +110,7 @@ const TestCaseResultTab = ({
   );
 
   return (
-    <Row className="p-lg" gutter={[0, 20]}>
+    <Row className="p-lg test-case-result-tab" gutter={[0, 20]}>
       <Col span={24}>
         <DescriptionV1
           description={testCaseData?.description}
@@ -113,18 +125,7 @@ const TestCaseResultTab = ({
       </Col>
 
       <Col span={24}>
-        <Space direction="vertical" size="middle">
-          <Typography.Text className="right-panel-label">
-            {t('label.test-type')}
-          </Typography.Text>
-          <Typography.Text>
-            {getEntityName(testCaseData?.testDefinition)}
-          </Typography.Text>
-        </Space>
-      </Col>
-
-      <Col span={24}>
-        <Space direction="vertical" size="middle">
+        <Space direction="vertical" size="small">
           <Space align="center" size="middle">
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
@@ -141,7 +142,9 @@ const TestCaseResultTab = ({
 
           {!isEmpty(parameterValuesWithoutSqlExpression) &&
           !isUndefined(parameterValuesWithoutSqlExpression) ? (
-            <Space className="parameter-value-container" size={6}>
+            <Space
+              className="parameter-value-container parameter-value"
+              size={6}>
               {parameterValuesWithoutSqlExpression.map((param, index) => (
                 <Space key={param.name} size={4}>
                   <Typography.Text className="text-grey-muted">
@@ -162,11 +165,38 @@ const TestCaseResultTab = ({
         </Space>
       </Col>
 
+      {!isUndefined(parameterValuesWithSqlExpression) ? (
+        <Col>
+          {parameterValuesWithSqlExpression.map((param) => (
+            <Row
+              className="sql-expression-container"
+              gutter={[8, 8]}
+              key={param.name}>
+              <Col span={24}>
+                <Typography.Text className="text-grey-muted">
+                  {`${param.name}:`}
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <SchemaEditor
+                  editorClass="table-query-editor"
+                  mode={{ name: CSMode.SQL }}
+                  options={{
+                    styleActiveLine: false,
+                  }}
+                  value={param.value ?? ''}
+                />
+              </Col>
+            </Row>
+          ))}
+        </Col>
+      ) : null}
+
       {testCaseData && (
-        <Col span={24}>
+        <Col className="test-case-result-tab-graph" span={24}>
           <TestSummary
+            showOnlyGraph
             data={testCaseData}
-            showDescription={false}
             showExpandIcon={false}
           />
         </Col>

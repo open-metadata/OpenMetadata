@@ -57,6 +57,7 @@ import {
   TaskDetails,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCaseFailureReasonType } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
@@ -73,6 +74,7 @@ import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchOptions,
@@ -86,6 +88,8 @@ import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -102,6 +106,8 @@ export const TaskTab = ({
   const { currentUser } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
+
+  const { permissions } = usePermissionProvider();
 
   const { task: taskDetails } = taskThread;
   const entityFQN = getEntityFQN(taskThread.about) ?? '';
@@ -390,7 +396,12 @@ export const TaskTab = ({
   }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const testCaseResultFlow = useMemo(() => {
-    const hasApprovalAccess = isAssignee || isCreator;
+    const editPermission = checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+    const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
       <Space
@@ -411,7 +422,7 @@ export const TaskTab = ({
           title={!hasApprovalAccess && t('message.no-access-placeholder')}>
           <Button
             data-testid="approve-task"
-            // disabled={!hasApprovalAccess}
+            disabled={!hasApprovalAccess}
             type="primary"
             onClick={() => setShowEditTaskModel(true)}>
             {t('label.resolve')}
