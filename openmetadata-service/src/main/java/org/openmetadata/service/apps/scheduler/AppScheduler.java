@@ -24,6 +24,7 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 
 @Slf4j
@@ -93,6 +94,7 @@ public class AppScheduler {
     JobDetail jobDetail = getJobKey(app.getId());
     if (jobDetail != null) {
       scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
       appJobsKeyMap.remove(app.getId());
     }
   }
