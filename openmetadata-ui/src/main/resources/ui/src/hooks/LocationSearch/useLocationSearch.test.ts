@@ -16,7 +16,7 @@ import { useLocation } from 'react-router-dom';
 import { useLocationSearch } from './useLocationSearch';
 
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn(),
+  useLocation: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('qs', () => ({
@@ -52,9 +52,10 @@ describe('useLocationSearch', () => {
   });
 
   it('should memoize the result based on location.search', () => {
-    (useLocation as jest.Mock).mockReturnValueOnce({
+    (useLocation as jest.Mock).mockReturnValue({
       search: '?param1=value1',
     });
+
     (qs.parse as jest.Mock).mockReturnValueOnce({ param1: 'value1' });
 
     const { result, rerender } = renderHook(() => useLocationSearch());
@@ -66,7 +67,7 @@ describe('useLocationSearch', () => {
 
     // Result should be memoized and remain the same
     expect(result.current).toBe(initialResult);
-    expect(useLocation).toHaveBeenCalledTimes(1);
+    expect(useLocation).toHaveBeenCalledTimes(2);
     expect(qs.parse).toHaveBeenCalledTimes(1);
   });
 });

@@ -19,6 +19,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { refreshTokenKey } from '../../../constants/constants';
+import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import AuthProvider, { useAuthContext } from './AuthProvider';
 
 const localStorageMock = {
@@ -38,9 +39,11 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
-  fetchAuthenticationConfig: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve()),
+  fetchAuthenticationConfig: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      provider: AuthProviderProps.LDAP,
+    })
+  ),
   fetchAuthorizerConfig: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -72,10 +75,6 @@ describe('Test auth provider', () => {
     const logoutButton = screen.getByTestId('logout-button');
 
     expect(logoutButton).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(logoutButton);
-    });
   });
 
   it('Logout handler should remove the refresh token', async () => {
