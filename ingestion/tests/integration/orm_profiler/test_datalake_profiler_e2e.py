@@ -23,7 +23,6 @@ from unittest import TestCase
 
 import boto3
 import botocore
-import pytest
 from moto import mock_s3
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
@@ -141,7 +140,6 @@ class DatalakeProfilerTestE2E(TestCase):
         print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
-    @pytest.mark.order(1)
     def test_datalake_profiler_workflow(self):
         workflow_config = deepcopy(INGESTION_CONFIG)
         workflow_config["source"]["sourceConfig"]["config"].update(
@@ -177,7 +175,6 @@ class DatalakeProfilerTestE2E(TestCase):
         assert table_profile.entities
         assert column_profile.entities
 
-    @pytest.mark.order(2)
     def test_values_partitioned_datalake_profiler_workflow(self):
         """Test partitioned datalake profiler workflow"""
         workflow_config = deepcopy(INGESTION_CONFIG)
@@ -222,7 +219,6 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert profile.rowCount == 1.0
 
-    @pytest.mark.order(3)
     def test_datetime_partitioned_datalake_profiler_workflow(self):
         """Test partitioned datalake profiler workflow"""
         workflow_config = deepcopy(INGESTION_CONFIG)
@@ -268,7 +264,6 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert profile.rowCount == 2.0
 
-    @pytest.mark.order(4)
     def test_integer_range_partitioned_datalake_profiler_workflow(self):
         """Test partitioned datalake profiler workflow"""
         workflow_config = deepcopy(INGESTION_CONFIG)
@@ -315,7 +310,6 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert profile.rowCount == 2.0
 
-    @pytest.mark.order(5)
     def test_datalake_profiler_workflow_with_custom_profiler_config(self):
         """Test custom profiler config return expected sample and metric computation"""
         profiler_metrics = [

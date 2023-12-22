@@ -22,7 +22,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 from unittest import TestCase
 
-import pytest
 import requests
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -189,7 +188,6 @@ class AirflowLineageTest(TestCase):
             hard_delete=True,
         )
 
-    @pytest.mark.order(1)
     def test_dag_runs(self) -> None:
         """
         Trigger the Airflow DAG and wait until it runs.
@@ -250,7 +248,6 @@ class AirflowLineageTest(TestCase):
         if state != "success":
             raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time.")
 
-    @pytest.mark.order(2)
     def test_pipeline_created(self) -> None:
         """
         Validate that the pipeline has been created
@@ -285,7 +282,6 @@ class AirflowLineageTest(TestCase):
             get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
         )
 
-    @pytest.mark.order(3)
     def test_pipeline_lineage(self) -> None:
         """
         Validate that the pipeline has proper lineage
