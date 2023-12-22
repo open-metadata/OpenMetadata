@@ -58,7 +58,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
@@ -304,27 +303,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     return response;
   }
 
-  @PUT
-  @Path("/trigger/{id}")
-  @Operation(
-      operationId = "triggerDataInsightJob",
-      summary = "Trigger a existing Data Insight Report Job to run",
-      description = "Trigger a existing Data Insight Report Job to run",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Trigger a Data Insight Job"),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response triggerDataInsightJob(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws SchedulerException {
-    authorizer.authorizeAdmin(securityContext);
-    EventSubscription eventSub = repository.find(id, Include.NON_DELETED);
-    return ReportsHandler.getInstance().triggerExistingDataInsightJob(eventSub);
-  }
-
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -507,6 +485,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
   public List<Function> listEventSubscriptionFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
   }
 
@@ -518,6 +497,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
   public ResultList<SubscriptionResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return new ResultList<>(EventsSubscriptionRegistry.listResourceDescriptors());
   }
 
@@ -536,6 +516,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Context SecurityContext securityContext,
       @Parameter(description = "Expression to validate", schema = @Schema(type = "string")) @PathParam("expression")
           String expression) {
+    authorizer.authorizeAdmin(securityContext);
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 

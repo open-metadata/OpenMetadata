@@ -49,7 +49,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.springframework.expression.Expression;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -169,9 +168,8 @@ public final class AlertUtil {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
