@@ -110,6 +110,7 @@ public class TestCaseResolutionStatusRepository
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
     TestCaseResolutionStatus latestTestCaseFailure =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+
     recordEntity.setStateId(
         ((latestTestCaseFailure != null)
                 && (latestTestCaseFailure.getTestCaseResolutionStatusType()

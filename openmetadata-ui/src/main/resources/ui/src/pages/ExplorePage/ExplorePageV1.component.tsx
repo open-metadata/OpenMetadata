@@ -343,7 +343,7 @@ const ExplorePageV1: FunctionComponent = () => {
         const counts: Record<string, number> = {};
 
         buckets.forEach((item) => {
-          if (item && TABS_SEARCH_INDEXES.includes(item.key)) {
+          if (item && TABS_SEARCH_INDEXES.includes(item.key as SearchIndex)) {
             counts[item.key ?? ''] = item.doc_count;
           }
         });

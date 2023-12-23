@@ -248,10 +248,9 @@ class OMetaTestsMixin:
             end_ts (int): timestamp
         """
 
-        # timestamp should be changed to milliseconds in https://github.com/open-metadata/OpenMetadata/issues/8930
         params = {
-            "startTs": start_ts // 1000,
-            "endTs": end_ts // 1000,
+            "startTs": start_ts,
+            "endTs": end_ts,
         }
 
         resp = self.client.get(
