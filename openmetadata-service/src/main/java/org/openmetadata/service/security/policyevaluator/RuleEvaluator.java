@@ -177,11 +177,11 @@ public class RuleEvaluator {
     for (String team : teams) {
       if (subjectContext.isUserUnderTeam(team)) {
         LOG.debug(
-            "inAnyTeam - User {} is under the team {}", subjectContext.getUser().getName(), team);
+            "inAnyTeam - User {} is under the team {}", subjectContext.user().getName(), team);
         return true;
       }
       LOG.debug(
-          "inAnyTeam - User {} is not under the team {}", subjectContext.getUser().getName(), team);
+          "inAnyTeam - User {} is not under the team {}", subjectContext.user().getName(), team);
     }
     return false;
   }
@@ -206,7 +206,7 @@ public class RuleEvaluator {
     }
     for (String role : roles) {
       if (subjectContext.hasAnyRole(role)) {
-        LOG.debug("hasAnyRole - User {} has the role {}", subjectContext.getUser().getName(), role);
+        LOG.debug("hasAnyRole - User {} has the role {}", subjectContext.user().getName(), role);
         return true;
       }
     }
