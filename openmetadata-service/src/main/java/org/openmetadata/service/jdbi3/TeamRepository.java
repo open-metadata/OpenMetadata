@@ -226,7 +226,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setInheritedFields(Team team, Fields fields) {
+  public void setInheritedFields(Team team, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
@@ -237,7 +237,6 @@ public class TeamRepository extends EntityRepository<Team> {
         inheritDomain(team, fields, parent);
       }
     }
-    return team;
   }
 
   @Override

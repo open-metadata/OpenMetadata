@@ -26,6 +26,7 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
     this.doError(target, baseRequest, request, response);
   }
 
+  @Deprecated
   @Override
   public void doError(
       String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)

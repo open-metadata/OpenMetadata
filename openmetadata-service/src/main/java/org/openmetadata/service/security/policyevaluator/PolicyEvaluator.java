@@ -70,7 +70,7 @@ public class PolicyEvaluator {
     if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
       throw new AuthorizationException(
           CatalogExceptionMessage.permissionNotAllowed(
-              subjectContext.getUser().getName(), operationContext.getOperations()));
+              subjectContext.user().getName(), operationContext.getOperations()));
     }
   }
 

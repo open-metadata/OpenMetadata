@@ -246,7 +246,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(
+        getLatestExtensionFromTimeSeries(
             ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }

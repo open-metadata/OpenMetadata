@@ -37,7 +37,7 @@ import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public record SubjectContext(@Getter User user) {
+public record SubjectContext(User user) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
 

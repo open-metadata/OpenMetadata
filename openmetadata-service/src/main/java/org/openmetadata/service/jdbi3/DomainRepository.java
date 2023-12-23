@@ -81,7 +81,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Domain setInheritedFields(Domain domain, Fields fields) {
+  public void setInheritedFields(Domain domain, Fields fields) {
     // If subdomain does not have owner and experts, then inherit it from parent domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
@@ -89,7 +89,6 @@ public class DomainRepository extends EntityRepository<Domain> {
       inheritOwner(domain, fields, parent);
       inheritExperts(domain, fields, parent);
     }
-    return domain;
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {

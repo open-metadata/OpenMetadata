@@ -611,7 +611,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TestCase entity =
             setFieldsInternal(
                 JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-        entity = clearFieldsInternal(entity, fields);
+        clearFieldsInternal(entity, fields);
         testCases.add(withHref(uriInfo, entity));
       }
 
@@ -646,7 +646,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     for (CollectionDAO.TestCaseDAO.TestCaseRecord testCaseRecord : testCaseRecords) {
       TestCase entity =
           setFieldsInternal(JsonUtils.readValue(testCaseRecord.getJson(), TestCase.class), fields);
-      entity = clearFieldsInternal(entity, fields);
+      clearFieldsInternal(entity, fields);
       testCases.add(withHref(uriInfo, entity));
     }
     int total = dao.listCount(filter);

@@ -90,7 +90,8 @@ public class GChatPublisher extends SubscriptionPublisher {
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, gchatMessage);
         }
-      } catch (Exception e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         String message =
             CatalogExceptionMessage.eventPublisherFailedToPublish(
                 G_CHAT_WEBHOOK, event, e.getMessage());

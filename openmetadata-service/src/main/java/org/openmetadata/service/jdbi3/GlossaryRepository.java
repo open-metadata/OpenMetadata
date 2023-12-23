@@ -159,7 +159,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     private final Glossary glossary;
 
     GlossaryCsv(Glossary glossary, String user) {
-      super(GLOSSARY_TERM, DOCUMENTATION.getHeaders(), user);
+      super(GLOSSARY_TERM, HEADERS, user);
       this.glossary = glossary;
     }
 

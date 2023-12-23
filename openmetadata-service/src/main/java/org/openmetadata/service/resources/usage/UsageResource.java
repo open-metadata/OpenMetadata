@@ -152,7 +152,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext<?> resourceContext = new ResourceContext(entity, null, fqn);
+    ResourceContext<?> resourceContext = new ResourceContext<>(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;

@@ -90,7 +90,8 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, teamsMessage);
         }
-      } catch (Exception e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         String message =
             CatalogExceptionMessage.eventPublisherFailedToPublish(
                 MS_TEAMS_WEBHOOK, event, e.getMessage());

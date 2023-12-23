@@ -168,7 +168,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   public KpiResult getKpiResult(String fqn) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
+        getLatestExtensionFromTimeSeries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
   public ResultList<KpiResult> getKpiResults(
