@@ -11,20 +11,24 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import GlossaryDetailsRightPanel from 'components/Glossary/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsInput from 'components/TagsInput/TagsInput.component';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { Glossary, TagLabel } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
 import React, { useMemo, useState } from 'react';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { Glossary } from '../../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../../generated/entity/type';
+import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtils';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
+import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
+import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';
@@ -35,6 +39,7 @@ type Props = {
   onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
   isGlossary: boolean;
   isVersionView?: boolean;
+  onThreadLinkSelect: (value: string) => void;
 };
 
 const GlossaryOverviewTab = ({
@@ -43,9 +48,11 @@ const GlossaryOverviewTab = ({
   onUpdate,
   isGlossary,
   isVersionView,
+  onThreadLinkSelect,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const [tagsUpdatating, setTagsUpdating] = useState<TagLabel[]>();
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedData.description !== updatedHTML) {
@@ -76,17 +83,6 @@ const GlossaryOverviewTab = ({
     }
   }, [selectedData, isVersionView]);
 
-  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
-    if (updatedTags) {
-      const updatedData = {
-        ...selectedData,
-        tags: updatedTags,
-      };
-
-      onUpdate(updatedData);
-    }
-  };
-
   const tags = useMemo(
     () =>
       isVersionView
@@ -98,6 +94,19 @@ const GlossaryOverviewTab = ({
     [isVersionView, selectedData]
   );
 
+  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (selectedData) {
+      await onUpdate({
+        ...selectedData,
+        tags: tagsUpdatating,
+      });
+    }
+  };
+
   return (
     <Row className="glossary-overview-tab h-full" gutter={[32, 16]}>
       <Col
@@ -108,14 +117,17 @@ const GlossaryOverviewTab = ({
           <Col span={24}>
             <DescriptionV1
               description={glossaryDescription}
-              entityName={selectedData?.displayName ?? selectedData?.name}
-              entityType={EntityType.GLOSSARY}
+              entityFqn={selectedData.fullyQualifiedName}
+              entityName={getEntityName(selectedData)}
+              entityType={EntityType.GLOSSARY_TERM}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
+              owner={selectedData?.owner}
+              showActions={!selectedData.deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
           </Col>
           <Col span={24}>
@@ -151,11 +163,15 @@ const GlossaryOverviewTab = ({
 
               <Col span={12}>
                 <Space className="w-full" direction="vertical">
-                  <TagsInput
-                    editable={hasEditTagsPermissions}
-                    isVersionView={isVersionView}
-                    tags={tags}
-                    onTagsUpdate={handleTagsUpdate}
+                  <TagsContainerV2
+                    displayType={DisplayType.READ_MORE}
+                    entityFqn={selectedData.fullyQualifiedName}
+                    entityType={EntityType.GLOSSARY_TERM}
+                    permission={hasEditTagsPermissions}
+                    selectedTags={tags ?? []}
+                    tagType={TagSource.Classification}
+                    onSelectionChange={handleTagsUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </Space>
               </Col>
@@ -169,9 +185,18 @@ const GlossaryOverviewTab = ({
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={selectedData}
+          onThreadLinkSelect={onThreadLinkSelect}
           onUpdate={onUpdate}
         />
       </Col>
+      {tagsUpdatating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={selectedData as GlossaryTerm}
+          updatedTags={tagsUpdatating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
     </Row>
   );
 };

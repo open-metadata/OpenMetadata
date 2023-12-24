@@ -11,25 +11,25 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
-import { INGESTION_DATA } from 'components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import Loader from 'components/Loader/Loader';
-import { getTableTabPath } from 'constants/constants';
-import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
-import { getTestSuiteByName } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
+import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import Loader from '../../components/Loader/Loader';
+import { getTableTabPath } from '../../constants/constants';
+import { EntityTabs } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
+import { getTestSuiteByName } from '../../rest/testAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

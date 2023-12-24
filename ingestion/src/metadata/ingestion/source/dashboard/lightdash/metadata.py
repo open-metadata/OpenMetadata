@@ -26,7 +26,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
@@ -49,21 +50,21 @@ class LightdashSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: LightdashConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LightdashConnection):
             raise InvalidSourceException(
                 f"Expected LightdashConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.charts: List[LightdashChart] = []
 
     def prepare(self):
@@ -110,12 +111,12 @@ class LightdashSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield dashboard_request
             self.register_record(dashboard_request=dashboard_request)
@@ -127,7 +128,7 @@ class LightdashSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: LightdashChart
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Optional[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -150,7 +151,7 @@ class LightdashSource(DashboardServiceSource):
                     displayName=chart.name,
                     description=chart.description,
                     sourceUrl=chart_url,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except

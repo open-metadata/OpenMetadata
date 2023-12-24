@@ -24,7 +24,7 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
       schema_name,
       start_time,
       end_time,
-      total_elapsed_time/1000 duration
+      total_elapsed_time duration
     from snowflake.account_usage.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -118,7 +118,7 @@ SELECT query_text from snowflake.account_usage.query_history limit 1
 """
 
 SNOWFLAKE_TEST_GET_TABLES = """
-SELECT TABLE_NAME FROM information_schema.tables LIMIT 1 
+SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1 
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
@@ -143,9 +143,9 @@ SELECT /* sqlalchemy:_get_schema_columns */
     ORDER BY ic.ordinal_position
 """
 
-SNOWFLAKE_GET_CURRENT_REGION = "SELECT CURRENT_REGION() AS region"
+SNOWFLAKE_GET_ORGANIZATION_NAME = "SELECT CURRENT_ORGANIZATION_NAME() AS NAME"
 
-SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT() AS account"
+SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT_NAME() AS ACCOUNT"
 
 SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
@@ -173,6 +173,10 @@ WHERE PROCEDURE_CATALOG = '{database_name}'
     """
 )
 
+SNOWFLAKE_DESC_STORED_PROCEDURE = (
+    "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
+)
+
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
@@ -185,9 +189,6 @@ WITH SP_HISTORY AS (
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
-      AND SCHEMA_NAME = '{schema_name}'
-      AND DATABASE_NAME = '{database_name}'
 ),
 Q_HISTORY AS (
     SELECT
@@ -198,20 +199,21 @@ Q_HISTORY AS (
       START_TIME,
       END_TIME,
       TOTAL_ELAPSED_TIME/1000 AS DURATION,
-      USER_NAME
+      USER_NAME,
+      SCHEMA_NAME,
+      DATABASE_NAME
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE <> 'CALL'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
-      AND SCHEMA_NAME = '{schema_name}'
-      AND DATABASE_NAME = '{database_name}'
 )
 SELECT
   SP.QUERY_ID AS PROCEDURE_ID,
   Q.QUERY_ID AS QUERY_ID,
   Q.QUERY_TYPE AS QUERY_TYPE,
+  Q.DATABASE_NAME AS QUERY_DATABASE_NAME,
+  Q.SCHEMA_NAME AS QUERY_SCHEMA_NAME,
   SP.QUERY_TEXT AS PROCEDURE_TEXT,
   SP.START_TIME AS PROCEDURE_START_TIME,
   SP.END_TIME AS PROCEDURE_END_TIME,

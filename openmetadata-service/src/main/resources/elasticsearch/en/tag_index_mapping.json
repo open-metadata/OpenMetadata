@@ -46,7 +46,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -99,6 +100,9 @@
       "disabled": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "classification": {
         "properties": {
           "id": {
@@ -118,6 +122,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

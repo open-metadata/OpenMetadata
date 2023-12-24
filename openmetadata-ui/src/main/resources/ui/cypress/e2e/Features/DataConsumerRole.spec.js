@@ -12,20 +12,27 @@
  */
 
 import {
+  deleteUser,
   interceptURL,
   login,
+  signupAndLogin,
   uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
 import {
-  BASE_URL,
-  SEARCH_ENTITY_DASHBOARD,
-  SEARCH_ENTITY_PIPELINE,
-  SEARCH_ENTITY_TABLE,
-  SEARCH_ENTITY_TOPIC,
-} from '../../constants/constants';
+  createEntityTable,
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/EntityUtils';
+import { BASE_URL } from '../../constants/constants';
+import {
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+  VISIT_ENTITIES_DATA,
+} from '../../constants/EntityConstant';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
@@ -33,13 +40,13 @@ const CREDENTIALS = {
   email: `test_dataconsumer${uuid()}@openmetadata.org`,
   password: 'User@OMD123',
 };
-
+const { dashboard, pipeline, table, topic } = VISIT_ENTITIES_DATA;
 const policy = 'Data Consumer';
 const ENTITIES = {
-  table: SEARCH_ENTITY_TABLE.table_2,
-  topic: SEARCH_ENTITY_TOPIC.topic_1,
-  dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  pipeline: SEARCH_ENTITY_PIPELINE.pipeline_1,
+  dashboard,
+  pipeline,
+  table,
+  topic,
 };
 
 const glossary = NAVBAR_DETAILS.glossary;
@@ -117,69 +124,69 @@ const PERMISSIONS = {
 };
 
 describe('DataConsumer Edit policy should work properly', () => {
-  it('Create a new account and assign Data consumer role to the user', () => {
-    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
-    cy.visit('/');
-    verifyResponseStatusCode('@getLoginPage', 200);
-    // Click on create account button
-    cy.get('[data-testid="signup"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    // Enter first name
-    cy.get('[id="firstName"]').should('be.visible').type(CREDENTIALS.firstName);
-    cy.get('[id="firstName"]').should('have.value', CREDENTIALS.firstName);
-    // Enter last name
-    cy.get('[id="lastName"]').should('be.visible').type(CREDENTIALS.lastName);
-    cy.get('[id="lastName"]').should('have.value', CREDENTIALS.lastName);
-    // Enter email
-    cy.get('[id="email"]').should('be.visible').type(CREDENTIALS.email);
-    cy.get('[id="email"]').should('have.value', CREDENTIALS.email);
-    // Enter password
-    cy.get('[id="password"]').should('be.visible').type(CREDENTIALS.password);
-    cy.get('[id="password"]')
-      .should('have.attr', 'type')
-      .should('eq', 'password');
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
 
-    // Confirm password
-    cy.get('[id="confirmPassword"]')
-      .should('be.visible')
-      .type(CREDENTIALS.password);
-    // Click on create account button
-    cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
-    cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
-
-    // Login with the created user
-
-    login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage(true);
-    cy.url().should('eq', `${BASE_URL}/my-data`);
-
-    // Verify user profile
-    cy.get('[data-testid="avatar"]')
-      .first()
-      .should('be.visible')
-      .trigger('mouseover')
-      .click();
-
-    cy.get('[data-testid="user-name"]')
-      .should('be.visible')
-      .invoke('text')
-      .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-    interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
-    cy.get('[data-testid="user-name"]')
-      .should('be.visible')
-      .click({ force: true });
-    cy.wait('@getUserPage').then((response) => {
-      CREDENTIALS.id = response.response.body.id;
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
     });
-    cy.get(
-      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
-    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
+    cy.logout();
+  });
 
-    cy.get(
-      '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
-    ).should('contain', policy);
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+    });
+    deleteUser(CREDENTIALS.id);
+  });
+
+  it('Create a new account and assign Data consumer role to the user', () => {
+    signupAndLogin(
+      CREDENTIALS.email,
+      CREDENTIALS.password,
+      CREDENTIALS.firstName,
+      CREDENTIALS.lastName
+    ).then((id) => {
+      CREDENTIALS.id = id;
+
+      cy.clickOutside();
+
+      // click the collapse button to open the other details
+      cy.get(
+        '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon > svg'
+      ).click();
+
+      cy.get(
+        '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
+      ).should('contain', policy);
+    });
   });
 
   it('Check if the new user has only edit access on description and tags', () => {
@@ -188,7 +195,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     Object.values(ENTITIES).forEach((entity) => {
-      visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.term,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       // Check Edit description
       cy.get('[data-testid="edit-description"]')
         .should('be.visible')
@@ -213,11 +224,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     });
 
     // Check if tags is editable for table
-    visitEntityDetailsPage(
-      ENTITIES.table.term,
-      ENTITIES.table.serviceName,
-      ENTITIES.table.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITIES.table.term,
+      serviceName: ENTITIES.table.serviceName,
+      entity: ENTITIES.table.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')
@@ -227,11 +238,12 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
 
     // Check if tags is editable for dashboard
-    visitEntityDetailsPage(
-      ENTITIES.dashboard.term,
-      ENTITIES.dashboard.serviceName,
-      ENTITIES.dashboard.entity
-    );
+
+    visitEntityDetailsPage({
+      term: ENTITIES.dashboard.term,
+      serviceName: ENTITIES.dashboard.serviceName,
+      entity: ENTITIES.dashboard.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')
@@ -296,25 +308,6 @@ describe('DataConsumer Edit policy should work properly', () => {
       } else {
         cy.get(id.testid).should('not.be.exist');
       }
-    });
-  });
-});
-
-describe('Cleanup', () => {
-  beforeEach(() => {
-    Cypress.session.clearAllSavedSessions();
-    cy.login();
-  });
-
-  it('delete user', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
     });
   });
 });

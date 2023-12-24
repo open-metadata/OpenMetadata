@@ -19,7 +19,40 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
+import {
+  createEntityTable,
+  createSingleLevelEntity,
+} from '../../common/EntityUtils';
+import {
+  DASHBOARD_CHART_DETAILS,
+  DASHBOARD_DATA_MODEL_DETAILS,
+  DASHBOARD_DETAILS,
+  DASHBOARD_SERVICE,
+  DATABASE_SERVICE,
+  MESSAGING_SERVICE,
+  ML_MODEL_SERVICE,
+  PIPELINE_SERVICE,
+  STORAGE_SERVICE,
+  STORED_PROCEDURE_DETAILS,
+} from '../../constants/EntityConstant';
+import {
+  TAGS_ADD_REMOVE_ENTITIES,
+  TAGS_ADD_REMOVE_TABLE,
+} from '../../constants/tagsAddRemove.constants';
+
+const SINGLE_LEVEL_SERVICE = [
+  MESSAGING_SERVICE,
+  PIPELINE_SERVICE,
+  ML_MODEL_SERVICE,
+  STORAGE_SERVICE,
+];
+
+const DASHBOARD_SERVICE_WITH_CHART = {
+  ...DASHBOARD_DETAILS,
+  charts: [
+    `${DASHBOARD_CHART_DETAILS.service}.${DASHBOARD_CHART_DETAILS.name}`,
+  ],
+};
 
 const addTags = (tag) => {
   const tagName = Cypress._.split(tag, '.')[1];
@@ -28,7 +61,7 @@ const addTags = (tag) => {
   cy.get('[data-testid="tag-selector"]').click().type(tagName);
 
   cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
-  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+  cy.get(`[data-testid="selected-tag-${tag}"]`).should('exist');
 };
 const verifyTagFilter = ({ entity, tag }) => {
   if (!['mlmodels', 'dashboardDataModel'].includes(entity)) {
@@ -60,13 +93,15 @@ const checkTags = (tag, checkForParentEntity) => {
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   } else {
     cy.get(
       '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   }
 };
 
@@ -103,6 +138,83 @@ const removeTags = (checkForParentEntity) => {
 };
 
 describe('Check if tags addition and removal flow working properly from tables', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [TAGS_ADD_REMOVE_TABLE],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
+
+      // create dashboard service
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/services/${DASHBOARD_SERVICE.serviceType}`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_SERVICE.service,
+      });
+      // creating chart
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/charts`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_CHART_DETAILS,
+      });
+      // creating dashboard
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboards`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_SERVICE_WITH_CHART,
+      });
+
+      // creating data model
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_DATA_MODEL_DETAILS,
+      });
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_DETAILS,
+      });
+    });
+  });
+
+  // after(() => {
+  //   cy.login();
+  //   cy.getAllLocalStorage().then((data) => {
+  //     const token = Object.values(data)[0].oidcIdToken;
+
+  //     hardDeleteService({
+  //       token,
+  //       serviceFqn: DATABASE_SERVICE.service.name,
+  //       serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+  //     });
+  //     SINGLE_LEVEL_SERVICE.forEach((data) => {
+  //       hardDeleteService({
+  //         token,
+  //         serviceFqn: data.service.name,
+  //         serviceType: data.serviceType,
+  //       });
+  //     });
+  //   });
+  // });
+
   beforeEach(() => {
     cy.login();
   });
@@ -127,11 +239,11 @@ describe('Check if tags addition and removal flow working properly from tables',
         `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
         'tagsChange'
       );
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        apiEntity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 
@@ -161,7 +273,7 @@ describe('Check if tags addition and removal flow working properly from tables',
     });
 
     it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
-      if (entityDetails.entity !== 'storedProcedures') {
+      if (!['containers', 'storedProcedures'].includes(entityDetails.entity)) {
         interceptURL(
           'GET',
           `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -186,11 +298,11 @@ describe('Check if tags addition and removal flow working properly from tables',
             'getInsideColumnPermission'
           );
         }
-        visitEntityDetailsPage(
-          entityDetails.term,
-          entityDetails.serviceName,
-          apiEntity
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.term,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+        });
         verifyResponseStatusCode('@getEntityDetail', 200);
         verifyResponseStatusCode('@getEntityPermission', 200);
         if (entityDetails.insideEntity) {

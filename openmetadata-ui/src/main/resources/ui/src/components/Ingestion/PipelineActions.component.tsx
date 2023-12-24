@@ -13,16 +13,19 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getLoadingStatus } from 'utils/CommonUtils';
-import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Loader from '../../components/Loader/Loader';
+import KillIngestionModal from '../../components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getLoadingStatus } from '../../utils/CommonUtils';
+import {
+  getEditIngestionPath,
+  getLogsViewerPath,
+} from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
 function PipelineActions({

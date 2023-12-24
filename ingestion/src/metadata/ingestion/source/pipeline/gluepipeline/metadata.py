@@ -19,25 +19,29 @@ from typing import Any, Iterable, List
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
     GluePipelineConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -61,21 +65,21 @@ class GluepipelineSource(PipelineServiceSource):
     Pipeline metadata from Glue Pipeline's metadata db
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.task_id_mapping = {}
         self.job_name_list = set()
         self.glue = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GluePipelineConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
         for workflow in self.glue.list_workflows()["Workflows"]:
@@ -99,7 +103,7 @@ class GluepipelineSource(PipelineServiceSource):
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
             sourceUrl=source_url,
         )
         yield Either(right=pipeline_request)
@@ -148,29 +152,41 @@ class GluepipelineSource(PipelineServiceSource):
                             executionStatus=STATUS_MAP.get(
                                 attempt["JobRunState"].lower(), StatusType.Pending
                             ).value,
-                            startTime=attempt["StartedOn"].timestamp(),
-                            endTime=attempt["CompletedOn"].timestamp(),
+                            startTime=convert_timestamp_to_milliseconds(
+                                attempt["StartedOn"].timestamp()
+                            ),
+                            endTime=convert_timestamp_to_milliseconds(
+                                attempt["CompletedOn"].timestamp()
+                            ),
                         )
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        timestamp=attempt["StartedOn"].timestamp(),
+                        timestamp=convert_timestamp_to_milliseconds(
+                            attempt["StartedOn"].timestamp()
+                        ),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
                     )
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.pipeline_service,
+                        pipeline_name=self.context.pipeline,
+                    )
                     yield Either(
                         right=OMetaPipelineStatus(
-                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_fqn=pipeline_fqn,
                             pipeline_status=pipeline_status,
                         )
                     )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        name=pipeline_fqn,
                         error=f"Failed to yield pipeline status: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import { TestSuite } from 'generated/tests/testSuite';
-import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
-import { ListTestCaseParams } from 'rest/testAPI';
 import {
   Column,
   ColumnProfile,
   Table,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
+import { ListTestCaseParams } from '../../rest/testAPI';
+import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
@@ -46,7 +45,7 @@ export type MetricChartType = {
     color: string;
     latestValue?: string | number;
   }[];
-  data: Record<string, string | number>[];
+  data: Record<string, string | number | undefined>[];
 };
 
 export interface ProfilerDetailsCardProps {
@@ -56,6 +55,7 @@ export interface ProfilerDetailsCardProps {
   title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
+  isLoading?: boolean;
 }
 
 export enum ProfilerDashboardTab {
@@ -106,15 +106,11 @@ export interface DataQualityTabProps {
   showTableColumn?: boolean;
   isLoading?: boolean;
   onTestCaseResultUpdate?: (data: TestCase) => void;
-  pagingData?: {
-    paging: Paging;
-    currentPage: number;
-    onPagingClick: NextPreviousProps['pagingHandler'];
-    isNumberBased?: boolean;
-  };
+  pagingData?: NextPreviousProps;
   removeFromTestSuite?: {
     testSuite: TestSuite;
   };
+  showPagination?: boolean;
 }
 
 export interface TestSummaryProps {

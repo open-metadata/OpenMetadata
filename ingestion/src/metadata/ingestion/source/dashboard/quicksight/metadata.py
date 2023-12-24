@@ -24,13 +24,13 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -53,8 +53,8 @@ class QuicksightSource(DashboardServiceSource):
     config: WorkflowSource
     metadata: OpenMetadata
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
         self.aws_region = (
@@ -66,14 +66,14 @@ class QuicksightSource(DashboardServiceSource):
         }
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: QuickSightConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
         entity_summary_list = []
@@ -141,12 +141,12 @@ class QuicksightSource(DashboardServiceSource):
                 fqn.build(
                     self.metadata,
                     entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+                    service_name=self.context.dashboard_service,
+                    chart_name=chart,
                 )
                 for chart in self.context.charts
             ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -177,7 +177,7 @@ class QuicksightSource(DashboardServiceSource):
                         displayName=chart["Name"],
                         chartType=ChartType.Other.value,
                         sourceUrl=self.dashboard_url,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                     )
                 )
             except Exception as exc:
@@ -185,7 +185,7 @@ class QuicksightSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error creating chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -236,7 +236,7 @@ class QuicksightSource(DashboardServiceSource):
                                     "Error to yield dashboard lineage details for DB service"
                                     f" name [{db_service_name}]: {err}"
                                 ),
-                                stack_trace=traceback.format_exc(),
+                                stackTrace=traceback.format_exc(),
                             )
                         )
 
@@ -295,6 +295,6 @@ class QuicksightSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )

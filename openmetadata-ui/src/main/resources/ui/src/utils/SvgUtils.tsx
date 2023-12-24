@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -86,10 +85,10 @@ import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
 import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
-import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFlatDoc from '../assets/svg/ic-flat-doc.svg';
 import IconFolderPrimary from '../assets/svg/ic-folder-primary.svg';
 import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
@@ -115,7 +114,6 @@ import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
-import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
 import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
@@ -250,7 +248,6 @@ export const Icons = {
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
-  EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
   HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
@@ -587,10 +584,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconCheckCircle;
 
       break;
-    case Icons.EXCLAMATION_CIRCLE:
-      IconComponent = IconExclamationCircle;
 
-      break;
     case Icons.TIMES_CIRCLE:
       IconComponent = IconTimesCircle;
 
@@ -1017,10 +1011,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconStar;
 
       break;
-    case Icons.STAR_PRIMARY:
-      IconComponent = IconStarPrimary;
 
-      break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
 

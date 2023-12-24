@@ -12,17 +12,18 @@
  */
 
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import TableDescription from '../../components/TableDescription/TableDescription.component';
+import TableTags from '../../components/TableTags/TableTags.component';
+import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
-import { LabelType, State } from '../../generated/type/tagLabel';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import { TagSource } from '../../generated/type/schema';
+import { getEntityName } from '../../utils/EntityUtils';
+import { createTagObject } from '../../utils/TagsUtils';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';
@@ -72,14 +73,7 @@ const MlModelFeaturesList = ({
     selectedTags: EntityTags[],
     targetFeature: MlFeature
   ) => {
-    const newSelectedTags = selectedTags.map((tag) => {
-      return {
-        tagFQN: tag.tagFQN,
-        source: tag.source,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const newSelectedTags = createTagObject(selectedTags);
 
     if (newSelectedTags && targetFeature) {
       const updatedFeatures = mlFeatures?.map((feature) => {
@@ -235,7 +229,7 @@ const MlModelFeaturesList = ({
           <ModalWithMarkdownEditor
             header={t('label.edit-entity-name', {
               entityType: t('label.feature'),
-              entityName: selectedFeature.name,
+              entityName: getEntityName(selectedFeature),
             })}
             placeholder={t('label.enter-field-description', {
               field: t('label.feature-lowercase'),

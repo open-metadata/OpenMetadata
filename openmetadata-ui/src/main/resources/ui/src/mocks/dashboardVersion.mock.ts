@@ -12,10 +12,10 @@
  */
 /* eslint-disable max-len */
 
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardServiceType } from 'generated/entity/services/dashboardService';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { DashboardVersionProp } from '../components/DashboardVersion/DashboardVersion.interface';
+import { Dashboard, DashboardType } from '../generated/entity/data/dashboard';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import { ENTITY_PERMISSIONS } from './Permissions.mock';
 import {
   mockBackHandler,
@@ -28,12 +28,14 @@ import {
 export const mockDashboardData: Dashboard = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
   name: 'eta_predictions_performance',
+  dashboardType: DashboardType.Dashboard,
   displayName: 'ETA Predictions Performance',
   fullyQualifiedName: 'sample_superset.eta_predictions_performance',
   description: 'test description',
   version: 0.3,
   updatedAt: 1649337873334,
   updatedBy: 'anonymous',
+  project: 'workspace',
   sourceUrl:
     'http://localhost:808/superset/dashboard/eta_predictions_performance/',
   charts: [
@@ -69,6 +71,22 @@ export const mockDashboardData: Dashboard = {
     deleted: false,
   },
   serviceType: DashboardServiceType.Superset,
+  usageSummary: {
+    dailyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    weeklyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    monthlyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    date: new Date('2023-12-01'),
+  },
+
   changeDescription: {
     fieldsAdded: [
       {
@@ -90,6 +108,7 @@ export const dashboardVersionProps: DashboardVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedDashboardName: [
     {

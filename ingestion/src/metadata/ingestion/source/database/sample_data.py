@@ -23,7 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
-from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -51,7 +51,13 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
+    CreateTestCaseResolutionStatus,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -65,7 +71,10 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
@@ -77,9 +86,6 @@ from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -93,7 +99,9 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.tests.assigned import Assigned
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
+from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import Timestamp
@@ -120,7 +128,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.utils import fqn
+from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
@@ -142,8 +150,7 @@ class InvalidSampleDataException(Exception):
     """
 
 
-def get_lineage_entity_ref(edge, metadata_config) -> Optional[EntityReference]:
-    metadata = OpenMetadata(metadata_config)
+def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
@@ -181,12 +188,11 @@ class SampleDataSource(
     python objects to be sent to the Sink.
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.list_policies = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
@@ -526,7 +532,7 @@ class SampleDataSource(
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -534,7 +540,7 @@ class SampleDataSource(
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def prepare(self):
         """Nothing to prepare"""
@@ -719,6 +725,21 @@ class SampleDataSource(
                     ),
                 )
 
+            if table.get("customMetrics"):
+                for custom_metric in table["customMetrics"]:
+                    self.metadata.create_or_update_custom_metric(
+                        CreateCustomMetricRequest(**custom_metric),
+                        table_entity.id.__root__,
+                    )
+
+            for column in table.get("columns"):
+                if column.get("customMetrics"):
+                    for custom_metric in column["customMetrics"]:
+                        self.metadata.create_or_update_custom_metric(
+                            CreateCustomMetricRequest(**custom_metric),
+                            table_entity.id.__root__,
+                        )
+
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
 
@@ -774,6 +795,35 @@ class SampleDataSource(
             )
 
             yield Either(right=stored_procedure)
+
+        # Create table and stored procedure lineage
+        for lineage_entities in self.stored_procedures["lineage"]:
+
+            from_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["from_table_fqn"]
+            )
+            stored_procedure_entity = self.metadata.get_by_name(
+                entity=StoredProcedure, fqn=lineage_entities["stored_procedure_fqn"]
+            )
+            to_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["to_table_fqn"]
+            )
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=from_table.id.__root__, type="table"
+                        ),
+                        toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                        lineageDetails=LineageDetails(
+                            pipeline=EntityReference(
+                                id=stored_procedure_entity.id.__root__,
+                                type="storedProcedure",
+                            )
+                        ),
+                    )
+                )
+            )
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
@@ -1021,11 +1071,9 @@ class SampleDataSource(
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
-            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
-            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            edge_entity_ref = get_lineage_entity_ref(
-                edge["edge_meta"], self.metadata_config
-            )
+            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
+            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
+            edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
             lineage_details = (
                 LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
                 if edge_entity_ref
@@ -1258,6 +1306,7 @@ class SampleDataSource(
                             rowCount=profile["rowCount"],
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
+                            customMetrics=profile.get("customMetrics"),
                             timestamp=int(
                                 (
                                     datetime.now(tz=timezone.utc) - timedelta(days=days)
@@ -1338,6 +1387,7 @@ class SampleDataSource(
             )
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
+        """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
             suite = self.metadata.get_by_name(
                 fqn=test_suite["testSuiteName"], entity=TestSuite
@@ -1354,9 +1404,54 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
-                    )
+                    )  # type: ignore
                 )
                 yield Either(right=test_case_req)
+
+                test_case_fqn = f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}"
+
+                for _, resolutions in test_case["resolutions"].items():
+                    for resolution in resolutions:
+                        create_test_case_resolution = CreateTestCaseResolutionStatus(
+                            testCaseResolutionStatusType=resolution[
+                                "testCaseResolutionStatusType"
+                            ],
+                            testCaseReference=test_case_fqn,
+                            severity=resolution["severity"],
+                        )
+
+                        if resolution["testCaseResolutionStatusType"] == "Assigned":
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["assignee"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
+                                assignee=EntityReference(
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
+                                )
+                            )
+                        if resolution["testCaseResolutionStatusType"] == "Resolved":
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["resolver"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
+                                resolvedBy=EntityReference(
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
+                                ),
+                                testCaseFailureReason=random.choice(
+                                    list(TestCaseFailureReasonType)
+                                ),
+                                testCaseFailureComment="Resolution comment",
+                            )
+
+                        self.metadata.create_test_case_resolution(
+                            create_test_case_resolution
+                        )
 
     def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
@@ -1389,9 +1484,16 @@ class SampleDataSource(
         """Iterate over all the data insights and ingest them"""
         data: Dict[str, List] = self.data_insight_data["reports"]
 
-        for _, report_data in data.items():
+        for report_type, report_data in data.items():
             i = 0
             for report_datum in report_data:
+                if report_type == ReportDataType.rawCostAnalysisReportData.value:
+                    start_ts = int(
+                        (datetime.utcnow() - timedelta(days=60)).timestamp() * 1000
+                    )
+                    end_ts = int(datetime.utcnow().timestamp() * 1000)
+                    tmstp = random.randint(start_ts, end_ts)
+                    report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = tmstp
                 record = OMetaDataInsightSample(
                     record=ReportData(
                         id=report_datum["id"],

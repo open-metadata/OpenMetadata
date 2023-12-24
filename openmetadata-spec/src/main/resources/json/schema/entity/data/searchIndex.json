@@ -67,6 +67,18 @@
         "POINT",
         "SHAPE",
         "PERCOLATOR",
+        "BOOLEAN",
+        "CONSTANT_KEYWORD",
+        "WILDCARD",
+        "LONG",
+        "INTEGER",
+        "SHORT",
+        "BYTE",
+        "DOUBLE",
+        "FLOAT",
+        "HALF_FLOAT",
+        "SCALED_FLOAT",
+        "UNSIGNED_LONG",
         "UNKNOWN"
       ]
     },
@@ -80,6 +92,7 @@
     "searchIndexField": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.SearchIndexField",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for a field in a searchIndex.",
       "properties": {
         "name": {
@@ -233,6 +246,12 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["id", "name", "service", "fields"],

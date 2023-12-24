@@ -12,16 +12,16 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import { getContainerDetailPath } from 'constants/constants';
-import { Container } from 'generated/entity/data/container';
-import { EntityReference } from 'generated/type/entityReference';
 import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../../components/common/Table/Table';
+import { getContainerDetailPath } from '../../../constants/constants';
+import { Container } from '../../../generated/entity/data/container';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 interface ContainerChildrenProps {
   childrenList: Container['children'];
@@ -41,15 +41,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
       {
         title: t('label.name'),
         dataIndex: 'name',
-        width: '200px',
+        width: 400,
         key: 'name',
         render: (_, record) => (
-          <Link
-            className="link-hover"
-            data-testid="container-name"
-            to={getContainerDetailPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              data-testid="container-name"
+              to={getContainerDetailPath(record.fullyQualifiedName ?? '')}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {

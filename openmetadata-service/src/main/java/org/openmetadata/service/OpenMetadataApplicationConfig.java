@@ -22,10 +22,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.api.configuration.ApplicationConfiguration;
-import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
-import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -79,9 +76,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("applicationConfig")
-  private ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
-
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
@@ -94,16 +88,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
 
-  @JsonProperty("extensionConfiguration")
-  private ExtensionConfiguration extensionConfiguration;
-
   @Valid
   @NotNull
   @JsonProperty("web")
   private OMWebConfiguration webConfiguration = new OMWebConfiguration();
-
-  @JsonProperty("changeEventConfig")
-  private ChangeEventConfiguration changeEventConfiguration;
 
   @Override
   public String toString() {

@@ -15,13 +15,12 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -59,11 +58,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public String getEntityUrl(String entityType, String fqn) {
-    return String.format("[%s](/%s/%s)", fqn.trim(), ChangeEventConfig.getInstance().getOmUri(), entityType);
+    return String.format(
+        "[%s](/%s/%s)", fqn.trim(), getSmtpSettings().getOpenMetadataUrl(), entityType);
   }
 
   @Override
-  public TeamsMessage buildMessage(ChangeEvent event) throws IOException {
+  public TeamsMessage buildMessage(ChangeEvent event) {
     TeamsMessage teamsMessage = new TeamsMessage();
     teamsMessage.setSummary("Change Event From OMD");
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();

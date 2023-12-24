@@ -66,7 +66,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
 
   return (
     <div
-      className={classNames('relative w-full', className)}
+      className={classNames('relative', className)}
       onClick={(e) => e.stopPropagation()}>
       <FeedEditor
         defaultValue={defaultValue}

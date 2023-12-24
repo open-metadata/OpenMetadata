@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 import { Form, Modal, Select } from 'antd';
-import AppState from 'AppState';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
-import {
-  TestCaseFailureReason,
-  TestCaseFailureStatus,
-  TestCaseFailureStatusType,
-} from 'generated/tests/testCase';
 import { startCase } from 'lodash';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCurrentMillis } from 'utils/date-time/DateTimeUtils';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
+import {
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../generated/tests/testCaseResolutionStatus';
+import { getCurrentMillis } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -32,17 +34,20 @@ export const TestCaseStatusModal = ({
   onCancel,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const statusType = Form.useWatch('testCaseFailureStatusType', form);
 
-  const handleFormSubmit = (data: TestCaseFailureStatus) => {
-    const updatedData: TestCaseFailureStatus = {
+  const handleFormSubmit = (data: TestCaseResolutionStatus) => {
+    const updatedData: TestCaseResolutionStatus = {
       ...data,
       updatedAt: getCurrentMillis(),
-      updatedBy: AppState.getCurrentUserDetails()?.fullyQualifiedName,
+      updatedBy: currentUser
+        ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
+        : undefined,
     };
     onSubmit(updatedData).finally(() => {
       setIsLoading(false);
@@ -63,7 +68,7 @@ export const TestCaseStatusModal = ({
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}
       onCancel={onCancel}>
-      <Form<TestCaseFailureStatus>
+      <Form<TestCaseResolutionStatus>
         data-testid="update-status-form"
         form={form}
         id="update-status-form"
@@ -85,12 +90,12 @@ export const TestCaseStatusModal = ({
             placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
             })}>
-            {Object.values(TestCaseFailureStatusType).map((value) => (
+            {Object.values(TestCaseResolutionStatusTypes).map((value) => (
               <Select.Option key={value}>{value}</Select.Option>
             ))}
           </Select>
         </Form.Item>
-        {statusType === TestCaseFailureStatusType.Resolved && (
+        {statusType === TestCaseResolutionStatusTypes.Resolved && (
           <>
             <Form.Item
               label={t('label.reason')}
@@ -107,7 +112,7 @@ export const TestCaseStatusModal = ({
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.reason'),
                 })}>
-                {Object.values(TestCaseFailureReason).map((value) => (
+                {Object.values(TestCaseFailureReasonType).map((value) => (
                   <Select.Option key={value}>{startCase(value)}</Select.Option>
                 ))}
               </Select>
@@ -125,7 +130,10 @@ export const TestCaseStatusModal = ({
               ]}>
               <RichTextEditor
                 height="200px"
-                initialValue={data?.testCaseFailureComment ?? ''}
+                initialValue={
+                  data?.testCaseResolutionStatusDetails
+                    ?.testCaseFailureComment ?? ''
+                }
                 placeHolder={t('message.write-your-text', {
                   text: t('label.comment'),
                 })}

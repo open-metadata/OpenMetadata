@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
-  TEAM = 'team',
-  SERVICE = 'service',
-}
-
 export enum SIZE {
+  X_SMALL = '40',
   SMALL = '60',
   MEDIUM = '86',
   LARGE = '126',

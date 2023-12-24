@@ -11,7 +11,6 @@
 """PowerBI source module"""
 
 import traceback
-import uuid
 from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -36,11 +35,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
@@ -72,9 +75,9 @@ class PowerbiSource(DashboardServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.pagination_entity_per_page = min(
             100, self.service_connection.pagination_entity_per_page
         )
@@ -193,14 +196,14 @@ class PowerbiSource(DashboardServiceSource):
         return groups or None
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PowerBIConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PowerBIConnection):
             raise InvalidSourceException(
                 f"Expected PowerBIConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboard(self) -> Any:
         """
@@ -317,19 +320,21 @@ class PowerbiSource(DashboardServiceSource):
                 name=dataset.id,
                 displayName=dataset.name,
                 description=dataset.description,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
             yield Either(right=data_model_request)
+            self.register_record_datamodel(datamodel_requst=data_model_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=dataset.name,
                     error=f"Error yielding Data Model [{dataset.name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -347,7 +352,7 @@ class PowerbiSource(DashboardServiceSource):
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
-                    "name": str(uuid.uuid4()),
+                    "name": column.name,
                     "displayName": column.name,
                 }
                 if column.dataType and column.dataType == DataType.ARRAY.value:
@@ -366,7 +371,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": str(uuid.uuid4()),
+                    "name": table.name,
                     "displayName": table.name,
                     "description": table.description,
                 }
@@ -400,12 +405,12 @@ class PowerbiSource(DashboardServiceSource):
                         fqn.build(
                             self.metadata,
                             entity_type=Chart,
-                            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                            chart_name=chart.name.__root__,
+                            service_name=self.context.dashboard_service,
+                            chart_name=chart,
                         )
                         for chart in self.context.charts
                     ],
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
@@ -417,7 +422,7 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -426,7 +431,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error creating dashboard [{dashboard_details}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -469,7 +474,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"Error to yield report and dashboard lineage details: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -523,7 +528,7 @@ class PowerbiSource(DashboardServiceSource):
                         "Error to yield datamodel and report lineage details for DB "
                         f"service name [{db_service_name}]: {exc}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -561,7 +566,7 @@ class PowerbiSource(DashboardServiceSource):
                             "Error to yield datamodel lineage details for DB "
                             f"service name [{db_service_name}]: {exc}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -590,7 +595,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Dashboard Lineage",
                     error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -626,7 +631,7 @@ class PowerbiSource(DashboardServiceSource):
                                 workspace_id=self.context.workspace.id,
                                 dashboard_id=dashboard_details.id,
                             ),
-                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                            service=self.context.dashboard_service,
                         )
                     )
                 except Exception as exc:
@@ -634,7 +639,7 @@ class PowerbiSource(DashboardServiceSource):
                         left=StackTraceError(
                             name=chart.title,
                             error=f"Error creating chart [{chart.title}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 

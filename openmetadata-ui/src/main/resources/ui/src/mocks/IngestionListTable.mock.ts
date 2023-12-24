@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { IngestionListTableProps } from 'components/Ingestion/IngestionListTable.interface';
-import { ServiceCategory } from 'enums/service.enum';
+import { IngestionListTableProps } from '../components/Ingestion/IngestionListTable.interface';
+import { ServiceCategory } from '../enums/service.enum';
 import {
   AuthProvider,
   ConfigType,
@@ -26,7 +26,7 @@ import {
   SecretsManagerClientLoader,
   SecretsManagerProvider,
   VerifySSL,
-} from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ENTITY_PERMISSIONS } from './Permissions.mock';
 
 const mockTriggerIngestion = jest.fn();
@@ -65,7 +65,7 @@ const mockESIngestionData: IngestionPipeline[] = [
       securityConfig: {
         jwtToken: 'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrO',
       },
-      secretsManagerProvider: SecretsManagerProvider.Noop,
+      secretsManagerProvider: SecretsManagerProvider.DB,
       secretsManagerLoader: SecretsManagerClientLoader.Noop,
       apiVersion: 'v1',
       includeTopics: true,

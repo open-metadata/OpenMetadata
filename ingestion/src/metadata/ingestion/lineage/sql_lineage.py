@@ -16,6 +16,9 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -23,7 +26,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -34,6 +37,7 @@ from metadata.utils.lru_cache import LRUCache
 
 logger = utils_logger()
 LRU_CACHE_SIZE = 4096
+DEFAULT_SCHEMA_NAME = "<default>"
 
 
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
@@ -145,6 +149,12 @@ def get_table_fqn_from_query_name(
             empty_list * (3 - len(split_table))
         ) + split_table
 
+    if schema_query == DEFAULT_SCHEMA_NAME:
+        schema_query = None
+
+    if database_query == DEFAULT_SCHEMA_NAME:
+        database_query = None
+
     return database_query, schema_query, table
 
 
@@ -176,19 +186,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_query,
-        database_schema=schema_query,
-        table=table,
-    )
-
-    if table_entities:
-        return table_entities
-
-    table_entities = search_table_entities(
-        metadata=metadata,
-        service_name=service_name,
-        database=database_name,
-        database_schema=database_schema,
+        database=database_query if database_query else database_name,
+        database_schema=schema_query if schema_query else database_schema,
         table=table,
     )
 
@@ -252,17 +251,17 @@ def _build_table_lineage(
     """
     Prepare the lineage request generator
     """
-    col_lineage = get_column_lineage(
-        to_entity=to_entity,
-        to_table_raw_name=str(to_table_raw_name),
-        from_entity=from_entity,
-        from_table_raw_name=str(from_table_raw_name),
-        column_lineage_map=column_lineage_map,
-    )
-    lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
-    if col_lineage:
-        lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name=str(to_table_raw_name),
+            from_entity=from_entity,
+            from_table_raw_name=str(from_table_raw_name),
+            column_lineage_map=column_lineage_map,
+        )
+        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+        if col_lineage:
+            lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
@@ -330,7 +329,7 @@ def _create_lineage_by_table_name(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )
 
@@ -433,7 +432,7 @@ def get_lineage_by_query(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Ingesting lineage failed for service [{service_name}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )
 
@@ -474,6 +473,6 @@ def get_lineage_via_table_entity(
             left=StackTraceError(
                 name="Lineage",
                 error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}",
-                stack_trace=traceback.format_exc(),
+                stackTrace=traceback.format_exc(),
             )
         )

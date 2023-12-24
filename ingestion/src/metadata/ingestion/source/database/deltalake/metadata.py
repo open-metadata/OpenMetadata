@@ -14,7 +14,7 @@ Deltalake source methods.
 import re
 import traceback
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from pyspark.sql.utils import AnalysisException, ParseException
 
@@ -28,13 +28,14 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -42,16 +43,14 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -93,15 +92,14 @@ class DeltalakeSource(DatabaseServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.spark = get_connection(self.service_connection)
 
@@ -119,14 +117,14 @@ class DeltalakeSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DeltaLakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -150,7 +148,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -163,8 +161,8 @@ class DeltalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema.name,
             )
             if filter_by_schema(
@@ -187,7 +185,12 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
@@ -200,16 +203,16 @@ class DeltalakeSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
-        for table in self.spark.catalog.listTables(schema_name):
+        schema_name = self.context.database_schema
+        for table in self.spark.catalog.listTables(dbName=schema_name):
             try:
                 table_name = table.name
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table.name,
                 )
                 if filter_by_table(
@@ -257,7 +260,7 @@ class DeltalakeSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             columns = self.get_columns(schema_name, table_name)
             view_definition = (
@@ -272,7 +275,13 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
                 viewDefinition=view_definition,
             )
 
@@ -283,7 +292,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -417,15 +426,11 @@ class DeltalakeSource(DatabaseServiceSource):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def close(self):
         """No client to close"""

@@ -13,18 +13,19 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityType } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDataAssetsVersionHeaderInfo } from 'utils/DataAssetsVersionHeaderUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { stringToHTML } from 'utils/StringsUtils';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchSourceAlias } from '../../../interface/search.interface';
+import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { stringToHTML } from '../../../utils/StringsUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 
@@ -88,6 +89,13 @@ function DataAssetsVersionHeader({
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
   );
+  const logo = useMemo(
+    () =>
+      serviceUtilClassBase.getServiceTypeLogo(
+        currentVersionData as SearchSourceAlias
+      ),
+    [currentVersionData]
+  );
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
@@ -102,10 +110,7 @@ function DataAssetsVersionHeader({
               displayName={displayName}
               icon={
                 currentVersionData.serviceType && (
-                  <img
-                    className="h-9"
-                    src={serviceTypeLogo(currentVersionData.serviceType)}
-                  />
+                  <img className="h-9" src={logo} />
                 )
               }
               name={currentVersionData?.name}

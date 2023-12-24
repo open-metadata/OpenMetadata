@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
+import { SearchIndexField } from '../../generated/entity/data/searchIndex';
 import {
   Column,
   ColumnJoins,
@@ -22,7 +22,7 @@ import {
 export interface VersionTableProps<T extends Column | SearchIndexField> {
   columnName: string;
   columns: T[];
-  joins: Array<ColumnJoins>;
+  joins?: Array<ColumnJoins>;
   addedColumnConstraintDiffs?: FieldChange[];
   deletedColumnConstraintDiffs?: FieldChange[];
   addedTableConstraintDiffs?: FieldChange[];

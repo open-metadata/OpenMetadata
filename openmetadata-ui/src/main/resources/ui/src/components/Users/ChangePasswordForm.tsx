@@ -12,9 +12,9 @@
  */
 
 import { Form, Input, Modal } from 'antd';
-import { VALIDATION_MESSAGES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 
@@ -42,6 +42,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      data-testid="modal-container"
       maskClosable={false}
       okButtonProps={{
         form: 'change-password-form',
@@ -67,6 +68,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         onFinish={onSave}>
         {isLoggedInUser && (
           <Form.Item
+            data-testid="oldPassword"
             label={t('label.old-password')}
             name="oldPassword"
             rules={[
@@ -76,7 +78,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             ]}>
             <Input.Password
               autoComplete="off"
-              data-testid="name"
+              data-testid="input-oldPassword"
               placeholder={t('label.enter-type-password', {
                 type: t('label.old'),
               })}
@@ -97,6 +99,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
           ]}>
           <Input.Password
             autoComplete="off"
+            data-testid="input-newPassword"
             placeholder={t('label.enter-type-password', {
               type: t('label.new'),
             })}
@@ -118,6 +121,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
           ]}>
           <Input.Password
             autoComplete="off"
+            data-testid="input-confirm-newPassword"
             placeholder={t('label.confirm-new-password')}
           />
         </Form.Item>

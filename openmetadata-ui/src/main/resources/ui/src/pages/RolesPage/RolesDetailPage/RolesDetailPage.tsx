@@ -13,31 +13,31 @@
 
 import { Button, Modal, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
-import { getUserByName, updateUserDetail } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import Description from '../../../components/common/EntityDescription/Description';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import Loader from '../../../components/Loader/Loader';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
-import './RolesDetail.less';
+import './roles-detail.less';
 import RolesDetailPageList from './RolesDetailPageList.component';
 
 const { TabPane } = Tabs;
@@ -68,6 +68,8 @@ const RolesDetailPage = () => {
     GlobalSettingOptions.ROLES
   );
 
+  const roleName = useMemo(() => getEntityName(role), [role]);
+
   const breadcrumb = useMemo(
     () => [
       {
@@ -75,11 +77,11 @@ const RolesDetailPage = () => {
         url: rolesPath,
       },
       {
-        name: getEntityName(role),
+        name: roleName,
         url: '',
       },
     ],
-    [role]
+    [rolesPath, roleName]
   );
 
   const fetchRole = async () => {
@@ -251,14 +253,14 @@ const RolesDetailPage = () => {
               className="m-b-0 m-t-xs"
               data-testid="heading"
               level={5}>
-              {getEntityName(role)}
+              {roleName}
             </Typography.Title>
             <Description
               hasEditAccess
               className="m-b-md"
               description={role.description || ''}
               entityFqn={role.fullyQualifiedName}
-              entityName={getEntityName(role)}
+              entityName={roleName}
               entityType={EntityType.ROLE}
               isEdit={editDescription}
               onCancel={() => setEditDescription(false)}
@@ -328,7 +330,7 @@ const RolesDetailPage = () => {
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
+          })} ${t('label.from-lowercase')} ${roleName}`}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
@@ -337,7 +339,7 @@ const RolesDetailPage = () => {
           <Typography.Text>
             {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
               child: getEntityName(selectedEntity.record),
-              parent: getEntityName(role),
+              parent: roleName,
             })}
           </Typography.Text>
         </Modal>

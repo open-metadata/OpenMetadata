@@ -95,6 +95,10 @@
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

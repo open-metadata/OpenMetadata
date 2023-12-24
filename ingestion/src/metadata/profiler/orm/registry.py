@@ -56,11 +56,12 @@ class Dialects(Enum):
     ClickHouse = "clickhouse"
     Databricks = "databricks"
     Db2 = "db2"
+    Doris = "pydoris"
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"
     Hana = "hana"
-    Hive = b"hive"  # Hive requires bytes
+    Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
     MariaDB = "mariadb"
@@ -95,6 +96,7 @@ NOT_COMPUTE = {
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
 }
+FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
     DataType.INT.value,

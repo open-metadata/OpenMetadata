@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
@@ -141,13 +142,14 @@ MOCK_CREATE_TABLE = CreateTableRequest(
         Column(
             name="address",
             displayName="address",
-            dataType=DataType.RECORD,
-            dataTypeDisplay=DataType.RECORD.value,
+            dataType=DataType.JSON,
+            dataTypeDisplay=DataType.JSON.value,
             children=[
                 Column(
                     name="line",
                     dataType=DataType.STRING,
                     dataTypeDisplay=DataType.STRING.value,
+                    displayName="line",
                 )
             ],
         ),
@@ -196,11 +198,15 @@ class MongoDBUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mongo_config)
         self.mongo_source = MongodbSource.create(
             mock_mongo_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.mongo_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE
-        self.mongo_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.mongo_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.mongo_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())

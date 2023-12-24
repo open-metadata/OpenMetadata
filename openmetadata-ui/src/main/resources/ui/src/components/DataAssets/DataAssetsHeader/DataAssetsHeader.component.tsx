@@ -13,53 +13,56 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import { ReactComponent as TaskOpenIcon } from 'assets/svg/ic-open-task.svg';
-import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
-import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
-import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TierCard from 'components/common/TierCard/TierCard';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import Voting from 'components/Voting/Voting.component';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { SERVICE_TYPES } from 'constants/Services.constant';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { Container } from 'generated/entity/data/container';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
-import { getContainerByName } from 'rest/storageAPI';
-import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
-import { getDataAssetsHeaderInfo } from 'utils/DataAssetsHeader.utils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import TierCard from '../../../components/common/TierCard/TierCard';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from '../../../components/TourProvider/TourProvider';
+import Voting from '../../../components/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { SearchSourceAlias } from '../../../interface/search.interface';
+import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
-} from 'utils/EntityUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { getTierTags } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/EntityUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getTierTags } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.component';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -126,8 +129,11 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
   afterDomainUpdateAction,
+  onProfilerSettingUpdate,
+  onUpdateRetentionPeriod,
 }: DataAssetsHeaderProps) => {
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -138,7 +144,12 @@ export const DataAssetsHeader = ({
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
-        <img className="h-9" src={serviceTypeLogo(dataAsset.serviceType)} />
+        <img
+          className="h-9"
+          src={serviceUtilClassBase.getServiceTypeLogo(
+            dataAsset as SearchSourceAlias
+          )}
+        />
       ) : null,
     [dataAsset]
   );
@@ -182,17 +193,14 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(
-          entityType,
-          encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-        )
+        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
       if (!isEmpty(announcements.data)) {
@@ -206,10 +214,7 @@ export const DataAssetsHeader = ({
   const fetchTaskCount = () => {
     // To get open tasks count
     getFeedCount(
-      getEntityFeedLink(
-        entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-      ),
+      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? ''),
       ThreadType.Task,
       ThreadTaskStatus.Open
     )
@@ -252,9 +257,11 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage && !excludeEntityService) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
-      fetchTaskCount();
+      if (!excludeEntityService) {
+        fetchTaskCount();
+      }
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
@@ -281,7 +288,7 @@ export const DataAssetsHeader = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName),
+        dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
         ActivityFeedTabs.TASKS
       )
@@ -312,6 +319,28 @@ export const DataAssetsHeader = ({
   const handleVoteChange = (data: VotingDataProps) => {
     onUpdateVote?.(data, dataAsset.id ?? '');
   };
+
+  const handleOpenAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(true),
+    []
+  );
+
+  const handleCloseAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(false),
+    []
+  );
+
+  const { editDomainPermission, editOwnerPermission, editTierPermission } =
+    useMemo(
+      () => ({
+        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+        editOwnerPermission:
+          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+        editTierPermission:
+          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+      }),
+      [permissions, dataAsset]
+    );
 
   return (
     <>
@@ -344,22 +373,22 @@ export const DataAssetsHeader = ({
                       entityFqn={dataAsset.fullyQualifiedName ?? ''}
                       entityId={dataAsset.id ?? ''}
                       entityType={entityType}
-                      hasPermission={permissions.EditAll}
+                      hasPermission={editDomainPermission}
                     />
                     <Divider className="self-center m-x-sm" type="vertical" />
                   </>
                 )}
                 <OwnerLabel
-                  hasPermission={permissions.EditAll || permissions.EditOwner}
+                  hasPermission={editOwnerPermission}
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space>
+                  <Space data-testid="header-tier-container">
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
-                        {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
+                        {getEntityName(tier)}
                       </span>
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">
@@ -369,13 +398,10 @@ export const DataAssetsHeader = ({
                       </span>
                     )}
 
-                    {(permissions.EditAll || permissions.EditTags) && (
+                    {editTierPermission && (
                       <Button
                         className="flex-center p-0"
                         data-testid="edit-tier"
-                        disabled={
-                          !(permissions.EditAll || permissions.EditTags)
-                        }
                         icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                         size="small"
                         type="text"
@@ -383,6 +409,15 @@ export const DataAssetsHeader = ({
                     )}
                   </Space>
                 </TierCard>
+
+                {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
+                  <RetentionPeriod
+                    permissions={permissions}
+                    retentionPeriod={(dataAsset as Table).retentionPeriod}
+                    onUpdate={onUpdateRetentionPeriod}
+                  />
+                )}
+
                 {extraInfo}
               </div>
             </Col>
@@ -392,7 +427,7 @@ export const DataAssetsHeader = ({
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <ButtonGroup size="small">
+              <ButtonGroup data-testid="asset-header-btn-group" size="small">
                 {onUpdateVote && (
                   <Voting
                     disabled={deleted}
@@ -458,10 +493,11 @@ export const DataAssetsHeader = ({
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
-                      ? () => setIsAnnouncementDrawer(true)
+                      ? handleOpenAnnouncementDrawer
                       : undefined
                   }
                   onEditDisplayName={onDisplayNameUpdate}
+                  onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
                 />
               </ButtonGroup>
@@ -471,7 +507,7 @@ export const DataAssetsHeader = ({
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
-                  onClick={() => setIsAnnouncementDrawer(true)}
+                  onClick={handleOpenAnnouncementDrawer}
                 />
               )}
             </div>
@@ -486,7 +522,7 @@ export const DataAssetsHeader = ({
           entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
-          onClose={() => setIsAnnouncementDrawer(false)}
+          onClose={handleCloseAnnouncementDrawer}
         />
       )}
     </>

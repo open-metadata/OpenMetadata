@@ -35,6 +35,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "columnName", "expression"],
+  "required": ["name", "expression"],
   "additionalProperties": false
 }

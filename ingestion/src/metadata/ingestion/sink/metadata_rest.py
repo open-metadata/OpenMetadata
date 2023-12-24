@@ -21,6 +21,8 @@ from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
+from metadata.data_insight.source.metadata import DataInsightRecord
+from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -29,6 +31,8 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.pipeline import PipelineStatus
@@ -38,9 +42,6 @@ from metadata.generated.schema.entity.data.searchIndex import (
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -50,11 +51,17 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    PatchRequest,
+)
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
@@ -83,7 +90,7 @@ class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
 
 
-class MetadataRestSink(Sink):
+class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     """
     Sink implementation that sends OM Entities
     to the OM server API
@@ -94,22 +101,19 @@ class MetadataRestSink(Sink):
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
-    def __init__(
-        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
-    ):
+    def __init__(self, config: MetadataRestSinkConfig, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.wrote_something = False
         self.charts_dict = {}
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.role_entities = {}
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @singledispatchmethod
     def _run_dispatch(self, record: Entity) -> Either[Any]:
@@ -128,14 +132,14 @@ class MetadataRestSink(Sink):
             error = f"Failed to ingest {log} due to api request failure: {err}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -151,9 +155,31 @@ class MetadataRestSink(Sink):
         error = f"Failed to ingest {type(entity_request).__name__}"
         return Either(
             left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stack_trace=None
+                name=type(entity_request).__name__, error=error, stackTrace=None
             )
         )
+
+    @_run_dispatch.register
+    def patch_entity(self, record: PatchRequest) -> Either[Entity]:
+        """
+        Patch the records
+        """
+        entity = self.metadata.patch(
+            entity=type(record.original_entity),
+            source=record.original_entity,
+            destination=record.new_entity,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+        )
+        return Either(right=entity)
+
+    @_run_dispatch.register
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
+        """
+        Create or update the custom properties
+        """
+        custom_property = self.metadata.create_or_update_custom_property(record)
+        return Either(right=custom_property)
 
     @_run_dispatch.register
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:
@@ -174,7 +200,7 @@ class MetadataRestSink(Sink):
             left=StackTraceError(
                 name="Data Model",
                 error="Sink did not receive a table. We cannot ingest the data model.",
-                stack_trace=None,
+                stackTrace=None,
             )
         )
 
@@ -374,6 +400,18 @@ class MetadataRestSink(Sink):
         return Either(right=record.test_case_results)
 
     @_run_dispatch.register
+    def write_test_case_results(self, record: TestCaseResultResponse):
+        """Write the test case result"""
+        res = self.metadata.add_test_case_results(
+            test_results=record.testCaseResult,
+            test_case_fqn=record.testCase.fullyQualifiedName.__root__,
+        )
+        logger.debug(
+            f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
+        )
+        return Either(right=res)
+
+    @_run_dispatch.register
     def write_data_insight_sample(
         self, record: OMetaDataInsightSample
     ) -> Either[ReportData]:
@@ -383,7 +421,23 @@ class MetadataRestSink(Sink):
         self.metadata.add_data_insight_report_data(
             record.record,
         )
-        return Either(left=None, right=record.record)
+        return Either(right=record.record)
+
+    @_run_dispatch.register
+    def write_data_insight(self, record: DataInsightRecord) -> Either[ReportData]:
+        """
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
+        """
+        self.metadata.add_data_insight_report_data(record.data)
+        return Either(left=None, right=record.data)
+
+    @_run_dispatch.register
+    def write_data_insight_kpi(self, record: KpiResult) -> Either[KpiResult]:
+        """
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
+        """
+        self.metadata.add_kpi_result(fqn=record.kpiFqn.__root__, record=record)
+        return Either(left=None, right=record)
 
     @_run_dispatch.register
     def write_topic_sample_data(
@@ -462,11 +516,9 @@ class MetadataRestSink(Sink):
                     f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
                 )
 
-        for column_tag_response in record.column_tags or []:
-            patched = self.metadata.patch_column_tag(
-                table=record.table,
-                column_fqn=column_tag_response.column_fqn,
-                tag_label=column_tag_response.tag_label,
+        if record.column_tags:
+            patched = self.metadata.patch_column_tags(
+                table=record.table, column_tags=record.column_tags
             )
             if not patched:
                 self.status.failed(
@@ -477,11 +529,33 @@ class MetadataRestSink(Sink):
                 )
             else:
                 logger.debug(
-                    f"Successfully patched tag {column_tag_response.tag_label} for"
-                    f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.__root__}"
                 )
 
         return Either(right=table)
+
+    @_run_dispatch.register
+    def write_executable_test_suite(
+        self, record: CreateTestSuiteRequest
+    ) -> Either[TestSuite]:
+        """
+        From the test suite workflow we might need to create executable test suites
+        """
+        test_suite = self.metadata.create_or_update_executable_test_suite(record)
+        return Either(right=test_suite)
+
+    @_run_dispatch.register
+    def write_test_case_result_list(self, record: TestCaseResults):
+        """Record the list of test case result responses"""
+
+        for result in record.test_results or []:
+            self.metadata.add_test_case_results(
+                test_results=result.testCaseResult,
+                test_case_fqn=result.testCase.fullyQualifiedName.__root__,
+            )
+            self.status.scanned(result)
+
+        return Either(right=record)
 
     def close(self):
         """

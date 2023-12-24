@@ -12,31 +12,30 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { TestCase } from 'generated/tests/testCase';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from 'interface/search.interface';
-import { PagingResponse } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchQuery } from 'rest/searchAPI';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { TestCase } from '../../../generated/tests/testCase';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import {
+  SearchHitBody,
+  TestCaseSearchSource,
+} from '../../../interface/search.interface';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getListTestCase,
   getTestCaseById,
   ListTestCaseParams,
-} from 'rest/testAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
@@ -57,13 +56,18 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   }, [location]);
   const { searchValue = '' } = params;
 
-  const [testCase, setTestCase] = useState<PagingResponse<TestCase[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
-
+  const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const {
+    currentPage,
+    handlePageChange,
+    pageSize,
+    handlePageSizeChange,
+    paging,
+    handlePagingChange,
+    showPagination,
+  } = usePaging();
 
   const handleSearchParam = (
     value: string | boolean,
@@ -77,11 +81,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const handleTestCaseUpdate = (data?: TestCase) => {
     if (data) {
       setTestCase((prev) => {
-        const updatedTestCase = prev.data.map((test) =>
+        const updatedTestCase = prev.map((test) =>
           test.id === data.id ? { ...test, ...data } : test
         );
 
-        return { ...prev, data: updatedTestCase };
+        return updatedTestCase;
       });
     }
   };
@@ -89,12 +93,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const fetchTestCases = async (params?: ListTestCaseParams) => {
     setIsLoading(true);
     try {
-      const response = await getListTestCase({
+      const { data, paging } = await getListTestCase({
         ...params,
+        limit: pageSize,
         fields: 'testDefinition,testCaseResult,testSuite',
         orderByLastExecutionDate: true,
       });
-      setTestCase(response);
+      setTestCase(data);
+      handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -104,7 +110,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleStatusSubmit = (testCase: TestCase) => {
     setTestCase((prev) => {
-      const data = prev.data.map((test) => {
+      const data = prev.map((test) => {
         if (test.fullyQualifiedName === testCase.fullyQualifiedName) {
           return testCase;
         }
@@ -112,15 +118,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         return test;
       });
 
-      return { ...prev, data };
+      return data;
     });
   };
+
   const searchTestCases = async (page = 1) => {
     setIsLoading(true);
     try {
       const response = await searchQuery({
         pageNumber: page,
-        pageSize: PAGE_SIZE,
+        pageSize: pageSize,
         searchIndex: SearchIndex.TEST_CASE,
         query: searchValue,
         fetchSource: false,
@@ -146,12 +153,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         return prev;
       }, [] as TestCase[]);
 
-      setTestCase({
-        data: testSuites,
-        paging: { total: response.hits.total.value ?? 0 },
-      });
+      setTestCase(testSuites);
+      handlePageChange(page);
+      handlePagingChange({ total: response.hits.total.value ?? 0 });
     } catch (error) {
-      setTestCase({ data: [], paging: { total: 0 } });
+      setTestCase([]);
     } finally {
       setIsLoading(false);
     }
@@ -163,14 +169,13 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     if (searchValue) {
       searchTestCases(currentPage);
     } else {
-      const { paging } = testCase;
       if (cursorType) {
         fetchTestCases({
           [cursorType]: paging?.[cursorType],
         });
       }
     }
-    setCurrentPage(currentPage);
+    handlePageChange(currentPage);
   };
 
   useEffect(() => {
@@ -185,7 +190,26 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, searchValue, testCasePermission]);
+  }, [tab, searchValue, testCasePermission, pageSize]);
+
+  const pagingData = useMemo(
+    () => ({
+      paging,
+      currentPage,
+      pagingHandler: handlePagingClick,
+      pageSize,
+      onShowSizeChange: handlePageSizeChange,
+      isNumberBased: Boolean(searchValue),
+    }),
+    [
+      paging,
+      currentPage,
+      handlePagingClick,
+      pageSize,
+      handlePageSizeChange,
+      searchValue,
+    ]
+  );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -208,13 +232,9 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         <DataQualityTab
           afterDeleteAction={fetchTestCases}
           isLoading={isLoading}
-          pagingData={{
-            paging: testCase.paging,
-            currentPage,
-            onPagingClick: handlePagingClick,
-            isNumberBased: Boolean(searchValue),
-          }}
-          testCases={testCase.data}
+          pagingData={pagingData}
+          showPagination={showPagination}
+          testCases={testCase}
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}
         />

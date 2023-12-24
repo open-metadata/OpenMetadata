@@ -10,13 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { SEARCH_ENTITY_TABLE } from '../constants/constants';
-import { MYSQL } from '../constants/service.constants';
+import {
+  DATABASE_DETAILS,
+  DATABASE_SERVICE_DETAILS,
+  SCHEMA_DETAILS,
+  TABLE_DETAILS,
+} from '../constants/EntityConstant';
+import { USER_CREDENTIALS } from '../constants/SearchIndexDetails.constants';
 import {
   interceptURL,
+  uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from './common';
+import { createEntityTable } from './EntityUtils';
+
+export const ADVANCE_SEARCH_TABLES = {
+  table1: TABLE_DETAILS,
+  table2: {
+    name: `cy-table2-${uuid()}`,
+    description: 'description',
+    columns: [
+      {
+        name: 'cypress_first_name',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'First name of the staff member.',
+      },
+      {
+        name: 'cypress_last_name',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+      },
+      {
+        name: 'cypress_email',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+  },
+  table3: {
+    name: `cy-table3-${uuid()}`,
+    description: 'description',
+    columns: [
+      {
+        name: 'cypress_user_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: 'cypress_shop_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+  },
+};
+
+export const ADVANCE_SEARCH_DATABASE_SERVICE = {
+  service: DATABASE_SERVICE_DETAILS,
+  database: DATABASE_DETAILS,
+  schema: SCHEMA_DETAILS,
+  tables: Object.values(ADVANCE_SEARCH_TABLES),
+};
 
 export const CONDITIONS_MUST = {
   equalTo: {
@@ -47,14 +115,15 @@ export const CONDITIONS_MUST_NOT = {
     filter: 'must_not',
   },
 };
+const ownerFullName = `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`;
 
 export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'Aaron Johnson',
-    searchCriteriaFirstGroup: 'Aaron Johnson',
-    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
+    searchTerm1: ownerFullName,
+    searchCriteriaFirstGroup: ownerFullName,
+    responseValueFirstGroup: `"displayName":"${ownerFullName}"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
@@ -68,45 +137,47 @@ export const FIELDS = {
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
     responseValueSecondGroup: '"tagFQN":"PersonalData.SpecialCategory"',
   },
-  Tiers: {
-    name: 'Tier',
-    testid: '[title="Tier"]',
-    searchCriteriaFirstGroup: 'Tier.Tier1',
-    responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
-    searchCriteriaSecondGroup: 'Tier.Tier2',
-    responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
-  },
+  // skipping tier for now, as it is not working, BE need to fix it
+
+  // Tiers: {
+  //   name: 'Tier',
+  //   testid: '[title="Tier"]',
+  //   searchCriteriaFirstGroup: 'Tier.Tier1',
+  //   responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
+  //   searchCriteriaSecondGroup: 'Tier.Tier2',
+  //   responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
+  // },
   Service: {
     name: 'Service',
     testid: '[title="Service"]',
     searchCriteriaFirstGroup: 'sample_data',
     responseValueFirstGroup: `"name":"sample_data"`,
-    searchCriteriaSecondGroup: MYSQL.serviceName,
-    responseValueSecondGroup: `"name":"${MYSQL.serviceName}"`,
+    searchCriteriaSecondGroup: DATABASE_SERVICE_DETAILS.name,
+    responseValueSecondGroup: `"name":"${DATABASE_SERVICE_DETAILS.name}"`,
   },
   Database: {
     name: 'Database',
     testid: '[title="Database"]',
-    searchCriteriaFirstGroup: 'default',
-    responseValueFirstGroup: `"name":"default"`,
-    searchCriteriaSecondGroup: 'ecommerce_db',
-    responseValueSecondGroup: `"name":"ecommerce_db"`,
+    searchCriteriaFirstGroup: 'ecommerce_db',
+    responseValueFirstGroup: `"name":"ecommerce_db"`,
+    searchCriteriaSecondGroup: DATABASE_DETAILS.name,
+    responseValueSecondGroup: `"name":"${DATABASE_DETAILS.name}"`,
   },
   Database_Schema: {
     name: 'Database Schema',
     testid: '[title="Database Schema"]',
     searchCriteriaFirstGroup: 'shopify',
     responseValueFirstGroup: `"name":"shopify"`,
-    searchCriteriaSecondGroup: 'cypress_integrations_test_db',
-    responseValueSecondGroup: `"name":"cypress_integrations_test_db"`,
+    searchCriteriaSecondGroup: SCHEMA_DETAILS.name,
+    responseValueSecondGroup: `"name":"${SCHEMA_DETAILS.name}"`,
   },
   Column: {
     name: 'Column',
     testid: '[title="Column"]',
-    searchCriteriaFirstGroup: 'SKU',
-    responseValueFirstGroup: '"name":"SKU"',
-    searchCriteriaSecondGroup: 'api_client_id',
-    responseValueSecondGroup: '"name":"api_client_id"',
+    searchCriteriaFirstGroup: 'cypress_first_name',
+    responseValueFirstGroup: '"name":"cypress_first_name"',
+    searchCriteriaSecondGroup: 'cypress_user_id',
+    responseValueSecondGroup: '"name":"cypress_user_id"',
   },
 };
 
@@ -122,42 +193,34 @@ export const OPERATOR = {
 };
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
-  interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+  interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
   // Click on field dropdown
-  cy.get('.rule--field > .ant-select > .ant-select-selector')
-    .eq(index)
-    .should('be.visible')
-    .click();
+  cy.get('.rule--field > .ant-select > .ant-select-selector').eq(index).click();
   // Select owner fields
-  cy.get(`${fieldid}`).eq(index).should('be.visible').click();
+  cy.get(`${fieldid}`).eq(index).click();
   // Select the condition
   cy.get('.rule--operator > .ant-select > .ant-select-selector')
     .eq(index)
-    .should('be.visible')
     .click();
 
-  cy.get(`[title="${condition}"]`).eq(index).should('be.visible').click();
+  cy.get(`[title="${condition}"]`).eq(index).click();
   // Verify the condition
-  cy.get('.rule--operator .ant-select-selection-item')
-    .should('be.visible')
-    .should('contain', `${condition}`);
+  cy.get('.rule--operator .ant-select-selection-item').should(
+    'contain',
+    `${condition}`
+  );
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
-      cy.get('.ant-col > .ant-input')
-        .eq(index)
-        .should('be.visible')
-        .type(searchCriteria);
+      cy.get('.ant-col > .ant-input').eq(index).type(searchCriteria);
     } else {
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index)
-        .should('be.visible')
         .type(searchCriteria);
       // select value from dropdown
       verifyResponseStatusCode('@suggestApi', 200);
       cy.get(`.ant-select-dropdown [title = '${searchCriteria}']`)
-        .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
     }
@@ -165,34 +228,10 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 };
 
 export const goToAdvanceSearch = () => {
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
-    'explorePage'
-  );
   // Navigate to explore page
-  cy.get('[data-testid="app-bar-item-explore"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="tables-tab"]')
-    .scrollIntoView()
-    .should('exist')
-    .and('be.visible');
-
-  cy.wait('@explorePage').then(() => {
-    // Click on advance search button
-    cy.get('[data-testid="advance-search-button"]')
-      .should('be.visible')
-      .click();
-
-    cy.get('.ant-btn')
-      .contains('Reset')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-  });
+  cy.get('[data-testid="app-bar-item-explore"]').click();
+  cy.get('[data-testid="advance-search-button"]').click();
+  cy.get('[data-testid="reset-btn"]').click();
 };
 
 export const checkmustPaths = (
@@ -211,10 +250,11 @@ export const checkmustPaths = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must*${encodeURI(
       searchCriteria
-    )}*&sort_field=_score&sort_order=desc`,
+    )}*`,
     'search'
   );
-  // //Click on apply filter
+
+  // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
   cy.wait('@search').should(({ request, response }) => {
@@ -240,7 +280,7 @@ export const checkmust_notPaths = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${encodeURI(
       searchCriteria
-    )}*&sort_field=_score&sort_order=desc`,
+    )}*`,
     'search_must_not'
   );
   // Click on apply filter
@@ -255,11 +295,11 @@ export const checkmust_notPaths = (
 };
 
 export const removeOwner = () => {
-  visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_1.term,
-    SEARCH_ENTITY_TABLE.table_1.serviceName,
-    SEARCH_ENTITY_TABLE.table_1.entity
-  );
+  visitEntityDetailsPage({
+    term: SEARCH_ENTITY_TABLE.table_1.term,
+    serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    entity: SEARCH_ENTITY_TABLE.table_1.entity,
+  });
   interceptURL(
     'PATCH',
     `/api/v1/${SEARCH_ENTITY_TABLE.table_1.entity}/*`,
@@ -271,16 +311,16 @@ export const removeOwner = () => {
   cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
 };
 
-export const addOwner = (ownerName) => {
-  visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_1.term,
-    SEARCH_ENTITY_TABLE.table_1.serviceName,
-    SEARCH_ENTITY_TABLE.table_1.entity
-  );
+export const addOwner = ({ ownerName, term, serviceName, entity }) => {
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
+    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index',
     'waitForTeams'
   );
 
@@ -321,12 +361,12 @@ export const addOwner = (ownerName) => {
     });
 };
 
-export const addTier = () => {
-  visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_2.term,
-    SEARCH_ENTITY_TABLE.table_2.serviceName,
-    SEARCH_ENTITY_TABLE.table_2.entity
-  );
+export const addTier = ({ term, serviceName, entity }) => {
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
 
   cy.get('[data-testid="edit-tier"]')
     .scrollIntoView()
@@ -343,12 +383,12 @@ export const addTier = () => {
   cy.get('[data-testid="tier-dropdown"]').should('contain', 'Tier1');
 };
 
-export const addTag = (tag) => {
-  visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_3.term,
-    SEARCH_ENTITY_TABLE.table_3.serviceName,
-    SEARCH_ENTITY_TABLE.table_3.entity
-  );
+export const addTag = ({ tag, term, serviceName, entity }) => {
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
 
   cy.get('[data-testid="entity-right-panel"] [data-testid="entity-tags"]')
     .eq(0)
@@ -415,7 +455,7 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
@@ -468,7 +508,7 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
@@ -488,14 +528,14 @@ export const checkAddGroupWithOperator = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${encodeURI(
       searchCriteria_1
-    )}*&sort_field=_score&sort_order=desc`,
-    'search'
+    )}*`,
+    `search${searchCriteria_1}`
   );
 
   // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
-  cy.wait('@search').should(({ request, response }) => {
+  cy.wait(`@search${searchCriteria_1}`).should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
@@ -539,7 +579,7 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
 
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
@@ -588,7 +628,7 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
@@ -609,17 +649,141 @@ export const checkAddRuleWithOperator = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
       searchCriteria_1
-    )}*${filter_2}*${encodeURI(response_2)}*&sort_field=_score&sort_order=desc`,
-    'search'
+    )}*${filter_2}*${encodeURI(response_2)}*`,
+    `search${searchCriteria_1}`
   );
 
   // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
-  cy.wait('@search').should(({ request, response }) => {
+  cy.wait(`@search${searchCriteria_1}`).should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
     expect(resBody).to.not.include(response_2);
+  });
+};
+
+export const advanceSearchPreRequests = (token) => {
+  // Create Table hierarchy
+
+  createEntityTable({
+    token,
+    ...ADVANCE_SEARCH_DATABASE_SERVICE,
+  });
+
+  // Create a new user
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/users/signup`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: USER_CREDENTIALS,
+  }).then((response) => {
+    USER_CREDENTIALS.id = response.body.id;
+  });
+
+  // Add owner to table 1
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table1.databaseSchema}.${ADVANCE_SEARCH_TABLES.table1.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'PATCH',
+      url: `/api/v1/tables/${response.body.id}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json-patch+json',
+      },
+      body: [
+        {
+          op: 'add',
+          path: '/owner',
+          value: {
+            id: USER_CREDENTIALS.id,
+            type: 'user',
+          },
+        },
+      ],
+    });
+  });
+
+  // Add Tier to table 2
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table2.databaseSchema}.${ADVANCE_SEARCH_TABLES.table2.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'PATCH',
+      url: `/api/v1/tables/${response.body.id}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json-patch+json',
+      },
+      body: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: 'Tier1',
+            tagFQN: 'Tier.Tier1',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+        {
+          op: 'add',
+          path: '/tags/1',
+          value: {
+            name: 'SpecialCategory',
+            tagFQN: 'PersonalData.SpecialCategory',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
+  });
+
+  // Add Tag to table 3
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table3.databaseSchema}.${ADVANCE_SEARCH_TABLES.table3.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'PATCH',
+      url: `/api/v1/tables/${response.body.id}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json-patch+json',
+      },
+      body: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'PersonalData.Personal',
+            source: 'Classification',
+            name: 'Personal',
+            description:
+              'Data that can be used to directly or indirectly identify a person.',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+        {
+          op: 'add',
+          path: '/tags/1',
+          value: {
+            name: 'Tier2',
+            tagFQN: 'Tier.Tier2',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
   });
 };

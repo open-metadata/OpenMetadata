@@ -27,42 +27,41 @@ import {
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import AppliedFilterText from 'components/Explore/AppliedFilterText/AppliedFilterText';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
+import Qs from 'qs';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
+import SortingDropDown from '../../components/Explore/SortingDropDown';
+import { TAG_FQN_KEY } from '../../constants/explore.constants';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../pages/ExplorePage/ExplorePage.interface';
+import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
+import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import searchClassBase from '../../utils/SearchClassBase';
 import {
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
-} from 'components/Explore/explore.interface';
-import { getSelectedValuesFromQuickFilter } from 'components/Explore/Explore.utils';
-import ExploreQuickFilters from 'components/Explore/ExploreQuickFilters';
-import SortingDropDown from 'components/Explore/SortingDropDown';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import SearchedData from 'components/searched-data/SearchedData';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
-import { isEmpty, isNil, isString, isUndefined, lowerCase, noop } from 'lodash';
-import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import { getSearchIndexFromPath } from 'utils/ExplorePage/ExplorePageUtils';
-import { tabsInfo } from '../../constants/explore.constants';
-import { SearchIndex } from '../../enums/search.enum';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-} from '../../pages/explore/ExplorePage.interface';
-import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { getCountBadge } from '../../utils/CommonUtils';
-import PageLayoutV1 from '../containers/PageLayoutV1';
+} from '../Explore/ExplorePage.interface';
 import Loader from '../Loader/Loader';
-import './ExploreV1.style.less';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import SearchedData from '../SearchedData/SearchedData';
+import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import './exploreV1.less';
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
+  activeTabKey,
+  tabItems = [],
   searchResults,
   tabCounts,
   onChangeAdvancedSearchQuickFilters,
@@ -78,8 +77,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   loading,
   quickFilters,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: string }>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
@@ -87,7 +86,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
 
-  const { searchCriteria } = useGlobalSearchProvider();
+  const firstEntity = searchResults?.hits
+    ?.hits[0] as SearchedDataProps['data'][number];
 
   const parsedSearch = useMemo(
     () =>
@@ -121,63 +121,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }),
     []
   );
-
-  const tabItems = useMemo(() => {
-    const items = Object.entries(tabsInfo).map(
-      ([tabSearchIndex, tabDetail]) => ({
-        key: tabSearchIndex,
-        label: (
-          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <Space className="w-full justify-between">
-              <Typography.Text
-                className={
-                  tabSearchIndex === searchIndex ? 'text-primary' : ''
-                }>
-                {tabDetail.label}
-              </Typography.Text>
-              <span>
-                {!isNil(tabCounts)
-                  ? getCountBadge(
-                      tabCounts[tabSearchIndex as ExploreSearchIndex],
-                      '',
-                      tabSearchIndex === searchIndex
-                    )
-                  : getCountBadge()}
-              </span>
-            </Space>
-          </div>
-        ),
-        count: tabCounts ? tabCounts[tabSearchIndex as ExploreSearchIndex] : 0,
-      })
-    );
-
-    return searchQueryParam
-      ? items.filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
-        })
-      : items;
-  }, [tab, tabsInfo, tabCounts]);
-
-  const activeTabKey = useMemo(() => {
-    if (tab) {
-      return searchIndex;
-    } else if (tabItems.length > 0) {
-      return tabItems[0].key as ExploreSearchIndex;
-    }
-
-    return searchIndex;
-  }, [tab, searchIndex, tabItems]);
-
-  // get entity active tab by URL params
-  const defaultActiveTab = useMemo(() => {
-    if (tab) {
-      return getSearchIndexFromPath(tab) ?? SearchIndex.TABLE;
-    } else if (tabItems.length > 0) {
-      return tabItems[0].key;
-    }
-
-    return SearchIndex.TABLE;
-  }, [tab, tabItems]);
 
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
@@ -273,12 +216,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
+      handleSummaryPanelDisplay(
+        highlightEntityNameAndDescription(
+          firstEntity._source,
+          firstEntity.highlight
+        )
+      );
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
     }
-  }, [tab, searchResults]);
+  }, [searchResults]);
 
   if (tabItems.length === 0 && !searchQueryParam) {
     return <Loader />;
@@ -299,10 +247,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 items={tabItems}
                 mode="inline"
                 rootClassName="left-container"
-                selectedKeys={[defaultActiveTab]}
+                selectedKeys={[activeTabKey]}
                 onClick={(info) => {
-                  info && onChangeSearchIndex(info.key as ExploreSearchIndex);
-                  setShowSummaryPanel(false);
+                  if (info && info.key !== activeTabKey) {
+                    onChangeSearchIndex(info.key as ExploreSearchIndex);
+                    setShowSummaryPanel(false);
+                  }
                 }}
               />
             </Sider>
@@ -403,6 +353,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
+                      highlights={omit(
+                        {
+                          ...firstEntity.highlight, // highlights of firstEntity that we get from the query api
+                          'tag.name': (
+                            selectedQuickFilters?.find(
+                              (filterOption) => filterOption.key === TAG_FQN_KEY
+                            )?.value ?? []
+                          ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
+                        },
+                        ['description', 'displayName']
+                      )}
                     />
                   )
                 }

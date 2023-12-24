@@ -17,9 +17,6 @@ from typing import Any, Iterable, List, Optional, Set
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -69,6 +66,7 @@ class PipelineServiceTopology(ServiceTopology):
                 processor="yield_create_request_pipeline_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["pipeline"],
@@ -88,6 +86,7 @@ class PipelineServiceTopology(ServiceTopology):
                 context="pipeline",
                 processor="yield_pipeline",
                 consumer=["pipeline_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaPipelineStatus,
@@ -123,12 +122,11 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -226,9 +224,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
                 mark_deleted_entity=self.source_config.markDeletedPipelines,
-                params={
-                    "service": self.context.pipeline_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.pipeline_service},
             )
 
     def prepare(self):

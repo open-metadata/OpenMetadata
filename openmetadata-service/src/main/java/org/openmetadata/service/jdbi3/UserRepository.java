@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ROLE;
@@ -26,6 +27,7 @@ import static org.openmetadata.service.Entity.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +38,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -68,20 +71,35 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
+  static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  private final EntityReference organization;
+  static final String USER_PATCH_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+  static final String USER_UPDATE_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+  private volatile EntityReference organization;
 
-  public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
-    organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+  public UserRepository() {
+    super(
+        UserResource.COLLECTION_PATH,
+        USER,
+        User.class,
+        Entity.getCollectionDAO().userDAO(),
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
-  // with the introduction of fqnhash we added case sensitivity to all the entities
-  // however usernames , emails cannot be case sensitive
+  private EntityReference getOrganization() {
+    if (organization == null) {
+      organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+    }
+    return organization;
+  }
+
+  // with the introduction of fqnHash we added case sensitivity to all the entities
+  // however usernames , emails cannot be case-sensitive
   @Override
   public void setFullyQualifiedName(User user) {
     user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
@@ -106,7 +124,8 @@ public class UserRepository extends EntityRepository<User> {
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
-    return withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(userString, User.class), fields));
+    return withHref(
+        uriInfo, setFieldsInternal(JsonUtils.readValue(userString, User.class), fields));
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -119,16 +138,15 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
+    super.restorePatchAttributes(original, updated);
     updated
-        .withId(original.getId())
-        .withName(original.getName())
         .withInheritedRoles(original.getInheritedRoles())
         .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
 
   private List<EntityReference> getInheritedRoles(User user) {
     if (Boolean.TRUE.equals(user.getIsBot())) {
-      return null; // No inherited roles for bots
+      return Collections.emptyList(); // No inherited roles for bots
     }
     return SubjectContext.getRolesForTeams(getTeams(user));
   }
@@ -144,7 +162,8 @@ public class UserRepository extends EntityRepository<User> {
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-      secretsManager.encryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
+      secretsManager.encryptAuthenticationMechanism(
+          user.getName(), user.getAuthenticationMechanism());
     }
 
     store(user, update);
@@ -157,21 +176,23 @@ public class UserRepository extends EntityRepository<User> {
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
+    assignDefaultPersona(user, user.getDefaultPersona());
+    assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
   }
 
   @Override
-  public User setInheritedFields(User user, Fields fields) {
+  public void setInheritedFields(User user, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
-      List<EntityReference> teams = !fields.contains("teams") ? getTeams(user) : user.getTeams();
+      List<EntityReference> teams =
+          !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
         Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        user.withDomain(team.getDomain());
+        inheritDomain(user, fields, team);
       }
     }
-    return user;
   }
 
   @Override
@@ -180,23 +201,28 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public User setFields(User user, Fields fields) {
-    user.setTeams(fields.contains("teams") ? getTeams(user) : user.getTeams());
+  public void setFields(User user, Fields fields) {
+    user.setTeams(fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams());
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
-    return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
+    user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
+    user.setDefaultPersona(
+        fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
+    user.withInheritedRoles(
+        fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
   }
 
   @Override
-  public User clearFields(User user, Fields fields) {
+  public void clearFields(User user, Fields fields) {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
-    user.setTeams(fields.contains("teams") ? user.getTeams() : null);
+    user.setTeams(fields.contains(TEAMS_FIELD) ? user.getTeams() : null);
     user.setOwns(fields.contains("owns") ? user.getOwns() : null);
     user.setFollows(fields.contains("follows") ? user.getFollows() : null);
     user.setRoles(fields.contains(ROLES_FIELD) ? user.getRoles() : null);
-    user.setAuthenticationMechanism(fields.contains(AUTH_MECHANISM_FIELD) ? user.getAuthenticationMechanism() : null);
-    return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
+    user.setAuthenticationMechanism(
+        fields.contains(AUTH_MECHANISM_FIELD) ? user.getAuthenticationMechanism() : null);
+    user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
   }
 
   @Override
@@ -206,15 +232,16 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public CsvImportResult importFromCsv(String importingTeam, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String importingTeam, String csv, boolean dryRun, String user) throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
   }
 
   public boolean isTeamJoinable(String teamId) {
-    Team team = daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
+    Team team =
+        daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
     return team.getIsJoinable();
   }
 
@@ -222,24 +249,26 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teams = user.getTeams();
     if (teams != null) {
       for (EntityReference entityReference : teams) {
-        EntityReference ref = Entity.getEntityReferenceById(Entity.TEAM, entityReference.getId(), ALL);
-
+        EntityReference ref =
+            Entity.getEntityReferenceById(Entity.TEAM, entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       teams.sort(EntityUtil.compareEntityReference);
     } else {
-      user.setTeams(new ArrayList<>(List.of(organization))); // Organization is a default team
+      user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
     }
   }
 
   /* Validate if the user is already part of the given team */
   public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = dao.findEntityById(userId);
+    User user = find(userId, NON_DELETED);
     List<EntityReference> teams = getTeams(user);
-    Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
+    Optional<EntityReference> team =
+        teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
     if (team.isPresent()) {
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));
+          CatalogExceptionMessage.userAlreadyPartOfTeam(
+              user.getName(), team.get().getDisplayName()));
     }
   }
 
@@ -250,7 +279,8 @@ public class UserRepository extends EntityRepository<User> {
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
     // Create Admins
-    Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
+    Set<String> adminUsers =
+        new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     String domain = SecurityUtil.getDomain(config);
     UserUtil.addUsers(authProvider, adminUsers, domain, true);
 
@@ -268,7 +298,9 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection.relationshipDAO().findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal()));
+          daoCollection
+              .relationshipDAO()
+              .findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.getEntityReferences(ownedEntities);
@@ -279,7 +311,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
-    if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
+    if (teamId.equals(
+        getOrganization().getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
@@ -316,12 +349,21 @@ public class UserRepository extends EntityRepository<User> {
   public List<EntityReference> getTeams(User user) {
     List<EntityReference> teams = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
     // Filter deleted teams
-    teams = listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
+    teams =
+        listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
     // If there are no teams that a user belongs to then return organization as the default team
     if (listOrEmpty(teams).isEmpty()) {
-      return new ArrayList<>(List.of(organization));
+      return new ArrayList<>(List.of(getOrganization()));
     }
     return teams;
+  }
+
+  public List<EntityReference> getPersonas(User user) {
+    return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+  }
+
+  public EntityReference getDefaultPersona(User user) {
+    return getToEntityRef(user.getId(), Relationship.DEFAULTS_TO, Entity.PERSONA, false);
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -334,15 +376,31 @@ public class UserRepository extends EntityRepository<User> {
   private void assignTeams(User user, List<EntityReference> teams) {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
-      if (team.getId().equals(organization.getId())) {
+      if (team.getId().equals(getOrganization().getId())) {
         continue; // Default relationship user to organization team is not stored
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS);
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
-      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      teams =
+          teams.stream()
+              .filter(t -> !t.getId().equals(getOrganization().getId()))
+              .collect(Collectors.toList());
       user.setTeams(teams);
+    }
+  }
+
+  private void assignPersonas(User user, List<EntityReference> personas) {
+    for (EntityReference persona : listOrEmpty(personas)) {
+      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO);
+    }
+  }
+
+  private void assignDefaultPersona(User user, EntityReference persona) {
+    if (persona != null) {
+      addRelationship(
+          persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
     }
   }
 
@@ -426,20 +484,25 @@ public class UserRepository extends EntityRepository<User> {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = userRepository.getFields("roles,teams");
-      return exportCsv(listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+      return exportCsv(
+          listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
     }
 
-    private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user) throws IOException {
+    private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)
+        throws IOException {
       List<EntityReference> teams = getEntityReferences(printer, csvRecord, 6, Entity.TEAM);
 
-      // Validate team being created is under the hierarchy of the team for which CSV is being imported to
+      // Validate team being created is under the hierarchy of the team for which CSV is being
+      // imported to
       for (EntityReference teamRef : listOrEmpty(teams)) {
         if (teamRef.getName().equals(team.getName())) {
-          continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
+          continue; // Team is same as the team to which CSV is being imported, then it is in the
+          // same hierarchy
         }
         // Else the parent should already exist
         if (!SubjectContext.isInTeam(team.getName(), teamRef)) {
-          importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), csvRecord);
+          importFailure(
+              printer, invalidTeam(6, team.getName(), user, teamRef.getName()), csvRecord);
           processRecord = false;
         }
       }
@@ -447,8 +510,10 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     public static String invalidTeam(int field, String team, String user, String userTeam) {
-      String error = String.format("Team %s of user %s is not under %s team hierarchy", userTeam, user, team);
-      return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+      String error =
+          String.format("Team %s of user %s is not under %s team hierarchy", userTeam, user, team);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
   }
 
@@ -458,10 +523,14 @@ public class UserRepository extends EntityRepository<User> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateRoles(original, updated);
       updateTeams(original, updated);
+      updatePersonas(original, updated);
+      recordChange(
+          "defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
       recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
@@ -484,7 +553,8 @@ public class UserRepository extends EntityRepository<User> {
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(
+          ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     private void updateTeams(User original, User updated) {
@@ -500,14 +570,38 @@ public class UserRepository extends EntityRepository<User> {
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(
+          TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    private void updatePersonas(User original, User updated) {
+      deleteTo(original.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+      assignPersonas(updated, updated.getPersonas());
+
+      List<EntityReference> origPersonas = listOrEmpty(original.getPersonas());
+      List<EntityReference> updatedPersonas = listOrEmpty(updated.getPersonas());
+
+      origPersonas.sort(EntityUtil.compareEntityReference);
+      updatedPersonas.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+
+      recordListChange(
+          "personas",
+          origPersonas,
+          updatedPersonas,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateAuthenticationMechanism(User original, User updated) {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
-        recordChange(AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
+        recordChange(
+            AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
           && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {

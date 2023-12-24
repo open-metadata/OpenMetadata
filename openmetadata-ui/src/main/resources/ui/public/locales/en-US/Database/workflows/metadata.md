@@ -101,26 +101,30 @@ Here are some examples of scenarios where tables will **NOT** get soft deleted i
 - If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata, then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, then no table from `SchemaB` will be deleted.
 - If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata and for this ingestion pipeline you have applied a `Schema Filter Pattern` to include only `SchemaA`, then any table deleted from `SchemaB` will not be deleted (since it is ignored in the ingestion).
 
+In such cases you may delete the table/schema manually from UI.
+
 $$
 
 $$section
-### Mark All Deleted Tables $(id="markAllDeletedTables")
+### Mark Deleted Stored Procedures $(id="markDeletedStoredProcedures")
+This is an optional configuration for enabling **soft deletion** of stored procedures during the ingestion. When this option is enabled, only stored procedures that have been deleted from the source will be soft deleted, and this will apply ONLY to the schema that is currently being ingested via the pipeline. 
 
-This is an optional configuration that needs to be enabled on top of **Mark Deleted Tables**.
+Any related entities such as test suites or lineage information that were associated with those stored procedures will also be deleted.
 
-When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to ALL the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted.
+Here are some examples of scenarios in which stored procedures will get soft deleted if this flag is enabled.
 
-**It is recommended to be cautious while enabling this flag if you have multiple ingestion pipelines running for the same service, because it is possible that a pipeline with this flag enabled might delete the tables ingested by other pipelines.**
+- If no filters were applied, but a stored procedure was deleted from the data source, then the same stored procedure will be soft deleted from OpenMetadata as well.
+- If you have applied a `Schema Filter Pattern` to include `SchemaA` then any stored procedure deleted from `SchemaA` will also be soft deleted from Openmetadata.
+- If `StoredProcedureA` was already ingested in OpenMetadata, then later you apply a `StoredProcedure Filter Pattern` to exclude `StoredProcedureA` then `StoredProcedureA` will get soft deleted from OpenMetadata.
 
-Here are some examples of scenarios where tables will get soft deleted if this flag is enabled.
+Here are some examples of scenarios where stored procedures will **NOT** get soft deleted if this flag is enabled.
 
-- If no filters were applied, but a table was deleted from the data source, then the same table will be soft deleted from OpenMetadata as well.
-- If you have applied a Schema Filter Pattern to include `SchemaA` then any table deleted from `SchemaA` will also be soft deleted from Openmetadata.
-- If `TableA` was already ingested in OpenMetadata, then later you apply a `Table Filter Pattern` to exclude `TableA` then `TableA` will get soft deleted from OpenMetadata.
-- If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata ,then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, ALL tables from `SchemaB` will be deleted due to this ingestion pipeline. This might be useful if you want to remove a full schema from OpenMetadata that you missed to filter out the first time.
+- If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata, then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, then no stored procedure from `SchemaB` will be deleted.
+- If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata and for this ingestion pipeline you have applied a `Schema Filter Pattern` to include only `SchemaA`, then any stored procedure deleted from `SchemaB` will not be deleted (since it is ignored in the ingestion).
+
+In such cases you may delete the stored procedure/schema manually from UI.
 
 $$
-
 
 $$section
 ### View Definition Parsing Timeout Limit $(id="viewParsingTimeoutLimit")

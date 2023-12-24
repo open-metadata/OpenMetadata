@@ -19,9 +19,6 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
     MessagingService,
@@ -79,6 +76,7 @@ class MessagingServiceTopology(ServiceTopology):
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             )
         ],
         children=["topic"],
@@ -92,6 +90,7 @@ class MessagingServiceTopology(ServiceTopology):
                 context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=TopicSampleData,
@@ -121,12 +120,11 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -201,9 +199,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
                 mark_deleted_entity=self.source_config.markDeletedTopics,
-                params={
-                    "service": self.context.messaging_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.messaging_service},
             )
 
     def register_record(self, topic_request: CreateTopicRequest) -> None:

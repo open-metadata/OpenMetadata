@@ -64,12 +64,6 @@
       "type": "integer",
       "default": 120
     },
-    "useUnityCatalog": {
-      "title": "Use Unity Catalog",
-      "description": "Use unity catalog for fetching the metadata instead of using the hive metastore",
-      "type": "boolean",
-      "default": false
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -102,6 +96,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

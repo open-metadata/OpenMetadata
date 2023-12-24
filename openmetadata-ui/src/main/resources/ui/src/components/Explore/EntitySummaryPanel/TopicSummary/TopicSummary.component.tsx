@@ -12,23 +12,27 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { getTeamAndUserDetailsPath } from 'constants/constants';
-import { isArray, isEmpty } from 'lodash';
+import { get, isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
+import { getTopicByFqn } from '../../../../rest/topicsAPI';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
-} from 'utils/EntityUtils';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
 import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -38,6 +42,7 @@ interface TopicSummaryProps {
   componentType?: string;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function TopicSummary({
@@ -45,6 +50,7 @@ function TopicSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: TopicSummaryProps) {
   const { t } = useTranslation();
 
@@ -98,7 +104,8 @@ function TopicSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.SCHEMAFIELD,
-        topicDetails.messageSchema?.schemaFields
+        topicDetails.messageSchema?.schemaFields,
+        highlights
       ),
     [topicDetails]
   );
@@ -158,7 +165,18 @@ function TopicSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

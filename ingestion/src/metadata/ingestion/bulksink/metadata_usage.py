@@ -35,14 +35,13 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableJoins,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.steps import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
@@ -78,22 +77,21 @@ class MetadataUsageBulkSink(BulkSink):
     def __init__(
         self,
         config: MetadataUsageSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
@@ -151,7 +149,7 @@ class MetadataUsageBulkSink(BulkSink):
                     StackTraceError(
                         name=value_dict["table_entity"].fullyQualifiedName.__root__,
                         error=f"Failed to update usage for {name} :{exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -244,7 +242,7 @@ class MetadataUsageBulkSink(BulkSink):
                         StackTraceError(
                             name=table_usage.table,
                             error=error,
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
                 except Exception as exc:
@@ -256,7 +254,7 @@ class MetadataUsageBulkSink(BulkSink):
                     logger.warning(error)
                     self.status.failed(
                         StackTraceError(
-                            name=name, error=error, stack_trace=traceback.format_exc()
+                            name=name, error=error, stackTrace=traceback.format_exc()
                         )
                     )
             else:
@@ -361,18 +359,19 @@ class MetadataUsageBulkSink(BulkSink):
                 elif create_query.usedBy:
                     process_user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)
-                access_details = AccessDetails(
-                    timestamp=create_query.queryDate.__root__,
-                    accessedBy=user,
-                    accessedByAProcess=process_user,
-                )
-                life_cycle_attr = getattr(life_cycle, query_type)
-                if (
-                    not life_cycle_attr
-                    or life_cycle_attr.timestamp.__root__
-                    < access_details.timestamp.__root__
-                ):
-                    setattr(life_cycle, query_type, access_details)
+                if query_type:
+                    access_details = AccessDetails(
+                        timestamp=create_query.queryDate.__root__,
+                        accessedBy=user,
+                        accessedByAProcess=process_user,
+                    )
+                    life_cycle_attr = getattr(life_cycle, query_type)
+                    if (
+                        not life_cycle_attr
+                        or life_cycle_attr.timestamp.__root__
+                        < access_details.timestamp.__root__
+                    ):
+                        setattr(life_cycle, query_type, access_details)
 
             self.metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 
@@ -382,7 +381,7 @@ class MetadataUsageBulkSink(BulkSink):
                 StackTraceError(
                     name=table_usage.table,
                     error=error,
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

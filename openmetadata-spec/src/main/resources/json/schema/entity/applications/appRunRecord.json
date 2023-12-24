@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/appRunRecord.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppRunRecord",
+  "javaType": "org.openmetadata.schema.entity.app.AppRunRecord",
+  "description": "App Run Record.",
+  "type": "object",
+  "properties": {
+    "appId": {
+      "description": "Unique identifier of this application for which the job is ran.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "status": {
+      "description": "Status for the Job.",
+      "type": "string",
+      "enum": [
+        "started",
+        "running",
+        "completed",
+        "failed",
+        "active",
+        "activeError",
+        "stopped",
+        "success"
+      ]
+    },
+    "runType": {
+      "javaType": "org.openmetadata.schema.entity.app.AppRunType",
+      "description": "This schema defines the type of application Run.",
+      "type": "string",
+      "enum": [
+        "Scheduled",
+        "OnDemand"
+      ],
+      "javaEnums": [
+        {
+          "name": "Scheduled"
+        },
+        {
+          "name": "OnDemand"
+        }
+      ]
+    },
+    "startTime": {
+      "description": "Start of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "End time of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "executionTime": {
+      "description": "Execution time of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "timestamp": {
+      "description": "Update time of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "failureContext": {
+      "description": "Failure Context for the Application.",
+      "type": "object"
+    },
+    "successContext": {
+      "description": "Success Context for the Application.",
+      "type": "object"
+    },
+    "scheduleInfo": {
+      "$ref": "./app.json#/definitions/appSchedule"
+    }
+  },
+  "additionalProperties": false
+}

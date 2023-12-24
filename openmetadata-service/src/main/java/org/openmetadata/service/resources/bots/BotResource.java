@@ -48,12 +48,12 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -61,16 +61,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.UserUtil;
 
@@ -87,8 +85,8 @@ import org.openmetadata.service.util.UserUtil;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  public BotResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Bot.class, new BotRepository(dao), authorizer);
+  public BotResource(Authorizer authorizer) {
+    super(Entity.BOT, authorizer);
   }
 
   @Override
@@ -106,23 +104,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       user = UserUtil.addOrUpdateBotUser(user);
       bot.withBotUser(user.getEntityReference());
       repository.initializeEntity(bot);
-    }
-  }
-
-  @Override
-  public void upgrade() {
-    // This should be deleted once 0.13 is deprecated
-    // For all the existing bots, add ingestion bot role
-    ResultList<Bot> bots =
-        repository.listAfter(null, Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED), 1000, null);
-    EntityReference ingestionBotRole = RoleResource.getRole(Entity.INGESTION_BOT_ROLE);
-    for (Bot bot : bots.getData()) {
-      User botUser = Entity.getEntity(bot.getBotUser(), "roles", Include.NON_DELETED);
-      if (botUser.getRoles() == null) {
-        botUser.setRoles(List.of(ingestionBotRole));
-        repository.addRelationship(
-            botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
-      }
     }
   }
 
@@ -146,16 +127,23 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of Bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = BotList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BotList.class)))
       })
   public ResultList<Bot> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of Bot before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of Bot before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of Bot after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of Bot after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -164,7 +152,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
   }
 
   @GET
@@ -177,14 +166,18 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
   public Bot get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
@@ -198,20 +191,26 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "404", description = "Bot for instance {name} is not found")
       })
   public Bot getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
+    return getByNameInternal(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
   }
 
   @GET
@@ -224,12 +223,16 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of bot versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -243,15 +246,19 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Bot for instance {id} and version {version} is " + "not found")
+            description = "Bot for instance {id} and version {version} is not found")
       })
   public Bot getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "bot version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -269,10 +276,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The bot ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot = getBot(securityContext, create);
     return create(uriInfo, securityContext, bot);
   }
@@ -286,7 +297,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -301,19 +315,23 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       operationId = "patchBot",
       summary = "Update a bot",
       description = "Update an existing bot using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -336,7 +354,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
@@ -357,8 +376,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return deleteByName(
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
   @PUT
@@ -371,15 +393,21 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Bot ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Bot.class)))
       })
   public Response restoreBot(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Bot getBot(CreateBot create, String user) {
-    return copy(new Bot(), create, user)
+    return repository
+        .copy(new Bot(), create, user)
         .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
@@ -392,7 +420,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
         && (botUser == null
-            || userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId())));
+            || userBotRelationship.stream()
+                .anyMatch(relationship -> !relationship.getId().equals(botUser.getId())));
   }
 
   private List<EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
@@ -404,14 +433,18 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     Bot originalBot = retrieveBot(bot.getName());
     User botUser = retrieveUser(bot);
     if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
-      throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
+      throw new IllegalArgumentException(
+          String.format("User [%s] is not a bot user", botUser.getName()));
     }
     if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
       List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
       bot =
           repository.get(
-              null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
+              null,
+              userBotRelationship.stream().findFirst().orElseThrow().getId(),
+              EntityUtil.Fields.EMPTY_FIELDS);
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (originalBot != null) {
@@ -421,20 +454,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private User retrieveUser(Bot bot) {
-    // TODO fix this code - don't depend on exception
-    try {
-      return Entity.getEntityByName(Entity.USER, bot.getBotUser().getFullyQualifiedName(), "", Include.NON_DELETED);
-    } catch (Exception exception) {
-      return null;
-    }
+    EntityRepository<? extends EntityInterface> userRepository =
+        Entity.getEntityRepository(Entity.USER);
+    return (User)
+        userRepository.findByNameOrNull(
+            bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
   }
 
   private Bot retrieveBot(String botName) {
-    // TODO fix this code - don't depend on exception
-    try {
-      return repository.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
-    } catch (Exception e) {
-      return null;
-    }
+    return repository.findByNameOrNull(botName, Include.NON_DELETED);
   }
 }

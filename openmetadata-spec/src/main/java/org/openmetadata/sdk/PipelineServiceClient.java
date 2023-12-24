@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -56,6 +59,7 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
  */
 @Slf4j
 public abstract class PipelineServiceClient {
+  protected final boolean pipelineServiceClientEnabled;
   protected final String hostIp;
 
   protected final boolean ingestionIpInfoEnabled;
@@ -67,10 +71,12 @@ public abstract class PipelineServiceClient {
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
+  private static final String DISABLED_STATUS = "disabled";
   public static final String HEALTHY_STATUS = "healthy";
   public static final String UNHEALTHY_STATUS = "unhealthy";
   public static final String STATUS_KEY = "status";
-
+  public static final String APP_TRIGGER = "run_application";
+  public static final String APP_VALIDATE = "validate_registration";
   public static final Map<String, String> TYPE_TO_TASK =
       Map.of(
           PipelineType.METADATA.toString(),
@@ -102,7 +108,9 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  public PipelineServiceClient(
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    this.pipelineServiceClientEnabled = pipelineServiceClientConfiguration.getEnabled();
     this.hostIp = pipelineServiceClientConfiguration.getHostIp();
     this.ingestionIpInfoEnabled = pipelineServiceClientConfiguration.getIngestionIpInfoEnabled();
   }
@@ -138,7 +146,8 @@ public abstract class PipelineServiceClient {
           .findFirst()
           .orElseThrow(
               () ->
-                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+                  new PipelineServiceVersionException(
+                      String.format("Cannot extract version x.y.z from %s", version)));
     } else {
       throw new PipelineServiceVersionException("Received version as null");
     }
@@ -169,7 +178,10 @@ public abstract class PipelineServiceClient {
 
   /** To build the response of getServiceStatus */
   public PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
-    return new PipelineServiceClientResponse().withCode(500).withReason(reason).withPlatform(this.getPlatform());
+    return new PipelineServiceClientResponse()
+        .withCode(500)
+        .withReason(reason)
+        .withPlatform(this.getPlatform());
   }
 
   public final Response getHostIp() {
@@ -223,7 +235,21 @@ public abstract class PipelineServiceClient {
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract PipelineServiceClientResponse getServiceStatus();
+  public PipelineServiceClientResponse getServiceStatus() {
+    if (pipelineServiceClientEnabled) {
+      return getServiceStatusInternal();
+    }
+    return buildHealthyStatus(DISABLED_STATUS).withPlatform(DISABLED_STATUS);
+  }
+
+  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+    if (pipelineServiceClientEnabled) {
+      return getQueuedPipelineStatusInternal(ingestionPipeline);
+    }
+    return new ArrayList<>();
+  }
+
+  public abstract PipelineServiceClientResponse getServiceStatusInternal();
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
@@ -231,6 +257,11 @@ public abstract class PipelineServiceClient {
    * results.
    */
   public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
+
+  public abstract PipelineServiceClientResponse runApplicationFlow(App application);
+
+  public abstract PipelineServiceClientResponse validateAppRegistration(
+      AppMarketPlaceDefinition app);
 
   /* Deploy a pipeline to the pipeline service */
   public abstract PipelineServiceClientResponse deployPipeline(
@@ -244,13 +275,16 @@ public abstract class PipelineServiceClient {
   public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
-  public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
+  public abstract List<PipelineStatus> getQueuedPipelineStatusInternal(
+      IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
-  public abstract PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
+  public abstract PipelineServiceClientResponse toggleIngestion(
+      IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
+  public abstract Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);

@@ -12,18 +12,6 @@
  */
 import { Menu, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import Loader from 'components/Loader/Loader';
-import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
-import { ICON_DIMENSION } from 'constants/constants';
-import { observerOptions } from 'constants/Mydata.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { useElementInView } from 'hooks/useElementInView';
 import { noop } from 'lodash';
 import {
   default as React,
@@ -35,10 +23,34 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
-import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
+import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
+import {
+  COMMON_ICON_STYLES,
+  ICON_DIMENSION,
+} from '../../../constants/constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
+import { useElementInView } from '../../../hooks/useElementInView';
+import { getAllFeeds, getFeedCount } from '../../../rest/feedsAPI';
+import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
+import {
+  ENTITY_LINK_SEPARATOR,
+  getEntityFeedLink,
+} from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import Loader from '../../Loader/Loader';
+import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -51,21 +63,18 @@ import {
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
-import { ReactComponent as AllActivityIcon } from '/assets/svg/all-activity-v2.svg';
-import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
-import { ReactComponent as MentionIcon } from '/assets/svg/ic-mentions.svg';
-import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
-import { ReactComponent as TaskListIcon } from '/assets/svg/task-ic.svg';
 
 export const ActivityFeedTab = ({
   fqn,
   owner,
   columns,
   entityType,
+  isForFeedTab = true,
   onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
@@ -73,6 +82,7 @@ export const ActivityFeedTab = ({
   });
   const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
+  const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
@@ -109,12 +119,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(
-        entityType,
-        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      )
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
     );
     setActiveThread();
   };
@@ -133,7 +138,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        getEntityFeedLink(entityType, fqn),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -144,23 +149,22 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
-        ThreadType.Task
-      ).then((res) => {
-        if (res) {
-          setTasksCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
         }
-      });
+      );
     } else {
       // count for task on userProfile page
       getAllFeeds(
         undefined,
         undefined,
         ThreadType.Task,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {
@@ -176,7 +180,7 @@ export const ActivityFeedTab = ({
         undefined,
         undefined,
         ThreadType.Conversation,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {
@@ -196,17 +200,17 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
+    const currentFilter = currentUser?.isAdmin
+      ? FeedFilter.ALL
+      : FeedFilter.OWNER_OR_FOLLOWS;
+    const filter = isUserEntity ? currentFilter : undefined;
+
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter:
-        activeTab === 'mentions'
-          ? FeedFilter.MENTIONS
-          : EntityType.USER === entityType
-          ? FeedFilter.OWNER
-          : undefined,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
-  }, [activeTab]);
+  }, [activeTab, isUserEntity, currentUser]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
@@ -295,7 +299,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <AllActivityIcon {...ICON_DIMENSION} />
+                  <AllActivityIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.all')}</span>
                 </Space>
 
@@ -313,7 +320,7 @@ export const ActivityFeedTab = ({
           {
             label: (
               <Space align="center" size="small">
-                <MentionIcon {...ICON_DIMENSION} />
+                <MentionIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
                 <span>{t('label.mention-plural')}</span>
               </Space>
             ),
@@ -323,7 +330,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <TaskListIcon {...ICON_DIMENSION} />
+                  <TaskListIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>
@@ -366,16 +376,16 @@ export const ActivityFeedTab = ({
               }}>
               {' '}
               <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
-              {t('label.close')}
+              {t('label.closed')}
             </Typography.Text>
           </div>
         )}
         <ActivityFeedListV1
           hidePopover
-          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
+          isForFeedTab={isForFeedTab}
           isLoading={false}
           showThread={false}
           tab={activeTab}
@@ -406,11 +416,11 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
-                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
                 hidePopover={false}
+                isForFeedTab={isForFeedTab}
               />
               <ActivityFeedEditor className="m-md" onSave={onSave} />
             </div>
@@ -420,6 +430,7 @@ export const ActivityFeedTab = ({
                 <TaskTab
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
@@ -428,6 +439,7 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}

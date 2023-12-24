@@ -12,16 +12,16 @@
  */
 
 import { Image } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import React, { useEffect, useMemo, useState } from 'react';
+import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
-} from 'utils/ProfilerUtils';
+} from '../../../../utils/ProfilerUtils';
 import { UserProfileImageProps } from './UserProfileImage.interface';
 
 const UserProfileImage = ({ userData }: UserProfileImageProps) => {
-  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
+  const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
 
   const image = useMemo(
     () =>
@@ -30,31 +30,31 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
   );
 
   useEffect(() => {
-    if (image) {
-      SetIsImgUrlValid(true);
-    }
+    setIsImgUrlValid(Boolean(image));
   }, [image]);
 
   return (
-    <div className="profile-image-container">
+    <div
+      className="profile-image-container"
+      data-testid="profile-image-container">
       {isImgUrlValid ? (
         <Image
           alt="profile"
+          data-testid="user-profile-image"
           preview={false}
           referrerPolicy="no-referrer"
           src={image ?? ''}
           onError={() => {
-            SetIsImgUrlValid(false);
+            setIsImgUrlValid(false);
           }}
         />
       ) : (
         <ProfilePicture
           displayName={userData?.displayName ?? userData.name}
-          height="186"
-          id={userData?.id ?? ''}
+          height="54"
           name={userData?.name ?? ''}
-          textClass="text-5xl"
-          width=""
+          textClass="text-xl"
+          width="54"
         />
       )}
     </div>

@@ -10,280 +10,347 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
+
+import { isEmpty } from 'lodash';
 import {
   addOwner,
   addTier,
   deleteEntity,
   interceptURL,
-  removeOwner,
-  removeTier,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
 import {
+  DOMAIN_CREATION_DETAILS,
   ENTITY_DETAILS_FOR_VERSION_TEST,
   OWNER,
   TIER,
 } from '../../constants/Version.constants';
 
-Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
-  ([entityType, entityDetails]) => {
-    describe(`${entityType} version page should work properly`, () => {
-      const successMessageEntityName =
-        entityType === 'ML Model' ? 'Mlmodel' : entityType;
-      let entityId;
-      let entityFQN;
+let domainId;
 
-      beforeEach(() => {
-        cy.login();
+describe('Version page tests for data assets', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      cy.request({
+        method: 'PUT',
+        url: `/api/v1/domains`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DOMAIN_CREATION_DETAILS,
+      }).then((response) => {
+        domainId = response.body.id;
       });
+    });
+  });
 
-      it(`Prerequisite for ${entityType} version page test`, () => {
-        const token = localStorage.getItem('oidcIdToken');
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
 
-        cy.request({
-          method: 'PUT',
-          url: `/api/v1/${entityDetails.entity}`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: entityDetails.entityCreationDetails,
-        }).then((response) => {
-          expect(response.status).to.eq(201);
+  Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
+    ([entityType, entityDetails]) => {
+      describe(`${entityType} version page should work properly`, () => {
+        const successMessageEntityName =
+          entityType === 'ML Model' ? 'Mlmodel' : entityType;
+        let entityId;
+        let entityFQN;
 
-          entityId = response.body.id;
-          entityFQN = response.body.fullyQualifiedName;
+        before(() => {
+          cy.login();
+          cy.getAllLocalStorage().then((data) => {
+            const token = Object.values(data)[0].oidcIdToken;
+            cy.request({
+              method: 'PUT',
+              url: `/api/v1/${entityDetails.entity}`,
+              headers: { Authorization: `Bearer ${token}` },
+              body: entityDetails.entityCreationDetails,
+            }).then((response) => {
+              entityId = response.body.id;
+              entityFQN = response.body.fullyQualifiedName;
 
-          cy.request({
-            method: 'PATCH',
-            url: `/api/v1/${entityDetails.entity}/${entityId}`,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json-patch+json',
-            },
-            body: entityDetails.entityPatchPayload,
-          }).then((response) => {
-            expect(response.status).to.eq(200);
+              cy.request({
+                method: 'PATCH',
+                url: `/api/v1/${entityDetails.entity}/${entityId}`,
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json-patch+json',
+                },
+                body: [
+                  ...entityDetails.entityPatchPayload,
+                  {
+                    op: 'add',
+                    path: '/domain',
+                    value: {
+                      id: domainId,
+                      type: 'domain',
+                      name: DOMAIN_CREATION_DETAILS.name,
+                      description: DOMAIN_CREATION_DETAILS.description,
+                    },
+                  },
+                ],
+              });
+            });
+          });
+        });
+
+        beforeEach(() => {
+          cy.login();
+        });
+
+        it(`${entityType} version page should show description, tag and child field name changes properly`, () => {
+          visitEntityDetailsVersionPage(
+            entityDetails,
+            entityId,
+            entityFQN,
+            '0.2'
+          );
+
+          cy.get(`[data-testid="domain-link"] [data-testid="diff-added"]`)
+            .scrollIntoView()
+            .should('be.visible');
+
+          cy.get(
+            `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+          )
+            .scrollIntoView()
+            .should('be.visible');
+
+          cy.get(
+            `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
+          )
+            .scrollIntoView()
+            .should('be.visible');
+
+          // Check if child field names are displayed properly on version page
+          if (!isEmpty(entityDetails.childFieldNameToCheck)) {
+            cy.get(
+              `[${entityDetails.childSelector}="${entityDetails.childFieldNameToCheck}"]`
+            ).should('contain', entityDetails.childFieldNameToCheck);
+          }
+
+          if (entityDetails.isChildrenExist) {
+            cy.get(
+              `[${entityDetails.childSelector}="${entityDetails.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PersonalData.Personal"]`
+            )
+              .scrollIntoView()
+              .should('be.visible');
+
+            cy.get(
+              `[${entityDetails.childSelector}="${entityDetails.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PII.Sensitive"]`
+            )
+              .scrollIntoView()
+              .should('be.visible');
+
+            cy.get(`[data-testid="diff-removed"]`)
+              .contains(entityDetails.entityChildRemovedDescription)
+              .scrollIntoView()
+              .should('be.visible');
+
+            cy.get(`[data-testid="diff-added"]`)
+              .contains(entityDetails.entityChildAddedDescription)
+              .scrollIntoView()
+              .should('be.visible');
+          }
+        });
+
+        if (entityType === 'Table') {
+          it(`${entityType} version page should show column display name changes properly`, () => {
+            visitEntityDetailsPage({
+              term: entityDetails.name,
+              serviceName: entityDetails.serviceName,
+              entity: entityDetails.entity,
+            });
+
+            cy.get('[data-testid="version-button"]').as('versionButton');
+
+            cy.get('@versionButton').contains('0.2');
+
+            cy.get(
+              `[data-row-key$="${entityDetails.childFieldNameToCheck}"] [data-testid="edit-displayName-button"]`
+            ).click({ waitForAnimations: true });
+
+            cy.get('#displayName')
+              .clear()
+              .type(entityDetails.columnDisplayNameToUpdate);
+
+            interceptURL('PATCH', `/api/v1/tables/*`, `updateColumnName`);
+
+            cy.get('.ant-modal-footer [data-testid="save-button"]').click();
+
+            verifyResponseStatusCode(`@updateColumnName`, 200);
+
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+              `get${entityType}Details`
+            );
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+              'getVersionsList'
+            );
+            interceptURL(
+              'GET',
+              `/api/v1/${entityDetails.entity}/${entityId}/versions/0.2`,
+              'getSelectedVersionDetails'
+            );
+
+            cy.get('@versionButton').contains('0.2').click();
+
+            verifyResponseStatusCode(`@get${entityType}Details`, 200);
+            verifyResponseStatusCode('@getVersionsList', 200);
+            verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+            cy.get(
+              `[data-row-key$="${entityDetails.childFieldNameToCheck}"] [data-testid="diff-added"]`
+            ).should('contain', entityDetails.columnDisplayNameToUpdate);
+          });
+        }
+
+        it(`${entityType} version page should show owner changes properly`, () => {
+          visitEntityDetailsPage({
+            term: entityDetails.name,
+            serviceName: entityDetails.serviceName,
+            entity: entityDetails.entity,
+          });
+
+          cy.get('[data-testid="version-button"]').as('versionButton');
+
+          cy.get('@versionButton').contains('0.2');
+
+          addOwner(OWNER, entityDetails.entity);
+
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+            `get${entityType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions/0.2`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.2').click();
+
+          verifyResponseStatusCode(`@get${entityType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        it(`${entityType} version page should show tier changes properly`, () => {
+          visitEntityDetailsPage({
+            term: entityDetails.name,
+            serviceName: entityDetails.serviceName,
+            entity: entityDetails.entity,
+          });
+
+          cy.get('[data-testid="version-button"]').as('versionButton');
+
+          cy.get('@versionButton').contains('0.2');
+
+          addTier(TIER, entityDetails.entity);
+
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+            `get${entityType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions/0.2`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.2').click();
+
+          verifyResponseStatusCode(`@get${entityType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        it(`${entityType} version page should show changes after soft deleted`, () => {
+          deleteEntity(
+            entityDetails.name,
+            entityDetails.serviceName,
+            entityDetails.entity,
+            successMessageEntityName,
+            'soft'
+          );
+
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+            `get${entityType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions/0.3`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('[data-testid="version-button"]').contains('0.3').click();
+
+          verifyResponseStatusCode(`@get${entityType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          // Deleted badge should be visible
+          cy.get('[data-testid="deleted-badge"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        after(() => {
+          cy.getAllLocalStorage().then((data) => {
+            const token = Object.values(data)[0].oidcIdToken;
+            cy.request({
+              method: 'DELETE',
+              url: `/api/v1/${entityDetails.entity}/${entityId}`,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
           });
         });
       });
-
-      it(`${entityType} version page should show description and tag changes properly`, () => {
-        visitEntityDetailsVersionPage(
-          entityDetails,
-          entityId,
-          entityFQN,
-          '0.2'
-        );
-        cy.get(
-          `[data-testid="diff-added-${entityDetails.entityAddedDescription}"]`
-        )
-          .scrollIntoView()
-          .should('be.visible');
-
-        cy.get(
-          `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
-        )
-          .scrollIntoView()
-          .should('be.visible');
-
-        if (entityDetails.isChildrenExist) {
-          cy.get(
-            `[${entityDetails.childSelector}="${entityDetails.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PersonalData.Personal"]`
-          )
-            .scrollIntoView()
-            .should('be.visible');
-
-          cy.get(
-            `[${entityDetails.childSelector}="${entityDetails.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PII.Sensitive"]`
-          )
-            .scrollIntoView()
-            .should('be.visible');
-
-          cy.get(
-            `[data-testid="diff-removed-${entityDetails.entityChildRemovedDescription}"]`
-          )
-            .scrollIntoView()
-            .should('be.visible');
-
-          cy.get(
-            `[data-testid="diff-added-${entityDetails.entityChildAddedDescription}"]`
-          )
-            .scrollIntoView()
-            .should('be.visible');
-        }
-      });
-
-      it(`${entityType} version page should show removed tags changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
-
-        cy.get(
-          '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
-        ).click();
-
-        cy.get(
-          '[data-testid="selected-tag-PersonalData.SpecialCategory"] [data-testid="remove-tags"]'
-        ).click();
-
-        interceptURL(
-          'PATCH',
-          `/api/v1/${entityDetails.entity}/${entityId}`,
-          `patch${entityType}`
-        );
-
-        cy.get('[data-testid="saveAssociatedTag"]').click();
-
-        verifyResponseStatusCode(`@patch${entityType}`, 200);
-
-        cy.get('[data-testid="version-button"]').contains('0.3').click();
-
-        cy.get(
-          `[data-testid="entity-right-panel"] .diff-removed [data-testid="tag-PersonalData.SpecialCategory"]`
-        )
-          .scrollIntoView()
-          .should('be.visible');
-      });
-
-      it(`${entityType} version page should show owner changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
-
-        cy.get('[data-testid="version-button"]').as('versionButton');
-
-        cy.get('@versionButton').contains('0.3');
-
-        addOwner(OWNER, entityDetails.entity);
-
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
-          `get${entityType}Details`
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions`,
-          'getVersionsList'
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions/0.4`,
-          'getSelectedVersionDetails'
-        );
-
-        cy.get('@versionButton').contains('0.4').click();
-
-        verifyResponseStatusCode(`@get${entityType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-        cy.get(`[data-testid="diff-added-${OWNER}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-
-        cy.get('@versionButton').contains('0.4').click();
-
-        removeOwner(entityDetails.entity);
-
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions/0.5`,
-          'getSelectedVersionDetails'
-        );
-
-        cy.get('@versionButton').contains('0.5').click();
-
-        verifyResponseStatusCode(`@get${entityType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-        cy.get(`[data-testid="diff-removed-${OWNER}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-      });
-
-      it(`${entityType} version page should show tier changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
-
-        cy.get('[data-testid="version-button"]').as('versionButton');
-
-        cy.get('@versionButton').contains('0.5');
-
-        addTier(TIER, entityDetails.entity);
-
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
-          `get${entityType}Details`
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions`,
-          'getVersionsList'
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions/0.6`,
-          'getSelectedVersionDetails'
-        );
-
-        cy.get('@versionButton').contains('0.6').click();
-
-        verifyResponseStatusCode(`@get${entityType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-        cy.get(`[data-testid="diff-added-${TIER}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-
-        cy.get('@versionButton').contains('0.6').click();
-
-        removeTier(entityDetails.entity);
-
-        interceptURL(
-          'GET',
-          `/api/v1/${entityDetails.entity}/${entityId}/versions/0.7`,
-          'getSelectedVersionDetails'
-        );
-
-        cy.get('@versionButton').contains('0.7').click();
-
-        verifyResponseStatusCode(`@get${entityType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-        cy.get(`[data-testid="diff-removed-${TIER}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-      });
-
-      it(`Cleanup for ${entityType} version page test`, () => {
-        deleteEntity(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          entityType,
-          successMessageEntityName
-        );
-      });
-    });
-  }
-);
+    }
+  );
+});

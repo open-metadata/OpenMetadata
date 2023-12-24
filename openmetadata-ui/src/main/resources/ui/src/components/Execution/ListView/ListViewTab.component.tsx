@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import Table from 'components/common/Table/Table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,6 +21,8 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../utils/executionUtils';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Table from '../../common/Table/Table';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
@@ -65,13 +65,14 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       bordered
       className="h-full"
       columns={columns}
+      data-testid="list-view-table"
       dataSource={tableData}
       loading={loading}
       locale={{
         emptyText: <FilterTablePlaceHolder />,
       }}
       pagination={false}
-      rowKey="name"
+      rowKey={(record) => `${record.name}-${record.status}-${record.key}`}
     />
   );
 };

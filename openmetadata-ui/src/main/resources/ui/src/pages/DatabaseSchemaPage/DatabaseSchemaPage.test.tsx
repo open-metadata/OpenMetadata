@@ -12,11 +12,11 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import React from 'react';
-import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
-import { getStoredProceduresList } from 'rest/storedProceduresAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
+import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockGetDatabaseSchemaDetailsByFQNData,
@@ -29,14 +29,14 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn(),
@@ -49,7 +49,7 @@ jest.mock(
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -58,14 +58,14 @@ jest.mock(
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
   () => {
     return jest.fn().mockImplementation(() => <p>testActivityThreadPanel</p>);
   }
 );
 
 jest.mock(
-  'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest
       .fn()
@@ -73,11 +73,11 @@ jest.mock(
   })
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
 });
 
@@ -85,19 +85,19 @@ jest.mock('./SchemaTablesTab', () => {
   return jest.fn().mockReturnValue(<p>testSchemaTablesTab</p>);
 });
 
-jest.mock('pages/StoredProcedure/StoredProcedureTab', () => {
+jest.mock('../../pages/StoredProcedure/StoredProcedureTab', () => {
   return jest.fn().mockImplementation(() => <div>testStoredProcedureTab</div>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
-jest.mock('utils/StringsUtils', () => ({
+jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('rest/storedProceduresAPI', () => ({
+jest.mock('../../rest/storedProceduresAPI', () => ({
   getStoredProceduresList: jest
     .fn()
     .mockImplementation(() =>
@@ -105,7 +105,7 @@ jest.mock('rest/storedProceduresAPI', () => ({
     ),
 }));
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getTableList: jest
     .fn()
     .mockImplementation(() =>
@@ -113,11 +113,11 @@ jest.mock('rest/tableAPI', () => ({
     ),
 }));
 
-jest.mock('utils/CommonUtils', () => ({
+jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
 }));
 
-jest.mock('utils/RouterUtils', () => ({
+jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
@@ -137,21 +137,21 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>testLoader</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../rest/feedsAPI', () => ({
   getFeedCount: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetFeedCountData)),
@@ -160,7 +160,7 @@ jest.mock('rest/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),
 }));
 
-jest.mock('rest/databaseAPI', () => ({
+jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
     .mockImplementation(() =>
@@ -243,7 +243,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
   });
 
@@ -260,8 +260,6 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
       databaseSchema: mockParams.fqn,
-      fields: 'owner,tags,followers',
-      include: 'non-deleted',
       limit: 0,
     });
   });
@@ -280,7 +278,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -302,7 +300,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();

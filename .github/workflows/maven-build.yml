@@ -47,14 +47,14 @@ permissions:
   checks: write
 
 concurrency: 
-  group: maven-build-${{ github.head_ref || github.run_id }}
+  group: maven-build-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
   maven-mysql-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        uses: lewagon/wait-on-check-action@v1.3.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -85,12 +85,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
  
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Install Ubuntu dependencies
         if: steps.cache-output.outputs.exit-code == 0
@@ -99,20 +99,11 @@ jobs:
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
-      
-      - name: Build PR with Maven
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'pull_request_target' }}
-        run: |
-          git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          mvn -pl :openmetadata-service clean test -am
 
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean test
+        run: mvn clean package -am
 
       - name: Clean Up
         run: |

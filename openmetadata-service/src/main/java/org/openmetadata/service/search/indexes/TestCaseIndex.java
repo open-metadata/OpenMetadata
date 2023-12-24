@@ -1,17 +1,11 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -21,7 +15,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseIndex implements ElasticSearchIndex {
+public class TestCaseIndex implements SearchIndex {
   final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");
@@ -32,11 +26,6 @@ public class TestCaseIndex implements ElasticSearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
-    if (testCase.getOwner() != null) {
-      EntityReference owner = testCase.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      testCase.setOwner(owner);
-    }
     List<TestSuite> testSuiteArray = new ArrayList<>();
     if (testCase.getTestSuites() != null) {
       for (TestSuite suite : testCase.getTestSuites()) {
@@ -57,6 +46,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
+    doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     return doc;
   }
 
@@ -86,10 +76,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_NAME, 10.0f);
-    fields.put(FIELD_DESCRIPTION, 3.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("testSuite.fullyQualifiedName", 10.0f);
     fields.put("testSuite.name", 10.0f);
     fields.put("testSuite.description", 3.0f);

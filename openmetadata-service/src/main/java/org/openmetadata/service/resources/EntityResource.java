@@ -19,18 +19,17 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -53,31 +52,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient;
-  public static ElasticSearchConfiguration esConfig;
-
-  protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
-    this.entityClass = entityClass;
-    entityType = repository.getEntityType();
+  protected EntityResource(String entityType, Authorizer authorizer) {
+    this.entityType = entityType;
+    this.repository = (K) Entity.getEntityRepository(entityType);
+    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
-    this.repository = repository;
     this.authorizer = authorizer;
-    addViewOperation("owner,followers,votes,tags,extension", VIEW_BASIC);
-    Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
+    addViewOperation(
+        "owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
-    // Nothing to do in the default implementation
-  }
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {}
 
   /**
    * Method used for upgrading a resource such as adding new fields to entities, etc. that can't be done in bootstrap
    * migrate
    */
-  public void upgrade() throws IOException {
+  public void upgrade() {
     // Nothing to do in the default implementation
   }
 
@@ -114,7 +107,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after) {
     Fields fields = getFields(fieldsParam);
-    OperationContext listOperationContext = new OperationContext(entityType, getViewOperations(fields));
+    OperationContext listOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
     return listInternal(
         uriInfo,
         securityContext,
@@ -149,10 +143,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
-  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include) {
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    return getInternal(uriInfo, securityContext, id, fields, include, operationContext, getResourceContextById(id));
+    return getInternal(
+        uriInfo,
+        securityContext,
+        id,
+        fields,
+        include,
+        operationContext,
+        getResourceContextById(id));
   }
 
   public T getInternal(
@@ -168,8 +174,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    return getVersionInternal(securityContext, id, version, operationContext, getResourceContextById(id));
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return getVersionInternal(
+        securityContext, id, version, operationContext, getResourceContextById(id));
   }
 
   public T getVersionInternal(
@@ -183,7 +191,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
@@ -197,11 +206,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T getByNameInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getByNameInternal(
-        uriInfo, securityContext, name, fields, include, operationContext, getResourceContextByName(name));
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        include,
+        operationContext,
+        getResourceContextByName(name));
   }
 
   public T getByNameInternal(
@@ -218,7 +237,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
-    CreateResourceContext<T> createResourceContext = new CreateResourceContext<>(entityType, entity);
+    CreateResourceContext<T> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
@@ -232,10 +252,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
     if (operation == CREATE) {
-      CreateResourceContext<T> createResourceContext = new CreateResourceContext<>(entityType, entity);
+      CreateResourceContext<T> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
-      return new PutResponse<>(Response.Status.CREATED, entity, RestUtil.ENTITY_CREATED).toResponse();
+      return new PutResponse<>(Response.Status.CREATED, entity, RestUtil.ENTITY_CREATED)
+          .toResponse();
     }
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
@@ -243,74 +265,76 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
+  public Response patchInternal(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
+    PatchResponse<T> response =
+        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
   public Response delete(
-      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean recursive, boolean hardDelete) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
-    addHref(uriInfo, response.getEntity());
+    repository.deleteFromSearch(response.entity(), response.changeType());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
   public Response deleteByName(
-      UriInfo uriInfo, SecurityContext securityContext, String name, boolean recursive, boolean hardDelete) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      boolean recursive,
+      boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
-        repository.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
-    addHref(uriInfo, response.getEntity());
+        repository.deleteByName(
+            securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    repository.deleteFromSearch(response.entity(), response.changeType());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PutResponse<T> response = repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+    PutResponse<T> response =
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
-    LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(response.getEntity()), response.getEntity().getId());
+    LOG.info(
+        "Restored {}:{}",
+        Entity.getEntityTypeFromObject(response.getEntity()),
+        response.getEntity().getId());
     return response.toResponse();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
   }
 
-  protected CsvImportResult importCsvInternal(SecurityContext securityContext, String name, String csv, boolean dryRun)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+  protected CsvImportResult importCsvInternal(
+      SecurityContext securityContext, String name, String csv, boolean dryRun) throws IOException {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
-  }
-
-  public T copy(T entity, CreateEntity request, String updatedBy) {
-    EntityReference owner = repository.validateOwner(request.getOwner());
-    EntityReference domain = repository.validateDomain(request.getDomain());
-    entity.setId(UUID.randomUUID());
-    entity.setName(request.getName());
-    entity.setDisplayName(request.getDisplayName());
-    entity.setDescription(request.getDescription());
-    entity.setOwner(owner);
-    entity.setDomain(domain);
-    entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
-    entity.setLifeCycle(request.getLifeCycle());
-    entity.setExtension(request.getExtension());
-    entity.setUpdatedBy(updatedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-    return entity;
+    return repository.importFromCsv(
+        name, csv, dryRun, securityContext.getUserPrincipal().getName());
   }
 
   protected ResourceContext<T> getResourceContext() {
@@ -347,7 +371,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return EntityUtil.getEntityReference(entityType, fqn);
   }
 
-  protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+  protected static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;
     }
@@ -359,7 +383,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owner,followers,votes,tags,extension".contains(field)) {
+      } else if (!"owner,followers,votes,tags,extension,domain,dataProducts,experts"
+          .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
@@ -37,6 +37,10 @@ export const PAGE_HEADERS = {
   USERS: {
     header: i18n.t('label.user-plural'),
     subHeader: i18n.t('message.page-sub-header-for-users'),
+  },
+  PERSONAS: {
+    header: i18n.t('label.persona-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-persona'),
   },
   TEAMS: {
     header: i18n.t('label.team-plural'),
@@ -155,5 +159,15 @@ export const PAGE_HEADERS = {
   BOTS: {
     header: i18n.t('label.bot-plural'),
     subHeader: i18n.t('message.page-sub-header-for-bots'),
+  },
+  APPLICATION: {
+    header: i18n.t('label.extend-open-meta-data'),
+    subHeader: i18n.t('message.application-to-improve-data'),
+  },
+  CUSTOM_PAGE: {
+    header: i18n.t('label.customize-entity', {
+      entity: i18n.t('label.landing-page'),
+    }),
+    subHeader: i18n.t('message.page-sub-header-for-customize-landing-page'),
   },
 };

@@ -12,10 +12,10 @@
  */
 
 import { Typography } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import {
   TaskType,
   Thread,

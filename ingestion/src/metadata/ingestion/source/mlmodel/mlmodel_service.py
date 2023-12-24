@@ -21,9 +21,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.mlmodelService import (
     MlModelConnection,
     MlModelService,
@@ -71,6 +68,7 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -84,6 +82,7 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
+                use_cache=True,
             ),
         ],
     )
@@ -107,12 +106,11 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -177,9 +175,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedMlModels,
-                params={
-                    "service": self.context.mlmodel_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.mlmodel_service},
             )
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:

@@ -8,11 +8,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 
 public class NoopAuthenticator implements AuthenticatorHandler {
   @Override
-  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+  public void init(OpenMetadataApplicationConfig config) {
     /* deprecated unused */
   }
 

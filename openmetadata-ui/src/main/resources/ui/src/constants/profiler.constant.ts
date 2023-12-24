@@ -12,12 +12,8 @@
  */
 
 import { t } from 'i18next';
-import { StepperStepType } from 'Models';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import { map, values } from 'lodash';
+import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -28,6 +24,12 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import { EntityType } from '../generated/tests/testDefinition';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../utils/date-time/DateTimeUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 import { JSON_TAB_SIZE } from './constants';
 
@@ -71,7 +73,7 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 
-export const PROFILER_FILTER_RANGE = {
+export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
     title: t('label.yesterday'),
@@ -393,3 +395,33 @@ export const TIME_BASED_PARTITION = [
   PartitionIntervalType.IngestionTime,
   PartitionIntervalType.TimeUnit,
 ];
+
+export const TEST_CASE_TYPE_OPTION = [
+  {
+    label: t('label.all'),
+    value: '',
+  },
+  ...map(EntityType, (value, key) => ({
+    label: key,
+    value: value,
+  })),
+];
+
+export const TEST_CASE_STATUS_OPTION = [
+  {
+    label: t('label.all'),
+    value: '',
+  },
+  ...values(TestCaseStatus).map((value) => ({
+    label: value,
+    value: value,
+  })),
+];
+
+export const INITIAL_COLUMN_METRICS_VALUE = {
+  countMetrics: INITIAL_COUNT_METRIC_VALUE,
+  proportionMetrics: INITIAL_PROPORTION_METRIC_VALUE,
+  mathMetrics: INITIAL_MATH_METRIC_VALUE,
+  sumMetrics: INITIAL_SUM_METRIC_VALUE,
+  quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};

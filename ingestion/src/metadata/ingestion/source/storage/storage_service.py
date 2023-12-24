@@ -18,9 +18,6 @@ from pandas import DataFrame
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
@@ -55,7 +52,10 @@ from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
 from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.storage_metadata_config import get_manifest
+from metadata.utils.storage_metadata_config import (
+    StorageMetadataConfigException,
+    get_manifest,
+)
 
 logger = ingestion_logger()
 
@@ -74,6 +74,7 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -88,6 +89,7 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
+                use_cache=True,
             )
         ],
     )
@@ -108,15 +110,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = StorageServiceTopology()
     context = create_source_context(topology)
 
+    global_manifest: Optional[ManifestMetadataConfig]
+
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -127,12 +130,20 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.connection
         self.test_connection()
 
+        # Try to get the global manifest
+        self.global_manifest: Optional[
+            ManifestMetadataConfig
+        ] = self.get_manifest_file()
+
     def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
         if self.source_config.storageMetadataConfigSource and not isinstance(
             self.source_config.storageMetadataConfigSource,
             NoMetadataConfigurationSource,
         ):
-            return get_manifest(self.source_config.storageMetadataConfigSource)
+            try:
+                return get_manifest(self.source_config.storageMetadataConfigSource)
+            except StorageMetadataConfigException as exc:
+                logger.warning(f"Could no get global manifest due to [{exc}]")
         return None
 
     @abstractmethod
@@ -168,6 +179,26 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     @staticmethod
+    def _manifest_entries_to_metadata_entries_by_container(
+        container_name: str, manifest: ManifestMetadataConfig
+    ) -> List[MetadataEntry]:
+        """
+        Convert manifest entries (which have an extra bucket property) to bucket-level metadata entries, filtered by
+        a given bucket
+        """
+        return [
+            MetadataEntry(
+                dataPath=entry.dataPath,
+                structureFormat=entry.structureFormat,
+                isPartitioned=entry.isPartitioned,
+                partitionColumns=entry.partitionColumns,
+                separator=entry.separator,
+            )
+            for entry in manifest.entries
+            if entry.containerName == container_name
+        ]
+
+    @staticmethod
     def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:
         """
         Return a prefix if we have structure data to read
@@ -194,6 +225,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 key=sample_key,
                 bucket_name=bucket_name,
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
+                separator=metadata_entry.separator,
             ),
         )
         columns = []

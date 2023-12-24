@@ -28,8 +28,11 @@ import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
@@ -45,20 +48,26 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
-  public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, "", "");
+  public PolicyRepository() {
+    super(
+        PolicyResource.COLLECTION_PATH,
+        POLICY,
+        Policy.class,
+        Entity.getCollectionDAO().policyDAO(),
+        "",
+        "");
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) {
+  public void setFields(Policy policy, Fields fields) {
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
-    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+    policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
   }
 
   @Override
-  public Policy clearFields(Policy policy, Fields fields) {
+  public void clearFields(Policy policy, Fields fields) {
     policy.setTeams(fields.contains("teams") ? policy.getTeams() : null);
-    return policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
+    policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
   }
 
   /* Get all the teams that use this policy */
@@ -126,19 +135,26 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return containsAllResources ? new ArrayList<>(List.of(ALL_RESOURCES)) : resources;
   }
 
-  public static List<MetadataOperation> filterRedundantOperations(List<MetadataOperation> operations) {
-    // If VIEW_ALL is in the operation list, remove all the other specific view operations that are redundant
+  public static List<MetadataOperation> filterRedundantOperations(
+      List<MetadataOperation> operations) {
+    // If VIEW_ALL is in the operation list, remove all the other specific view operations that are
+    // redundant
     boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
     if (containsViewAll) {
       operations =
-          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).collect(Collectors.toList());
+          operations.stream()
+              .filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o))
+              .collect(Collectors.toList());
     }
 
-    // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are redundant
+    // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are
+    // redundant
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
     if (containsEditAll) {
       operations =
-          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).collect(Collectors.toList());
+          operations.stream()
+              .filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o))
+              .collect(Collectors.toList());
     }
     return operations;
   }
@@ -149,6 +165,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
@@ -156,6 +173,17 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
+      // Check if the Rules have unique names
+      if (!nullOrEmpty(updatedRules)) {
+        Set<String> ruleNames =
+            updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
+
+        if (ruleNames.size() != updatedRules.size()) {
+          throw new BadRequestException(
+              "Policy contains duplicate Rules. Please use unique name for Rules.");
+        }
+      }
+
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
@@ -164,7 +192,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
       // Record changes based on updatedRule
       for (Rule updated : updatedRules) {
-        Rule stored = origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
+        Rule stored =
+            origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New Rule added
           continue;
         }

@@ -24,6 +24,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     generate_entity_link,
     get_corrected_name,
@@ -95,6 +96,7 @@ EXPECTED_DATA_MODELS = [
         description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
         path="sample/customers/root/path/models/customers.sql",
         rawSql="sample customers raw code",
+        resourceType="model",
         sql="sample customers compile code",
         upstream=[],
         owner=EntityReference(
@@ -162,6 +164,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
         description=None,
         path="sample/customers_null_db/root/path/models/staging/customers_null_db.sql",
         rawSql="sample customers_null_db raw_code",
+        resourceType="model",
         sql="sample customers_null_db compiled code",
         upstream=[],
         owner=EntityReference(
@@ -279,7 +282,7 @@ class DbtUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(
             mock_dbt_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         set_loggers_level("DEBUG")
 

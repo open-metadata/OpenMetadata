@@ -1,22 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -24,7 +12,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class PipelineIndex implements ElasticSearchIndex {
+public class PipelineIndex implements SearchIndex {
   final Pipeline pipeline;
   final List<String> excludeFields = List.of("changeDescription");
 
@@ -33,17 +21,6 @@ public class PipelineIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (pipeline.getOwner() != null) {
-      EntityReference owner = pipeline.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      pipeline.setOwner(owner);
-    }
-    if (pipeline.getDomain() != null) {
-      EntityReference domain = pipeline.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      pipeline.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(pipeline);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -51,7 +28,8 @@ public class PipelineIndex implements ElasticSearchIndex {
     List<SearchSuggest> taskSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
-    serviceSuggest.add(SearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
     if (pipeline.getTasks() != null) {
       for (Task task : pipeline.getTasks()) {
         taskSuggest.add(SearchSuggest.builder().input(task.getName()).weight(5).build());
@@ -59,7 +37,9 @@ public class PipelineIndex implements ElasticSearchIndex {
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
-    doc.put("displayName", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
+    doc.put(
+        "displayName",
+        pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("followers", SearchIndexUtils.parseFollowers(pipeline.getFollowers()));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
@@ -73,21 +53,16 @@ public class PipelineIndex implements ElasticSearchIndex {
         getFQNParts(
             pipeline.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    doc.put("owner", getEntityWithDisplayName(pipeline.getOwner()));
+    doc.put("service", getEntityWithDisplayName(pipeline.getService()));
+    doc.put("domain", getEntityWithDisplayName(pipeline.getDomain()));
     return doc;
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("tasks.name", 2.0f);
     fields.put("tasks.description", 1.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

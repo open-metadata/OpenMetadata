@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 import { RJSFSchema } from '@rjsf/utils';
-import { ServiceCategory } from 'enums/service.enum';
-import { PipelineType as WorkflowType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import dashboardMetadataPipeline from 'jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
-import databaseMetadataPipeline from 'jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
-import databaseProfilerPipeline from 'jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
-import databaseLineagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
-import databaseUsagePipeline from 'jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
-import dataInsightPipeline from 'jsons/ingestionSchemas/dataInsightPipeline.json';
-import dbtPipeline from 'jsons/ingestionSchemas/dbtPipeline.json';
-import messagingMetadataPipeline from 'jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
-import metadataToElasticSearchPipeline from 'jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
-import mlModelMetadataPipeline from 'jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
-import pipelineMetadataPipeline from 'jsons/ingestionSchemas/pipelineServiceMetadataPipeline.json';
-import searchMetadataPipeline from 'jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
-import storageMetadataPipeline from 'jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
-import testSuitePipeline from 'jsons/ingestionSchemas/testSuitePipeline.json';
+import { ServiceCategory } from '../enums/service.enum';
+import { PipelineType as WorkflowType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import dashboardMetadataPipeline from '../jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
+import databaseMetadataPipeline from '../jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
+import databaseProfilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
+import databaseLineagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
+import databaseUsagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
+import dataInsightPipeline from '../jsons/ingestionSchemas/dataInsightPipeline.json';
+import dbtPipeline from '../jsons/ingestionSchemas/dbtPipeline.json';
+import messagingMetadataPipeline from '../jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
+import metadataToElasticSearchPipeline from '../jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
+import mlModelMetadataPipeline from '../jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
+import pipelineMetadataPipeline from '../jsons/ingestionSchemas/pipelineServiceMetadataPipeline.json';
+import searchMetadataPipeline from '../jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
+import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
+import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
 
 export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
@@ -61,6 +61,10 @@ export const getSchemaByWorkflowType = (
   serviceCategory: ServiceCategory
 ) => {
   const customProperties = {
+    displayName: {
+      description: 'Display Name of the workflow',
+      type: 'string',
+    },
     name: {
       description: 'Name of the workflow',
       type: 'string',
@@ -126,9 +130,6 @@ export const getSchemaByWorkflowType = (
       break;
 
     default:
-      schema = {};
-
-      break;
   }
 
   const rjsfSchema = schema as RJSFSchema;

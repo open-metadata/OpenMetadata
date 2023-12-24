@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface TopicVersionProp {
   version: string;
@@ -23,9 +23,9 @@ export interface TopicVersionProp {
   isVersionLoading: boolean;
   owner: Topic['owner'];
   domain: Topic['domain'];
+  dataProducts: Topic['dataProducts'];
   tier: TagLabel;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

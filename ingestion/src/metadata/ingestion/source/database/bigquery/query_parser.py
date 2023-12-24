@@ -20,14 +20,15 @@ from google import auth
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcpValues import MultipleProjectId
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+    MultipleProjectId,
+)
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
@@ -37,20 +38,20 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
     BigQuery base for Usage and Lineage
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.project_id = self.set_project_id()
         self.database = self.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigQueryConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
@@ -71,6 +72,8 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
 
     def get_engine(self):
         if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ) and isinstance(
             self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
             project_ids = deepcopy(

@@ -18,26 +18,30 @@ from typing import Dict, Iterable, Optional
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -55,14 +59,14 @@ class DomopipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoPipelineConnection):
             raise InvalidSourceException(
                 f"Expected DomoPipelineConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipeline_name(self, pipeline_details) -> str:
         return pipeline_details["name"]
@@ -90,7 +94,7 @@ class DomopipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
-                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                service=self.context.pipeline_service,
                 startDate=pipeline_details.get("created"),
                 sourceUrl=source_url,
             )
@@ -102,7 +106,7 @@ class DomopipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.get("name", "unknown"),
                     error=f"Error extracting data from {pipeline_details.get('name', 'unknown')} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -110,7 +114,7 @@ class DomopipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.get("name", "unknown"),
                     error=f"Wild error ingesting pipeline {pipeline_details.get('name', 'unknown')} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -129,8 +133,16 @@ class DomopipelineSource(PipelineServiceSource):
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:
-                start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
-                end_time = run["endTime"] // 1000 if run.get("endTime") else None
+                start_time = (
+                    convert_timestamp_to_milliseconds(run["beginTime"])
+                    if run.get("beginTime")
+                    else None
+                )
+                end_time = (
+                    convert_timestamp_to_milliseconds(run["endTime"])
+                    if run.get("endTime")
+                    else None
+                )
                 run_state = run.get("state", "Pending")
 
                 task_status = TaskStatus(
@@ -149,19 +161,24 @@ class DomopipelineSource(PipelineServiceSource):
                     ),
                     timestamp=end_time,
                 )
-
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.pipeline_service,
+                    pipeline_name=self.context.pipeline,
+                )
                 yield Either(
                     right=OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_fqn=pipeline_fqn,
                         pipeline_status=pipeline_status,
                     )
                 )
         except Exception as err:
             yield Either(
                 left=StackTraceError(
-                    name=self.context.pipeline.fullyQualifiedName.__root__,
+                    name=pipeline_fqn,
                     error=f"Error extracting status for {pipeline_id} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

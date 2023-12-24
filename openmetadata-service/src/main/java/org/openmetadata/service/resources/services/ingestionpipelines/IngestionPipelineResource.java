@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
-import static org.openmetadata.service.resources.services.metadata.MetadataServiceResource.OPENMETADATA_SERVICE;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -55,29 +54,23 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
-import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -87,7 +80,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.IngestionPipelineUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 
@@ -101,13 +93,11 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
-public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
-  private static final String DEFAULT_INSIGHT_PIPELINE = "OpenMetadata_dataInsight";
-  private static final String DEFAULT_REINDEX_PIPELINE = "OpenMetadata_elasticSearchReindex";
+public class IngestionPipelineResource
+    extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private final MetadataServiceRepository metadataServiceRepository;
   static final String FIELDS = FIELD_OWNER;
 
   @Override
@@ -117,9 +107,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
-    this.metadataServiceRepository = new MetadataServiceRepository(dao);
+  public IngestionPipelineResource(Authorizer authorizer) {
+    super(Entity.INGESTION_PIPELINE, authorizer);
   }
 
   @Override
@@ -127,55 +116,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.openMetadataApplicationConfig = config;
 
     this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
     repository.setPipelineServiceClient(pipelineServiceClient);
-    createIndexAndInsightPipeline(config);
-  }
-
-  private void createIndexAndInsightPipeline(OpenMetadataApplicationConfig config) {
-    // Metadata Service is created only when ES config is present
-    if (config.getElasticSearchConfiguration() != null) {
-      try {
-        EntityReference metadataService =
-            this.metadataServiceRepository
-                .getByName(null, OPENMETADATA_SERVICE, repository.getFields("id"))
-                .getEntityReference();
-        // Create Data Insights Pipeline
-        CreateIngestionPipeline createPipelineRequest =
-            new CreateIngestionPipeline()
-                .withName(DEFAULT_INSIGHT_PIPELINE)
-                .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
-                .withDescription("Data Insights Pipeline")
-                .withPipelineType(PipelineType.DATA_INSIGHT)
-                .withSourceConfig(
-                    new SourceConfig()
-                        .withConfig(
-                            new MetadataToElasticSearchPipeline()
-                                .withType(
-                                    MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
-                .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
-                .withService(metadataService);
-        // Get Pipeline
-        IngestionPipeline dataInsightPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(dataInsightPipeline);
-        repository.initializeEntity(dataInsightPipeline);
-
-        // Create Reindex Pipeline
-        createPipelineRequest
-            .withName(DEFAULT_REINDEX_PIPELINE)
-            .withDisplayName(DEFAULT_REINDEX_PIPELINE)
-            .withDescription("Elastic Search Reindexing Pipeline")
-            .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
-        // Get Pipeline
-        IngestionPipeline elasticSearchPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(elasticSearchPipeline);
-        repository.initializeEntity(elasticSearchPipeline);
-      } catch (Exception ex) {
-        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
-      }
-    }
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -196,7 +139,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "List of ingestion workflows",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public ResultList<IngestionPipeline> list(
       @Context UriInfo uriInfo,
@@ -226,16 +171,20 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
-      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of ingestion before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of ingestion before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of ingestion after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of ingestion after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -251,11 +200,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam);
     ResultList<IngestionPipeline> ingestionPipelines =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-        ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
+        ingestionPipeline.setPipelineStatuses(
+            repository.getLatestPipelineStatus(ingestionPipeline));
       }
       decryptOrNullify(securityContext, ingestionPipeline, false);
     }
@@ -272,12 +223,16 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "List of IngestionPipeline versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -293,13 +248,18 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "IngestionPipeline for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "IngestionPipeline for instance {id} is not found")
       })
   public IngestionPipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -312,7 +272,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    IngestionPipeline ingestionPipeline =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -331,15 +292,18 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "IngestionPipelines",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "IngestionPipeline for instance {id} and version  " + "{version} is not found")
+            description = "IngestionPipeline for instance {id} and version  {version} is not found")
       })
   public IngestionPipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Ingestion version number in the form `major`.`minor`",
@@ -362,12 +326,18 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "IngestionPipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {fqn} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Ingestion for instance {fqn} is not found")
       })
   public IngestionPipeline getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -382,7 +352,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    IngestionPipeline ingestionPipeline =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -400,12 +371,17 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The Ingestion Pipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create) {
-    IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateIngestionPipeline create) {
+    IngestionPipeline ingestionPipeline =
+        getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
@@ -418,12 +394,16 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       operationId = "patchIngestionPipeline",
       summary = "Update an ingestion pipeline",
       description = "Update an existing ingestion pipeline using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
@@ -431,7 +411,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
@@ -443,18 +423,24 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "createOrUpdateIngestionPipeline",
       summary = "Create or update an ingestion pipeline",
-      description = "Create a new ingestion pipeline, if it does not exist or update an existing ingestion pipeline.",
+      description =
+          "Create a new ingestion pipeline, if it does not exist or update an existing ingestion pipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The IngestionPipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update) {
-    IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateIngestionPipeline update) {
+    IngestionPipeline ingestionPipeline =
+        getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
     unmask(ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
@@ -479,7 +465,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       })
   public PipelineServiceClientResponse deployIngestion(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
     return deployPipelineInternal(id, uriInfo, securityContext);
@@ -500,7 +487,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                     schema = @Schema(implementation = PipelineServiceClientResponse.class)))
       })
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<UUID> pipelineIdList) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<UUID> pipelineIdList) {
 
     return pipelineIdList.stream()
         .map(
@@ -510,7 +499,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               } catch (Exception e) {
                 return new PipelineServiceClientResponse()
                     .withCode(500)
-                    .withReason(String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
+                    .withReason(
+                        String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
                     .withPlatform(pipelineServiceClient.getPlatform());
               }
             })
@@ -535,16 +525,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       })
   public PipelineServiceClientResponse triggerIngestion(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    return triggerPipelineInternal(id, uriInfo, securityContext, null);
   }
 
   @POST
@@ -558,17 +543,21 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response toggleIngestion(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
-    // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
+    // This call updates the state in Airflow as well as the `enabled` field on the
+    // IngestionPipeline
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
     Response response = createOrUpdate(uriInfo, securityContext, pipeline);
@@ -580,7 +569,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Path("/kill/{id}")
   @Operation(
       operationId = "killIngestionPipelineRuns",
-      summary = "Mark as failed and kill any not-finished workflow or task for the ingestion pipeline",
+      summary =
+          "Mark as failed and kill any not-finished workflow or task for the ingestion pipeline",
       description = "Kill an ingestion pipeline by Id.",
       responses = {
         @ApiResponse(
@@ -594,10 +584,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       })
   public PipelineServiceClientResponse killIngestion(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    IngestionPipeline ingestionPipeline =
+        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
@@ -652,7 +644,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -665,7 +658,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       description = "Delete an ingestion pipeline by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Ingestion for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -674,7 +669,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
@@ -691,10 +688,14 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "Successfully restored the IngestionPipeline. ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public Response restoreIngestionPipeline(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -706,20 +707,26 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            description =
+                "JSON object with the task instance name of the ingestion on each key and log in the value",
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
       })
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
-      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns log chunk after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
-    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+    IngestionPipeline ingestionPipeline =
+        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    Map<String, String> lastIngestionLogs =
+        pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
@@ -734,16 +741,21 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "Successfully updated the PipelineStatus. ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public Response addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
@@ -762,11 +774,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "List of pipeline status",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public ResultList<PipelineStatus> listPipelineStatuses(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(
@@ -795,17 +811,23 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "Successfully updated state of the PipelineStatus.",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public PipelineStatus getPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Parameter(description = "Id of pipeline status run", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of pipeline status run", schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID runId) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatus(fqn, runId);
   }
@@ -822,12 +844,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "Successfully deleted the Statuses",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public IngestionPipeline deletePipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -838,7 +863,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    return copy(new IngestionPipeline(), create, user)
+    return repository
+        .copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
@@ -851,7 +877,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
         repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
-    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
+    EntityMaskerFactory.getEntityMasker()
+        .unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
 
   private PipelineServiceClientResponse deployPipelineInternal(
@@ -861,12 +888,32 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    PipelineServiceClientResponse status =
+        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
       createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }
     return status;
+  }
+
+  public PipelineServiceClientResponse triggerPipelineInternal(
+      UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    if (CommonUtil.nullOrEmpty(botName)) {
+      // Use Default Ingestion Bot
+      ingestionPipeline.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    } else {
+      ingestionPipeline.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
+    }
+    decryptOrNullify(securityContext, ingestionPipeline, true);
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
   }
 
   private void decryptOrNullify(

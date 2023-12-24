@@ -32,9 +32,6 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -73,12 +70,11 @@ class AtlasSource(Source):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
 
         self.atlas_client = get_connection(self.service_connection)
@@ -97,14 +93,14 @@ class AtlasSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AtlasConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AtlasConnection):
             raise InvalidSourceException(
                 f"Expected AtlasConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def prepare(self):
         """Not required to implement"""
@@ -126,7 +122,7 @@ class AtlasSource(Source):
                     left=StackTraceError(
                         name=service,
                         error=f"Cannot find service for {service} - type DatabaseService",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -146,7 +142,7 @@ class AtlasSource(Source):
                     left=StackTraceError(
                         name=service,
                         error=f"Cannot find service for {service} - type MessagingService",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -188,7 +184,7 @@ class AtlasSource(Source):
                         left=StackTraceError(
                             name="Topic",
                             error=f"Failed to parse topi entry [{topic_entity}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -283,7 +279,7 @@ class AtlasSource(Source):
                         left=StackTraceError(
                             name="Database",
                             error=f"Failed to parse for database : {db_entity} - table {table}: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -319,12 +315,11 @@ class AtlasSource(Source):
                 if classification_tags:
                     tag_labels.extend(classification_tags)
 
-        for tag_label in tag_labels:
-            self.metadata.patch_tag(
-                entity=Table,
-                source=table_object,
-                tag_label=tag_label,
-            )
+        self.metadata.patch_tags(
+            entity=Table,
+            source=table_object,
+            tag_labels=tag_labels,
+        )
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
@@ -387,9 +382,7 @@ class AtlasSource(Source):
                     schema_name=db_entity["displayText"],
                     table_name=table_name,
                 )
-                from_entity_ref = self.get_lineage_entity_ref(
-                    from_fqn, self.metadata_config, "table"
-                )
+                from_entity_ref = self.get_lineage_entity_ref(from_fqn, "table")
                 for edge in lineage_relations:
                     if (
                         lineage_response["guidEntityMap"][edge["toEntityId"]][
@@ -418,9 +411,7 @@ class AtlasSource(Source):
                             schema_name=db_entity["displayText"],
                             table_name=table_name,
                         )
-                        to_entity_ref = self.get_lineage_entity_ref(
-                            to_fqn, self.metadata_config, "table"
-                        )
+                        to_entity_ref = self.get_lineage_entity_ref(to_fqn, "table")
                         yield from self.yield_lineage(from_entity_ref, to_entity_ref)
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -429,7 +420,7 @@ class AtlasSource(Source):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"failed to parse lineage due to {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -471,15 +462,14 @@ class AtlasSource(Source):
             yield Either(right=lineage)
 
     def get_lineage_entity_ref(
-        self, to_fqn, metadata_config, entity_type
+        self, to_fqn: str, entity_type: str
     ) -> Optional[EntityReference]:
-        metadata = OpenMetadata(metadata_config)
         if entity_type == "table":
-            table = metadata.get_by_name(entity=Table, fqn=to_fqn)
+            table: Table = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
             if table:
                 return EntityReference(id=table.id.__root__, type="table")
         if entity_type == "pipeline":
-            pipeline = metadata.get_by_name(entity=Pipeline, fqn=to_fqn)
+            pipeline: Pipeline = self.metadata.get_by_name(entity=Pipeline, fqn=to_fqn)
             if pipeline:
                 return EntityReference(id=pipeline.id.__root__, type="pipeline")
         return None

@@ -16,7 +16,7 @@ import {
   Pipeline,
   State,
   TagSource,
-} from 'generated/entity/data/pipeline';
+} from '../../generated/entity/data/pipeline';
 
 export const mockPipelineDetails: Pipeline = {
   id: '411e4e5e-b6d0-4fc9-bd82-ebe479f68249',

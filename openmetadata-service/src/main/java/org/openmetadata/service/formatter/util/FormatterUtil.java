@@ -73,7 +73,8 @@ public class FormatterUtil {
       }
     }
 
-    return new MessageParser.EntityLink(entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
+    return new MessageParser.EntityLink(
+        entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
   }
 
   public static String getFieldValue(Object fieldValue) {
@@ -147,7 +148,10 @@ public class FormatterUtil {
   }
 
   public static String transformMessage(
-      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity, CHANGE_TYPE changeType) {
+      MessageDecorator<?> messageFormatter,
+      FieldChange fieldChange,
+      EntityInterface entity,
+      CHANGE_TYPE changeType) {
     MessageParser.EntityLink link = getEntityLink(fieldChange.getName(), entity);
     String arrayFieldName = link.getArrayFieldName();
     String arrayFieldValue = link.getArrayFieldValue();
@@ -164,9 +168,11 @@ public class FormatterUtil {
     String newField = getFieldValue(fieldChange.getNewValue());
     DefaultFieldFormatter fieldSpecificFormatter;
     if (CommonUtil.nullOrEmpty(arrayFieldValue)) {
-      fieldSpecificFormatter = getFieldParserObject(messageFormatter, oldField, newField, updatedField, link);
+      fieldSpecificFormatter =
+          getFieldParserObject(messageFormatter, oldField, newField, updatedField, link);
     } else {
-      fieldSpecificFormatter = getFieldParserObject(messageFormatter, oldField, newField, arrayFieldValue, link);
+      fieldSpecificFormatter =
+          getFieldParserObject(messageFormatter, oldField, newField, arrayFieldValue, link);
     }
     message = fieldSpecificFormatter.getFormattedMessage(changeType);
     return message;
@@ -179,11 +185,14 @@ public class FormatterUtil {
   }
 
   public static Map<MessageParser.EntityLink, String> getFormattedMessages(
-      MessageDecorator<?> messageFormatter, ChangeDescription changeDescription, EntityInterface entity) {
+      MessageDecorator<?> messageFormatter,
+      ChangeDescription changeDescription,
+      EntityInterface entity) {
     // Store a map of entityLink -> message
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessagesForAllFieldChange(messageFormatter, entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
+        getFormattedMessagesForAllFieldChange(
+            messageFormatter, entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
 
     // fieldsAdded and fieldsDeleted need special handling since
     // there is a possibility to merge them as one update message.
@@ -191,9 +200,13 @@ public class FormatterUtil {
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
     if (fieldsAdded.isEmpty() || fieldsDeleted.isEmpty()) {
       if (!fieldsAdded.isEmpty()) {
-        messages = getFormattedMessagesForAllFieldChange(messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD);
+        messages =
+            getFormattedMessagesForAllFieldChange(
+                messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD);
       } else if (!fieldsDeleted.isEmpty()) {
-        messages = getFormattedMessagesForAllFieldChange(messageFormatter, entity, fieldsDeleted, CHANGE_TYPE.DELETE);
+        messages =
+            getFormattedMessagesForAllFieldChange(
+                messageFormatter, entity, fieldsDeleted, CHANGE_TYPE.DELETE);
       }
       return messages;
     }
@@ -216,7 +229,10 @@ public class FormatterUtil {
                     CHANGE_TYPE.UPDATE);
         messages.put(link, message);
         // Remove the field from addedFields list to avoid double processing
-        fieldsAdded = fieldsAdded.stream().filter(f -> !f.equals(addedField.get())).collect(Collectors.toList());
+        fieldsAdded =
+            fieldsAdded.stream()
+                .filter(f -> !f.equals(addedField.get()))
+                .collect(Collectors.toList());
       } else {
         // process the deleted field
         messages.putAll(
@@ -226,18 +242,24 @@ public class FormatterUtil {
     }
     // process the remaining added fields
     if (!fieldsAdded.isEmpty()) {
-      messages.putAll(getFormattedMessagesForAllFieldChange(messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD));
+      messages.putAll(
+          getFormattedMessagesForAllFieldChange(
+              messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD));
     }
     return messages;
   }
 
   private static Map<MessageParser.EntityLink, String> getFormattedMessagesForAllFieldChange(
-      MessageDecorator<?> messageFormatter, EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
+      MessageDecorator<?> messageFormatter,
+      EntityInterface entity,
+      List<FieldChange> fields,
+      CHANGE_TYPE changeType) {
     Map<MessageParser.EntityLink, String> messages = new HashMap<>();
     for (FieldChange field : fields) {
       MessageParser.EntityLink link = FormatterUtil.getEntityLink(field.getName(), entity);
       String message =
-          ParserFactory.getEntityParser(link.getEntityType()).format(messageFormatter, field, entity, changeType);
+          ParserFactory.getEntityParser(link.getEntityType())
+              .format(messageFormatter, field, entity, changeType);
       messages.put(link, message);
     }
     return messages;
@@ -245,7 +267,8 @@ public class FormatterUtil {
 
   public static ChangeEvent getChangeEventFromResponseContext(
       ContainerResponseContext responseContext, String updateBy, String method) {
-    // GET operations don't produce change events , Response has no entity to produce change event from
+    // GET operations don't produce change events , Response has no entity to produce change event
+    // from
     if (method.equals("GET") || responseContext.getEntity() == null) {
       return null;
     }
@@ -254,11 +277,12 @@ public class FormatterUtil {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
     ChangeEvent changeEvent = null;
 
-    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/followera
+    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT
+    // ../tables/{id}/followera
     if (changeType != null && changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
       changeEvent = (ChangeEvent) responseContext.getEntity();
-    } else if (responseContext.getEntity() != null && responseContext.getEntity() instanceof EntityInterface) {
-      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+    } else if (responseContext.getEntity() != null
+        && responseContext.getEntity() instanceof EntityInterface entityInterface) {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -266,7 +290,6 @@ public class FormatterUtil {
 
       // Entity was created by either POST .../entities or PUT .../entities
       if (responseCode == Response.Status.CREATED.getStatusCode()
-          && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
           && !responseContext.getEntity().getClass().equals(Thread.class)) {
         changeEvent =
             getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
@@ -274,29 +297,33 @@ public class FormatterUtil {
                 .withEntityFullyQualifiedName(entityFQN);
       } else if (changeType != null
           && changeType.equals(
-              RestUtil.LOGICAL_TEST_CASES_ADDED)) { // Handles Bulk Add test cases to a logical test suite
+              RestUtil.LOGICAL_TEST_CASES_ADDED)) { // Handles Bulk Add test cases to a logical test
+        // suite
         changeEvent =
             getChangeEvent(updateBy, EventType.ENTITY_UPDATED, entityType, entityInterface)
                 .withEntity(entityInterface)
                 .withEntityFullyQualifiedName(entityFQN);
       } else if ((changeType != null
-              && !RestUtil.ENTITY_NO_CHANGE.equals(changeType)) // PUT or PATCH operation didn't result in any change
-          && (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED))) {
+              && !RestUtil.ENTITY_NO_CHANGE.equals(
+                  changeType)) // PUT or PATCH operation didn't result in any change
+          && (changeType.equals(RestUtil.ENTITY_UPDATED)
+              || changeType.equals(RestUtil.ENTITY_SOFT_DELETED))) {
         changeEvent =
             getChangeEvent(updateBy, eventType, entityType, entityInterface)
                 .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
                 .withEntity(entityInterface)
                 .withEntityFullyQualifiedName(entityFQN);
       } else if (changeType != null
-          && changeType.equals(RestUtil.ENTITY_RESTORED)) { // Entity was restored by PUT ../entities/{id}/restore
+          && changeType.equals(
+              RestUtil.ENTITY_RESTORED)) { // Entity was restored by PUT ../entities/{id}/restore
         changeEvent =
             getChangeEvent(updateBy, ENTITY_RESTORED, entityType, entityInterface)
                 .withPreviousVersion(entityInterface.getVersion())
                 .withEntity(entityInterface)
                 .withEntityFullyQualifiedName(entityFQN);
       } else if (changeType != null
-          && changeType.equals(
-              RestUtil.ENTITY_DELETED)) { // Entity was hard deleted by DELETE ../entities/{id}?hardDelete=true
+          && changeType.equals(RestUtil.ENTITY_DELETED)) { // Entity was hard deleted by DELETE
+        // ../entities/{id}?hardDelete=true
         changeEvent =
             getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
                 .withPreviousVersion(entityInterface.getVersion())

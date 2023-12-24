@@ -26,8 +26,17 @@
   overflow: hidden;
 }
 
+.ant-tag.tag-highlight {
+  .tags-label {
+    background-color: @text-highlighter!important;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+}
+
 .ant-tag.tag-chip-content {
   width: max-content;
+  height: 30px;
   margin: 0 5px 4px 0;
   border: none;
   padding: 0;
@@ -44,15 +53,12 @@
 }
 
 .tag-color-bar {
-  width: 5px;
-  height: auto;
-  background: @tag-background-color;
+  border-left: 5px solid @tag-background-color;
 }
 
 .tags-label {
   display: inline-block;
   font-size: 12px;
   font-weight: 500;
-  line-height: 30px;
   color: inherit;
 }

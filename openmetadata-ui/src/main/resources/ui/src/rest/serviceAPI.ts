@@ -12,11 +12,17 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { configOptions, PAGE_SIZE } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
+import {
+  RestoreRequestType,
+  ServiceData,
+  ServicesData,
+  ServicesUpdateRequest,
+} from 'Models';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import {
   DomainSupportedServiceTypes,
   ServiceResponse,
@@ -39,6 +45,7 @@ interface ServiceRequestParams {
   serviceName: string;
   after?: string;
   before?: string;
+  include?: Include;
 }
 
 export const getServices = async ({
@@ -46,6 +53,7 @@ export const getServices = async ({
   limit,
   after,
   before,
+  include = Include.NonDeleted,
 }: ServiceRequestParams) => {
   const url = `/services/${serviceName}`;
 
@@ -54,6 +62,7 @@ export const getServices = async ({
     limit,
     after,
     before,
+    include,
   };
 
   const response = await APIClient.get<ServiceResponse>(url, { params });
@@ -72,11 +81,13 @@ export const getServiceById = async (serviceName: string, id: string) => {
 export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = ''
+  arrQueryFields: string | string[] = '',
+  include = Include.NonDeleted
 ) => {
   const url = getURLWithQueryFields(
     `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields
+    arrQueryFields,
+    `include=${include}`
   );
 
   const response = await APIClient.get<ServicesType>(url);
@@ -186,12 +197,14 @@ export const searchService = async ({
   currentPage = 1,
   limit = PAGE_SIZE,
   filters,
+  deleted = false,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
   limit?: number;
   currentPage?: number;
   filters?: string;
+  deleted?: boolean;
 }) => {
   const response = await searchData(
     search ?? WILD_CARD_CHAR,
@@ -200,8 +213,20 @@ export const searchService = async ({
     filters ?? '',
     '',
     '',
-    searchIndex
+    searchIndex,
+    deleted
   );
+
+  return response.data;
+};
+
+export const restoreService = async (serviceCategory: string, id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCategory}/restore`, {
+    id,
+  });
 
   return response.data;
 };

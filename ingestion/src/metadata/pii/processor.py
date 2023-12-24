@@ -16,8 +16,8 @@ import traceback
 from typing import List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import Column, TableData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -31,15 +31,16 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
-from metadata.ingestion.ometa.client_utils import create_ometa_client
+from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
-from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -53,33 +54,38 @@ class PIIProcessor(Processor):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = create_ometa_client(self.metadata_config)
+        self.metadata = metadata
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
-        self.ner_scanner = NERScanner()
+        self._ner_scanner = None
         self.confidence_threshold = self.source_config.confidence
 
+    @property
+    def ner_scanner(self) -> NERScanner:
+        """Load the NER Scanner only if called"""
+        if self._ner_scanner is None:
+            self._ner_scanner = NERScanner()
+
+        return self._ner_scanner
+
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection
-    ) -> "Step":
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
-        return cls(config=config, metadata_config=metadata_config)
+        return cls(config=config, metadata=metadata)
 
     def close(self) -> None:
         """Nothing to close"""
 
     @staticmethod
-    def build_column_tag(tag_fqn: str, column_fqn: str) -> PatchColumnTagResponse:
+    def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:
         """
         Build the tag and run the PATCH
         """
@@ -90,7 +96,7 @@ class PIIProcessor(Processor):
             labelType=LabelType.Automated,
         )
 
-        return PatchColumnTagResponse(column_fqn=column_fqn, tag_label=tag_label)
+        return ColumnTag(column_fqn=column_fqn, tag_label=tag_label)
 
     def process_column(
         self,
@@ -98,7 +104,7 @@ class PIIProcessor(Processor):
         column: Column,
         table_data: Optional[TableData],
         confidence_threshold: float,
-    ) -> Optional[List[PatchColumnTagResponse]]:
+    ) -> Optional[List[ColumnTag]]:
         """
         Tag a column with PII if we find it using our scanners
         """
@@ -167,7 +173,7 @@ class PIIProcessor(Processor):
                     StackTraceError(
                         name=record.table.fullyQualifiedName.__root__,
                         error=f"Error computing PII tags for [{column}] - [{err}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

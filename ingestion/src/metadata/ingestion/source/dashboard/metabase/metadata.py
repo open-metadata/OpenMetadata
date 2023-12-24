@@ -26,13 +26,19 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseChart,
@@ -61,21 +67,21 @@ class MetabaseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: MetabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MetabaseConnection):
             raise InvalidSourceException(
                 f"Expected MetabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.collections: List[MetabaseCollection] = []
 
     def prepare(self):
@@ -143,12 +149,12 @@ class MetabaseSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -157,7 +163,7 @@ class MetabaseSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error creating dashboard [{dashboard_details.name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -193,7 +199,7 @@ class MetabaseSource(DashboardServiceSource):
                         description=chart_details.description,
                         chartType=get_standard_chart_type(chart_details.display).value,
                         sourceUrl=chart_url,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -201,7 +207,7 @@ class MetabaseSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error creating chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -252,9 +258,12 @@ class MetabaseSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Lineage",
                         error=f"Error adding lineage: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _get_database_service(self, db_service_name: str):
+        return self.metadata.get_by_name(DatabaseService, db_service_name)
 
     def _yield_lineage_from_query(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
@@ -274,7 +283,15 @@ class MetabaseSource(DashboardServiceSource):
 
         database_name = database.details.db if database and database.details else None
 
-        lineage_parser = LineageParser(query)
+        db_service = self._get_database_service(db_service_name)
+
+        lineage_parser = LineageParser(
+            query,
+            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+            if db_service
+            else None,
+        )
+
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)

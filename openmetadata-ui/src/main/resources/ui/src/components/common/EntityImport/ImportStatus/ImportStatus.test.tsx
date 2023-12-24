@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import React from 'react';
+import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 import { ImportStatus } from './ImportStatus.component';
 
 const mockCsvImportResult = {

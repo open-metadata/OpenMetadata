@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Include } from 'generated/type/include';
+
 import { PagingResponse } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -21,10 +21,12 @@ import {
   CreateUser,
 } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/auth/jwtAuth';
+import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
 import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -228,6 +230,43 @@ export const createUserWithPut = async (userDetails: CreateUser) => {
   const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
     `/users`,
     userDetails
+  );
+
+  return response.data;
+};
+
+export const getUserAccessToken = async () => {
+  const response = await APIClient.get<{
+    data: PersonalAccessToken[];
+  }>('/users/security/token');
+
+  return response.data.data;
+};
+
+export const updateUserAccessToken = async ({
+  JWTTokenExpiry,
+  tokenName,
+}: {
+  JWTTokenExpiry?: string;
+  tokenName?: string;
+}) => {
+  const response = await APIClient.put<
+    {
+      JWTTokenExpiry?: string;
+      tokenName?: string;
+    },
+    AxiosResponse<PersonalAccessToken[]>
+  >(`/users/security/token`, {
+    JWTTokenExpiry,
+    tokenName,
+  });
+
+  return response.data;
+};
+
+export const revokeAccessToken = async (params: string) => {
+  const response = await APIClient.put<PersonalAccessToken>(
+    '/users/security/token/revoke?' + params
   );
 
   return response.data;

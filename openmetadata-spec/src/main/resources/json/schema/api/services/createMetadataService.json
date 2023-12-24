@@ -28,8 +28,16 @@
     "owner": {
       "description": "Owner of this Metadata service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this Metadata Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

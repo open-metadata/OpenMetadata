@@ -13,7 +13,6 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 @Slf4j
 public class Migration extends MigrationProcessImpl {
   private CollectionDAO collectionDAO;
-  private Handle handle;
 
   public Migration(MigrationFile migrationFile) {
     super(migrationFile);
@@ -22,7 +21,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   public void initialize(Handle handle) {
     super.initialize(handle);
-    this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
   }
 

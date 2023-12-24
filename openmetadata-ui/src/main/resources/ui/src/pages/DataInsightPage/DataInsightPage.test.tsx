@@ -11,103 +11,58 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightPage from './DataInsightPage.component';
 
-let activeTab = DataInsightTabs.DATA_ASSETS;
+const activeTab = DataInsightTabs.DATA_ASSETS;
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Switch: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Route: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="route">{children}</div>
+    )),
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
-
-jest.mock('components/containers/PageLayoutV1', () =>
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
-  jest.fn().mockReturnValue(<p>Sidebar</p>)
-);
-
-jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="data-insight-summary">DataInsight Summary</div>
-    )
-);
-
-jest.mock('components/DataInsightDetail/DescriptionInsight', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="description-insight">DescriptionInsight</div>
-    )
-);
-
-jest.mock('components/DataInsightDetail/OwnerInsight', () =>
-  jest.fn().mockReturnValue(<div data-testid="owner-insight">OwnerInsight</div>)
-);
-
-jest.mock('components/DataInsightDetail/TierInsight', () =>
-  jest.fn().mockReturnValue(<div data-testid="tier-insight">TierInsight</div>)
-);
-
-jest.mock('components/DataInsightDetail/TopActiveUsers', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="top-active-user">TopActiveUsers</div>)
-);
-
-jest.mock('components/DataInsightDetail/TopViewEntities', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="top-viewed-entities">TopViewEntities</div>
-    )
-);
-
-jest.mock('components/DataInsightDetail/TotalEntityInsight', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="total-entity-insight">TotalEntityInsight</div>
-    )
-);
-
-jest.mock('../../utils/DataInsightUtils', () => ({
-  getTeamFilter: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock('components/DataInsightDetail/DailyActiveUsersChart', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="daily-active-users">DailyActiveUsersChart</div>
-    )
-);
-jest.mock('components/DataInsightDetail/PageViewsByEntitiesChart', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
-    )
-);
-jest.mock('components/DataInsightDetail/KPIChart', () =>
-  jest.fn().mockReturnValue(<div data-testid="kpi-chart">KPIChart</div>)
+jest.mock('./DataInsightProvider', () =>
+  jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 
 jest.mock('./KPIList', () =>
   jest.fn().mockReturnValue(<div data-testid="kpi-list">KPI List</div>)
 );
 
-jest.mock('./DataInsightLeftPanel', () =>
+jest.mock('./DataInsightLeftPanel/DataInsightLeftPanel', () =>
   jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
 );
+jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
+  jest.fn().mockReturnValue(<div>DataInsightHeader.component</div>)
+);
+jest.mock(
+  '../../components/DataInsightDetail/DataAssetsTab/DataAssetsTab.component',
+  () => jest.fn().mockReturnValue(<div>DataAssetsTab.component</div>)
+);
+const mockComponent = () => <div>dataAssetsComponent</div>;
+jest.mock('./DataInsightClassBase', () => ({
+  getDataInsightTab: jest.fn().mockReturnValue([
+    {
+      key: 'data-assets',
+      path: '/data-insights/data-assets',
+      component: mockComponent,
+    },
+  ]),
+}));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       dataInsightChart: {
@@ -122,47 +77,13 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
 
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {
-    render(<DataInsightPage />);
+    render(<DataInsightPage />, { wrapper: MemoryRouter });
 
-    const container = screen.getByTestId('data-insight-container');
-    const insightSummary = screen.getByTestId('data-insight-summary');
-    const descriptionInsight = screen.getAllByTestId('description-insight');
-    const ownerInsight = screen.getAllByTestId('owner-insight');
-    const tierInsight = screen.getByTestId('tier-insight');
-
-    const totalEntityInsight = screen.getByTestId('total-entity-insight');
-
-    expect(container).toBeInTheDocument();
-
-    expect(insightSummary).toBeInTheDocument();
-    expect(descriptionInsight).toHaveLength(2);
-    expect(ownerInsight).toHaveLength(2);
-    expect(tierInsight).toBeInTheDocument();
-
-    expect(totalEntityInsight).toBeInTheDocument();
-  });
-
-  it('Should not render the KPI chart for app analytics', async () => {
-    activeTab = DataInsightTabs.APP_ANALYTICS;
-
-    await act(async () => {
-      render(<DataInsightPage />, { wrapper: MemoryRouter });
-    });
-
-    const kpiChart = screen.queryByTestId('kpi-chart');
-
-    expect(kpiChart).toBeNull();
-  });
-
-  it('Should not render the insights summary for KPIs', async () => {
-    activeTab = DataInsightTabs.KPIS;
-
-    await act(async () => {
-      render(<DataInsightPage />, { wrapper: MemoryRouter });
-    });
-
-    const dataInsightsSummary = screen.queryByTestId('data-insight-summary');
-
-    expect(dataInsightsSummary).toBeNull();
+    expect(
+      await screen.findByText('DataInsightHeader.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('data-insight-container')
+    ).toBeInTheDocument();
   });
 });

@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { TagLabel } from 'generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { StoredProcedure } from '../../../../generated/entity/data/storedProcedure';
+import { TagLabel } from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface StoredProcedureSummaryProps {
   entityDetails: StoredProcedure;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }

@@ -23,32 +23,32 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconSend } from 'assets/svg/paper-plane.svg';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
-import { ALERTS_DOCS } from 'constants/docs.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
 import formateCron from 'cronstrue';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import {
-  EventSubscription,
-  ScheduleInfo,
-} from 'generated/events/eventSubscription';
-import { useAuth } from 'hooks/authHooks';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getAlertsFromName, triggerEventById } from 'rest/alertsAPI';
-import { EDIT_DATA_INSIGHT_REPORT_PATH } from 'utils/Alerts/AlertsUtil';
-import { getSettingPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as IconSend } from '../../assets/svg/paper-plane.svg';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { ALERTS_DOCS } from '../../constants/docs.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import {
+  EventSubscription,
+  ScheduleInfo,
+} from '../../generated/events/eventSubscription';
+import { useAuth } from '../../hooks/authHooks';
+import { getAlertsFromName, triggerEventById } from '../../rest/alertsAPI';
+import { EDIT_DATA_INSIGHT_REPORT_PATH } from '../../utils/Alerts/AlertsUtil';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AlertDataInsightReportPage = () => {
   const { t } = useTranslation();

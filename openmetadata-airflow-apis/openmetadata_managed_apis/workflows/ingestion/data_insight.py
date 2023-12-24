@@ -24,7 +24,6 @@ from openmetadata_managed_apis.workflows.ingestion.elasticsearch_sink import (
     build_elasticsearch_sink,
 )
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -43,7 +42,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.workflow.workflow_output_handler import print_data_insight_status
+from metadata.workflow.data_insight import DataInsightWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -64,7 +64,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    print_data_insight_status(workflow)
+    print_status(workflow)
     workflow.stop()
 
 

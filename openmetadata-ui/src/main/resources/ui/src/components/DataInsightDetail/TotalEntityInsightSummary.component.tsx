@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
-import { TOTAL_ENTITY_CHART_COLOR } from 'constants/DataInsight.constants';
-import React from 'react';
+import classNames from 'classnames';
+import { includes, toLower } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import { sortEntityByValue } from '../../utils/DataInsightUtils';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
@@ -25,20 +30,51 @@ type TotalEntityInsightSummaryProps = {
   entities: string[];
   latestData: Record<string, number>;
   gutter?: Gutter | [Gutter, Gutter];
+  onActiveKeysUpdate?: (entity: string[]) => void;
+  onActiveKeyMouseHover?: (entity: string) => void;
+  activeKeys?: string[];
+  allowFilter?: boolean;
 };
 
 const TotalEntityInsightSummary = ({
   total,
+  allowFilter = false,
   relativePercentage,
   selectedDays,
   entities,
   latestData,
-  gutter,
+  activeKeys,
+  onActiveKeysUpdate,
+  onActiveKeyMouseHover,
 }: TotalEntityInsightSummaryProps) => {
   const { t } = useTranslation();
+  const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
+
+  const sortedEntitiesByValue = useMemo(() => {
+    return sortEntityByValue(entities, latestData);
+  }, [entities, latestData]);
+
+  const rightSideEntityList = useMemo(
+    () =>
+      sortedEntitiesByValue.filter((entity) =>
+        includes(toLower(entity), toLower(searchEntityKeyWord))
+      ),
+    [sortedEntitiesByValue, searchEntityKeyWord]
+  );
+
+  const handleLegendClick = (entity: string) => {
+    onActiveKeysUpdate?.(updateActiveChartFilter(entity, activeKeys ?? []));
+  };
+
+  const handleLegendMouseEnter = (entity: string) => {
+    onActiveKeyMouseHover?.(entity);
+  };
+  const handleLegendMouseLeave = () => {
+    onActiveKeyMouseHover?.('');
+  };
 
   return (
-    <Row data-testid="total-entity-insight-summary-container" gutter={gutter}>
+    <Row data-testid="total-entity-insight-summary-container" gutter={[8, 16]}>
       <Col className="p-b-sm" span={24}>
         <CustomStatistic
           changeInValue={relativePercentage}
@@ -49,20 +85,56 @@ const TotalEntityInsightSummary = ({
           value={total}
         />
       </Col>
-      {entities.map((entity, i) => {
-        const progress = (latestData[entity] / Number(total)) * 100;
+      {allowFilter && (
+        <Col span={24}>
+          <Searchbar
+            removeMargin
+            searchValue={searchEntityKeyWord}
+            onSearch={setSearchEntityKeyWord}
+          />
+        </Col>
+      )}
+      <Col
+        className={classNames({
+          'chart-card-right-panel-container': allowFilter,
+        })}
+        span={24}>
+        <Row gutter={[8, 8]}>
+          {rightSideEntityList.map((entity, i) => {
+            const progress = (latestData[entity] / Number(total)) * 100;
 
-        return (
-          <Col key={entity} span={24}>
-            <EntitySummaryProgressBar
-              entity={entity}
-              latestData={latestData}
-              progress={progress}
-              strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
-            />
-          </Col>
-        );
-      })}
+            return (
+              <Col
+                className={classNames({
+                  'entity-summary-container': allowFilter,
+                })}
+                key={entity}
+                span={24}
+                onClick={() => handleLegendClick(entity)}
+                onMouseEnter={() => handleLegendMouseEnter(entity)}
+                onMouseLeave={handleLegendMouseLeave}>
+                <EntitySummaryProgressBar
+                  entity={entity}
+                  isActive={
+                    activeKeys?.length ? activeKeys.includes(entity) : true
+                  }
+                  latestData={latestData}
+                  progress={progress}
+                  strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                />
+              </Col>
+            );
+          })}
+        </Row>
+      </Col>
+
+      {activeKeys && activeKeys.length > 0 && allowFilter && (
+        <Col className="flex justify-end" span={24}>
+          <Button type="link" onClick={() => onActiveKeysUpdate?.([])}>
+            {t('label.clear')}
+          </Button>
+        </Col>
+      )}
     </Row>
   );
 };

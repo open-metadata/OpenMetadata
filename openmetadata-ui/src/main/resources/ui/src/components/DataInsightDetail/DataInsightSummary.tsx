@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
-import { getTeamByName } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getUserPath } from '../../constants/constants';
+import { useParams } from 'react-router-dom';
+import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
 import {
   ENTITIES_CHARTS,
   WEB_CHARTS,
@@ -36,14 +32,16 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getTeamByName } from '../../rest/teamsAPI';
 import {
   getEntitiesChartSummary,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './DataInsightDetail.less';
+import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -249,18 +247,11 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                   title={t('label.most-active-user')}
                   total={0}
                   value={
-                    <UserPopOverCard userName={mostActiveUser.userName}>
-                      <Space>
-                        <ProfilePicture
-                          id=""
-                          name={mostActiveUser.userName}
-                          type="circle"
-                        />
-                        <Link to={getUserPath(mostActiveUser.userName)}>
-                          {mostActiveUser.userName}
-                        </Link>
-                      </Space>
-                    </UserPopOverCard>
+                    <UserPopOverCard
+                      showUserName
+                      profileWidth={36}
+                      userName={mostActiveUser.userName}
+                    />
                   }
                 />
               </Col>

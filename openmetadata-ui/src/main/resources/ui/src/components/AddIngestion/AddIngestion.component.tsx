@@ -12,12 +12,12 @@
  */
 
 import { Form, Input, Typography } from 'antd';
-import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
-import { LOADING_STATE } from 'enums/common.enum';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import IngestionWorkflowForm from '../../components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { STEPS_FOR_ADD_INGESTION } from '../../constants/Ingestions.constant';
+import { LOADING_STATE } from '../../enums/common.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import {
   CreateIngestionPipeline,
@@ -26,13 +26,11 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-import { IngestionWorkflowData } from 'interface/service.interface';
-import { getIngestionName } from 'utils/ServiceUtils';
-import {
-  getCurrentUserId,
-  getIngestionFrequency,
-} from '../../utils/CommonUtils';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
+import { IngestionWorkflowData } from '../../interface/service.interface';
+import { getIngestionFrequency } from '../../utils/CommonUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {
@@ -65,6 +63,7 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
@@ -130,7 +129,12 @@ const AddIngestion = ({
   };
 
   const createNewIngestion = (extraData: WorkflowExtraConfig) => {
-    const { name = '', enableDebugLog, ...rest } = workflowData ?? {};
+    const {
+      name = '',
+      enableDebugLog,
+      displayName,
+      ...rest
+    } = workflowData ?? {};
     const ingestionName = trim(name);
     setSaveState(LOADING_STATE.WAITING);
 
@@ -149,9 +153,9 @@ const AddIngestion = ({
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
-      displayName: ingestionName,
+      displayName: displayName,
       owner: {
-        id: getCurrentUserId(),
+        id: currentUser?.id ?? '',
         type: 'user',
       },
       pipelineType: pipelineType,
@@ -195,12 +199,14 @@ const AddIngestion = ({
             : scheduleInterval,
           retries: extraData.retries,
         },
+        displayName: workflowData?.displayName,
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
           : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(omit(workflowData, ['name', 'enableDebugLog']) ?? {}),
+            ...(omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
+              {}),
           },
         },
       };

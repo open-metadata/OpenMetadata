@@ -14,27 +14,7 @@
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
-import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  EntityReferenceChild,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-  ModifiedColumn,
-  NodeIndexMap,
-  SelectedEdge,
-  SelectedNode,
-} from 'components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
-import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -58,12 +38,31 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
+import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  EntityReferenceChild,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  NodeIndexMap,
+  SelectedEdge,
+  SelectedNode,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import Loader from '../components/Loader/Loader';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -80,12 +79,14 @@ import {
   NODE_WIDTH,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -95,6 +96,7 @@ import {
   LineageDetails,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -397,10 +399,12 @@ export const getLineageData = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
-      <span>
-        {t('message.lineage-data-is-not-available-for-deleted-entities')}
-      </span>
+    <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {t('message.field-data-is-not-available-for-deleted-entities', {
+          field: t('label.lineage'),
+        })}
+      </ErrorPlaceHolder>
     </div>
   );
 };
@@ -824,7 +828,8 @@ export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
   customEdgeData: CustomEdgeData,
-  type: EntityType
+  type: EntityType,
+  edgeDetails?: EntityReference
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -836,6 +841,7 @@ export const getNewLineageConnectionDetails = (
       : {
           id: selectedPipelineId,
           type,
+          fullyQualifiedName: edgeDetails?.fullyQualifiedName ?? '',
         },
   };
 

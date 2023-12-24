@@ -14,21 +14,21 @@
 import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Table from 'components/common/Table/Table';
-import PageHeader from 'components/header/PageHeader.component';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import Table from '../../components/common/Table/Table';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
@@ -97,7 +97,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         render: (owner: string) =>
           owner ? (
             <Space>
-              <ProfilePicture id="" name={owner} type="circle" width="24" />
+              <ProfilePicture name={owner} width="24" />
               <Typography.Text>{owner}</Typography.Text>
             </Space>
           ) : (

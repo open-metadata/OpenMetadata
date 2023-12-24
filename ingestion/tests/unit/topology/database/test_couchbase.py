@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.couchbase.metadata import CouchbaseSource
 
 mock_couch_config = {
@@ -129,11 +130,12 @@ MOCK_CREATE_TABLE = [
             Column(
                 name="address",
                 displayName="address",
-                dataType=DataType.RECORD,
-                dataTypeDisplay=DataType.RECORD.value,
+                dataType=DataType.JSON,
+                dataTypeDisplay=DataType.JSON.value,
                 children=[
                     Column(
                         name="line",
+                        displayName="line",
                         dataType=DataType.STRING,
                         dataTypeDisplay=DataType.STRING.value,
                     )
@@ -189,11 +191,15 @@ class CouchbaseUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_couch_config)
         self.couch_source = CouchbaseSource.create(
             mock_couch_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.couch_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        self.couch_source.context.__dict__["database"] = MOCK_DATABASE
-        self.couch_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.couch_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.couch_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.couch_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.couch_source.get_database_names())

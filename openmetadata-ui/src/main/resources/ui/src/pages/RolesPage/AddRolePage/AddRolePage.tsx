@@ -13,19 +13,19 @@
 
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { ERROR_MESSAGE } from 'constants/constants';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addRole, getPolicies } from 'rest/rolesAPIV1';
-import { getIsErrorMatch } from 'utils/CommonUtils';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ERROR_MESSAGE } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
+import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
   getPath,
   getRoleWithFqnPath,

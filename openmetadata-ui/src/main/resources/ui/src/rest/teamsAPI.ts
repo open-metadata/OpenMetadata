@@ -13,12 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isString } from 'lodash';
 import { RestoreRequestType } from 'Models';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
+import { CSVImportResult } from '../generated/type/csvImportResult';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';

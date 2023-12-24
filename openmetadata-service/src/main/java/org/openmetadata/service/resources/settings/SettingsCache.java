@@ -15,20 +15,23 @@ package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -36,7 +39,10 @@ import org.openmetadata.service.util.JsonUtils;
 public class SettingsCache {
   private static volatile boolean initialized = false;
   protected static final LoadingCache<String, Settings> CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
+      CacheBuilder.newBuilder()
+          .maximumSize(1000)
+          .expireAfterWrite(3, TimeUnit.MINUTES)
+          .build(new SettingsLoader());
   protected static SystemRepository systemRepository;
 
   private SettingsCache() {
@@ -44,9 +50,9 @@ public class SettingsCache {
   }
 
   // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize(CollectionDAO dao, OpenMetadataApplicationConfig config) {
+  public static void initialize(OpenMetadataApplicationConfig config) {
     if (!initialized) {
-      systemRepository = new SystemRepository(dao.systemDAO());
+      systemRepository = Entity.getSystemRepository();
       initialized = true;
       createDefaultConfiguration(config);
     }
@@ -58,19 +64,41 @@ public class SettingsCache {
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
       SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
-      Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
+      Settings setting =
+          new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
     }
 
     // Initialise Logo Setting
-    Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
+    Settings storedCustomLogoConf =
+        systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
     if (storedCustomLogoConf == null) {
       // Only in case a config doesn't exist in DB we insert it
-      LogoConfiguration logoConfig = applicationConfig.getApplicationConfiguration().getLogoConfig();
-      if (logoConfig != null) {
-        Settings setting = new Settings().withConfigType(CUSTOM_LOGO_CONFIGURATION).withConfigValue(logoConfig);
-        systemRepository.createNewSetting(setting);
-      }
+      Settings setting =
+          new Settings()
+              .withConfigType(CUSTOM_LOGO_CONFIGURATION)
+              .withConfigValue(
+                  new LogoConfiguration()
+                      .withCustomLogoUrlPath("")
+                      .withCustomMonogramUrlPath("")
+                      .withCustomFaviconUrlPath(""));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Login Configuration
+    // Initialise Logo Setting
+    Settings storedLoginConf = systemRepository.getConfigWithKey(LOGIN_CONFIGURATION.toString());
+    if (storedLoginConf == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(LOGIN_CONFIGURATION)
+              .withConfigValue(
+                  new LoginConfiguration()
+                      .withMaxLoginFailAttempts(3)
+                      .withAccessBlockTime(600)
+                      .withJwtTokenExpiryTime(3600));
+      systemRepository.createNewSetting(setting);
     }
   }
 
@@ -99,21 +127,22 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) {
+    public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
       switch (SettingsType.fromValue(settingsName)) {
-        case EMAIL_CONFIGURATION:
+        case EMAIL_CONFIGURATION -> {
           fetchedSettings = systemRepository.getEmailConfigInternal();
           LOG.info("Loaded Email Setting");
-          break;
-        case SLACK_APP_CONFIGURATION:
+        }
+        case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
-          break;
-        default:
+        }
+        default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+        }
       }
       return fetchedSettings;
     }

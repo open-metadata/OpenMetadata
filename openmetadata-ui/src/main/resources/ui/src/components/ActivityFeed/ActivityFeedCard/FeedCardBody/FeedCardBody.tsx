@@ -16,12 +16,12 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
+import { formatDateTimeFromSeconds } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';

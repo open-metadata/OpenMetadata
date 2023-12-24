@@ -28,12 +28,16 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
     DashboardResult,
@@ -61,19 +65,19 @@ class SupersetSourceMixin(DashboardServiceSource):
     service_type = DashboardServiceType.Superset.value
     service_connection: SupersetConnection
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboard_name(
         self, dashboard: Union[FetchDashboard, DashboardResult]
@@ -91,9 +95,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(
-        self, email: Union[FetchDashboard, DashboardResult]
-    ) -> EntityReference:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -104,11 +106,12 @@ class SupersetSourceMixin(DashboardServiceSource):
     def get_owner_details(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> EntityReference:
-        for owner in dashboard_details.owners:
-            if owner.email:
-                user = self._get_user_by_email(owner.email)
-                if user:
-                    return user
+        if hasattr(dashboard_details, "owner"):
+            for owner in dashboard_details.owners or []:
+                if owner.email:
+                    user = self._get_user_by_email(owner.email)
+                    if user:
+                        return user
         if dashboard_details.email:
             user = self._get_user_by_email(dashboard_details.email)
             if user:
@@ -121,14 +124,20 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         Method to fetch chart ids linked to dashboard
         """
-        raw_position_data = dashboard_details.position_json
-        if raw_position_data:
-            position_data = json.loads(raw_position_data)
-            return [
-                value.get("meta", {}).get("chartId")
-                for key, value in position_data.items()
-                if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
-            ]
+        try:
+            raw_position_data = dashboard_details.position_json
+            if raw_position_data:
+                position_data = json.loads(raw_position_data)
+                return [
+                    value.get("meta", {}).get("chartId")
+                    for key, value in position_data.items()
+                    if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
+                ]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to charts of dashboard {dashboard_details.id} due to {err}"
+            )
         return []
 
     def yield_dashboard_lineage_details(
@@ -146,16 +155,16 @@ class SupersetSourceMixin(DashboardServiceSource):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if chart_json:
-                    datasource_fqn = self._get_datasource_fqn_for_lineage(
-                        chart_json, db_service_entity
-                    )
-                    if not datasource_fqn:
-                        continue
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=datasource_fqn,
-                    )
                     try:
+                        datasource_fqn = self._get_datasource_fqn_for_lineage(
+                            chart_json, db_service_entity
+                        )
+                        if not datasource_fqn:
+                            continue
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table,
+                            fqn=datasource_fqn,
+                        )
                         datamodel_fqn = fqn.build(
                             self.metadata,
                             entity_type=DashboardDataModel,
@@ -179,7 +188,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                                     "Error to yield dashboard lineage details for DB "
                                     f"service name [{db_service_name}]: {exc}"
                                 ),
-                                stack_trace=traceback.format_exc(),
+                                stackTrace=traceback.format_exc(),
                             )
                         )
 
@@ -192,7 +201,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service_name=self.context.dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:
@@ -203,7 +212,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def get_column_info(
-        self, data_source: Union[DataSourceResult, FetchColumn]
+        self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
         """
         Args:
@@ -224,7 +233,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         name=field.id,
                         displayName=field.column_name,
                         description=field.description,
-                        dataLength=col_parse.get("dataLength", 0),
+                        dataLength=int(col_parse.get("dataLength", 0)),
                     )
                     datasource_columns.append(parsed_fields)
             except Exception as exc:

@@ -13,22 +13,21 @@
 
 import Icon from '@ant-design/icons';
 import { Button, Col, Drawer, Row, Space, Typography } from 'antd';
-import { ReactComponent as IconUser } from 'assets/svg/user.svg';
-import Description from 'components/common/description/Description';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import Loader from 'components/Loader/Loader';
-import TagsInput from 'components/TagsInput/TagsInput.component';
-import { DE_ACTIVE_COLOR, getUserPath } from 'constants/constants';
-import { Query } from 'generated/entity/data/query';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
-import { EntityTags } from 'Models';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import Description from '../../../components/common/EntityDescription/Description';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import Loader from '../../../components/Loader/Loader';
+import TagsInput from '../../../components/TagsInput/TagsInput.component';
+import { DE_ACTIVE_COLOR, getUserPath } from '../../../constants/constants';
+import { Query } from '../../../generated/entity/data/query';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
-import { ReactComponent as EditIcon } from '/assets/svg/edit-new.svg';
 
 const TableQueryRightPanel = ({
   query,
@@ -57,19 +56,11 @@ const TableQueryRightPanel = ({
     await onQueryUpdate(updatedData, 'description');
     setIsEditDescription(false);
   };
-  const handleTagSelection = async (selectedTags?: EntityTags[]) => {
-    const newSelectedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
-    if (newSelectedTags) {
+  const handleTagSelection = async (tags?: TagLabel[]) => {
+    if (tags) {
       const updatedData = {
         ...query,
-        tags: newSelectedTags,
+        tags,
       };
       await onQueryUpdate(updatedData, 'tags');
     }
@@ -116,7 +107,6 @@ const TableQueryRightPanel = ({
                   <Space className="m-r-xss" size={4}>
                     <ProfilePicture
                       displayName={getEntityName(query.owner)}
-                      id={query.owner?.id || ''}
                       name={query.owner?.name || ''}
                       width="20"
                     />
@@ -185,7 +175,6 @@ const TableQueryRightPanel = ({
                     <Space className="m-r-xss" key={user.id} size={4}>
                       <ProfilePicture
                         displayName={getEntityName(user)}
-                        id={user.id || ''}
                         name={user.name || ''}
                         textClass="text-xs"
                         width="20"

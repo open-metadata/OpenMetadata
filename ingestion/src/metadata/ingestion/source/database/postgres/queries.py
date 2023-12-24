@@ -20,7 +20,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.{time_column_name}/1000 duration
+        s.{time_column_name} duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
@@ -40,7 +40,9 @@ POSTGRES_GET_TABLE_NAMES = """
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false
 """
-
+POSTGRES_TABLE_OWNERS = """
+select schemaname, tablename, tableowner from pg_catalog.pg_tables where schemaname <> 'pg_catalog' order by schemaname,tablename;
+"""
 POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     """
     select
@@ -129,7 +131,7 @@ POSTGRES_TEST_GET_QUERIES = """
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.{time_column_name}/1000 duration
+        s.{time_column_name} duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid

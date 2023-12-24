@@ -14,28 +14,35 @@
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { getTableTabPath, PIPE_SYMBOL } from 'constants/constants';
-import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
-import { EntityType } from 'enums/entity.enum';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
-import { getQueryPath } from 'utils/RouterUtils';
+import { ReactComponent as ExitFullScreen } from '../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../assets/svg/full-screen.svg';
+import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
+import {
+  getTableTabPath,
+  ONE_MINUTE_IN_MILLISECOND,
+  PIPE_SYMBOL,
+} from '../../constants/constants';
+import {
+  QUERY_DATE_FORMAT,
+  QUERY_LINE_HEIGHT,
+} from '../../constants/Query.constant';
 import { CSMode } from '../../enums/codemirror.enum';
-import SchemaEditor from '../schema-editor/SchemaEditor';
+import { EntityType } from '../../enums/entity.enum';
+import { useClipboard } from '../../hooks/useClipBoard';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { parseSearchParams } from '../../utils/Query/QueryUtils';
+import { getQueryPath } from '../../utils/RouterUtils';
+import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 const { Text } = Typography;
 
@@ -78,21 +85,25 @@ const QueryCard: FC<QueryCardProp> = ({
   }, [query]);
 
   const duration = useMemo(() => {
-    const durationInSeconds = query.duration;
+    const durationInMilliSeconds = query.duration;
 
-    if (isUndefined(durationInSeconds)) {
+    if (isUndefined(durationInMilliSeconds)) {
       return undefined;
     }
 
-    const duration = Duration.fromObject({ seconds: durationInSeconds });
+    if (durationInMilliSeconds < 1) {
+      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
+    }
+
+    const duration = Duration.fromObject({
+      milliseconds: durationInMilliSeconds,
+    });
 
     let formatString;
-    if (durationInSeconds < 1) {
-      formatString = "SSS 'milisec'";
-    } else if (durationInSeconds < 5) {
-      formatString = "s 'sec'";
+    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
+      formatString = "s.S 'sec'";
     } else {
-      formatString = "m 'min'";
+      formatString = "m 'min' s 'sec'";
     }
 
     // Format the duration as a string using the chosen format string
@@ -173,10 +184,10 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
               {duration && (
                 <>
-                  <Text>{duration}</Text>
+                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+                  <Text data-testid="query-run-duration">{duration}</Text>
                 </>
               )}
             </Space>

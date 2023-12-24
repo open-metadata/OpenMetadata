@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const TAG_CONSTANT = {
   labelType: LabelType.Manual,
   source: TagSource.Classification,
+  state: State.Confirmed,
+  tagFQN: t('label.add'),
+};
+
+export const GLOSSARY_CONSTANT = {
+  labelType: LabelType.Manual,
+  source: TagSource.Glossary,
   state: State.Confirmed,
   tagFQN: t('label.add'),
 };

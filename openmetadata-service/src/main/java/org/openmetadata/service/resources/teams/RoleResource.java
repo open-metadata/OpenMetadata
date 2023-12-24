@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
@@ -90,8 +89,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Role.class, new RoleRepository(collectionDAO), authorizer);
+  public RoleResource(Authorizer authorizer) {
+    super(Entity.ROLE, authorizer);
   }
 
   @Override
@@ -107,7 +106,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       role.setFullyQualifiedName(role.getName());
       List<EntityReference> policies = role.getPolicies();
       for (EntityReference policy : policies) {
-        EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
+        EntityReference ref =
+            Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
         policy.setId(ref.getId());
       }
       repository.initializeEntity(role);
@@ -130,12 +130,17 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of roles",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoleList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = RoleList.class)))
       })
   public ResultList<Role> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "List only default role(s)", schema = @Schema(type = "boolean", example = "true"))
+      @Parameter(
+              description = "List only default role(s)",
+              schema = @Schema(type = "boolean", example = "true"))
           @QueryParam("default")
           boolean defaultParam,
       @Parameter(
@@ -149,10 +154,14 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -167,7 +176,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      roles =
+          repository.listBefore(
+              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
@@ -184,12 +195,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of role versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -204,13 +219,17 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
   public Role get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -236,13 +255,18 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
       })
   public Role getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -267,15 +291,19 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Role for instance {id} and version {version} is " + "not found")
+            description = "Role for instance {id} and version {version} is not found")
       })
   public Role getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Role version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -293,11 +321,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
@@ -311,11 +344,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, role);
   }
@@ -327,18 +365,22 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       operationId = "patchRole",
       summary = "Update a role",
       description = "Update an existing role with JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -361,9 +403,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
-    // leaving a dangling policy without a role.
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    // A role has a strong relationship with a policy. Recursively delete the policy that the role
+    // contains, to avoid leaving a dangling policy without a role.
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
@@ -384,7 +427,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -398,10 +443,15 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Role. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Role.class)))
       })
   public Response restoreRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -409,7 +459,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return copy(new Role(), create, user).withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
+    return repository
+        .copy(new Role(), create, user)
+        .withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
   }
 
   public static EntityReference getRole(String roleName) {

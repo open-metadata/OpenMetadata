@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -24,6 +23,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -35,14 +35,19 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
-  public TagRepository(CollectionDAO dao) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
-    supportsSearchIndex = true;
+  public TagRepository() {
+    super(
+        TagResource.TAG_COLLECTION_PATH,
+        Entity.TAG,
+        Tag.class,
+        Entity.getCollectionDAO().tagDAO(),
+        "",
+        "");
+    supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -52,7 +57,8 @@ public class TagRepository extends EntityRepository<Tag> {
     entity.setParent(parentTerm);
 
     // Validate Classification
-    EntityReference classification = Entity.getEntityReference(entity.getClassification(), NON_DELETED);
+    EntityReference classification =
+        Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
   }
 
@@ -61,7 +67,8 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference classification = tag.getClassification();
     EntityReference parent = tag.getParent();
 
-    // Parent and Classification are not stored as part of JSON. Build it on the fly based on relationships
+    // Parent and Classification are not stored as part of JSON. Build it on the fly based on
+    // relationships
     tag.withClassification(null).withParent(null);
     store(tag, update);
     tag.withClassification(classification).withParent(parent);
@@ -69,6 +76,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
+    super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
   }
 
@@ -81,63 +89,47 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
-      tag.setFullyQualifiedName(FullyQualifiedName.build(tag.getClassification().getName(), tag.getName()));
+      tag.setFullyQualifiedName(
+          FullyQualifiedName.build(tag.getClassification().getFullyQualifiedName(), tag.getName()));
     } else {
-      tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
+      tag.setFullyQualifiedName(
+          FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
   }
 
   @Override
-  public EntityRepository<Tag>.EntityUpdater getUpdater(Tag original, Tag updated, Operation operation) {
+  public EntityRepository<Tag>.EntityUpdater getUpdater(
+      Tag original, Tag updated, Operation operation) {
     return new TagUpdater(original, updated, operation);
   }
 
   @Override
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
   }
 
   @Override
-  public void deleteFromSearch(Tag entity, String changeType) {
-    if (supportsSearchIndex) {
-      String scriptTxt =
-          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Tag.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "tags.tagFQN");
-      } else {
-        searchClient.deleteEntityAndRemoveRelationships(
-            JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Tag entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
-    }
-  }
-
-  @Override
-  public Tag setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
     }
-    return tag;
   }
 
   @Override
-  public Tag clearFields(Tag tag, Fields fields) {
-    return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
+  public void clearFields(Tag tag, Fields fields) {
+    tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
   private Integer getUsageCount(Tag tag) {
     return tag.getUsageCount() != null
         ? tag.getUsageCount()
-        : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
+        : daoCollection
+            .tagUsageDAO()
+            .getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private EntityReference getClassification(Tag tag) {
@@ -145,7 +137,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private void addClassificationRelationship(Tag term) {
-    addRelationship(term.getClassification().getId(), term.getId(), Entity.CLASSIFICATION, TAG, Relationship.CONTAINS);
+    addRelationship(
+        term.getClassification().getId(),
+        term.getId(),
+        Entity.CLASSIFICATION,
+        TAG,
+        Relationship.CONTAINS);
   }
 
   private void addParentRelationship(Tag term) {
@@ -159,9 +156,11 @@ public class TagRepository extends EntityRepository<Tag> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
-      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      recordChange(
+          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled,", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
       updateParent(original, updated);
@@ -173,13 +172,19 @@ public class TagRepository extends EntityRepository<Tag> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from classification and all the children tags
+        // Category name changed - update tag names starting from classification and all the
+        // children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-        daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        setFullyQualifiedName(updated);
+        daoCollection
+            .tagDAO()
+            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
             .tagUsageDAO()
             .rename(
-                TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+                TagSource.CLASSIFICATION.ordinal(),
+                original.getFullyQualifiedName(),
+                updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
       }
 
@@ -197,21 +202,34 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      if (!parentChanged && !classificationChanged) {
+        return;
+      }
 
-      daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      setFullyQualifiedName(updated);
+      daoCollection
+          .tagDAO()
+          .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
           .tagUsageDAO()
           .rename(
-              TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+              TagSource.CLASSIFICATION.ordinal(),
+              original.getFullyQualifiedName(),
+              updated.getFullyQualifiedName());
       if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
-            "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
+            "Classification",
+            original.getClassification(),
+            updated.getClassification(),
+            true,
+            entityReferenceMatch);
         invalidateTags(original.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
-        recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+        recordChange(
+            "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTags(original.getId());
       }
     }
@@ -223,7 +241,11 @@ public class TagRepository extends EntityRepository<Tag> {
 
     private void deleteClassificationRelationship(Tag term) {
       deleteRelationship(
-          term.getClassification().getId(), Entity.CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
+          term.getClassification().getId(),
+          Entity.CLASSIFICATION,
+          term.getId(),
+          TAG,
+          Relationship.CONTAINS);
     }
 
     private void updateParentRelationship(Tag orig, Tag updated) {
@@ -239,7 +261,8 @@ public class TagRepository extends EntityRepository<Tag> {
 
     private void invalidateTags(UUID tagId) {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
-      List<EntityRelationshipRecord> tagRecords = findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
+      List<EntityRelationshipRecord> tagRecords =
+          findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());

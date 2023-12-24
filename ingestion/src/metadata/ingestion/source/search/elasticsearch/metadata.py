@@ -11,6 +11,8 @@
 """
 Elasticsearch source to extract metadata
 """
+import shutil
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from elasticsearch8 import Elasticsearch
@@ -18,9 +20,9 @@ from elasticsearch8 import Elasticsearch
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
-from metadata.generated.schema.entity.data.searchIndex import SearchIndexSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.data.searchIndex import (
+    SearchIndex,
+    SearchIndexSampleData,
 )
 from metadata.generated.schema.entity.services.connections.search.elasticSearchConnection import (
     ElasticsearchConnection,
@@ -31,8 +33,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.search.elasticsearch.parser import parse_es_index_mapping
 from metadata.ingestion.source.search.search_service import SearchServiceSource
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -47,19 +51,19 @@ class ElasticsearchSource(SearchServiceSource):
     Search Index metadata from Elastic Search
     """
 
-    def __init__(self, config: Source, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: Source, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ElasticsearchConnection):
             raise InvalidSourceException(
                 f"Expected ElasticsearchConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_search_index_list(self) -> Iterable[dict]:
         """
@@ -92,7 +96,7 @@ class ElasticsearchSource(SearchServiceSource):
                 searchIndexSettings=search_index_details.get(index_name, {}).get(
                     "settings", {}
                 ),
-                service=self.context.search_service.fullyQualifiedName.__root__,
+                service=self.context.search_service,
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
@@ -109,15 +113,25 @@ class ElasticsearchSource(SearchServiceSource):
         if self.source_config.includeSampleData and self.context.search_index:
 
             sample_data = self.client.search(
-                index=self.context.search_index.name.__root__,
+                index=self.context.search_index,
                 q=WILDCARD_SEARCH,
                 size=self.source_config.sampleSize,
                 request_timeout=self.service_connection.connectionTimeoutSecs,
             )
 
+            search_index_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=SearchIndex,
+                service_name=self.context.search_service,
+                search_index_name=self.context.search_index,
+            )
+            search_index_entity = self.metadata.get_by_name(
+                entity=SearchIndex, fqn=search_index_fqn
+            )
+
             yield Either(
                 right=OMetaIndexSampleData(
-                    entity=self.context.search_index,
+                    entity=search_index_entity,
                     data=SearchIndexSampleData(
                         messages=[
                             str(message)
@@ -126,3 +140,11 @@ class ElasticsearchSource(SearchServiceSource):
                     ),
                 )
             )
+
+    def close(self):
+        try:
+            if Path(self.service_connection.sslConfig.certificates.stagingDir).exists():
+                shutil.rmtree(self.service_connection.sslConfig.certificates.stagingDir)
+        except AttributeError:
+            pass
+        return super().close()

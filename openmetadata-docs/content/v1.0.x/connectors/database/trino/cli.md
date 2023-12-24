@@ -465,9 +465,19 @@ processor:
     #           - ...
     #     partitionConfig:
     #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+    #       partitionColumnName: <partition column name>
+    #       partitionIntervalType: <TIME-UNIT, INTEGER-RANGE, INGESTION-TIME, COLUMN-VALUE>
+    #       Pick one of the variation shown below
+    #       ----'TIME-UNIT' or 'INGESTION-TIME'-------
     #       partitionInterval: <partition interval>
     #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+    #       ------------'INTEGER-RANGE'---------------
+    #       partitionIntegerRangeStart: <integer>
+    #       partitionIntegerRangeEnd: <integer>
+    #       -----------'COLUMN-VALUE'----------------
+    #       partitionValues:
+    #         - <value>
+    #         - <value>
 
 ```
 
@@ -516,7 +526,7 @@ In order to integrate SSL in the Metadata Ingestion Config, the user will have t
 There are couple of types of SSL modes that redshift supports which can be added to ConnectionArguments, they are as follows:
 - **false**: In order to disable SSL verification, set the `verify` parameter to `False`.
 - **\<path-to-crt\>**: To use self-signed certificates, specify a path to the certificate in `verify` parameter.
-More details can be found in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification).
+More details can be found in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced.html?highlight=ssl#ssl-cert-verification).
 
 {% /codeInfo %}
 

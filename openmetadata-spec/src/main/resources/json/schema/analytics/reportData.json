@@ -21,9 +21,11 @@
         "description": "Type of data",
         "type": "string",
         "enum": [
-          "EntityReportData",
-          "WebAnalyticUserActivityReportData",
-          "WebAnalyticEntityViewReportData"
+          "entityReportData",
+          "webAnalyticUserActivityReportData",
+          "webAnalyticEntityViewReportData",
+          "rawCostAnalysisReportData",
+          "aggregatedCostAnalysisReportData"
         ]
       },
       "data": {
@@ -31,7 +33,9 @@
         "oneOf": [
           {"$ref": "reportDataType/entityReportData.json"},
           {"$ref": "reportDataType/webAnalyticUserActivityReportData.json"},
-          {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"}
+          {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"},
+          {"$ref": "reportDataType/rawCostAnalysisReportData.json"},
+          {"$ref": "reportDataType/aggregatedCostAnalysisReportData.json"}
         ]
       }
   },

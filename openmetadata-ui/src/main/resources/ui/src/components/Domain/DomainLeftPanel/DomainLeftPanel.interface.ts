@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Domain } from 'generated/entity/domains/domain';
+import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface DomainLeftPanelProps {
   domains: Domain[];

@@ -25,9 +25,11 @@ import DatalakeConnection from '../jsons/connectionSchemas/connections/database/
 import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
 import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
 import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
+import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
+import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
@@ -45,6 +47,7 @@ import singleStoreConnection from '../jsons/connectionSchemas/connections/databa
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
+import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
 
 export const getDatabaseConfig = (type: DatabaseServiceType) => {
@@ -91,11 +94,17 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.Doris: {
+      schema = dorisConnection;
+
+      break;
+    }
     case DatabaseServiceType.Druid: {
       schema = druidConnection;
 
       break;
     }
+
     case DatabaseServiceType.DynamoDB: {
       schema = dynamoDBConnection;
 
@@ -208,6 +217,16 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.PinotDB: {
       schema = pinotConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Greenplum: {
+      schema = greenplumConnection;
+
+      break;
+    }
+    case DatabaseServiceType.UnityCatalog: {
+      schema = unityCatalogConnection;
 
       break;
     }

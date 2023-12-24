@@ -17,11 +17,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
-import java.io.IOException;
-import java.time.Period;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -51,10 +47,13 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.quartz.CronScheduleBuilder;
-import org.quartz.Trigger;
 
 @Slf4j
 public class SubscriptionUtil {
+  private SubscriptionUtil() {
+    /* Hidden constructor */
+  }
+
   /*
       This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
       DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
@@ -140,21 +139,14 @@ public class SubscriptionUtil {
       Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
     Set<String> webhookUrls = new HashSet<>();
     if (profile != null) {
-      Webhook webhookConfig = null;
-      switch (type) {
-        case SLACK_WEBHOOK:
-          webhookConfig = profile.getSubscription().getSlack();
-          break;
-        case MS_TEAMS_WEBHOOK:
-          webhookConfig = profile.getSubscription().getMsTeams();
-          break;
-        case G_CHAT_WEBHOOK:
-          webhookConfig = profile.getSubscription().getgChat();
-          break;
-        case GENERIC_WEBHOOK:
-          webhookConfig = profile.getSubscription().getGeneric();
-          break;
-      }
+      Webhook webhookConfig =
+          switch (type) {
+            case SLACK_WEBHOOK -> profile.getSubscription().getSlack();
+            case MS_TEAMS_WEBHOOK -> profile.getSubscription().getMsTeams();
+            case G_CHAT_WEBHOOK -> profile.getSubscription().getgChat();
+            case GENERIC_WEBHOOK -> profile.getSubscription().getGeneric();
+            default -> null;
+          };
       if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
         webhookUrls.add(webhookConfig.getEndpoint().toString());
       } else {
@@ -166,7 +158,10 @@ public class SubscriptionUtil {
             webhookConfig);
       }
     } else {
-      LOG.debug("[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ", id, type);
+      LOG.debug(
+          "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
+          id,
+          type);
     }
     return webhookUrls;
   }
@@ -185,12 +180,14 @@ public class SubscriptionUtil {
 
     // Send To Owners
     if (Boolean.TRUE.equals(action.getSendToOwners())) {
-      receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
+      receiverList.addAll(
+          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
     }
 
     // Send To Followers
     if (Boolean.TRUE.equals(action.getSendToFollowers())) {
-      receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
+      receiverList.addAll(
+          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
     }
 
     return receiverList;
@@ -201,22 +198,24 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       CollectionDAO daoCollection,
-      ChangeEvent event)
-      throws IOException {
+      ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =
-        buildReceiversListFromActions(action, type, daoCollection, entityInterface.getId(), event.getEntityType());
+        buildReceiversListFromActions(
+            action, type, daoCollection, entityInterface.getId(), event.getEntityType());
     for (String url : receiversUrls) {
       targets.add(client.target(url).request());
     }
     return targets;
   }
 
-  public static void postWebhookMessage(SubscriptionPublisher publisher, Invocation.Builder target, Object message)
+  public static void postWebhookMessage(
+      SubscriptionPublisher publisher, Invocation.Builder target, Object message)
       throws InterruptedException {
     long attemptTime = System.currentTimeMillis();
-    Response response = target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    Response response =
+        target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     LOG.debug(
         "Subscription Publisher Posted Message {}:{} received response {}",
         publisher.getEventSubscription().getName(),
@@ -224,11 +223,13 @@ public class SubscriptionUtil {
         response.getStatusInfo());
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      publisher.setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+      publisher.setErrorStatus(
+          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
       publisher.setNextBackOff();
-      publisher.setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+      publisher.setAwaitingRetry(
+          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
       Thread.sleep(publisher.getCurrentBackOff());
     } else if (response.getStatus() == 200) {
       publisher.setSuccessStatus(System.currentTimeMillis());
@@ -255,35 +256,6 @@ public class SubscriptionUtil {
         case CUSTOM:
           if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
             return CronScheduleBuilder.cronSchedule(trigger.getCronExpression());
-          } else {
-            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
-          }
-      }
-    }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
-  }
-
-  public static int getNumberOfDays(TriggerConfig trigger) {
-    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
-      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
-      switch (scheduleInfo) {
-        case DAILY:
-          return 1;
-        case WEEKLY:
-          return 7;
-        case MONTHLY:
-          return 30;
-        case CUSTOM:
-          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
-            Trigger triggerQrz = CronScheduleBuilder.cronSchedule(trigger.getCronExpression()).build();
-            Date previousFire =
-                triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
-            Date nextFire = triggerQrz.getFireTimeAfter(previousFire);
-            Period period =
-                Period.between(
-                    previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
-                    nextFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
-            return period.getDays();
           } else {
             throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
           }

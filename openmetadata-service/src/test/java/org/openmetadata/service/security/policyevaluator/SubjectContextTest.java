@@ -56,7 +56,6 @@ public class SubjectContextTest {
   private static List<Role> team12Roles;
   private static List<Policy> team12Policies;
 
-  private static List<Role> team13Roles;
   private static List<Policy> team13Policies;
   private static Team team13;
 
@@ -64,7 +63,6 @@ public class SubjectContextTest {
   private static List<Policy> team111Policies;
   private static Team team111;
 
-  private static List<Role> team131Roles;
   private static List<Policy> team131Policies;
   private static Team team131;
 
@@ -74,24 +72,44 @@ public class SubjectContextTest {
   @BeforeAll
   public static void setup() {
     UserRepository userRepository = mock(UserRepository.class);
-    Entity.registerEntity(User.class, Entity.USER, userRepository, null);
-    Mockito.when(userRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.USER, i.getArgument(1))));
+    Entity.registerEntity(User.class, Entity.USER, userRepository);
+    Mockito.when(
+            userRepository.getByName(
+                isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_NAME.get(
+                    new ImmutablePair<>(Entity.USER, i.getArgument(1))));
 
     TeamRepository teamRepository = mock(TeamRepository.class);
-    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository, null);
-    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
+    Mockito.when(
+            teamRepository.get(
+                isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     RoleRepository roleRepository = mock(RoleRepository.class);
-    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository, null);
-    Mockito.when(roleRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+    Mockito.when(
+            roleRepository.get(
+                isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
 
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository, null);
-    Mockito.when(policyRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
+    Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
+    Mockito.when(
+            policyRepository.get(
+                isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
 
     // Create team hierarchy:
     //                           team1
@@ -114,7 +132,7 @@ public class SubjectContextTest {
     team12Policies = getPolicies("team12");
     Team team12 = createTeam("team12", team12Roles, team12Policies, List.of(team1));
 
-    team13Roles = getRoles("team13");
+    List<Role> team13Roles = getRoles("team13");
     team13Policies = getPolicies("team13");
     team13 = createTeam("team13", team13Roles, team13Policies, List.of(team1));
 
@@ -122,14 +140,18 @@ public class SubjectContextTest {
     team111Policies = getPolicies("team111");
     team111 = createTeam("team111", team111Roles, team111Policies, List.of(team11, team12));
 
-    team131Roles = getRoles("team131");
+    List<Role> team131Roles = getRoles("team131");
     team131Policies = getPolicies("team131");
     team131 = createTeam("team131", team131Roles, team131Policies, List.of(team13));
 
     // Add user to team111
     userRoles = getRoles("user");
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
-    user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
+    user =
+        new User()
+            .withName("user")
+            .withRoles(userRolesRef)
+            .withTeams(List.of(team111.getEntityReference()));
     EntityRepository.CACHE_WITH_NAME.put(new ImmutablePair<>(Entity.USER, "user"), user);
   }
 
@@ -139,11 +161,14 @@ public class SubjectContextTest {
     SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies(null);
     List<String> expectedUserPolicyOrder = new ArrayList<>();
-    expectedUserPolicyOrder.addAll(getPolicyListFromRoles(userRoles)); // First polices associated with user roles
-    expectedUserPolicyOrder.addAll(getAllTeamPolicies(team111Roles, team111Policies)); // Next parent team111 policies
+    expectedUserPolicyOrder.addAll(
+        getPolicyListFromRoles(userRoles)); // First polices associated with user roles
+    expectedUserPolicyOrder.addAll(
+        getAllTeamPolicies(team111Roles, team111Policies)); // Next parent team111 policies
     expectedUserPolicyOrder.addAll(
         getAllTeamPolicies(team11Roles, team11Policies)); // Next team111 parent team11 policies
-    expectedUserPolicyOrder.addAll(getAllTeamPolicies(team1Roles, team1Policies)); // Next team11 parent team1 policies
+    expectedUserPolicyOrder.addAll(
+        getAllTeamPolicies(team1Roles, team1Policies)); // Next team11 parent team1 policies
     expectedUserPolicyOrder.addAll(
         getAllTeamPolicies(team12Roles, team12Policies)); // Next team111 parent team12 policies
     assertPolicyIterator(expectedUserPolicyOrder, policyContextIterator);
@@ -222,9 +247,11 @@ public class SubjectContextTest {
     List<Policy> policies = new ArrayList<>(3);
     for (int i = 1; i <= 3; i++) {
       String name = prefix + "_policy_" + i;
-      Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
+      Policy policy =
+          new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
-      EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.POLICY, policy.getId()), policy);
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.POLICY, policy.getId()), policy);
     }
     return policies;
   }
@@ -237,7 +264,8 @@ public class SubjectContextTest {
     return rules;
   }
 
-  private static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+  private static <T extends EntityInterface> List<EntityReference> toEntityReferences(
+      List<T> entities) {
     List<EntityReference> references = new ArrayList<>();
     for (T entity : entities) {
       references.add(entity.getEntityReference());
@@ -270,7 +298,8 @@ public class SubjectContextTest {
     return list;
   }
 
-  private static Team createTeam(String name, List<Role> roles, List<Policy> policies, List<Team> parents) {
+  private static Team createTeam(
+      String name, List<Role> roles, List<Policy> policies, List<Team> parents) {
     List<EntityReference> parentList = parents == null ? null : toEntityReferences(parents);
     Team team =
         new Team()
@@ -283,7 +312,8 @@ public class SubjectContextTest {
     return team;
   }
 
-  void assertPolicyIterator(List<String> expectedPolicyOrder, Iterator<PolicyContext> actualPolicyIterator) {
+  void assertPolicyIterator(
+      List<String> expectedPolicyOrder, Iterator<PolicyContext> actualPolicyIterator) {
     int count = 0;
     while (actualPolicyIterator.hasNext()) {
       PolicyContext policyContext = actualPolicyIterator.next();

@@ -13,30 +13,31 @@
 
 import { Card, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Chip from 'components/common/Chip/Chip.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import { isEmpty, toLower } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
+import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
-} from 'constants/constants';
-import { Role } from 'generated/entity/teams/role';
-import { useAuth } from 'hooks/authHooks';
-import { isEmpty, toLower } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getRoles } from 'rest/rolesAPIV1';
-import { getEntityName } from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+} from '../../../../constants/constants';
+import { Role } from '../../../../generated/entity/teams/role';
+import { useAuth } from '../../../../hooks/authHooks';
+import { getRoles } from '../../../../rest/rolesAPIV1';
+import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
-  isUserAdmin,
   userRoles,
   updateUserDetails,
+  isUserAdmin,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
 
@@ -61,7 +62,7 @@ const UserProfileRoles = ({
     }
 
     return options;
-  }, [roles]);
+  }, [roles, isUserAdmin, getEntityName]);
 
   const fetchRoles = async () => {
     setIsRolesLoading(true);
@@ -117,7 +118,7 @@ const UserProfileRoles = ({
             : []),
           ...(userRoles ?? []),
         ]}
-        icon={<UserIcons className="cursor-pointer" height={20} width={20} />}
+        icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
         showNoDataPlaceholder={!isUserAdmin}
       />
@@ -152,9 +153,9 @@ const UserProfileRoles = ({
           </Typography.Text>
           {!isRolesEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles"
+              data-testid="edit-roles-button"
               {...ICON_DIMENSION}
               onClick={() => setIsRolesEdit(true)}
             />
@@ -172,6 +173,8 @@ const UserProfileRoles = ({
               showSearch
               aria-label="Select roles"
               className="w-full"
+              data-testid="select-user-roles"
+              filterOption={handleSearchFilterOption}
               id="select-role"
               loading={isRolesLoading}
               maxTagCount={4}

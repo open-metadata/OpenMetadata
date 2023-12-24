@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,6 +23,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -35,39 +35,42 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
-  public ClassificationRepository(CollectionDAO dao) {
+  public ClassificationRepository() {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
-        dao.classificationDAO(),
-        dao,
+        Entity.getCollectionDAO().classificationDAO(),
         "",
         "");
     quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
-  public EntityUpdater getUpdater(Classification original, Classification updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      Classification original, Classification updated, Operation operation) {
     return new ClassificationUpdater(original, updated, operation);
   }
 
   @Override
-  public Classification setFields(Classification classification, Fields fields) {
-    classification.withTermCount(fields.contains("termCount") ? getTermCount(classification) : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
+  public void setFields(Classification classification, Fields fields) {
+    classification.withTermCount(
+        fields.contains("termCount") ? getTermCount(classification) : null);
+    classification.withUsageCount(
+        fields.contains("usageCount") ? getUsageCount(classification) : null);
   }
 
   @Override
-  public Classification clearFields(Classification classification, Fields fields) {
-    classification.withTermCount(fields.contains("termCount") ? classification.getTermCount() : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
+  public void clearFields(Classification classification, Fields fields) {
+    classification.withTermCount(
+        fields.contains("termCount") ? classification.getTermCount() : null);
+    classification.withUsageCount(
+        fields.contains("usageCount") ? classification.getUsageCount() : null);
   }
 
   @Override
@@ -87,17 +90,21 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   private int getTermCount(Classification classification) {
     ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("parent", classification.getFullyQualifiedName());
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("parent", classification.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
     @Override
-    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
+    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx)
+        throws SQLException {
       return new TagLabel()
           .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
           .withState(TagLabel.State.values()[r.getInt("state")])
@@ -105,51 +112,19 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
-  @Override
-  @SuppressWarnings("unused")
-  public void postUpdate(Classification original, Classification updated) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    if (updated.getDisabled() != null) {
-      scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
-    }
-    searchClient.updateSearchEntityUpdated(
-        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.fullyQualifiedName");
-  }
-
-  @Override
-  public void deleteFromSearch(Classification entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Classification.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "classification.fullyQualifiedName");
-      } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Classification.class), "", "classification.fullyQualifiedName");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Classification entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
-    }
-  }
-
   public class ClassificationUpdater extends EntityUpdater {
-    public ClassificationUpdater(Classification original, Classification updated, Operation operation) {
+    public ClassificationUpdater(
+        Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
-      // TODO handle name change
       // TODO mutuallyExclusive from false to true?
-      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange(
+          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 
@@ -159,12 +134,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Classification name changed - update tag names starting from classification and all the children tags
-        LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
+        // Classification name changed - update tag names starting from classification and all the
+        // children tags
+        LOG.info(
+            "Classification name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()
-            .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
+            .updateTagPrefix(
+                TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
         invalidateClassification(original.getId());
       }
@@ -182,7 +161,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
     private void invalidateTags(UUID tagId) {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
-      List<EntityRelationshipRecord> tagRecords = findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
+      List<EntityRelationshipRecord> tagRecords =
+          findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());

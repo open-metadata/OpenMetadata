@@ -13,7 +13,7 @@
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
-import { VersionStatus } from 'utils/EntityVersionUtils.interface';
+import { VersionStatus } from '../../utils/EntityVersionUtils.interface';
 
 interface TagButtonProps {
   label: string;

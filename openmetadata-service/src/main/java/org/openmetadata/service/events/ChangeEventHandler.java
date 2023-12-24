@@ -16,7 +16,6 @@ package org.openmetadata.service.events;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -51,19 +50,22 @@ public class ChangeEventHandler implements EventHandler {
   }
 
   @SneakyThrows
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+      CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-      FeedRepository feedRepository = new FeedRepository(collectionDAO);
-      if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
+      FeedRepository feedRepository = new FeedRepository();
+      if (responseContext.getEntity() != null
+          && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);
       } else {
-        ChangeEvent changeEvent = getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
+        ChangeEvent changeEvent =
+            getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
         if (changeEvent != null) {
           // Always set the Change Event Username as context Principal, the one creating the CE
           changeEvent.setUserName(loggedInUserName);
@@ -118,7 +120,8 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface, CollectionDAO collectionDAO) {
+  private void deleteAllConversationsRelatedToEntity(
+      EntityInterface entityInterface, CollectionDAO collectionDAO) {
     String entityId = entityInterface.getId().toString();
     List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
     for (String threadId : threadIds) {

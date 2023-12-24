@@ -182,40 +182,45 @@ EXAMPLE_JSON_COL_3 = [
     ),
     Column(
         name="address",
-        dataType="RECORD",
-        dataTypeDisplay="RECORD",
+        dataType="JSON",
+        dataTypeDisplay="JSON",
         displayName="address",
         children=[
             Column(
                 name="city",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="city",
             ),
             Column(
                 name="state",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="state",
             ),
             Column(
                 name="country",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="country",
             ),
             Column(
                 name="coordinates",
-                dataType="RECORD",
-                dataTypeDisplay="RECORD",
+                dataType="JSON",
+                dataTypeDisplay="JSON",
                 displayName="coordinates",
                 children=[
                     Column(
                         name="lat",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lat",
                     ),
                     Column(
                         name="lon",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lon",
                     ),
                 ],
             ),
@@ -228,13 +233,15 @@ EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
 EXAMPLE_JSON_COL_4[3].children[3].children = [
     Column(
         name="lat",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lat",
     ),
     Column(
         name="lon",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lon",
     ),
 ]
 
@@ -411,10 +418,10 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE
+        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
         self.datalake_source.context.__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
+        ] = MOCK_DATABASE_SERVICE.name.__root__
 
     def test_s3_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
@@ -432,13 +439,13 @@ class DatalakeUnitTest(TestCase):
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
-        exp_df_list = pd.json_normalize(
+        exp_df_list = pd.DataFrame.from_records(
             [
                 {"name": "John", "age": 16, "sex": "M"},
                 {"name": "Milan", "age": 19, "sex": "M"},
             ]
         )
-        exp_df_obj = pd.json_normalize(sample_dict)
+        exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
         actual_df_1 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True

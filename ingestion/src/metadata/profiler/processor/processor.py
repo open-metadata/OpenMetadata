@@ -14,8 +14,8 @@ Profiler Processor Step
 import traceback
 from typing import cast
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -23,10 +23,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
@@ -65,7 +66,7 @@ class ProfilerProcessor(Processor):
                 StackTraceError(
                     name=record.entity.fullyQualifiedName.__root__,
                     error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.__root__}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
             self.status.failures.extend(
@@ -81,7 +82,7 @@ class ProfilerProcessor(Processor):
         return Either()
 
     @classmethod
-    def create(cls, config_dict: dict, _: OpenMetadataConnection) -> "Step":
+    def create(cls, config_dict: dict, _: OpenMetadata) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config)
 

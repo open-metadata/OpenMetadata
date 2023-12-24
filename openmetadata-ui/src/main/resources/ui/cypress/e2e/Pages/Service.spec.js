@@ -16,6 +16,7 @@ import {
   interceptURL,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
@@ -49,6 +50,7 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
+    searchServiceFromSettingPage(service.name);
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
@@ -66,10 +68,12 @@ describe('Services page should work properly', () => {
       '[data-testid="description-container"] [data-testid="viewer-container"] [data-testid="markdown-parser"] :nth-child(1) .toastui-editor-contents p'
     ).contains(service.newDescription);
     cy.get(':nth-child(1) > .link-title').click();
+    searchServiceFromSettingPage(service.name);
     cy.get('.toastui-editor-contents > p').contains(service.newDescription);
   });
 
   it('Update owner and check description', () => {
+    searchServiceFromSettingPage(service.name);
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
@@ -116,7 +120,7 @@ describe('Services page should work properly', () => {
     // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     // need wait here
-
+    searchServiceFromSettingPage(service.name);
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });
 
@@ -128,7 +132,7 @@ describe('Services page should work properly', () => {
     );
 
     interceptURL('GET', '/api/v1/users?*', 'waitForUsers');
-
+    searchServiceFromSettingPage(service.name);
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();

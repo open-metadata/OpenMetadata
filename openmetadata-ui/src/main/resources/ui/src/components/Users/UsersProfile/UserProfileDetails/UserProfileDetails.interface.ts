@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../generated/entity/teams/user';
 
 export interface UserProfileDetailsProps {
-  userData: {
-    email: string;
-    name: string;
-    displayName?: string;
-    description?: string;
-  };
+  userData: User;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }

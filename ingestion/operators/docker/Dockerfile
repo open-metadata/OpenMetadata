@@ -1,4 +1,4 @@
-FROM python:3.9-bullseye
+FROM python:3.10-bullseye
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -33,6 +33,7 @@ RUN apt-get -qq update \
     unixodbc \
     unixodbc-dev \
     unzip \
+    git \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
@@ -86,7 +87,7 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.1.0.4"
+ARG RI_VERSION="1.3.0.0.dev0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
@@ -100,6 +101,6 @@ RUN if [[ $(uname -m) == "arm64" ]]; \
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
-# while authrenticating connection with the airflow, psycopg2 solves this error
+# while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1

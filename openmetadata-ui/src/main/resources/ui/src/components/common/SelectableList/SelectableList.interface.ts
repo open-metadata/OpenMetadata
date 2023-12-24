@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from 'generated/entity/data/table';
 import { PagingResponse } from 'Models';
 import { ReactNode } from 'react';
+import { EntityReference } from '../../../generated/entity/data/table';
 
 export interface SelectableListProps {
   fetchOptions: (
@@ -26,4 +26,6 @@ export interface SelectableListProps {
   searchPlaceholder?: string;
   customTagRenderer?: (props: EntityReference) => ReactNode;
   searchBarDataTestId?: string;
+  removeIconTooltipLabel?: string;
+  emptyPlaceholderText?: ReactNode;
 }

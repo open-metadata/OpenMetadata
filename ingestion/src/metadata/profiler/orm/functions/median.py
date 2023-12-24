@@ -56,14 +56,32 @@ def _(elements, compiler, **kwargs):
     return f"if({null_check}({quantile_str}), null, {quantile_str})"
 
 
+@compiles(MedianFn, Dialects.Druid)
+def _(elements, compiler, **kwargs):
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return f"APPROX_QUANTILE({col}, {percentile})"
+
+
 # pylint: disable=unused-argument
 @compiles(MedianFn, Dialects.Athena)
-@compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
     return "approx_percentile(%s, %.2f)" % (col, percentile)
+
+
+@compiles(MedianFn, Dialects.Trino)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "IF(count(%s) = 0, NULL, approx_percentile(%s, %.2f))" % (
+        col,
+        col,
+        percentile,
+    )
 
 
 @compiles(MedianFn, Dialects.MSSQL)
@@ -167,3 +185,10 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     """.format(
         col=col, table=table, percentile=percentile
     )
+
+
+@compiles(MedianFn, Dialects.Doris)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "percentile_approx(%s, %.2f)" % (col, percentile)

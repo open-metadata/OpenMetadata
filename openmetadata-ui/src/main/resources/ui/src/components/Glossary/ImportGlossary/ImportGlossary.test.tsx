@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import React from 'react';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import ImportGlossary from './ImportGlossary';
 
 const mockPush = jest.fn();
@@ -28,11 +28,11 @@ const mockCsvImportResult = {
   success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -42,7 +42,7 @@ jest.mock('../ImportResult/GlossaryImportResult.component', () => ({
     .mockReturnValue(<div>GlossaryImportResult</div>),
 }));
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   importGlossaryInCSVFormat: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCsvImportResult)),
@@ -54,14 +54,14 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('utils/RouterUtils', () => ({
+jest.mock('../../../utils/RouterUtils', () => ({
   getGlossaryPath: jest.fn().mockImplementation((fqn) => `/glossary/${fqn}`),
 }));
 
-jest.mock('utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock('components/common/EntityImport/EntityImport.component', () => ({
+jest.mock('../../common/EntityImport/EntityImport.component', () => ({
   EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
     return (
       <div data-testid="entity-import">

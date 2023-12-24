@@ -6,15 +6,16 @@ import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
 
-public class SearchServiceRepository extends ServiceEntityRepository<SearchService, SearchConnection> {
-  public SearchServiceRepository(CollectionDAO dao) {
+public class SearchServiceRepository
+    extends ServiceEntityRepository<SearchService, SearchConnection> {
+  public SearchServiceRepository() {
     super(
         StorageServiceResource.COLLECTION_PATH,
         Entity.SEARCH_SERVICE,
-        dao,
-        dao.searchServiceDAO(),
+        Entity.getCollectionDAO().searchServiceDAO(),
         SearchConnection.class,
+        "",
         ServiceType.SEARCH);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 }

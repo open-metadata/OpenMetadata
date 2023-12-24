@@ -118,8 +118,7 @@ Let’s start with an example of fetching metadata from a database service, i.e.
     - Include Views - to generate lineage
     - Include Tags
     - Enable Debug Log: We recommend enabling the debug log.
-    - Mark Deleted Tables, or
-    - Mark All Deleted Tables.
+    - Mark Deleted Tables
   - **View Definition Parsing Timeout Limit:** The default is set to 300.
 
 {% image

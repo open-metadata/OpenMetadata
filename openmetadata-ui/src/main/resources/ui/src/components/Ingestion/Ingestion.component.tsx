@@ -14,13 +14,14 @@
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import { isEmpty, lowerCase } from 'lodash';
+import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Searchbar from '../common/searchbar/Searchbar';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -85,7 +86,10 @@ const Ingestion: React.FC<IngestionProps> = ({
   const fetchIngestionPipelinesPermission = async () => {
     try {
       const promises = ingestionList.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+        getEntityPermissionByFqn(
+          ResourceEntity.INGESTION_PIPELINE,
+          getEncodedFqn(item.name)
+        )
       );
       const response = await Promise.allSettled(promises);
 
@@ -137,7 +141,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
 
     setIngestionData(data);
-    handleIngestionDataChange && handleIngestionDataChange(data);
+    !isUndefined(handleIngestionDataChange) && handleIngestionDataChange(data);
   };
 
   const showAddIngestionButton = useMemo(

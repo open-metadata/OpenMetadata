@@ -25,7 +25,9 @@ def get_last_run_info() -> Tuple[str, str]:
         log_ansi_encoded_string(message="Waiting for DAG Run data...")
         time.sleep(5)
         runs = requests.get(
-            "http://localhost:8080/api/v1/dags/sample_data/dagRuns", auth=BASIC_AUTH, timeout=REQUESTS_TIMEOUT
+            "http://localhost:8080/api/v1/dags/sample_data/dagRuns",
+            auth=BASIC_AUTH,
+            timeout=REQUESTS_TIMEOUT,
         ).json()
         dag_runs = runs.get("dag_runs")
 
@@ -39,7 +41,7 @@ def print_last_run_logs() -> None:
     logs = requests.get(
         "http://localhost:8080/api/v1/openmetadata/last_dag_logs?dag_id=sample_data",
         auth=BASIC_AUTH,
-        timeout=REQUESTS_TIMEOUT
+        timeout=REQUESTS_TIMEOUT,
     ).text
     pprint(logs)
 

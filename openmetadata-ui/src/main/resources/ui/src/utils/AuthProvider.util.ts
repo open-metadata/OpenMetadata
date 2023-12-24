@@ -18,14 +18,17 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
-import { AuthProvider } from 'generated/settings/settings';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import {
+  AuthenticationConfigurationWithScope,
+  UserProfile,
+} from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -47,14 +50,20 @@ export const getSilentRedirectUri = () => {
 };
 
 export const getUserManagerConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority, clientId, callbackUrl, responseType, scope } = authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    responseType = 'id_token',
+    scope,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType,
+    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -64,7 +73,7 @@ export const getUserManagerConfig = (
 
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
-): Record<string, string | boolean> => {
+): AuthenticationConfigurationWithScope => {
   const {
     authority,
     clientId,
@@ -73,6 +82,7 @@ export const getAuthConfig = (
     providerName,
     enableSelfSignup,
     samlConfiguration,
+    responseType = 'id_token',
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
@@ -99,7 +109,7 @@ export const getAuthConfig = (
           provider,
           providerName,
           scope: 'openid email profile',
-          responseType: 'id_token',
+          responseType,
         };
       }
 
@@ -112,7 +122,7 @@ export const getAuthConfig = (
           callbackUrl: redirectUri,
           provider,
           scope: 'openid email profile',
-          responseType: 'id_token',
+          responseType,
         };
       }
 
@@ -162,8 +172,8 @@ export const getAuthConfig = (
           cacheLocation: BrowserCacheLocation.LocalStorage,
         },
         provider,
-        enableSelfSignUp: enableSelfSignup,
-      } as Configuration;
+        enableSelfSignup,
+      };
 
       break;
     }
@@ -186,7 +196,7 @@ export const getAuthConfig = (
       break;
   }
 
-  return config;
+  return config as AuthenticationConfigurationWithScope;
 };
 
 export const setMsalInstance = (configs: Configuration) => {
@@ -272,7 +282,7 @@ export const getUrlPathnameExpiryAfterRoute = () => {
 
 /**
  * @exp expiry of token
- * @isExpired wether token is already expired or not
+ * @isExpired Whether token is already expired or not
  * @diff Difference between token expiry & current time in ms
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry

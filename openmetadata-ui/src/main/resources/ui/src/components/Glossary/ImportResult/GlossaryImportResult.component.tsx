@@ -12,15 +12,19 @@
  */
 import { Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
-import Table from 'components/common/Table/Table';
-import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { parseCSV } from 'utils/EntityImport/EntityImportUtils';
+import { ReactComponent as FailBadgeIcon } from '../../../assets/svg/fail-badge.svg';
+import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
+import Table from '../../../components/common/Table/Table';
+import { GLOSSARY_IMPORT_STATUS } from '../../../constants/Glossary.constant';
+import {
+  CSVImportResult,
+  Status,
+} from '../../../generated/type/csvImportResult';
+import { parseCSV } from '../../../utils/EntityImport/EntityImportUtils';
 import { GlossaryCSVRecord } from '../ImportGlossary/ImportGlossary.interface';
 
 interface Props {
@@ -50,15 +54,7 @@ export const GlossaryImportResult: FC<Props> = ({ csvImportResult }) => {
               data-testid="status-container"
               // Added max width because in case of full success we don't want to occupied full width
               style={{ maxWidth: 200 }}>
-              {status === Status.Success && (
-                <SuccessBadgeIcon
-                  className="m-t-xss"
-                  data-testid="success-badge"
-                  height={16}
-                  width={16}
-                />
-              )}
-              {status === Status.Failure && (
+              {status === Status.Failure ? (
                 <>
                   <FailBadgeIcon
                     className="m-t-xss"
@@ -68,6 +64,13 @@ export const GlossaryImportResult: FC<Props> = ({ csvImportResult }) => {
                   />
                   {record.details}
                 </>
+              ) : (
+                <SuccessBadgeIcon
+                  className="m-t-xss"
+                  data-testid="success-badge"
+                  height={16}
+                  width={16}
+                />
               )}
             </Space>
           );
@@ -198,10 +201,9 @@ export const GlossaryImportResult: FC<Props> = ({ csvImportResult }) => {
               (value) => ({
                 ...value,
                 key: value['name*'],
-                status:
-                  value['details'] === 'Entity created'
-                    ? Status.Success
-                    : Status.Failure,
+                status: GLOSSARY_IMPORT_STATUS.includes(value['details'] ?? '')
+                  ? Status.Success
+                  : Status.Failure,
               })
             )
           );

@@ -6,12 +6,14 @@ import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -21,13 +23,15 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+@Repository
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
 
-  public SystemRepository(SystemDAO dao) {
-    this.dao = dao;
+  public SystemRepository() {
+    this.dao = Entity.getCollectionDAO().systemDAO();
+    Entity.setSystemRepository(this);
   }
 
   public EntitiesCount getAllEntitiesCount(ListFilter filter) {
@@ -74,7 +78,8 @@ public class SystemRepository {
   public Settings getEmailConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
-      SmtpSettings emailConfig = SystemRepository.decryptEmailSetting((SmtpSettings) setting.getConfigValue());
+      SmtpSettings emailConfig =
+          SystemRepository.decryptEmailSetting((SmtpSettings) setting.getConfigValue());
       setting.setConfigValue(emailConfig);
       return setting;
     } catch (Exception ex) {
@@ -96,6 +101,7 @@ public class SystemRepository {
     return null;
   }
 
+  @Transaction
   public Response createOrUpdate(Settings setting) {
     Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
     try {
@@ -105,9 +111,11 @@ public class SystemRepository {
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     if (oldValue == null) {
-      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
+      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+          .toResponse();
     } else {
-      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, RestUtil.ENTITY_UPDATED)).toResponse();
+      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, RestUtil.ENTITY_UPDATED))
+          .toResponse();
     }
   }
 
@@ -118,7 +126,8 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
+    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+        .toResponse();
   }
 
   @SuppressWarnings("unused")
@@ -139,20 +148,23 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED)).toResponse();
+    return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED))
+        .toResponse();
   }
 
   public void updateSetting(Settings setting) {
     try {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        SmtpSettings emailConfig =
+            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       }
-      dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      dao.insertSettings(
+          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
       SettingsCache.invalidateSettings(setting.getConfigType().value());
     } catch (Exception ex) {

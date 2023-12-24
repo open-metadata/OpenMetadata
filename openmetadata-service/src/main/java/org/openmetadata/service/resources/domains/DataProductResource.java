@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,11 +51,13 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -77,8 +80,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   static final String FIELDS = "domain,owner,experts,assets";
 
-  public DataProductResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DataProduct.class, new DataProductRepository(dao), authorizer);
+  public DataProductResource(Authorizer authorizer) {
+    super(Entity.DATA_PRODUCT, authorizer);
   }
 
   @Override
@@ -105,7 +108,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             responseCode = "200",
             description = "List of DataProducts",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataProductList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProductList.class)))
       })
   public ResultList<DataProduct> list(
       @Context UriInfo uriInfo,
@@ -121,13 +126,22 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @QueryParam("domain")
           String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of DataProduct before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of DataProduct before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of DataProduct after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of DataProduct after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
+    ListFilter filter = new ListFilter(null);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", domainReference.getId().toString());
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -141,8 +155,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "The dataProduct",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
-        @ApiResponse(responseCode = "404", description = "DataProduct for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
       })
   public DataProduct get(
       @Context UriInfo uriInfo,
@@ -152,7 +171,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
@@ -166,13 +187,19 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "dataProduct",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
-        @ApiResponse(responseCode = "404", description = "DataProduct for instance {name} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {name} is not found")
       })
   public DataProduct getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -192,12 +219,17 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "List of dataProduct versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -211,15 +243,20 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "dataProduct",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "DataProduct for instance {id} and version {version} is " + "not found")
+            description = "DataProduct for instance {id} and version {version} is not found")
       })
   public DataProduct getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "DataProduct version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -237,11 +274,16 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "The dataProduct ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDataProduct create) {
     DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
   }
@@ -251,18 +293,75 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       operationId = "createOrUpdateDataProduct",
       summary = "Create or update a dataProduct",
       description =
-          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the " + "dataProduct.",
+          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The dataProduct",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDataProduct create) {
     DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
+  }
+
+  @PUT
+  @Path("/{name}/assets/add")
+  @Operation(
+      operationId = "bulkAddAssets",
+      summary = "Bulk Add Assets",
+      description = "Bulk Add Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Data product", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+  }
+
+  @PUT
+  @Path("/{name}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveAssets",
+      summary = "Bulk Remove Assets",
+      description = "Bulk Remove Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Data Product", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
   @PATCH
@@ -271,19 +370,24 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       operationId = "patchDataProduct",
       summary = "Update a dataProduct",
       description = "Update an existing dataProduct using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -297,12 +401,16 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       description = "Delete a dataProduct by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DataProduct for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -314,12 +422,15 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       description = "Delete a dataProduct by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DataProduct for instance {name} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
@@ -327,14 +438,17 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct getDataProduct(CreateDataProduct create, String user) {
     List<String> experts = create.getExperts();
     DataProduct dataProduct =
-        copy(new DataProduct(), create, user)
+        repository
+            .copy(new DataProduct(), create, user)
             .withFullyQualifiedName(create.getName())
             .withStyle(create.getStyle())
-            .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
+            .withExperts(
+                EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
     dataProduct.withAssets(new ArrayList<>());
     for (EntityReference asset : listOrEmpty(create.getAssets())) {
       asset = Entity.getEntityReference(asset, Include.NON_DELETED);
       dataProduct.getAssets().add(asset);
+      dataProduct.getAssets().sort(EntityUtil.compareEntityReference);
     }
     return dataProduct;
   }

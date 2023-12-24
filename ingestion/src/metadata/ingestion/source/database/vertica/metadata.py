@@ -25,15 +25,14 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
@@ -264,25 +263,25 @@ VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment
 
 
-class VerticaSource(CommonDbSourceService):
+class VerticaSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Vertica Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: VerticaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(
                 f"Expected VerticaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
@@ -295,6 +294,12 @@ class VerticaSource(CommonDbSourceService):
             self.engine, VERTICA_SCHEMA_COMMENTS
         )
 
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.database
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(VERTICA_LIST_DATABASES)
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
@@ -302,14 +307,11 @@ class VerticaSource(CommonDbSourceService):
             self.set_schema_description_map()
             yield configured_db
         else:
-            results = self.connection.execute(VERTICA_LIST_DATABASES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 

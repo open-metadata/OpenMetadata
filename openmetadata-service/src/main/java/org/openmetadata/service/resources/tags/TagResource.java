@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -57,14 +56,12 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
@@ -72,7 +69,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -89,9 +85,10 @@ import org.openmetadata.service.util.ResultList;
             + "for categorizing and classifying data assets and other entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
+@Collection(
+    name = "tags",
+    order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
-  private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS = "children,usageCount";
 
@@ -99,10 +96,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     /* Required for serde */
   }
 
-  public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Tag.class, new TagRepository(collectionDAO), authorizer);
-    Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
-    daoCollection = collectionDAO;
+  public TagResource(Authorizer authorizer) {
+    super(Entity.TAG, authorizer);
   }
 
   @Override
@@ -112,17 +107,20 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   private void migrateTags() {
-    // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
-    // any entries we don't need to run it
-    if (!(daoCollection.relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
-      // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
-      // Find tag definitions and load classifications from the json file, if necessary
+    // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not
+    // there , once we have any entries we don't need to run it
+    if (repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG)
+        <= 0) {
+      // We are missing relationship for classification -> tag, & also tag -> tag (parent
+      // relationship). Find tag definitions and load classifications from the file, if necessary
       ClassificationRepository classificationRepository =
           (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
       try {
         List<Classification> classificationList =
-            classificationRepository.listAll(classificationRepository.getFields("*"), new ListFilter(Include.ALL));
-        List<String> jsons = repository.getDao().listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
+            classificationRepository.listAll(
+                classificationRepository.getFields("*"), new ListFilter(Include.ALL));
+        List<String> jsons =
+            repository.getDao().listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
         List<Tag> storedTags = JsonUtils.readObjects(jsons, Tag.class);
         for (Tag tag : storedTags) {
           if (tag.getFullyQualifiedName().contains(".")) {
@@ -136,7 +134,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
                 // This means need to add a relationship
                 try {
                   repository.addRelationship(
-                      classification.getId(), tag.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
+                      classification.getId(),
+                      tag.getId(),
+                      CLASSIFICATION,
+                      TAG,
+                      Relationship.CONTAINS);
                   break;
                 } catch (Exception ex) {
                   LOG.info("Classification Relation already exists");
@@ -146,11 +148,13 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             if (remainingPart.contains(".")) {
               // Handle tag -> tag relationship
               String parentTagName =
-                  tag.getFullyQualifiedName().substring(0, tag.getFullyQualifiedName().lastIndexOf("."));
+                  tag.getFullyQualifiedName()
+                      .substring(0, tag.getFullyQualifiedName().lastIndexOf("."));
               for (Tag parentTag : storedTags) {
                 if (parentTag.getFullyQualifiedName().equals(parentTagName)) {
                   try {
-                    repository.addRelationship(parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
+                    repository.addRelationship(
+                        parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
                     break;
                   } catch (Exception ex) {
                     LOG.info("Parent Tag Ownership already exists");
@@ -175,21 +179,25 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     ClassificationRepository classificationRepository =
         (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
-        EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
+        EntityRepository.getEntitiesFromSeedData(
+            CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
-          ClassificationResource.getClassification(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+          ClassificationResource.getClassification(
+              classificationRepository, loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
         createTag.withClassification(classification.getName());
         createTag.withProvider(classification.getProvider());
-        tagsToCreate.add(getTag(createTag, ADMIN_USER_NAME));
+        Tag tag = getTag(createTag, ADMIN_USER_NAME);
+        repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
+        tagsToCreate.add(tag);
       }
 
       // Sort tags based on tag hierarchy
-      EntityUtil.sortByTagHierarchy(tagsToCreate);
+      EntityUtil.sortByFQN(tagsToCreate);
 
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
@@ -210,7 +218,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of tags",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TagList.class)))
       })
   public ResultList<Tag> list(
       @Context UriInfo uriInfo,
@@ -227,20 +238,26 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter Disabled Classifications", schema = @Schema(type = "string", example = FIELDS))
+      @Parameter(
+              description = "Filter Disabled Classifications",
+              schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
           @DefaultValue("false")
           Boolean disabled,
-      @Parameter(description = "Limit the number tags returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of tags before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tags before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tags after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tags after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -250,8 +267,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter =
-        new ListFilter(include).addQueryParam("parent", parent).addQueryParam("classification.disabled", disabled);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        new ListFilter(include)
+            .addQueryParam("parent", parent)
+            .addQueryParam("classification.disabled", disabled);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -264,13 +284,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The tag",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "404", description = "Tag for instance {id} is not found")
       })
   public Tag get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -295,12 +319,16 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The tag",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "404", description = "Tag for instance {fqn} is not found")
       })
   public Tag getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -327,12 +355,16 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of tag versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -346,15 +378,19 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "tags",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Tag for instance {id} and version {version} is " + "not found")
+            description = "Tag for instance {id} and version {version} is not found")
       })
   public Tag getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "tag version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -372,10 +408,14 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The tag",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
     Tag tag = getTag(securityContext, create);
     return create(uriInfo, securityContext, tag);
   }
@@ -386,19 +426,23 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       operationId = "patchTag",
       summary = "Update a tag",
       description = "Update an existing tag using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -413,7 +457,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The tag",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -435,7 +482,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -443,7 +491,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -464,7 +513,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
@@ -479,10 +529,15 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Tag ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Tag.class)))
       })
   public Response restore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -499,14 +554,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   private Tag getTag(CreateTag create, String updateBy) {
-    String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
-    EntityReference classification = getEntityReference(CLASSIFICATION, create.getClassification());
-    EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());
-    return copy(new Tag(), create, updateBy)
-        .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
+    return repository
+        .copy(new Tag(), create, updateBy)
         .withStyle(create.getStyle())
-        .withParent(parent)
-        .withClassification(classification)
+        .withParent(getEntityReference(TAG, create.getParent()))
+        .withClassification(getEntityReference(CLASSIFICATION, create.getClassification()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

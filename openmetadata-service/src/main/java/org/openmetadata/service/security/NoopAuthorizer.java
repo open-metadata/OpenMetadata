@@ -25,7 +25,6 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -35,7 +34,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
   @Override
-  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, CollectionDAO collectionDAO) {
+  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     addAnonymousUser();
   }
 
@@ -46,7 +45,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resource) {
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, String resource) {
     return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
   }
 
@@ -58,7 +58,9 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     /* Always authorize */
   }
 

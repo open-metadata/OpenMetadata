@@ -11,41 +11,87 @@
  *  limitations under the License.
  */
 
-import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
-import { TagSource } from 'generated/entity/data/container';
+import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React from 'react';
-import { fetchTagsElasticSearch } from 'utils/TagsUtils';
+import React, { useMemo } from 'react';
+import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
+import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import tagClassBase from '../../../utils/TagClassBase';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 export interface TagSuggestionProps {
-  onChange?: (newTags: TagLabel[]) => void;
+  placeholder?: string;
+  tagType?: TagSource;
   value?: TagLabel[];
+  initialOptions?: SelectOption[];
+  onChange?: (newTags: TagLabel[]) => void;
 }
 
-const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
-  const handleTagSelection = (newValue: string[]) => {
-    let newTags: EntityTags = [];
-    if (!isEmpty(newValue)) {
-      newTags = newValue.map((t) => ({
-        tagFQN: t,
-        source: TagSource.Classification,
-      }));
+const TagSuggestion: React.FC<TagSuggestionProps> = ({
+  onChange,
+  value,
+  placeholder,
+  initialOptions,
+  tagType = TagSource.Classification,
+}) => {
+  const isGlossaryType = useMemo(
+    () => tagType === TagSource.Glossary,
+    [tagType]
+  );
+
+  const handleTagSelection = (
+    newValue: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    if (isArray(newValue)) {
+      let newTags: EntityTags[] = [];
+      if (!isEmpty(newValue)) {
+        newTags = newValue.reduce((acc, tag) => {
+          const oldTag = value?.find((oldTag) => oldTag.tagFQN === tag.value);
+          if (oldTag) {
+            return [...acc, oldTag];
+          }
+          let tagData: EntityTags = {
+            tagFQN: tag.value,
+            source: isGlossaryType
+              ? TagSource.Glossary
+              : TagSource.Classification,
+          };
+
+          if (tag.data) {
+            tagData = {
+              ...tagData,
+              name: tag.data?.name,
+              displayName: tag.data?.displayName,
+              description: tag.data?.description,
+              style: tag.data?.style,
+            };
+          }
+
+          return [...acc, tagData];
+        }, [] as EntityTags[]);
+      }
+
+      onChange?.(newTags);
     }
-    onChange && onChange(newTags);
   };
 
   return (
     <AsyncSelectList
-      defaultValue={value?.map((item) => item.tagFQN) || []}
-      fetchOptions={fetchTagsElasticSearch}
+      fetchOptions={isGlossaryType ? fetchGlossaryList : tagClassBase.getTags}
+      initialOptions={initialOptions}
       mode="multiple"
-      placeholder={t('label.select-field', {
-        field: t('label.tag-plural'),
-      })}
-      onChange={(value) => handleTagSelection(value as string[])}
+      placeholder={
+        placeholder ??
+        t('label.select-field', {
+          field: t('label.tag-plural'),
+        })
+      }
+      value={value?.map((item) => item.tagFQN) ?? []}
+      onChange={(value) => handleTagSelection(value)}
     />
   );
 };

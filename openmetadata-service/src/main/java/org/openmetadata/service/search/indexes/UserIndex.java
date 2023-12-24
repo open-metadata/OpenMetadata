@@ -1,11 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.*;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,21 +11,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class UserIndex implements ElasticSearchIndex {
+public class UserIndex implements SearchIndex {
   final User user;
-  final List<String> excludeFields = List.of("owns", "changeDescription", "follows", "authenticationMechanism");
+  final List<String> excludeFields =
+      List.of("owns", "changeDescription", "follows", "authenticationMechanism");
 
   public UserIndex(User user) {
     this.user = user;
   }
 
   public Map<String, Object> buildESDoc() {
-    if (CommonUtil.nullOrEmpty(user.getDisplayName())) {
-      user.setDisplayName(user.getName());
-    }
-    if (user.getIsBot() == null) {
-      user.setIsBot(false);
-    }
     Map<String, Object> doc = JsonUtils.getMap(user);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -39,20 +29,20 @@ public class UserIndex implements ElasticSearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            user.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
+    doc.put(
+        "displayName",
+        CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
+    if (user.getIsBot() == null) {
+      doc.put("isBot", false);
+    }
     return doc;
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 3.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 5.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 2.0f);
-    fields.put(NAME_KEYWORD, 3.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
-    return fields;
+    return SearchIndex.getDefaultFields();
   }
 }

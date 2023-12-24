@@ -12,26 +12,29 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Operation } from 'generated/entity/policies/policy';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
+import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  LOADING_STATE,
+} from '../../../enums/common.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -41,11 +44,11 @@ import {
   patchGlossaryTerm,
   updateGlossaryTermVotes,
   updateGlossaryVotes,
-} from 'rest/glossaryAPI';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -120,7 +123,7 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes',
+        fields: 'owner,tags,reviewers,votes,domain',
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
@@ -135,24 +138,12 @@ const GlossaryPage = () => {
     fetchGlossaryList();
   }, []);
 
-  const fetchGlossaryTermParent = async () => {
-    setIsRightPanelLoading(true);
-    try {
-      const { parent } = await getGlossaryTermByFQN(glossaryFqn, 'parent');
-      setSelectedData((data) => (data ? { ...data, parent } : undefined));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRightPanelLoading(false);
-    }
-  };
-
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children,votes'
+        'relatedTerms,reviewers,tags,owner,children,votes,domain'
       );
       setSelectedData(response);
     } catch (error) {
@@ -179,12 +170,6 @@ const GlossaryPage = () => {
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
-
-  useEffect(() => {
-    if (!isGlossaryActive && viewAllGlossaryPermission) {
-      fetchGlossaryTermParent();
-    }
-  }, [glossaryFqn]);
 
   const updateGlossary = async (updatedData: Glossary) => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
@@ -263,28 +248,31 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  const handleGlossaryTermUpdate = async (updatedData: GlossaryTerm) => {
-    const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
-    try {
-      const response = await patchGlossaryTerm(
-        selectedData?.id as string,
-        jsonPatch
-      );
-      if (response) {
-        setSelectedData(response);
-        if (selectedData?.name !== updatedData.name) {
-          history.push(getGlossaryPath(response.fullyQualifiedName));
-          fetchGlossaryList();
+  const handleGlossaryTermUpdate = useCallback(
+    async (updatedData: GlossaryTerm) => {
+      const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
+      try {
+        const response = await patchGlossaryTerm(
+          selectedData?.id as string,
+          jsonPatch
+        );
+        if (response) {
+          setSelectedData(response);
+          if (selectedData?.name !== updatedData.name) {
+            history.push(getGlossaryPath(response.fullyQualifiedName));
+            fetchGlossaryList();
+          }
+        } else {
+          throw t('server.entity-updating-error', {
+            entity: t('label.glossary-term'),
+          });
         }
-      } else {
-        throw t('server.entity-updating-error', {
-          entity: t('label.glossary-term'),
-        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [selectedData]
+  );
 
   const handleGlossaryTermDelete = (id: string) => {
     setDeleteStatus(LOADING_STATE.WAITING);
@@ -317,9 +305,12 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
-    setPreviewAsset(asset);
-  };
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -350,13 +341,16 @@ const GlossaryPage = () => {
   return (
     <PageLayoutV1
       className="glossary-page-layout"
-      leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
+      leftPanel={
+        isGlossaryActive && <GlossaryLeftPanel glossaries={glossaries} />
+      }
       pageTitle={t('label.glossary')}
       rightPanel={
         previewAsset && (
           <EntitySummaryPanel
             entityDetails={previewAsset}
             handleClosePanel={() => setPreviewAsset(undefined)}
+            highlights={{ 'tag.name': [glossaryFqn] }}
           />
         )
       }
@@ -369,6 +363,7 @@ const GlossaryPage = () => {
           isGlossaryActive={isGlossaryActive}
           isSummaryPanelOpen={Boolean(previewAsset)}
           isVersionsView={false}
+          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
           selectedData={selectedData as Glossary}
           updateGlossary={updateGlossary}
           updateVote={updateVote}

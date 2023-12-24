@@ -27,6 +27,16 @@ class LookMlField(BaseModel):
     name: str = Field(..., description="Field name")
 
 
+class LookMlDerivedTableField(BaseModel):
+    sql: Optional[str] = Field(
+        None, description="Declares the SQL query for a derived table."
+    )
+    sql_create: Optional[str] = Field(
+        None,
+        description="Defines a SQL CREATE statement",
+    )
+
+
 class LookMlView(BaseModel):
     name: ViewName = Field(..., description="View name")
     description: Optional[str] = Field(None, description="View description")
@@ -38,6 +48,9 @@ class LookMlView(BaseModel):
         [], description="Dimensions to ingest as cols"
     )
     source_file: Optional[Includes] = Field(None, description="lkml file path")
+    derived_table: Optional[LookMlDerivedTableField] = Field(
+        None, description="To track lineage with the source"
+    )
 
 
 class LkmlFile(BaseModel):
@@ -48,3 +61,13 @@ class LkmlFile(BaseModel):
 
     includes: List[Includes] = Field([], description="Full include list")
     views: List[LookMlView] = Field([], description="Views we want to parse")
+
+
+class LookMLRepo(BaseModel):
+    name: str = Field(None, description="Repository name")
+    path: str = Field(None, description="RepositoryPath")
+
+
+class LookMLManifest(BaseModel):
+    project_name: str = Field(None, description="LookML project name")
+    remote_dependency: dict = Field(None, description="Remote dependency information")

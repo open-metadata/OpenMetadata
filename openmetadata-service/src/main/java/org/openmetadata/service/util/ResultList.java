@@ -89,7 +89,13 @@ public class ResultList<T> {
             .withTotal(total);
   }
 
-  public ResultList(List<T> data, List<String> errors, String beforeCursor, String afterCursor, int total) {
+  public ResultList(List<T> data, Integer offset, int total) {
+    this.data = data;
+    paging = new Paging().withBefore(null).withAfter(null).withTotal(total).withOffset(offset);
+  }
+
+  public ResultList(
+      List<T> data, List<String> errors, String beforeCursor, String afterCursor, int total) {
     this.data = data;
     this.errors = errors;
     paging =

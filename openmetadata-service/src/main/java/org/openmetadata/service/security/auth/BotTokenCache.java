@@ -6,7 +6,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +24,10 @@ import org.openmetadata.service.util.JsonUtils;
 public class BotTokenCache {
   public static final String EMPTY_STRING = "";
   private static final LoadingCache<String, String> BOTS_TOKEN_CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new BotTokenLoader());
+      CacheBuilder.newBuilder()
+          .maximumSize(1000)
+          .expireAfterWrite(2, TimeUnit.MINUTES)
+          .build(new BotTokenLoader());
 
   private BotTokenCache() {
     // Private constructor for utility class
@@ -52,11 +54,15 @@ public class BotTokenCache {
 
   static class BotTokenLoader extends CacheLoader<String, String> {
     @Override
-    public String load(@CheckForNull String botName) throws IOException {
+    public String load(@CheckForNull String botName) {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
-              null, botName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED, true);
+              null,
+              botName,
+              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
+              NON_DELETED,
+              true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =

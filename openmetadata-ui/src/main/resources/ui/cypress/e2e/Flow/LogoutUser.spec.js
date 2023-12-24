@@ -11,23 +11,12 @@
  *  limitations under the License.
  */
 
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { BASE_URL } from '../../constants/constants';
-
 describe('Logout User', () => {
   beforeEach(() => {
     cy.login();
   });
 
   it('After login logout the user and invalidate the token', () => {
-    interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-    cy.get('[data-testid="app-bar-item-logout"]').click();
-
-    cy.get('[data-testid="confirm-logout"]').click();
-
-    // verify the logout request
-    verifyResponseStatusCode('@logoutUser', 200);
-
-    cy.url().should('eq', `${BASE_URL}/signin`);
+    cy.logout();
   });
 });

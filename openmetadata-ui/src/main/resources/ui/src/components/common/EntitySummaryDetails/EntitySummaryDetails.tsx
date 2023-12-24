@@ -13,15 +13,24 @@
 
 import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
+import {
+  isEmpty,
+  isString,
+  isUndefined,
+  lowerCase,
+  noop,
+  toLower,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -31,14 +40,14 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
-import './EntitySummaryDetails.style.less';
+import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
   updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  updateTier?: (value?: string) => void;
+  updateTier?: (value?: Tag) => void;
   currentOwner?: Dashboard['owner'];
   deleted?: boolean;
   allowTeamOwner?: boolean;
@@ -82,25 +91,21 @@ const EntitySummaryDetails = ({
     />
   );
 
-  const {
-    isEntityDetails,
-    userDetails,
-    isTier,
-    isOwner,
+  const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
+    useMemo(() => {
+      const userDetails = getTeamsUser(data);
 
-    isTeamOwner,
-  } = useMemo(() => {
-    const userDetails = getTeamsUser(data);
-
-    return {
-      isEntityCard: data?.isEntityCard,
-      isEntityDetails: data?.isEntityDetails,
-      userDetails,
-      isTier: data.key === 'Tier',
-      isOwner: data.key === 'Owner',
-      isTeamOwner: isString(data.value) ? data.value.includes('teams/') : false,
-    };
-  }, [data]);
+      return {
+        isEntityCard: data?.isEntityCard,
+        isEntityDetails: data?.isEntityDetails,
+        userDetails,
+        isTier: data.key === 'Tier',
+        isOwner: data.key === 'Owner',
+        isTeamOwner: isString(data.value)
+          ? data.value.includes('teams/')
+          : false,
+      };
+    }, [data]);
 
   switch (data.key) {
     case 'Owner':
@@ -113,9 +118,7 @@ const EntitySummaryDetails = ({
                   <>
                     <ProfilePicture
                       displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
                       name={userDetails.ownerName ?? ''}
-                      type="circle"
                       width="24"
                     />
                     <span data-testid="owner-link">
@@ -127,13 +130,15 @@ const EntitySummaryDetails = ({
                   </>
                 )}
                 {isTeamOwner ? (
-                  <IconTeamsGrey height={18} width={18} />
+                  <IconTeamsGrey
+                    className="align-middle"
+                    height={18}
+                    width={18}
+                  />
                 ) : (
                   <ProfilePicture
                     displayName={displayVal}
-                    id=""
                     name={data.profileName ?? ''}
-                    type="circle"
                     width={data.avatarWidth ?? '24'}
                   />
                 )}
@@ -185,6 +190,24 @@ const EntitySummaryDetails = ({
 
       break;
 
+    case 'Domain':
+      {
+        retVal = !isEmpty(displayVal) ? (
+          <DomainIcon
+            className="d-flex"
+            color={DE_ACTIVE_COLOR}
+            height={16}
+            name="folder"
+            width={16}
+          />
+        ) : (
+          <span className="d-flex gap-1 items-center" data-testid="owner-link">
+            {t('label.no-entity', { entity: t('label.domain') })}
+          </span>
+        );
+      }
+
+      break;
     default:
       {
         retVal = (

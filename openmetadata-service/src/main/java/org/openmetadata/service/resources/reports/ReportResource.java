@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -44,7 +43,7 @@ import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
 import org.openmetadata.service.resources.Collection;
@@ -66,8 +65,8 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
   static final String FIELDS = "owner,usageSummary";
 
-  public ReportResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Report.class, new ReportRepository(dao), authorizer);
+  public ReportResource(Authorizer authorizer) {
+    super(Entity.REPORT, authorizer);
   }
 
   @Override
@@ -89,7 +88,10 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of reports",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportList.class)))
       })
   public ResultList<Report> list(
       @Context UriInfo uriInfo,
@@ -113,13 +115,17 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
       })
   public Report get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -130,8 +136,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -145,10 +150,14 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.create(uriInfo, securityContext, report);
   }
@@ -163,7 +172,10 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -182,15 +194,21 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

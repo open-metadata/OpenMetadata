@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
@@ -84,8 +83,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestCase.class, new TestCaseRepository(dao), authorizer);
+  public TestCaseResource(Authorizer authorizer) {
+    super(Entity.TEST_CASE, authorizer);
   }
 
   @Override
@@ -129,24 +128,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tests before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
               description = "Return list of tests by entity link",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+              schema =
+                  @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
-      @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests filtered by the testSuite id",
+              schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
           String testSuiteId,
       @Parameter(
@@ -155,7 +161,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("orderByLastExecutionDate")
           @DefaultValue("false")
           Boolean orderByLastExecutionDate,
-      @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
+      @Parameter(
+              description = "Include all the tests at the entity level",
+              schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
           @DefaultValue("false")
           Boolean includeAllTests,
@@ -179,13 +187,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       resourceContext = TestCaseResourceContext.builder().build();
     }
 
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     Fields fields = getFields(fieldsParam);
 
     ResultList<TestCase> tests =
         super.listInternal(
-            uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+            uriInfo,
+            securityContext,
+            fields,
+            filter,
+            limitParam,
+            before,
+            after,
+            operationContext,
+            resourceContext);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
@@ -199,16 +217,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of test versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
 
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     return super.listVersionsInternal(securityContext, id, operationContext, resourceContext);
   }
 
@@ -221,12 +246,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The TestCases",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(responseCode = "404", description = "Test for instance {id} is not found")
       })
   public TestCase get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -239,11 +269,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
     Fields fields = getFields(fieldsParam);
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    return getInternal(uriInfo, securityContext, id, fields, include, operationContext, resourceContext);
+    return getInternal(
+        uriInfo, securityContext, id, fields, include, operationContext, resourceContext);
   }
 
   @GET
@@ -256,12 +289,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The TestCase",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(responseCode = "404", description = "Test for instance {fqn} is not found")
       })
   public TestCase getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the test case",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -276,11 +314,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
     Fields fields = getFields(fieldsParam);
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    return getByNameInternal(uriInfo, securityContext, fqn, fields, include, operationContext, resourceContext);
+    return getByNameInternal(
+        uriInfo, securityContext, fqn, fields, include, operationContext, resourceContext);
   }
 
   @GET
@@ -293,23 +334,30 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Test",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Test for instance {id} and version {version} is " + "not found")
+            description = "Test for instance {id} and version {version} is not found")
       })
   public TestCase getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Test version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    return super.getVersionInternal(securityContext, id, version, operationContext, resourceContext);
+    return super.getVersionInternal(
+        securityContext, id, version, operationContext, resourceContext);
   }
 
   @POST
@@ -321,16 +369,24 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The test",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestCase create) {
-    // Override OperationContext to change the entity to table and operation from CREATE to EDIT_TESTS
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTestCase create) {
+    // Override OperationContext to change the entity to table and operation from CREATE to
+    // EDIT_TESTS
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface resourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
@@ -343,28 +399,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       operationId = "patchTest",
       summary = "Update a test case",
       description = "Update an existing test using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
+    // Override OperationContext to change the entity to table and operation from UPDATE to
+    // EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCase> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -374,12 +437,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       operationId = "patchTestCaseResult",
       summary = "Update a test case result",
       description = "Update an existing test case using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the test case", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "fqn of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp,
@@ -389,15 +457,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
+    // Override OperationContext to change the entity to table and operation from UPDATE to
+    // EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(fqn, timestamp, securityContext.getUserPrincipal().getName(), patch);
+        repository.patchTestCaseResults(fqn, timestamp, patch);
     return patchResponse.toResponse();
   }
 
@@ -410,14 +480,22 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The updated testCase.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestCase create) {
-    // Override OperationContext to change the entity to table and operation from CREATE/UPDATE to EDIT_TESTS
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTestCase create) {
+    // Override OperationContext to change the entity to table and operation from CREATE/UPDATE to
+    // EDIT_TESTS
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface resourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteExecutable(create.getTestSuite());
@@ -444,14 +522,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    // Override OperationContext to change the entity to table and operation from DELETE to EDIT_TESTS
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    // Override OperationContext to change the entity to table and operation from DELETE to
+    // EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -472,7 +554,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the test case",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
@@ -486,7 +570,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       description = "Delete a logical test case by `Id` a test suite.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Logical test case for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logical test case for instance {id} is not found")
       })
   public Response deleteLogicalTestCase(
       @Context UriInfo uriInfo,
@@ -494,9 +580,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @PathParam("testSuiteId") UUID testSuiteId,
       @PathParam("id") UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    DeleteResponse<TestCase> response = repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
+    DeleteResponse<TestCase> response =
+        repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
     return response.toResponse();
   }
 
@@ -510,10 +598,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Chart ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
       })
   public Response restoreTestCase(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -527,20 +620,27 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the TestCase. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
       })
   public Response addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the test case",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Valid TestCaseResult testCaseResult) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository
-        .addTestCaseResult(securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
+        .addTestCaseResult(
+            securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
         .toResponse();
   }
 
@@ -564,7 +664,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the test case",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(
@@ -592,21 +694,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted the TestCaseResult",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
       })
   public Response deleteTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the test case",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
+    return repository
+        .deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp)
+        .toResponse();
   }
 
   @PUT
@@ -619,7 +729,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully added test cases to the logical test suite.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
       })
   public Response addTestCasesToLogicalTestSuite(
       @Context UriInfo uriInfo,
@@ -628,28 +741,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     // don't get entity from cache as test result summary may be stale
     TestSuite testSuite =
-        Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null, false);
-    OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
+        Entity.getEntity(
+            Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null, false);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface resourceContext =
+        TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
+      throw new IllegalArgumentException(
+          "You are trying to add test cases to an executable test suite.");
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     if (testCaseIds == null || testCaseIds.isEmpty()) {
-      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE).toResponse();
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE)
+          .toResponse();
     }
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
-      throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
+      throw new IllegalArgumentException(
+          "You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {
-    return copy(new TestCase(), create, user)
+    return repository
+        .copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())

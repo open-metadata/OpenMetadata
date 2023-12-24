@@ -14,16 +14,18 @@
 import {
   act,
   cleanup,
+  findByText,
   fireEvent,
   render,
   screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
+import { getTableProfilerConfig } from '../../../rest/tableAPI';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../../rest/tableAPI', () => ({
   getTableProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
@@ -57,6 +59,9 @@ describe('Test ProfilerSettingsModal component', () => {
     );
     const intervalType = await screen.findByTestId('interval-type');
     const columnName = await screen.findByTestId('column-name');
+    const sampleDataCount = await screen.findByTestId(
+      'sample-data-count-input'
+    );
 
     expect(modal).toBeInTheDocument();
     expect(sampleContainer).toBeInTheDocument();
@@ -66,6 +71,7 @@ describe('Test ProfilerSettingsModal component', () => {
     expect(partitionSwitch).toBeInTheDocument();
     expect(intervalType).toBeInTheDocument();
     expect(columnName).toBeInTheDocument();
+    expect(sampleDataCount).toBeInTheDocument();
   });
 
   it('Interval Type and Column Name field should be disabled, when partition switch is off', async () => {
@@ -98,5 +104,70 @@ describe('Test ProfilerSettingsModal component', () => {
     expect(partitionSwitch).toHaveAttribute('aria-checked', 'true');
     expect(intervalType).not.toHaveClass('ant-select-disabled');
     expect(columnName).not.toHaveClass('ant-select-disabled');
+  });
+
+  it('initial values should be visible in the form', async () => {
+    const tableProfilerConfig = {
+      profileSample: 60.0,
+      profileSampleType: 'PERCENTAGE',
+      sampleDataCount: 500,
+      profileQuery: 'select * from table',
+      excludeColumns: ['address_id'],
+      includeColumns: [
+        {
+          columnName: 'first_name',
+        },
+      ],
+      partitioning: {
+        enablePartitioning: true,
+        partitionColumnName: 'last_name',
+        partitionIntervalType: 'COLUMN-VALUE',
+        partitionValues: ['test'],
+      },
+    };
+    (getTableProfilerConfig as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ ...MOCK_TABLE, tableProfilerConfig })
+    );
+    render(<ProfilerSettingsModal {...mockProps} />);
+
+    const excludeSelect = await screen.findByTestId('exclude-column-select');
+    const includeSelect = await screen.findByTestId('include-column-select');
+    const partitionSwitch = await screen.findByTestId(
+      'enable-partition-switch'
+    );
+    const intervalType = await screen.findByTestId('interval-type');
+    const columnName = await screen.findByTestId('column-name');
+
+    expect(await screen.findByTestId('sample-data-count-input')).toHaveValue(
+      tableProfilerConfig.sampleDataCount.toString()
+    );
+    expect(await screen.findByTestId('slider-input')).toHaveValue(
+      `${tableProfilerConfig.profileSample}%`
+    );
+    expect(await screen.findByTestId('partition-value')).toHaveValue(
+      tableProfilerConfig.partitioning.partitionValues[0]
+    );
+    expect(
+      await findByText(excludeSelect, tableProfilerConfig.excludeColumns[0])
+    ).toBeInTheDocument();
+    expect(
+      await findByText(
+        includeSelect,
+        tableProfilerConfig.includeColumns[0].columnName
+      )
+    ).toBeInTheDocument();
+    expect(
+      await findByText(
+        intervalType,
+        tableProfilerConfig.partitioning.partitionIntervalType
+      )
+    ).toBeInTheDocument();
+    expect(
+      await findByText(
+        columnName,
+        tableProfilerConfig.partitioning.partitionColumnName
+      )
+    ).toBeInTheDocument();
+    expect(partitionSwitch).toHaveAttribute('aria-checked', 'true');
   });
 });

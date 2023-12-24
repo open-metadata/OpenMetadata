@@ -13,24 +13,24 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedsWithFilter } from 'rest/feedsAPI';
-import AppState from '../../AppState';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,
 } from '../../constants/constants';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
+import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Loader from '../Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
@@ -45,10 +45,7 @@ const NotificationBox = ({
   onTabChange,
 }: NotificationBoxProp) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -168,7 +165,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
-          className="h-min-64"
+          className="notification-content-container"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">

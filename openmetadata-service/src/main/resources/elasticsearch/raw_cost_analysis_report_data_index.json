@@ -1,0 +1,53 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "entity": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "href": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "text"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "deleted": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "text"
+              },
+              "displayName": {
+                "type": "text"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              }
+            }
+          },
+          "lifeCycle": {
+            "type": "object"
+          },
+          "sizeInByte": {
+            "type": "double"
+          }
+        }
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      }
+    }
+  }
+}

@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import {
   Col,
   Radio,
   RadioChangeEvent,
   Row,
-  Space,
   Tag,
   Tooltip,
   Typography,
@@ -25,32 +23,35 @@ import {
 import Table, { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import ToggleExpandButton from 'components/ToggleExpandButton/ToggleExpandButton';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { CSMode } from 'enums/codemirror.enum';
-import { EntityType } from 'enums/entity.enum';
-import { DataTypeTopic, Field } from 'generated/entity/data/topic';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
+  getFilterIcon,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from 'utils/TableUtils';
+} from '../../../utils/TableUtils';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,
@@ -86,16 +87,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     selectedTags: EntityTags[],
     editColumnTag: Field
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-
-    if (newSelectedTags && editColumnTag && !isUndefined(onUpdate)) {
+    if (selectedTags && editColumnTag && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
       updateFieldTags<Field>(
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags,
+        selectedTags,
         schema?.schemaFields
       );
       await onUpdate(schema);
@@ -131,17 +127,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_, record: Field) => (
-      <Space align="start" className="w-max-90 vertical-align-inherit" size={2}>
+      <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-          <Typography.Text className="break-word">
+          <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewer markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
-          </Typography.Text>
+          </span>
         </Tooltip>
-      </Space>
+      </div>
     ),
     [isVersionView]
   );
@@ -151,10 +147,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <Typography.Text>
         {isVersionView ? (
           <RichTextEditorPreviewer
-            markdown={record.dataTypeDisplay || dataType}
+            markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (
-          record.dataTypeDisplay || dataType
+          record.dataTypeDisplay ?? dataType
         )}
       </Typography.Text>
     ),
@@ -216,12 +212,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -246,12 +237,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -375,7 +361,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.schema-field'),
-          })}: "${editFieldDescription.name}"`}
+          })}: "${getEntityName(editFieldDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.schema-field'),
           })}

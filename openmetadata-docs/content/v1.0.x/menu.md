@@ -12,17 +12,6 @@ site_menu:
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 
-  - category: Releases
-    url: /releases
-    color: violet-70
-    icon: overview
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Roadmap
-    url: /releases/roadmap
-  - category: Releases / All Releases
-    url: /releases/all-releases
-
   - category: Deployment
     url: /deployment
     color: violet-70
@@ -48,7 +37,7 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
   - category: Deployment / Kubernetes Deployment / On Premises
-    url: /deployment/kubernetes/onprem
+    url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
@@ -191,6 +180,37 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
+
+  - category: How-to Guides
+    url: /how-to-guides
+    color: violet-70
+    icon: openmetadata
+
+  - category: How-to Guides / Admin Guide
+    url: /how-to-guides/admin-guide
+  - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
+    url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
+  - category: How-to Guides / Admin Guide / How to Add Custom Logo
+    url: /how-to-guides/admin-guide/how-to-add-custom-logo
+  - category: How-to Guides / Admin Guide / How to Add a Custom Property to an Entity
+    url: /how-to-guides/admin-guide/how-to-add-custom-property-to-an-entity
+  - category: How-to Guides / Admin Guide / How to Add Language Support
+    url: /how-to-guides/admin-guide/how-to-add-language-support
+  - category: How-to Guides / Admin Guide / How to Organise Teams and Users
+    url: /how-to-guides/admin-guide/how-to-organise-teams-and-users
+  - category: How-to Guides / Admin Guide / Bots
+    url: /how-to-guides/admin-guide/bots
+
+  - category: Releases
+    url: /releases
+    color: violet-70
+    icon: overview
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Connectors
     url: /connectors
@@ -637,28 +657,6 @@ site_menu:
     url: /connectors/ingestion/run-connectors-from-mwaa
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-  - category: How to Guides
-    url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
-
-  - category: How to Guides / CLI Ingestion with basic auth
-    url: /how-to-guides/cli-ingestion-with-basic-auth
-  - category: How to Guides / Feature configurations
-    url: /how-to-guides/feature-configurations
-  - category: How to Guides / Feature configurations / Bots
-    url: /how-to-guides/feature-configurations/bots
-  - category: How to Guides / Teams and Users
-    url: /how-to-guides/teams-and-users
-  - category: How to Guides / Teams and Users / How to Organise Teams and Users
-    url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
-  - category: How to Guides / How to add a custom property to an entity
-    url: /how-to-guides/how-to-add-custom-property-to-an-entity
-  - category: How to Guides / How to add Custom Logo
-    url: /how-to-guides/how-to-add-custom-logo
-  - category: How to Guides / How to Add Language Support
-    url: /how-to-guides/how-to-add-language-support
 
   - category: Features
     url: /features

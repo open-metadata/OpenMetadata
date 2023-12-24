@@ -43,7 +43,8 @@ public class DbtPipelineClassConverter extends ClassConverter {
   public Object convert(Object object) {
     DbtPipeline dbtPipeline = (DbtPipeline) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(dbtPipeline.getDbtConfigSource(), DBT_CONFIG_CLASSES).ifPresent(dbtPipeline::setDbtConfigSource);
+    tryToConvertOrFail(dbtPipeline.getDbtConfigSource(), DBT_CONFIG_CLASSES)
+        .ifPresent(dbtPipeline::setDbtConfigSource);
 
     return dbtPipeline;
   }

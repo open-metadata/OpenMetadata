@@ -15,7 +15,10 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
+
+from sqlalchemy import Column
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -28,9 +31,15 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    SampleDataStorageConfig,
+)
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class ColumnConfig(ConfigModel):
@@ -40,15 +49,39 @@ class ColumnConfig(ConfigModel):
     includeColumns: Optional[List[ColumnProfilerConfig]]
 
 
-class TableConfig(ConfigModel):
-    """table profile config"""
+class BaseProfileConfig(ConfigModel):
+    """base profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = None
+    sampleDataCount: Optional[int] = 100
+
+
+class TableConfig(BaseProfileConfig):
+    """table profile config"""
+
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]
+
+    @classmethod
+    def from_database_and_schema_config(
+        cls, config: "DatabaseAndSchemaConfig", table_fqn: str
+    ):
+        table_config = TableConfig(
+            fullyQualifiedName=table_fqn,
+            profileSample=config.profileSample,
+            profileSampleType=config.profileSampleType,
+            sampleDataCount=config.sampleDataCount,
+        )
+        return table_config
+
+
+class DatabaseAndSchemaConfig(BaseProfileConfig):
+    """schema profile config"""
+
+    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
 
 
 class ProfileSampleConfig(ConfigModel):
@@ -66,13 +99,8 @@ class ProfilerProcessorConfig(ConfigModel):
 
     profiler: Optional[ProfilerDef] = None
     tableConfig: Optional[List[TableConfig]] = None
-
-
-class PatchColumnTagResponse(ConfigModel):
-    """Used to patch a tag to a column"""
-
-    column_fqn: str
-    tag_label: TagLabel
+    schemaConfig: Optional[List[DatabaseAndSchemaConfig]] = []
+    databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
 
 
 class ProfilerResponse(ConfigModel):
@@ -86,8 +114,20 @@ class ProfilerResponse(ConfigModel):
     table: Table
     profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None
-    column_tags: Optional[List[PatchColumnTagResponse]] = None
+    column_tags: Optional[List[ColumnTag]] = None
 
     def __str__(self):
         """Return the table name being processed"""
         return f"Table [{self.table.name.__root__}]"
+
+
+class ThreadPoolMetrics(ConfigModel):
+    """thread pool metric"""
+
+    metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
+    metric_type: MetricTypes
+    column: Optional[Union[Column, SQALikeColumn]]
+    table: Union[Table, DeclarativeMeta]
+
+    class Config:
+        arbitrary_types_allowed = True

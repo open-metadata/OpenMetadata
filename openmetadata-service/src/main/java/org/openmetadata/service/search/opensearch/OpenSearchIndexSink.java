@@ -7,27 +7,28 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.client.RequestOptions;
 
 @Slf4j
 public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
-  private final SearchClient client;
+  private final SearchRepository searchRepository;
 
-  public OpenSearchIndexSink(SearchClient client) {
-    this.client = client;
+  public OpenSearchIndexSink(SearchRepository repository, int total) {
+    this.searchRepository = repository;
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
   @Override
-  public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
+  public BulkResponse write(BulkRequest data, Map<String, Object> contextData)
+      throws SinkException {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
-      BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-      //      BulkResponse response = null;
+      BulkResponse response = searchRepository.getSearchClient().bulk(data, RequestOptions.DEFAULT);
       int currentSuccess = getSuccessFromBulkResponse(response);
       int currentFailed = response.getItems().length - currentSuccess;
 
@@ -47,7 +48,8 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
           0,
           data.numberOfActions());
       updateStats(0, data.numberOfActions());
-      throw new SinkException("[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
+      throw new SinkException(
+          "[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
     }
   }
 

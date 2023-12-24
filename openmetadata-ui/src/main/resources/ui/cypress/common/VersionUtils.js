@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import { isUndefined } from 'lodash';
 import {
@@ -26,13 +27,12 @@ export const visitEntityDetailsVersionPage = (
   entityFQN,
   version
 ) => {
-  visitEntityDetailsPage(
-    entityDetails.name,
-    entityDetails.serviceName,
-    entityDetails.entity,
-    undefined,
-    entityDetails.entityType
-  );
+  visitEntityDetailsPage({
+    term: entityDetails.name,
+    serviceName: entityDetails.serviceName,
+    entity: entityDetails.entity,
+    entityType: entityDetails.entityType,
+  });
 
   interceptURL(
     'GET',

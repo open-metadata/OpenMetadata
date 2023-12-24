@@ -26,17 +26,18 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.helpers import clean_uri
@@ -54,14 +55,14 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):
             raise InvalidSourceException(
                 f"Expected MlFlowConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
@@ -69,7 +70,7 @@ class MlflowSource(MlModelServiceSource):
         """
         List and filters models from the registry
         """
-        for model in cast(RegisteredModel, self.client.list_registered_models()):
+        for model in cast(RegisteredModel, self.client.search_registered_models()):
             if filter_by_mlmodel(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
@@ -92,8 +93,8 @@ class MlflowSource(MlModelServiceSource):
                 self.status.failed(
                     StackTraceError(
                         name=model.name,
-                        error="Invalid Version",
-                        stack_trace=f"Cannot find latest version from version list {model.latest_versions}",
+                        error="Version not found",
+                        stackTrace=f"Unable to ingest model {model.name} due to missing version from version list {model.latest_versions}",  # pylint: disable=line-too-long
                     )
                 )
                 continue
@@ -125,7 +126,7 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=self.context.mlmodel_service.fullyQualifiedName,
+            service=self.context.mlmodel_service,
             sourceUrl=source_url,
         )
         yield Either(right=mlmodel_request)

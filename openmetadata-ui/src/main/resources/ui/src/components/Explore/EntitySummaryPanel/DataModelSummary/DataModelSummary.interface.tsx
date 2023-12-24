@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { TableType, TagLabel } from '../../../../generated/entity/data/table';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface DataModelSummaryProps {
   entityDetails: DashboardDataModel;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 export interface BasicTableInfo {

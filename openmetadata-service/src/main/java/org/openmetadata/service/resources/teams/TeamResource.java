@@ -55,13 +55,15 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -98,14 +100,15 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Team.class, new TeamRepository(dao), authorizer);
+  public TeamResource(Authorizer authorizer) {
+    super(Entity.TEAM, authorizer);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation(
-        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount", MetadataOperation.VIEW_BASIC);
+        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount",
+        MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
   }
 
@@ -134,7 +137,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of teams with hierarchy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TeamList.class)))
       })
   public ResultList<TeamHierarchy> listHierarchy(
       @Context UriInfo uriInfo,
@@ -146,7 +152,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("limit")
           int limitParam,
       @Parameter(
-              description = "Filter the results by whether the team can be joined by any user or not",
+              description =
+                  "Filter the results by whether the team can be joined by any user or not",
               schema = @Schema(type = "boolean"))
           @QueryParam("isJoinable")
           Boolean isJoinable) {
@@ -167,7 +174,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of teams",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TeamList.class)))
       })
   public ResultList<Team> list(
       @Context UriInfo uriInfo,
@@ -183,17 +193,24 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of teams before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of teams before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of teams after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of teams after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Filter the results by parent team name", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Filter the results by parent team name",
+              schema = @Schema(type = "string"))
           @QueryParam("parentTeam")
           String parentTeam,
       @Parameter(
-              description = "Filter the results by whether the team can be joined by any user or not",
+              description =
+                  "Filter the results by whether the team can be joined by any user or not",
               schema = @Schema(type = "boolean"))
           @QueryParam("isJoinable")
           Boolean isJoinable,
@@ -207,7 +224,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -220,12 +238,16 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of team versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -240,13 +262,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
   public Team get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -272,13 +298,18 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "404", description = "Team for instance {name} is not found")
       })
   public Team getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -296,22 +327,26 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificRoleVersion",
+      operationId = "getSpecificTeamVersion",
       summary = "Get a version of the team",
       description = "Get a version of the team by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Team for instance {id} and version {version} is " + "not found")
+            description = "Team for instance {id} and version {version} is not found")
       })
   public Team getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Team version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -329,10 +364,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team);
   }
@@ -346,13 +385,68 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team);
+  }
+
+  @PUT
+  @Path("/{name}/assets/add")
+  @Operation(
+      operationId = "bulkAddAssets",
+      summary = "Bulk Add Assets",
+      description = "Bulk Add Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Team", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+  }
+
+  @PUT
+  @Path("/{name}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveAssets",
+      summary = "Bulk Remove Assets",
+      description = "Bulk Remove Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Team", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
   @PATCH
@@ -362,18 +456,22 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       operationId = "patchTeam",
       summary = "Update a team",
       description = "Update an existing team with JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -400,7 +498,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -421,7 +520,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -435,18 +536,26 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Team.class)))
       })
   public Response restoreTeam(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for team import/export")
-  public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for team import/export")
+  public String getCsvDocumentation(
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
   }
 
@@ -461,9 +570,13 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Exported csv with teams information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
       })
-  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
     return exportCsvInternal(securityContext, name);
   }
 
@@ -479,7 +592,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             responseCode = "200",
             description = "Import result",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
       @Context SecurityContext securityContext,
@@ -503,7 +618,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
       throw new IllegalArgumentException(CREATE_GROUP);
     }
-    return copy(new Team(), ct, user)
+    return repository
+        .copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
         .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))

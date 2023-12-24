@@ -12,7 +12,7 @@
 Glue source methods.
 """
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -30,8 +30,8 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -39,23 +39,21 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
     StorageDetails,
     TablePage,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -69,14 +67,13 @@ class GlueSource(DatabaseServiceSource):
     Database metadata from Glue Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.glue = get_connection(self.service_connection)
 
@@ -84,14 +81,14 @@ class GlueSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GlueConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GlueConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_glue_database_and_schemas(self):
         paginator = self.glue.get_paginator("get_databases")
@@ -100,7 +97,7 @@ class GlueSource(DatabaseServiceSource):
             yield DatabasePage(**page)
 
     def _get_glue_tables(self):
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         paginator = self.glue.get_paginator("get_tables")
         paginator_response = paginator.paginate(DatabaseName=schema_name)
         for page in paginator_response:
@@ -127,7 +124,7 @@ class GlueSource(DatabaseServiceSource):
                         database_fqn = fqn.build(
                             self.metadata,
                             entity_type=Database,
-                            service_name=self.context.database_service.name.__root__,
+                            service_name=self.context.database_service,
                             database_name=schema.CatalogId,
                         )
                         if filter_by_database(
@@ -149,7 +146,7 @@ class GlueSource(DatabaseServiceSource):
                             StackTraceError(
                                 name=schema.CatalogId,
                                 error=f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}",
-                                stack_trace=traceback.format_exc(),
+                                stackTrace=traceback.format_exc(),
                             )
                         )
 
@@ -165,7 +162,7 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -179,8 +176,8 @@ class GlueSource(DatabaseServiceSource):
                     schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
                         schema_name=schema.Name,
                     )
                     if filter_by_schema(
@@ -197,7 +194,7 @@ class GlueSource(DatabaseServiceSource):
                         StackTraceError(
                             name=schema.Name,
                             error=f"Unexpected exception to get database schema [{schema.Name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -211,9 +208,14 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                 ),
             )
@@ -228,7 +230,7 @@ class GlueSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
 
         for page in self._get_glue_tables():
             for table in page.TableList:
@@ -238,9 +240,9 @@ class GlueSource(DatabaseServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
                         table_name=table_name,
                     )
                     if filter_by_table(
@@ -274,7 +276,7 @@ class GlueSource(DatabaseServiceSource):
                         StackTraceError(
                             name=table.Name,
                             error=f"Unexpected exception to get table [{table.Name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -297,11 +299,17 @@ class GlueSource(DatabaseServiceSource):
                 description=table.Description,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
-                    schema_name=self.context.database_schema.name.__root__,
-                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema,
+                    database_name=self.context.database,
                 ),
             )
             yield Either(right=table_request)
@@ -311,7 +319,7 @@ class GlueSource(DatabaseServiceSource):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -367,15 +375,11 @@ class GlueSource(DatabaseServiceSource):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def get_source_url(
         self,

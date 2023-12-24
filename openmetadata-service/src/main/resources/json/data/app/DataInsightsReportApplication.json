@@ -1,0 +1,12 @@
+{
+  "name": "DataInsightsReportApplication",
+  "displayName": "Data Insights Report",
+  "appConfiguration": {
+    "sendToAdmins": true,
+    "sendToTeams": true
+  },
+  "appSchedule": {
+    "scheduleType": "Custom",
+    "cronExpression": "0 59 23 ? * 1"
+  }
+}

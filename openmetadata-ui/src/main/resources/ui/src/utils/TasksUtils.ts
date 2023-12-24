@@ -12,38 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { EntityField } from 'constants/Feeds.constants';
 import { Change, diffWordsWithSpace } from 'diff';
-import { Chart } from 'generated/entity/data/chart';
-import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
-import { Pipeline, Task } from 'generated/entity/data/pipeline';
-import { Field, Topic } from 'generated/entity/data/topic';
-import { TagLabel } from 'generated/type/tagLabel';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
-import {
-  EntityData,
-  Option,
-  TaskAction,
-  TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
-import { getUserSuggestions } from 'rest/miscAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -52,6 +24,8 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import { TASK_SANITIZE_VALUE_REGEX } from '../constants/regex.constants';
 import {
   EntityTabs,
   EntityType,
@@ -59,8 +33,39 @@ import {
   TabSpecificField,
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { Chart } from '../generated/entity/data/chart';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
+import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { TagLabel } from '../generated/type/tagLabel';
+import { SearchSourceAlias } from '../interface/search.interface';
+import {
+  EntityData,
+  Option,
+  TaskAction,
+  TaskActionMode,
+} from '../pages/TasksPage/TasksPage.interface';
+import { getDashboardByFqn } from '../rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../rest/dataModelsAPI';
+import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
+import { getUserSuggestions } from '../rest/miscAPI';
+import { getMlModelByFQN } from '../rest/mlModelAPI';
+import { getPipelineByFqn } from '../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { getTopicByFqn } from '../rest/topicsAPI';
 import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
@@ -73,10 +78,12 @@ import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -89,7 +96,7 @@ export const getRequestDescriptionPath = (
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -109,7 +116,7 @@ export const getRequestTagsPath = (
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -129,7 +136,7 @@ export const getUpdateDescriptionPath = (
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -149,7 +156,7 @@ export const getUpdateTagsPath = (
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -190,6 +197,7 @@ export const fetchOptions = (
         label: hit._source.name ?? hit._source.displayName,
         value: hit._id,
         type: hit._source.entityType,
+        name: hit._source.name,
       }));
 
       setOptions(suggestOptions);
@@ -274,6 +282,8 @@ export const TASK_ENTITIES = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,
   EntityType.SEARCH_INDEX,
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
 ];
 
 export const getBreadCrumbList = (
@@ -307,12 +317,17 @@ export const getBreadCrumbList = (
 
   const service = (serviceCategory: ServiceCategory) => {
     return {
-      name: getEntityName(entityData.service),
-      url: getEntityName(entityData.service)
-        ? getServiceDetailsPath(entityData.service?.name || '', serviceCategory)
+      name: getEntityName((entityData as Table).service),
+      url: getEntityName((entityData as Table).service)
+        ? getServiceDetailsPath(
+            (entityData as Table).service?.name ?? '',
+            serviceCategory
+          )
         : '',
-      imgSrc: entityData.serviceType
-        ? serviceTypeLogo(entityData.serviceType || '')
+      imgSrc: (entityData as Table).serviceType
+        ? serviceUtilClassBase.getServiceTypeLogo(
+            entityData as SearchSourceAlias
+          )
         : undefined,
     };
   };
@@ -369,6 +384,11 @@ export const getBreadCrumbList = (
         databaseSchema,
         activeEntity,
       ];
+    }
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM: {
+      return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
     }
 
     default:
@@ -484,6 +504,22 @@ export const fetchEntityDetail = (
         .catch((err: AxiosError) => showErrorToast(err));
 
       break;
+    case EntityType.GLOSSARY:
+      getGlossariesByName(entityFQN, TabSpecificField.TAGS)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.GLOSSARY_TERM:
+      getGlossaryTermByFQN(getDecodedFqn(entityFQN), TabSpecificField.TAGS)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
 
     default:
       break;
@@ -558,4 +594,106 @@ export const getEntityTaskDetails = (
   }
 
   return { fqnPart: [fqnPartTypes], entityField };
+};
+
+export const getEntityTableName = (
+  entityType: EntityType,
+  name: string,
+  entityData: EntityData
+): string => {
+  if (name.includes('.')) {
+    return name;
+  }
+  let entityReference;
+
+  switch (entityType) {
+    case EntityType.TABLE:
+      entityReference = (entityData as Table).columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.TOPIC:
+      entityReference = (entityData as Topic).messageSchema?.schemaFields?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.DASHBOARD:
+      entityReference = (entityData as Dashboard).charts?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.PIPELINE:
+      entityReference = (entityData as Pipeline).tasks?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.MLMODEL:
+      entityReference = (entityData as Mlmodel).mlFeatures?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.CONTAINER:
+      entityReference = (entityData as Container).dataModel?.columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      entityReference = (entityData as SearchIndex).fields?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      entityReference = (entityData as DashboardDataModel).columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    default:
+      return name;
+  }
+
+  if (isUndefined(entityReference)) {
+    return name;
+  }
+
+  return getEntityName(entityReference);
+};
+
+export const getTaskMessage = ({
+  value,
+  entityType,
+  entityData,
+  field,
+  startMessage,
+}: {
+  value: string | null;
+  entityType: EntityType;
+  entityData: EntityData;
+  field: string | null;
+  startMessage: string;
+}) => {
+  const sanitizeValue = value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '';
+
+  const entityColumnsName = field
+    ? `${field}/${getEntityTableName(entityType, sanitizeValue, entityData)}`
+    : '';
+
+  return `${startMessage} for ${entityType} ${getEntityName(
+    entityData
+  )} ${entityColumnsName}`;
 };

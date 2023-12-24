@@ -20,19 +20,24 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
   }
 
   @Override
-  public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ServletException {
+  public void handle(
+      String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
     this.doError(target, baseRequest, request, response);
   }
 
+  @Deprecated
   @Override
-  public void doError(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+  public void doError(
+      String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     setSecurityHeader(this.webConfiguration, response);
     String errorPage = ((ErrorPageMapper) this).getErrorPage(request);
     ContextHandler.Context context = baseRequest.getErrorContext();
     Dispatcher errorDispatcher =
-        errorPage != null && context != null ? (Dispatcher) context.getRequestDispatcher(errorPage) : null;
+        errorPage != null && context != null
+            ? (Dispatcher) context.getRequestDispatcher(errorPage)
+            : null;
 
     try {
       if (errorDispatcher != null) {
@@ -52,13 +57,15 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
         message = baseRequest.getResponse().getReason();
       }
 
-      this.generateAcceptableResponse(baseRequest, request, response, response.getStatus(), message);
+      this.generateAcceptableResponse(
+          baseRequest, request, response, response.getStatus(), message);
     } finally {
       baseRequest.setHandled(true);
     }
   }
 
-  public static void setSecurityHeader(OMWebConfiguration webConfiguration, HttpServletResponse response) {
+  public static void setSecurityHeader(
+      OMWebConfiguration webConfiguration, HttpServletResponse response) {
     // Attach Response Header from OM
     // Hsts
     webConfiguration.getHstsHeaderFactory().build().forEach(response::setHeader);

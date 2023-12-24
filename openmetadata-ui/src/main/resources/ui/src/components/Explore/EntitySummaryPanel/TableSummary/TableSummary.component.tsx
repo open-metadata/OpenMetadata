@@ -12,16 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -31,40 +22,63 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
+import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Table, TestSummary } from '../../../../generated/entity/data/table';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
-} from 'rest/tableAPI';
+} from '../../../../rest/tableAPI';
+import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { ROUTES } from '../../../../constants/constants';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Table, TestSummary } from '../../../../generated/entity/data/table';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { usePermissionProvider } from '../../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../PermissionProvider/PermissionProvider.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import './table-summary.less';
-import { TableSummaryProps } from './TableSummary.interface';
+import {
+  TableProfileDetails,
+  TableSummaryProps,
+} from './TableSummary.interface';
 
 function TableSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
-  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
+
+  const [profileData, setProfileData] = useState<TableProfileDetails>();
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
+  );
+
+  const tableDetails: Table = useMemo(
+    () => ({ ...entityDetails, ...profileData }),
+    [entityDetails, profileData]
   );
 
   const viewProfilerPermission = useMemo(
@@ -72,12 +86,12 @@ function TableSummary({
     [tablePermissions]
   );
 
-  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
+  const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
     try {
       const res = await getTableDetailsByFQN(
-        entityDetails.fullyQualifiedName ?? '',
+        getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
         'testSuite'
       );
 
@@ -91,23 +105,14 @@ function TableSummary({
 
   const fetchProfilerData = useCallback(async () => {
     try {
-      const profileResponse = await getLatestTableProfileByFqn(
-        entityDetails?.fullyQualifiedName || ''
+      const { profile, tableConstraints } = await getLatestTableProfileByFqn(
+        tableDetails?.fullyQualifiedName ?? ''
       );
-
-      const { profile, tableConstraints } = profileResponse;
-
-      setTableDetails((prev) => {
-        if (prev) {
-          return { ...prev, profile, tableConstraints };
-        } else {
-          return {} as Table;
-        }
-      });
+      setProfileData({ profile, tableConstraints });
     } catch (error) {
       // Error
     }
-  }, [entityDetails]);
+  }, [tableDetails]);
 
   const profilerSummary = useMemo(() => {
     if (!viewProfilerPermission) {
@@ -162,8 +167,6 @@ function TableSummary({
     );
   }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
-  const { columns } = tableDetails;
-
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
     [tableDetails]
@@ -173,22 +176,23 @@ function TableSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        columns,
+        tableDetails.columns,
+        highlights,
         tableDetails.tableConstraints
       ),
-    [columns, tableDetails]
+    [tableDetails]
   );
 
   const init = useCallback(async () => {
-    if (entityDetails.id && !isTourPage) {
+    if (tableDetails.id && !isTourPage) {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
-        entityDetails.id
+        tableDetails.id
       );
       setTablePermissions(tablePermission);
       const shouldFetchProfilerData =
         !isTableDeleted &&
-        entityDetails.service?.type === 'databaseService' &&
+        tableDetails.service?.type === 'databaseService' &&
         !isTourPage &&
         tablePermission;
 
@@ -199,11 +203,18 @@ function TableSummary({
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [entityDetails.fullyQualifiedName, isTourPage, isTableDeleted]);
+  }, [
+    tableDetails,
+    isTourPage,
+    isTableDeleted,
+    fetchProfilerData,
+    fetchAllTests,
+    getEntityPermission,
+  ]);
 
   useEffect(() => {
     init();
-  }, [entityDetails.id]);
+  }, [tableDetails.id]);
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
@@ -233,8 +244,19 @@ function TableSummary({
         <Divider className="m-y-xs" />
 
         <SummaryTagsDescription
-          entityDetail={entityDetails}
-          tags={tags ?? []}
+          entityDetail={tableDetails}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: tableDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

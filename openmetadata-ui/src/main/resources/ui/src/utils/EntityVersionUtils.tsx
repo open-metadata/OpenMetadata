@@ -12,14 +12,6 @@
  */
 
 import { Space, Typography } from 'antd';
-import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import {
-  ExtentionEntities,
-  ExtentionEntitiesKeys,
-} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import {
   ArrayChange,
   Change,
@@ -27,16 +19,7 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { EntityType } from 'enums/entity.enum';
-import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
-import { Field } from 'generated/entity/data/topic';
-import { MetadataService } from 'generated/entity/services/metadataService';
-import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
-import {
-  EntityDiffProps,
-  EntityDiffWithMultiChanges,
-} from 'interface/EntityVersion.interface';
 import {
   cloneDeep,
   isEmpty,
@@ -49,16 +32,34 @@ import {
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconTeamsGrey } from '../assets/svg/teams-grey.svg';
+import {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { getTeamAndUserDetailsPath, getUserPath } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
+import { EntityType } from '../enums/entity.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
+import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
 import { Column as TableColumn } from '../generated/entity/data/table';
+import { Field } from '../generated/entity/data/topic';
 import {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
+import { MetadataService } from '../generated/entity/services/metadataService';
+import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
+import {
+  EntityDiffProps,
+  EntityDiffWithMultiChanges,
+} from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs, getEntityName } from './EntityUtils';
 import {
+  AssetsChildForVersionPages,
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
@@ -95,9 +96,9 @@ export const getDiffByFieldName = (
   changeDescription: ChangeDescription,
   exactMatch?: boolean
 ): EntityDiffProps => {
-  const fieldsAdded = changeDescription?.fieldsAdded || [];
-  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
-  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  const fieldsAdded = changeDescription?.fieldsAdded ?? [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted ?? [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated ?? [];
   if (exactMatch) {
     return {
       added: fieldsAdded.find((ch) => ch.name === name),
@@ -122,7 +123,7 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
     return (
       <span
         className={diffChangeText}
-        data-testid={`${diffChangeText}-${part.value}`}
+        data-testid={`${diffChangeText}`}
         key={part.value}>
         {part.value}
       </span>
@@ -135,7 +136,7 @@ export const getAddedDiffElement = (text: string) => {
     <Typography.Text
       underline
       className="diff-added"
-      data-testid={`diff-added-${text}`}
+      data-testid="diff-added"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -147,7 +148,7 @@ export const getRemovedDiffElement = (text: string) => {
     <Typography.Text
       delete
       className="text-grey-muted"
-      data-testid={`diff-removed-${text}`}
+      data-testid="diff-removed"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -156,7 +157,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid={`diff-normal-${text}`} key={uniqueId()}>
+    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
       {text}
     </Typography.Text>
   );
@@ -168,7 +169,7 @@ export const getTextDiff = (
   latestText?: string
 ) => {
   if (isEmpty(oldText) && isEmpty(newText)) {
-    return latestText || '';
+    return latestText ?? '';
   }
 
   const diffArr = diffWords(toString(oldText), toString(newText));
@@ -276,38 +277,87 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
   }
 };
 
-const getSummaryText = (
-  isPrefix: boolean,
-  fieldsChanged: FieldChange[],
-  actionType: string,
-  actionText: string
-) => {
-  const prefix = isPrefix ? `+ ${actionType}` : '';
+const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
+  const statusFieldDiff = fieldsChanged.find(
+    (field) => field.name === 'status'
+  );
+  let approvalText = '';
 
-  return `${prefix} ${fieldsChanged.map(summaryFormatter).join(', ')} ${
-    !isPrefix
-      ? t('label.has-been-action-type-lowercase', {
-          actionType: actionText,
-        })
-      : ''
-  } `;
+  if (statusFieldDiff) {
+    approvalText = t('message.glossary-term-status', {
+      status:
+        statusFieldDiff.newValue === 'Approved'
+          ? t('label.approved')
+          : t('label.rejected'),
+    });
+  }
+
+  return approvalText;
 };
 
-export const getSummary = (
-  changeDescription: ChangeDescription,
-  isPrefix = false
-) => {
-  const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
-  const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
+const getSummaryText = ({
+  isPrefix,
+  fieldsChanged,
+  actionType,
+  actionText,
+  isGlossaryTerm,
+}: {
+  isPrefix: boolean;
+  fieldsChanged: FieldChange[];
+  actionType: string;
+  actionText: string;
+  isGlossaryTerm?: boolean;
+}) => {
+  const prefix = isPrefix ? `+ ${actionType}` : '';
+  const filteredFieldsChanged = isGlossaryTerm
+    ? fieldsChanged.filter((field) => field.name !== 'status')
+    : fieldsChanged;
+
+  let summaryText = '';
+
+  if (!isEmpty(filteredFieldsChanged)) {
+    summaryText = `${prefix} ${filteredFieldsChanged
+      .map(summaryFormatter)
+      .join(', ')} ${
+      !isPrefix
+        ? t('label.has-been-action-type-lowercase', {
+            actionType: actionText,
+          })
+        : ''
+    } `;
+  }
+
+  const isGlossaryTermStatusUpdated = fieldsChanged.some(
+    (field) => field.name === 'status'
+  );
+
+  const glossaryTermApprovalText = isGlossaryTermStatusUpdated
+    ? getGlossaryTermApprovalText(fieldsChanged)
+    : '';
+
+  return `${glossaryTermApprovalText} ${summaryText}`;
+};
+
+export const getSummary = ({
+  changeDescription,
+  isPrefix = false,
+  isGlossaryTerm = false,
+}: {
+  changeDescription: ChangeDescription;
+  isPrefix?: boolean;
+  isGlossaryTerm?: boolean;
+}) => {
+  const fieldsAdded = [...(changeDescription?.fieldsAdded ?? [])];
+  const fieldsDeleted = [...(changeDescription?.fieldsDeleted ?? [])];
   const fieldsUpdated = [
     ...(changeDescription?.fieldsUpdated?.filter(
       (field) => field.name !== 'deleted'
-    ) || []),
+    ) ?? []),
   ];
   const isDeleteUpdated = [
     ...(changeDescription?.fieldsUpdated?.filter(
       (field) => field.name === 'deleted'
-    ) || []),
+    ) ?? []),
   ];
 
   return (
@@ -329,32 +379,33 @@ export const getSummary = (
       ) : null}
       {fieldsAdded?.length > 0 ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsAdded,
-            t('label.added'),
-            t('label.added-lowercase')
-          )}
+            fieldsChanged: fieldsAdded,
+            actionType: t('label.added'),
+            actionText: t('label.added-lowercase'),
+          })}
         </Typography.Paragraph>
       ) : null}
       {fieldsUpdated?.length ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsUpdated,
-            t('label.edited'),
-            t('label.updated-lowercase')
-          )}
+            fieldsChanged: fieldsUpdated,
+            actionType: t('label.edited'),
+            actionText: t('label.updated-lowercase'),
+            isGlossaryTerm,
+          })}
         </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsDeleted,
-            t('label.removed'),
-            t('label.deleted-lowercase')
-          )}
+            fieldsChanged: fieldsDeleted,
+            actionType: t('label.removed'),
+            actionText: t('label.deleted-lowercase'),
+          })}
         </Typography.Paragraph>
       ) : null}
     </Fragment>
@@ -378,9 +429,7 @@ export const removeDuplicateTags = (a: TagLabel[], b: TagLabel[]): TagLabel[] =>
     (item) => !b.map((secondItem) => secondItem.tagFQN).includes(item.tagFQN)
   );
 
-export function getEntityDescriptionDiff<
-  A extends TableColumn | ContainerColumn | Field
->(
+export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   entityDiff: EntityDiffProps,
   changedEntityName?: string,
   entityList: A[] = []
@@ -395,6 +444,35 @@ export function getEntityDescriptionDiff<
           oldDescription ?? '',
           newDescription ?? '',
           i.description
+        );
+      } else {
+        formatEntityData(i?.children as Array<A>);
+      }
+    });
+  };
+
+  formatEntityData(entityList);
+
+  return entityList;
+}
+
+export function getEntityDisplayNameDiff<
+  A extends TableColumn | ContainerColumn | Field
+>(
+  entityDiff: EntityDiffProps,
+  changedEntityName?: string,
+  entityList: A[] = []
+) {
+  const oldDisplayName = getChangedEntityOldValue(entityDiff);
+  const newDisplayName = getChangedEntityNewValue(entityDiff);
+
+  const formatEntityData = (arr: Array<A>) => {
+    arr?.forEach((i) => {
+      if (isEqual(i.name, changedEntityName)) {
+        i.displayName = getTextDiff(
+          oldDisplayName ?? '',
+          newDisplayName ?? '',
+          i.displayName
         );
       } else {
         formatEntityData(i?.children as Array<A>);
@@ -454,10 +532,8 @@ export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
       ) : (
         <ProfilePicture
           displayName={getEntityName(owner)}
-          id={owner.id ?? ''}
           name={owner.name ?? ''}
           textClass="text-xs"
-          type="circle"
           width="20"
         />
       )}
@@ -573,26 +649,31 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
 ) {
-  const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+  try {
+    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
 
-  newCol.forEach((col) => {
-    const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, col.name) || updateAll) {
-          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', i.description ?? '');
-          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', i.name);
-          if (!isEmpty(i.children)) {
-            formatColumnData(i?.children as Array<A>, true);
+    newCol.forEach((col) => {
+      const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, col.name) || updateAll) {
+            i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getTextDiff('', i.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', i.name);
+            if (!isEmpty(i.children)) {
+              formatColumnData(i?.children as Array<A>, true);
+            }
+          } else {
+            formatColumnData(i?.children as Array<A>);
           }
-        } else {
-          formatColumnData(i?.children as Array<A>);
-        }
-      });
-    };
-    formatColumnData(colList);
-  });
+        });
+      };
+      formatColumnData(colList);
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+  }
 }
 
 export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -600,27 +681,32 @@ export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
   colList: A[] = [],
   changedEntity = ''
 ) {
-  const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-  const newColumns = getNewColumnFromColDiff(newCol);
+  try {
+    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
+    const newColumns = getNewColumnFromColDiff(newCol);
 
-  const insertNewColumn = (
-    changedEntityField: string,
-    colArray: Array<TableColumn | ContainerColumn>
-  ) => {
-    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
-    if (isEmpty(changedEntityField)) {
-      const nonExistingColumns = newColumns.filter((newColumn) =>
-        isUndefined(colArray.find((col) => col.name === newColumn.name))
-      );
-      colArray.unshift(...nonExistingColumns);
-    } else {
-      const parentField = fieldsArray.shift();
-      const arr = colArray.find((col) => col.name === parentField)?.children;
+    const insertNewColumn = (
+      changedEntityField: string,
+      colArray: Array<TableColumn | ContainerColumn>
+    ) => {
+      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+      if (isEmpty(changedEntityField)) {
+        const nonExistingColumns = newColumns.filter((newColumn) =>
+          isUndefined(colArray.find((col) => col.name === newColumn.name))
+        );
+        colArray.unshift(...nonExistingColumns);
+      } else {
+        const parentField = fieldsArray.shift();
+        const arr = colArray.find((col) => col.name === parentField)?.children;
 
-      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
-    }
-  };
-  insertNewColumn(changedEntity, colList);
+        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+      }
+    };
+    insertNewColumn(changedEntity, colList);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+  }
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -643,9 +729,9 @@ export const getAllDiffByFieldName = (
   changeDescription: ChangeDescription,
   exactMatch?: boolean
 ): EntityDiffWithMultiChanges => {
-  const fieldsAdded = changeDescription?.fieldsAdded || [];
-  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
-  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  const fieldsAdded = changeDescription?.fieldsAdded ?? [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted ?? [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated ?? [];
   if (exactMatch) {
     return {
       added: fieldsAdded.filter((ch) => ch.name === name),
@@ -708,6 +794,10 @@ export function getColumnsDataWithVersionChanges<
     } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
       newColumnsList = [
         ...getEntityTagDiff(columnDiff, changedColName, colList),
+      ];
+    } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
+      newColumnsList = [
+        ...getEntityDisplayNameDiff(columnDiff, changedColName, colList),
       ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName

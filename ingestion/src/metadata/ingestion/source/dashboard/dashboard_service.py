@@ -30,9 +30,6 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -49,11 +46,12 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -72,6 +70,7 @@ LINEAGE_MAP = {
     Dashboard: "dashboard",
     Table: "table",
     DashboardDataModel: "dashboardDataModel",
+    Chart: "chart",
 }
 
 
@@ -102,6 +101,7 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
@@ -110,7 +110,7 @@ class DashboardServiceTopology(ServiceTopology):
             ),
         ],
         children=["bulk_data_model", "dashboard"],
-        post_process=["mark_dashboards_as_deleted"],
+        post_process=["mark_dashboards_as_deleted", "mark_datamodels_as_deleted"],
     )
     # Dashboard Services have very different approaches when
     # when dealing with data models. Tableau has the models
@@ -123,9 +123,10 @@ class DashboardServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=DashboardDataModel,
-                context="dataModel",
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
+                nullable=True,
+                use_cache=True,
             )
         ],
     )
@@ -140,6 +141,7 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
+                use_cache=True,
             ),
             NodeStage(
                 type_=DashboardDataModel,
@@ -149,12 +151,14 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
+                use_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=User,
@@ -164,14 +168,12 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=AddLineageRequest,
-                context="lineage",
                 processor="yield_dashboard_lineage",
                 consumer=["dashboard_service"],
                 nullable=True,
             ),
             NodeStage(
                 type_=UsageRequest,
-                context="usage",
                 processor="yield_dashboard_usage",
                 consumer=["dashboard_service"],
                 nullable=True,
@@ -196,16 +198,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
     dashboard_source_state: Set = set()
+    datamodel_source_state: Set = set()
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -215,8 +217,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.client
         self.test_connection()
-
-        self.metadata_client = OpenMetadata(self.metadata_config)
 
     @abstractmethod
     def yield_dashboard(
@@ -289,8 +289,27 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if hasattr(self.context, "dataModels") and self.context.dataModels:
             for datamodel in self.context.dataModels:
                 try:
+                    datamodel_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.dashboard_service,
+                        data_model_name=datamodel,
+                    )
+                    datamodel_entity = self.metadata.get_by_name(
+                        entity=DashboardDataModel, fqn=datamodel_fqn
+                    )
+
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.context.dashboard_service,
+                        dashboard_name=self.context.dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(
+                        entity=Dashboard, fqn=dashboard_fqn
+                    )
                     yield self._get_add_lineage_request(
-                        to_entity=self.context.dashboard, from_entity=datamodel
+                        to_entity=dashboard_entity, from_entity=datamodel_entity
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -350,23 +369,48 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDashboards,
-                params={
-                    "service": self.context.dashboard_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.dashboard_service},
+            )
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark the datamodels as deleted
+        """
+        if self.source_config.markDeletedDataModels:
+            logger.info("Mark Deleted Datamodels set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DashboardDataModel,
+                entity_source_state=self.datamodel_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                params={"service": self.context.dashboard_service},
             )
 
     def process_owner(self, dashboard_details):
+        """
+        Method to process the dashboard onwers
+        """
         try:
-            owner = self.get_owner_details(  # pylint: disable=assignment-from-none
-                dashboard_details=dashboard_details
-            )
-            if owner and self.source_config.includeOwners:
-                self.metadata.patch_owner(
-                    entity=Dashboard,
-                    source=self.context.dashboard,
-                    owner=owner,
-                    force=False,
+            if self.source_config.includeOwners:
+                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                    dashboard_details=dashboard_details
                 )
+                if owner:
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.context.dashboard_service,
+                        dashboard_name=self.context.dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(
+                        entity=Dashboard, fqn=dashboard_fqn
+                    )
+                    self.metadata.patch_owner(
+                        entity=Dashboard,
+                        source=dashboard_entity,
+                        owner=owner,
+                        force=False,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
@@ -383,6 +427,21 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.dashboard_source_state.add(dashboard_fqn)
+
+    def register_record_datamodel(
+        self, datamodel_requst: CreateDashboardDataModelRequest
+    ) -> None:
+        """
+        Mark the datamodel record as scanned and update the datamodel_source_state
+        """
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=datamodel_requst.service.__root__,
+            data_model_name=datamodel_requst.name.__root__,
+        )
+
+        self.datamodel_source_state.add(datamodel_fqn)
 
     def get_owner_details(  # pylint: disable=useless-return
         self, dashboard_details  # pylint: disable=unused-argument
@@ -471,7 +530,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
+    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
         """
         We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
         names.
@@ -482,15 +541,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         :return: Entity FQN derived from context
         """
         context_names = [
-            self.context.__dict__[dependency].name.__root__
+            self.context.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
 
-        if isinstance(entity_request, CreateDashboardDataModelRequest):
+        if isinstance(stage.type_, DashboardDataModel):
             context_names.append("model")
 
         return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_request.name.__root__
+            *context_names, entity_name
         )
 
     def check_database_schema_name(self, database_schema_name: str):
@@ -520,3 +579,44 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             f"Projects are not supported for {self.service_connection.type.name}"
         )
         return None
+
+    def create_patch_request(
+        self, original_entity: Entity, create_request: C
+    ) -> PatchRequest:
+        """
+        Method to get the PatchRequest object
+        To be overridden by the process if any custom logic is to be applied
+        """
+        patch_request = PatchRequest(
+            original_entity=original_entity,
+            new_entity=original_entity.copy(update=create_request.__dict__),
+        )
+        if isinstance(original_entity, Dashboard):
+            # For patch the charts need to be entity ref instead of fqn
+            charts_entity_ref_list = []
+            for chart_fqn in create_request.charts or []:
+                chart_entity = self.metadata.get_by_name(entity=Chart, fqn=chart_fqn)
+                if chart_entity:
+                    charts_entity_ref_list.append(
+                        EntityReference(
+                            id=chart_entity.id.__root__,
+                            type=LINEAGE_MAP[type(chart_entity)],
+                        )
+                    )
+            patch_request.new_entity.charts = charts_entity_ref_list
+
+            # For patch the datamodels need to be entity ref instead of fqn
+            datamodel_entity_ref_list = []
+            for datamodel_fqn in create_request.dataModels or []:
+                datamodel_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel, fqn=datamodel_fqn
+                )
+                if datamodel_entity:
+                    datamodel_entity_ref_list.append(
+                        EntityReference(
+                            id=datamodel_entity.id.__root__,
+                            type=LINEAGE_MAP[type(datamodel_entity)],
+                        )
+                    )
+            patch_request.new_entity.dataModels = datamodel_entity_ref_list
+        return patch_request

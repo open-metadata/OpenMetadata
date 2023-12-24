@@ -69,7 +69,7 @@ const mockProps = {
   isLoading: false,
 };
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="richTextEditor">RichTextEditor</div>)

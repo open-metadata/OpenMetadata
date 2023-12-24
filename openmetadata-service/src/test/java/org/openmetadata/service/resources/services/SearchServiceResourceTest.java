@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -29,12 +30,12 @@ import org.openmetadata.schema.services.connections.search.ElasticSearchConnecti
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends EntityResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest
+    extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,
@@ -76,12 +77,6 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create StorageService with mandatory connection field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -90,15 +85,23 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-    createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
+    createAndCheckEntity(
+        createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     SearchConnection connection1 =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
+        new SearchConnection()
+            .withConfig(
+                new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
     SearchService service =
-        createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withDescription(null).withConnection(connection1),
+            ADMIN_AUTH_HEADERS);
 
     ElasticSearchConnection credentials2 =
         new ElasticSearchConnection().withHostPort(new URI("https://localhost:9400"));
@@ -106,12 +109,13 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
 
     // Update SearchService description and connection
 
-    CreateSearchService update = createRequest(test).withDescription("description1").withConnection(connection2);
+    CreateSearchService update =
+        createRequest(test).withDescription("description1").withConnection(connection2);
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     fieldUpdated(change, "connection", connection1, connection2);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -119,15 +123,19 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
     SearchService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    SearchService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    SearchService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     SearchService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -145,13 +153,14 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
         .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
         .withConnection(
             new SearchConnection()
-                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
+                .withConfig(
+                    new ElasticSearchConnection()
+                        .withHostPort(CommonUtil.getUri("http://localhost:9200"))));
   }
 
   @Override
   public void validateCreatedEntity(
-      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     SearchConnection expectedConnection = createRequest.getConnection();
     SearchConnection actualConnection = service.getConnection();
@@ -159,10 +168,9 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Override
-  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(
+      SearchService expected, SearchService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
-
   }
 
   @Override
@@ -185,11 +193,14 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
@@ -199,12 +210,14 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
       CreateSearchService.SearchServiceType serviceType) {
     if (expectedConnection != null && actualConnection != null) {
       if (serviceType == CreateSearchService.SearchServiceType.ElasticSearch) {
-        ElasticSearchConnection expectedESConnection = (ElasticSearchConnection) expectedConnection.getConfig();
+        ElasticSearchConnection expectedESConnection =
+            (ElasticSearchConnection) expectedConnection.getConfig();
         ElasticSearchConnection actualESConnection;
         if (actualConnection.getConfig() instanceof ElasticSearchConnection) {
           actualESConnection = (ElasticSearchConnection) actualConnection.getConfig();
         } else {
-          actualESConnection = JsonUtils.convertValue(actualConnection.getConfig(), ElasticSearchConnection.class);
+          actualESConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), ElasticSearchConnection.class);
         }
         assertEquals(expectedESConnection.getHostPort(), actualESConnection.getHostPort());
       }

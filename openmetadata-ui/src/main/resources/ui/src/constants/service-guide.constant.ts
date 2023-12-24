@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const addServiceGuide = [
   {
@@ -186,5 +186,6 @@ export const addDBTIngestionGuide = [
 
 export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
 export const CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY = 'CustomLogoConfiguration';
+export const CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY = 'CustomLoginConfiguration';
 export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
 export const OPEN_METADATA = 'OpenMetadata';

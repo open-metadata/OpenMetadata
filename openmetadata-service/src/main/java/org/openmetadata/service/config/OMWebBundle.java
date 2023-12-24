@@ -20,7 +20,7 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
   public void initialize(Bootstrap<?> bootstrap) {}
 
   @Override
-  public void run(T configuration, Environment environment) throws Exception {
+  public void run(T configuration, Environment environment) {
     OMWebConfiguration webConfig = this.getWebConfiguration(configuration);
     String urlPattern = this.deriveUrlPattern(webConfig.getUriPath());
     Map<String, String> headers = new HashMap<>();
@@ -75,7 +75,7 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
   }
 
   private String deriveUrlPattern(String uri) {
-    return uri.endsWith("/") ? uri + "*" : uri + "/" + "*";
+    return uri.endsWith("/") ? uri + "*" : uri + "/*";
   }
 
   public abstract OMWebConfiguration getWebConfiguration(T var1);

@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -41,7 +40,6 @@ import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -59,10 +57,9 @@ public class UsageResource {
   private final UsageRepository dao;
   private final Authorizer authorizer;
 
-  public UsageResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "UsageRepository must not be null");
+  public UsageResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-    this.dao = new UsageRepository(dao);
+    this.dao = Entity.getUsageRepository();
   }
 
   @GET
@@ -76,7 +73,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityUsage get(
@@ -88,19 +88,21 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date (default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format. (default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -118,7 +120,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public EntityUsage getByName(
@@ -137,16 +142,17 @@ public class UsageResource {
           @PathParam("fqn")
           String fqn,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date (default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format (default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fqn);
+    ResourceContext<?> resourceContext = new ResourceContext<>(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -165,7 +171,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -177,11 +186,12 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.create(entity, id, usage).toResponse();
   }
@@ -198,7 +208,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -210,11 +223,12 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, id, null);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
@@ -231,7 +245,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createByName(
@@ -251,7 +268,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -268,7 +285,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateByName(
@@ -288,7 +308,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -318,7 +338,7 @@ public class UsageResource {
           @PathParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();

@@ -29,8 +29,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
@@ -40,7 +40,9 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/services/testConnectionDefinitions")
-@Api(value = "Test Connection Definitions collection", tags = "Test Connection Definitions collection")
+@Api(
+    value = "Test Connection Definitions collection",
+    tags = "Test Connection Definitions collection")
 @Tag(name = "Test Connection Definitions")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
@@ -51,8 +53,8 @@ public class TestConnectionDefinitionResource
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   static final String FIELDS = "owner";
 
-  public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);
+  public TestConnectionDefinitionResource(Authorizer authorizer) {
+    super(Entity.TEST_CONNECTION_DEFINITION, authorizer);
   }
 
   @Override
@@ -88,7 +90,10 @@ public class TestConnectionDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = TestConnectionDefinitionResource.TestConnectionDefinitionList.class)))
+                        @Schema(
+                            implementation =
+                                TestConnectionDefinitionResource.TestConnectionDefinitionList
+                                    .class)))
       })
   public ResultList<TestConnectionDefinition> list(
       @Context UriInfo uriInfo,
@@ -99,7 +104,8 @@ public class TestConnectionDefinitionResource
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Limit the number test connection definitions returned. (1 to 1000000, default = " + "10)")
+              description =
+                  "Limit the number test connection definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -123,7 +129,8 @@ public class TestConnectionDefinitionResource
           Include include) {
     ListFilter filter = new ListFilter(include);
 
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -139,11 +146,16 @@ public class TestConnectionDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = TestConnectionDefinition.class))),
-        @ApiResponse(responseCode = "404", description = "Test Connection Definition for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test Connection Definition for instance {id} is not found")
       })
   public TestConnectionDefinition get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the test connection definition", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(
+              description = "Id of the test connection definition",
+              schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -174,11 +186,14 @@ public class TestConnectionDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = TestConnectionDefinition.class))),
-        @ApiResponse(responseCode = "404", description = "Test Connection Definition for instance {name} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test Connection Definition for instance {name} is not found")
       })
   public TestConnectionDefinition getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the test definition", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the test definition", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Context SecurityContext securityContext,
       @Parameter(

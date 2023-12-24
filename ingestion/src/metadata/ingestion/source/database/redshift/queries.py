@@ -72,7 +72,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         s.schema_name,
         q.starttime AS start_time,
         q.endtime AS end_time,
-        datediff(second,q.starttime,q.endtime) AS duration,
+        datediff(millisecond,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
     FROM queries AS q
         LEFT JOIN scans AS s
@@ -306,8 +306,7 @@ with SP_HISTORY as (
         endtime as procedure_end_time,
         pid as procedure_session_id
     from SVL_STORED_PROC_CALL
-    where database = '{database_name}'
-      and aborted = 0
+    where aborted = 0
       and starttime >= '{start_date}'
 ),
 Q_HISTORY as (
@@ -320,6 +319,7 @@ Q_HISTORY as (
             when querytxt ilike '%%CREATE%%AS%%' then 'CREATE_TABLE_AS_SELECT'
             when querytxt ilike '%%INSERT%%' then 'INSERT'
         else 'UNKNOWN' end query_type,
+        database as query_database_name,
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
@@ -330,7 +330,6 @@ Q_HISTORY as (
     where label not in ('maintenance', 'metrics', 'health')
       and querytxt not like '/* {{"app": "OpenMetadata", %%}} */%%'
       and querytxt not like '/* {{"app": "dbt", %%}} */%%'
-      and database = '{database_name}'
       and starttime >= '{start_date}'
       and userid <> 1
 )
@@ -342,6 +341,8 @@ select
     q.query_id,
     q.query_text,
     q.query_type,
+    q.query_database_name,
+    null as query_schema_name,
     q.query_start_time,
     q.query_end_time,
     q.query_user_name

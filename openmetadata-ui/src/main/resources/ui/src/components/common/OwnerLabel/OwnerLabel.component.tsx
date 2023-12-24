@@ -12,26 +12,32 @@
  */
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
-import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import { ReactComponent as IconUser } from 'assets/svg/user.svg';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
-import { OwnerType } from 'enums/user.enum';
-import { EntityReference } from 'generated/entity/data/table';
-import { isUndefined } from 'lodash';
+import classNames from 'classnames';
+import { isNil } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../constants/constants';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { getEntityName } from '../../../utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 
 export const OwnerLabel = ({
   owner,
+  className,
   onUpdate,
   hasPermission,
   ownerDisplayName,
 }: {
   owner?: EntityReference;
+  className?: string;
   onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
@@ -40,7 +46,7 @@ export const OwnerLabel = ({
   const { t } = useTranslation();
 
   const profilePicture = useMemo(() => {
-    if (isUndefined(owner)) {
+    if (isNil(owner)) {
       return (
         <Icon
           component={IconUser}
@@ -57,16 +63,17 @@ export const OwnerLabel = ({
         style={{ fontSize: '18px' }}
       />
     ) : (
-      <ProfilePicture
-        displayName={displayName}
-        id={owner.id}
-        key="profile-picture"
-        name={owner.name ?? ''}
-        type="circle"
-        width="18"
-      />
+      <div style={{ flexBasis: '18px' }}>
+        <ProfilePicture
+          displayName={displayName}
+          key="profile-picture"
+          name={owner.name ?? ''}
+          type="circle"
+          width="18"
+        />
+      </div>
     );
-  }, [owner]);
+  }, [owner, displayName]);
 
   return (
     <div className="d-flex gap-2 items-center" data-testid="owner-label">
@@ -74,7 +81,10 @@ export const OwnerLabel = ({
 
       {displayName ? (
         <Link
-          className="text-primary font-medium text-xs no-underline"
+          className={classNames(
+            'text-primary font-medium text-xs no-underline',
+            className
+          )}
           data-testid="owner-link"
           to={
             owner?.type === 'team'
@@ -85,7 +95,7 @@ export const OwnerLabel = ({
         </Link>
       ) : (
         <Typography.Text
-          className="font-medium text-xs"
+          className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>

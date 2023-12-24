@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Tag } from 'generated/entity/classification/tag';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
 import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';
 
 export type SearchEntityHits = SearchResponse<
+  | SearchIndex.DATA_PRODUCT
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
@@ -56,7 +57,7 @@ export const formatDataResponse = (
     newData.owner = get(hit, '_source.owner');
     newData.highlight = hit.highlight;
     newData.entityType = hit._source.entityType;
-    newData.deleted = hit._source.deleted;
+    newData.deleted = get(hit, '_source.deleted');
 
     if ('tableType' in source) {
       newData.tableType = source.tableType ?? '';

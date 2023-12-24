@@ -23,7 +23,13 @@ from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import Dialects, is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import (
+    FLOAT_SET,
+    Dialects,
+    is_concatenable,
+    is_date_time,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -50,6 +56,21 @@ def _(element, compiler, **kw):
     """
     proc = compiler.process(element.clauses, **kw)
     return f"avg(cast({proc} as decimal))"
+
+
+@compiles(avg, Dialects.Trino)
+def _(element, compiler, **kw):
+    proc = compiler.process(element.clauses, **kw)
+    first_clause = element.clauses.clauses[0]
+    # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
+    # or if the type of the first clause is date time
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
+        # If the condition is true, return the mean value of the column
+        return f"avg({proc})"
+    return f"IF(is_nan(avg({proc})), NULL, avg({proc}))"
 
 
 class Mean(StaticMetric):

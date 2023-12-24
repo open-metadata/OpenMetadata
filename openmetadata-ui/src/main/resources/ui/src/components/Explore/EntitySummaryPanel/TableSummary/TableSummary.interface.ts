@@ -11,22 +11,29 @@
  *  limitations under the License.
  */
 
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import {
   Table,
   TableType,
   TagLabel,
 } from '../../../../generated/entity/data/table';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface TableSummaryProps {
   entityDetails: Table;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 export interface BasicTableInfo {
   Type: TableType | string;
   Queries: string;
   Columns: string;
+}
+
+export interface TableProfileDetails {
+  profile: Table['profile'];
+  tableConstraints: Table['tableConstraints'];
 }

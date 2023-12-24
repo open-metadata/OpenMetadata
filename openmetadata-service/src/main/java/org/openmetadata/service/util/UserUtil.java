@@ -33,6 +33,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -48,7 +49,8 @@ public final class UserUtil {
     // Private constructor for util class
   }
 
-  public static void addUsers(AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
+  public static void addUsers(
+      AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
       for (String username : adminUsers) {
         createOrUpdateUser(authProvider, username, domain, isAdmin);
@@ -58,7 +60,8 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
+  private static void createOrUpdateUser(
+      AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {
@@ -68,15 +71,17 @@ public final class UserUtil {
 
       // Fetch Original User, is available
       User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
-      if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
+      if (Boolean.FALSE.equals(originalUser.getIsBot())
+          && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
         // Update Auth Mechanism if not present, and send mail to the user
         if (authProvider.equals(AuthProvider.BASIC)) {
           if (originalUser.getAuthenticationMechanism() == null
               || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-            updateUserWithHashedPwd(updatedUser, getPassword());
-            EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+            String randomPwd = getPassword();
+            updateUserWithHashedPwd(updatedUser, randomPwd);
+            EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
           }
         } else {
           updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
@@ -88,17 +93,20 @@ public final class UserUtil {
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        LOG.error(
-            String.format(
-                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                originalUser.getName()));
+        if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+          LOG.error(
+              String.format(
+                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                  originalUser.getName()));
+        }
       }
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {
-        updateUserWithHashedPwd(updatedUser, getPassword());
-        EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+        String randomPwd = getPassword();
+        updateUserWithHashedPwd(updatedUser, randomPwd);
+        EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
       }
     }
 
@@ -145,7 +153,7 @@ public final class UserUtil {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
-        .withFullyQualifiedName(name)
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
@@ -172,7 +180,8 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
-    AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
+    AuthenticationMechanism authMechanism =
+        originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
     if (authMechanism == null) {
       authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
@@ -183,7 +192,8 @@ public final class UserUtil {
     return addOrUpdateUser(user);
   }
 
-  private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
+  private static JWTAuthMechanism buildJWTAuthMechanism(
+      OpenMetadataJWTClientConfig jwtClientConfig, User user) {
     return Objects.isNull(jwtClientConfig) || nullOrEmpty(jwtClientConfig.getJwtToken())
         ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
         : new JWTAuthMechanism()
@@ -191,14 +201,17 @@ public final class UserUtil {
             .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
   }
 
-  private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
+  private static AuthenticationMechanism buildAuthMechanism(
+      AuthenticationMechanism.AuthType authType, Object config) {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
   private static User retrieveWithAuthMechanism(User user) {
-    EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    EntityRepository<User> userRepository =
+        (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      return userRepository.getByName(null, user.getName(), new Fields(Set.of("authenticationMechanism")));
+      return userRepository.getByName(
+          null, user.getName(), new Fields(Set.of("authenticationMechanism")));
     } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
@@ -206,20 +219,13 @@ public final class UserUtil {
   }
 
   public static List<EntityReference> getRoleForBot(String botName) {
-    String botRole;
-    switch (botName) {
-      case Entity.INGESTION_BOT_NAME:
-        botRole = Entity.INGESTION_BOT_ROLE;
-        break;
-      case Entity.QUALITY_BOT_NAME:
-        botRole = Entity.QUALITY_BOT_ROLE;
-        break;
-      case Entity.PROFILER_BOT_NAME:
-        botRole = Entity.PROFILER_BOT_ROLE;
-        break;
-      default:
-        throw new IllegalArgumentException("No role found for the bot " + botName);
-    }
+    String botRole =
+        switch (botName) {
+          case Entity.INGESTION_BOT_NAME -> Entity.INGESTION_BOT_ROLE;
+          case Entity.QUALITY_BOT_NAME -> Entity.QUALITY_BOT_ROLE;
+          case Entity.PROFILER_BOT_NAME -> Entity.PROFILER_BOT_ROLE;
+          default -> throw new IllegalArgumentException("No role found for the bot " + botName);
+        };
     return listOf(RoleResource.getRole(botRole));
   }
 }

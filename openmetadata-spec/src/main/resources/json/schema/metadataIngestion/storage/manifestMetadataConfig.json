@@ -10,9 +10,9 @@
       "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestMetadataEntry",
       "type": "object",
       "properties": {
-        "bucketName": {
-          "title": "Bucket Name",
-          "description": "The bucket name containing the data path to be ingested",
+        "containerName": {
+          "title": "Container Name",
+          "description": "The top-level container name containing the data path to be ingested",
           "type": "string"
         },
         "dataPath": {
@@ -23,6 +23,12 @@
         "structureFormat": {
           "title": "Schema format",
           "description": "What's the schema format for the container, eg. avro, parquet, csv.",
+          "type": "string",
+          "default": null
+        },
+        "separator": {
+          "title": "Separator",
+          "description": "For delimited files such as CSV, what is the separator being used?",
           "type": "string",
           "default": null
         },
@@ -43,7 +49,7 @@
         }
       },
       "required": [
-        "bucketName" ,"dataPath"
+        "containerName" ,"dataPath"
       ]
     }
   },

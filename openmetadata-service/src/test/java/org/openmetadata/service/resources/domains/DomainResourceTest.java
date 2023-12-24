@@ -7,6 +7,9 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -23,12 +26,10 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
   public DomainResourceTest() {
@@ -38,64 +39,73 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   public void setupDomains(TestInfo test) throws IOException {
     DOMAIN = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN =
-        createEntity(createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+        createEntity(
+            createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DOMAIN1 = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void testDomainExpertsUpdate(TestInfo test) throws IOException {
-    CreateDomain create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
+    CreateDomain create =
+        createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
     Domain domain = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Add User2 as expert using PUT
+    // Version 0.2 - Add User2 with existing USER1 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
-    ChangeDescription change = getChangeDescription(domain.getVersion());
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove User2 as expert using PUT
+    // Version 0.3 - Remove User2 as expert using PUT leaving USER1 as the expert
     create.withExperts(List.of(USER1.getFullyQualifiedName()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(domain, MINOR_UPDATE);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Add User2 as expert using PATCH
+    // Add User2 back as expert using PATCH
+    // Version 0. 2 - Changes from this PATCH is consolidated with the previous change resulting in
+    // no change
     String json = JsonUtils.pojoToJson(domain);
     domain.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
-    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    change = getChangeDescription(domain, REVERT);
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, REVERT, change);
 
     // Remove User2 as expert using PATCH
+    // Version 0.1 - Changes from this PATCH is consolidated with the previous two changes resulting
+    // in deletion of USER2
     json = JsonUtils.pojoToJson(domain);
+    change = getChangeDescription(domain, REVERT);
     domain.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
-    fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, REVERT, change);
   }
 
   @Test
   void testDomainTypeUpdate(TestInfo test) throws IOException {
-    CreateDomain create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
+    CreateDomain create =
+        createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
     Domain domain = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Change domain type from AGGREGATE to SOURCE_ALIGNED using PUT
     create.withDomainType(DomainType.SOURCE_ALIGNED);
-    ChangeDescription change = getChangeDescription(domain.getVersion());
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
     fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.SOURCE_ALIGNED);
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change domain type from SOURCE_ALIGNED to CONSUMER_ALIGNED using PATCH
+    // Changes from this PATCH is consolidated with the previous changes
     String json = JsonUtils.pojoToJson(domain);
     domain.withDomainType(DomainType.CONSUMER_ALIGNED);
-    change = getChangeDescription(domain.getVersion());
-    fieldUpdated(change, "domainType", DomainType.SOURCE_ALIGNED, DomainType.CONSUMER_ALIGNED);
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    change = getChangeDescription(domain, CHANGE_CONSOLIDATED);
+    fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.CONSUMER_ALIGNED);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a domain with owner data consumer
-    CreateDomain create = createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    CreateDomain create =
+        createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
     Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of domain can create subdomain under it
@@ -114,7 +124,8 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   }
 
   @Override
-  public void validateCreatedEntity(Domain createdEntity, CreateDomain request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Domain createdEntity, CreateDomain request, Map<String, String> authHeaders) {
     // Entity specific validation
     assertEquals(request.getDomainType(), createdEntity.getDomainType());
     assertReference(request.getParent(), createdEntity.getParent());
@@ -130,13 +141,18 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   }
 
   @Override
-  public Domain validateGetWithDifferentFields(Domain domain, boolean byName) throws HttpResponseException {
+  public Domain validateGetWithDifferentFields(Domain domain, boolean byName)
+      throws HttpResponseException {
     Domain getDomain =
         byName
             ? getEntityByName(domain.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(domain.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNotNull(getDomain.getDomainType());
-    assertListNull(getDomain.getParent(), getDomain.getChildren(), getDomain.getOwner(), getDomain.getExperts());
+    assertListNull(
+        getDomain.getParent(),
+        getDomain.getChildren(),
+        getDomain.getOwner(),
+        getDomain.getExperts());
     String fields = "children,owner,parent,experts";
     getDomain =
         byName
@@ -153,21 +169,10 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
-    if (fieldName.startsWith("parent")) {
-      EntityReference expectedRef = (EntityReference) expected;
-      EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-      assertEquals(expectedRef.getId(), actualRef.getId());
-    } else if (fieldName.startsWith("experts")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

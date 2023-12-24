@@ -12,21 +12,28 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { TagLabel } from 'generated/type/tagLabel';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import {
+  Dashboard,
+  TagLabel,
+} from '../../../../generated/entity/data/dashboard';
+import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
-import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { ChartType } from '../../../DashboardDetails/DashboardDetails.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -36,6 +43,7 @@ interface DashboardSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function DashboardSummary({
@@ -43,6 +51,7 @@ function DashboardSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: DashboardSummaryProps) {
   const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartType[]>();
@@ -72,7 +81,7 @@ function DashboardSummary({
   }, [entityDetails]);
 
   const formattedChartsData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.CHART, charts),
+    () => getFormattedEntityData(SummaryEntityType.CHART, charts, highlights),
     [charts]
   );
 
@@ -80,7 +89,8 @@ function DashboardSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        entityDetails.dataModels
+        entityDetails.dataModels,
+        highlights
       ),
     [charts]
   );
@@ -100,7 +110,18 @@ function DashboardSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

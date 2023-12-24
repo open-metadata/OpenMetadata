@@ -12,32 +12,39 @@
  */
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { ROUTES } from 'constants/constants';
-import { TagSource } from 'generated/type/tagLabel';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
-
-import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { reduceColorOpacity } from 'utils/CommonUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { ROUTES } from '../../../constants/constants';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
-
-const color = '';
 
 const TagsV1 = ({
   tag,
   startWith,
   className,
   showOnlyName = false,
+  isVersionPage = false,
+  tagProps,
+  tooltipOverride,
+  tagType,
 }: TagsV1Props) => {
   const history = useHistory();
+  const color = useMemo(
+    () => (isVersionPage ? undefined : tag.style?.color),
+    [tag]
+  );
 
   const isGlossaryTag = useMemo(
     () => tag.source === TagSource.Glossary,
@@ -68,58 +75,85 @@ const TagsV1 = ({
 
   const tagName = useMemo(
     () =>
-      showOnlyName
-        ? tag.tagFQN
-            .split(FQN_SEPARATOR_CHAR)
-            .slice(-2)
-            .join(FQN_SEPARATOR_CHAR)
-        : tag.tagFQN,
+      getEntityName(tag) ||
+      getTagDisplay(
+        showOnlyName
+          ? tag.tagFQN
+              .split(FQN_SEPARATOR_CHAR)
+              .slice(-2)
+              .join(FQN_SEPARATOR_CHAR)
+          : tag.tagFQN
+      ),
     [showOnlyName, tag.tagFQN]
   );
 
   const redirectLink = useCallback(
     () =>
-      tag.source === TagSource.Glossary
+      (tagType ?? tag.source) === TagSource.Glossary
         ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
         : history.push(
             `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
           ),
-    [tag.source, tag.tagFQN]
+    [tagType, tag.source, tag.tagFQN]
   );
 
   const tagColorBar = useMemo(
     () =>
       color ? (
-        <div className="tag-color-bar" style={{ background: color }} />
+        <div className="tag-color-bar" style={{ borderColor: color }} />
       ) : null,
     [color]
   );
 
   const tagContent = useMemo(
     () => (
-      <div className="d-flex w-full">
+      <div className="d-flex w-full h-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
-          {startIcon}
+          {tag.style?.iconURL ? (
+            <img
+              className="m-r-xss"
+              data-testid="icon"
+              height={12}
+              src={tag.style.iconURL}
+              width={12}
+            />
+          ) : (
+            startIcon
+          )}
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
-            data-testid={`tag-${tag.tagFQN}`}>
-            {getTagDisplay(tagName)}
+            data-testid={`tag-${tag.tagFQN}`}
+            style={{ color: tag.style?.color }}>
+            {tagName}
           </Typography.Paragraph>
         </div>
       </div>
     ),
-    [startIcon, tagName, tag.tagFQN, tagColorBar]
+    [startIcon, tagName, tag, tagColorBar]
   );
 
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames(className, 'tag-chip tag-chip-content')}
+        className={classNames(
+          className,
+          {
+            'tag-highlight': Boolean(
+              (tag as HighlightedTagLabel).isHighlighted
+            ),
+          },
+          'tag-chip tag-chip-content'
+        )}
         data-testid="tags"
-        style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
-        onClick={() => redirectLink()}>
+        style={
+          color
+            ? { backgroundColor: reduceColorOpacity(color, 0.05) }
+            : undefined
+        }
+        onClick={redirectLink}
+        {...tagProps}>
         {tagContent}
       </Tag>
     ),
@@ -129,7 +163,7 @@ const TagsV1 = ({
   const addTagChip = useMemo(
     () => (
       <Tag
-        className="tag-chip tag-chip-add-button"
+        className={classNames('tag-chip tag-chip-add-button')}
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
           className="m-0 text-xs font-medium text-primary"
@@ -150,7 +184,7 @@ const TagsV1 = ({
       className="cursor-pointer"
       mouseEnterDelay={1.5}
       placement="bottomLeft"
-      title={getTagTooltip(tag.tagFQN, tag.description)}
+      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
       trigger="hover">
       {tagChip}
     </Tooltip>

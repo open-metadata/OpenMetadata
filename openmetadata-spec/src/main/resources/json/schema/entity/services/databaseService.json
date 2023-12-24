@@ -48,7 +48,10 @@
         "Dbt",
         "SapHana",
         "MongoDB",
-        "Couchbase"
+        "Couchbase",
+        "Greenplum",
+        "Doris",
+        "UnityCatalog"
       ],
       "javaEnums": [
         {
@@ -152,7 +155,17 @@
         },
         {
           "name": "Couchbase"
+        },
+        {
+          "name": "Greenplum"
+        },
+        {
+          "name": "Doris"
+        },
+        {
+          "name": "UnityCatalog"
         }
+        
       ]
     },
     "databaseConnection": {
@@ -260,6 +273,15 @@
             },
             {
               "$ref": "./connections/database/couchbaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/greenplumConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dorisConnection.json"
+            },
+            {
+              "$ref": "./connections/database/unityCatalogConnection.json"
             }
           ]
         }
@@ -339,6 +361,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "domain" : {
       "description": "Domain the Database service belongs to.",

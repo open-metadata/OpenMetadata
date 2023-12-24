@@ -89,12 +89,12 @@ EXPECTED_PIPELINE_STATUS = [
                 TaskStatus(
                     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
                     executionStatus=StatusType.Pending.value,
-                    startTime=1655482894,
+                    startTime=1655482894000,
                     endTime=None,
                     logLink=f"{MOCK_CONNECTION_URI_PATH}/status",
                 )
             ],
-            timestamp=1655482894,
+            timestamp=1655482894000,
         ),
     ),
     OMetaPipelineStatus(
@@ -105,12 +105,12 @@ EXPECTED_PIPELINE_STATUS = [
                 TaskStatus(
                     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
                     executionStatus=StatusType.Successful.value,
-                    startTime=1655393914,
-                    endTime=1655394054,
+                    startTime=1655393914000,
+                    endTime=1655394054000,
                     logLink=f"{MOCK_CONNECTION_URI_PATH}/status",
                 )
             ],
-            timestamp=1655393914,
+            timestamp=1655393914000,
         ),
     ),
 ]
@@ -170,8 +170,10 @@ class AirbyteUnitTest(TestCase):
             mock_airbyte_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.airbyte.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.airbyte.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.airbyte.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.airbyte.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.client = airbyte_client.return_value
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")

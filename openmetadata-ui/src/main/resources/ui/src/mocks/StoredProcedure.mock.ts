@@ -16,7 +16,7 @@ import {
   LabelType,
   State,
   TagSource,
-} from 'generated/entity/data/storedProcedure';
+} from '../generated/entity/data/storedProcedure';
 
 export const mockStoredProcedureData = [
   {
@@ -27,7 +27,10 @@ export const mockStoredProcedureData = [
     description: 'This stored procedure updates dim_address table',
     storedProcedureCode: {
       code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
+      language: 'SQL',
     },
+    sourceUrl:
+      'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1',
     version: 3.4,
     updatedAt: 1693892749147,
     updatedBy: 'admin',

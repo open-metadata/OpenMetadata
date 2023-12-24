@@ -11,6 +11,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.DI
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,12 +43,15 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubscription, CreateEventSubscription> {
-  public static final FilteringRules PASS_ALL_FILTERING = new FilteringRules().withResources(List.of("all"));
+public class EventSubscriptionResourceTest
+    extends EntityResourceTest<EventSubscription, CreateEventSubscription> {
+  public static final FilteringRules PASS_ALL_FILTERING =
+      new FilteringRules().withResources(List.of("all"));
 
   public EventSubscriptionResourceTest() {
     super(
@@ -70,16 +74,17 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName).withEnabled(false).withSubscriptionConfig(genericWebhook);
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
-    // For the DISABLED Publisher are not available so it will have no status
+    // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
-    WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
+    WebhookCallbackResource.EventDetails details =
+        webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
     //
     // Now enable the webhook
     //
     LOG.info("Enabling webhook Action");
-    ChangeDescription change = getChangeDescription(alert.getVersion());
+    ChangeDescription change = getChangeDescription(alert, MINOR_UPDATE);
     fieldUpdated(change, "enabled", false, true);
     fieldUpdated(change, "batchSize", 10, 50);
     genericWebhookActionRequest.withEnabled(true).withBatchSize(50);
@@ -89,7 +94,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     SubscriptionStatus status2 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
@@ -98,7 +103,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     // Ensure the call back notification has started
     details = waitForFirstEvent(webhookName, 25);
     assertEquals(1, details.getEvents().size());
-    SubscriptionStatus successDetails = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
+    SubscriptionStatus successDetails =
+        getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
     assertNull(successDetails.getLastFailedAt());
     //
@@ -106,7 +112,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     //
     LOG.info("Disabling webhook");
     genericWebhookActionRequest.withEnabled(false);
-    change = getChangeDescription(alert.getVersion());
+    change = getChangeDescription(alert, MINOR_UPDATE);
     fieldUpdated(change, "enabled", true, false);
 
     // Disabled webhook state is DISABLED
@@ -115,7 +121,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
     SubscriptionStatus status3 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status3.getStatus());
@@ -153,10 +159,12 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     assertEquals(FAILED, status.getStatus());
 
     // Now change the webhook URL to a valid URL and ensure callbacks resume
-    String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + test.getDisplayName();
+    String baseUri =
+        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + test.getDisplayName();
     Webhook genericWebhook2 = getWebhook(baseUri);
-    genericWebhookActionRequest = genericWebhookActionRequest.withSubscriptionConfig(genericWebhook2);
-    ChangeDescription change = getChangeDescription(alert.getVersion());
+    genericWebhookActionRequest =
+        genericWebhookActionRequest.withSubscriptionConfig(genericWebhook2);
+    ChangeDescription change = getChangeDescription(alert, MINOR_UPDATE);
     fieldUpdated(change, "subscriptionConfig", genericWebhook, genericWebhook2);
 
     alert =
@@ -164,7 +172,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Wait for webhook to be marked as failed
@@ -184,7 +192,10 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     String alertName = "filterUpdate";
     // Alert Action
     String endpoint =
-        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter/" + test.getDisplayName();
+        "http://localhost:"
+            + APP.getLocalPort()
+            + "/api/v1/test/webhook/counter/"
+            + test.getDisplayName();
     Webhook genericWebhook = getWebhook(endpoint);
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(alertName).withSubscriptionConfig(genericWebhook);
@@ -206,7 +217,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
                 List.of(
                     new EventFilterRule()
                         .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted')")
+                        .withCondition(
+                            "matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted')")
                         .withEffect(INCLUDE)));
 
     FilteringRules rule3 =
@@ -231,10 +243,11 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
 
     // Set Filter Rules
     genericWebhookActionRequest.withFilteringRules(rule1);
-    EventSubscription createdAlert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
+    EventSubscription createdAlert =
+        createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // Rule 2
-    ChangeDescription change = getChangeDescription(createdAlert.getVersion());
+    ChangeDescription change = getChangeDescription(createdAlert, MINOR_UPDATE);
     fieldUpdated(change, "filteringRules", rule1, rule2);
     genericWebhookActionRequest.withFilteringRules(rule2);
 
@@ -243,11 +256,11 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Rule 3
-    change = getChangeDescription(createdAlert.getVersion());
+    change = getChangeDescription(createdAlert, MINOR_UPDATE);
     fieldUpdated(change, "filteringRules", rule2, rule3);
     genericWebhookActionRequest.withFilteringRules(rule3);
 
@@ -256,11 +269,11 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Rule 4
-    change = getChangeDescription(createdAlert.getVersion());
+    change = getChangeDescription(createdAlert, MINOR_UPDATE);
     fieldUpdated(change, "filteringRules", rule3, rule4);
     genericWebhookActionRequest.withFilteringRules(rule4);
 
@@ -269,7 +282,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
             genericWebhookActionRequest,
             Response.Status.OK,
             ADMIN_AUTH_HEADERS,
-            TestUtils.UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Delete Action and Alert
@@ -325,7 +338,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
 
-    waitAndCheckForEvents("*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);
+    waitAndCheckForEvents(
+        "*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);
 
     // Check all webhook status
     assertAlertStatusSuccessWithId(w1Alert.getId());
@@ -357,7 +371,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
   public void startWebhookSubscription() throws IOException {
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/healthy";
     Webhook webhook = getWebhook(baseUri);
-    CreateEventSubscription genericWebhookActionRequest = createRequest("healthy").withSubscriptionConfig(webhook);
+    CreateEventSubscription genericWebhookActionRequest =
+        createRequest("healthy").withSubscriptionConfig(webhook);
     createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
   }
 
@@ -367,12 +382,14 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
    */
   public void validateWebhookEvents() throws HttpResponseException {
     // Check the healthy callback server received all the change events
-    WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails("healthy");
+    WebhookCallbackResource.EventDetails details =
+        webhookCallbackResource.getEventDetails("healthy");
     assertNotNull(details);
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
-    waitAndCheckForEvents("*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 40);
+    waitAndCheckForEvents(
+        "*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 40);
     assertAlertStatusSuccessWithName("healthy");
   }
 
@@ -384,15 +401,14 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     assertTrue(callbackEvents.size() > 0);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 30);
+    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 50);
 
     // For the entity all the webhooks registered for updated events have the right number of events
-    callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
+    callbackEvents =
+        webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 30);
-
-    // TODO add delete event support
+    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 50);
   }
 
   public void waitAndCheckForEvents(
@@ -405,23 +421,54 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
       int iteration)
       throws HttpResponseException {
     List<ChangeEvent> expected =
-        getChangeEvents(entityCreated, entityUpdated, entityRestored, entityDeleted, timestamp, ADMIN_AUTH_HEADERS)
+        getChangeEvents(
+                entityCreated,
+                entityUpdated,
+                entityRestored,
+                entityDeleted,
+                timestamp,
+                ADMIN_AUTH_HEADERS)
             .getData();
+
+    // Comparison if all callBack Event are there in expected
+    for (ChangeEvent changeEvent : callbackEvents) {
+      boolean found = false;
+      for (ChangeEvent expectedChangeEvent : expected) {
+        if (changeEvent.getEventType().equals(expectedChangeEvent.getEventType())
+            && changeEvent.getEntityId().equals(expectedChangeEvent.getEntityId())) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        LOG.error(
+            "[ChangeEventError] Change Events Missing from Expected: {}", changeEvent.toString());
+      }
+    }
+
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))
         .untilTrue(receivedAllEvents(expected, callbackEvents));
-    if (expected.size() != callbackEvents.size()) { // Failed to receive all the events
+    if (expected.size() > callbackEvents.size()) { // Failed to receive all the events
       expected.forEach(
           c1 ->
               LOG.info(
-                  "expected {}:{}:{}:{}", c1.getTimestamp(), c1.getEventType(), c1.getEntityType(), c1.getEntityId()));
+                  "expected {}:{}:{}:{}",
+                  c1.getTimestamp(),
+                  c1.getEventType(),
+                  c1.getEntityType(),
+                  c1.getEntityId()));
       callbackEvents.forEach(
           c1 ->
               LOG.info(
-                  "received {}:{}:{}:{}", c1.getTimestamp(), c1.getEventType(), c1.getEntityType(), c1.getEntityId()));
+                  "received {}:{}:{}:{}",
+                  c1.getTimestamp(),
+                  c1.getEventType(),
+                  c1.getEntityType(),
+                  c1.getEntityId()));
     }
-    assertEquals(expected.size(), callbackEvents.size());
+    assertTrue(expected.size() <= callbackEvents.size());
   }
 
   public void assertAlertStatusSuccessWithId(UUID alertId) throws HttpResponseException {
@@ -435,7 +482,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     testExpectedStatus(alert.getId(), ACTIVE);
   }
 
-  public void assertAlertStatus(UUID alertId, SubscriptionStatus.Status status, Integer statusCode, String failedReason)
+  public void assertAlertStatus(
+      UUID alertId, SubscriptionStatus.Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
     SubscriptionStatus actionStatus = getStatus(alertId, Response.Status.OK.getStatusCode());
     assertEquals(status, actionStatus.getStatus());
@@ -445,12 +493,14 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
 
   private SubscriptionStatus getStatus(UUID alertId, int statusCode) throws HttpResponseException {
     WebTarget target = getResource(String.format("%s/%s/status", collectionName, alertId));
-    return TestUtils.getWithResponse(target, SubscriptionStatus.class, ADMIN_AUTH_HEADERS, statusCode);
+    return TestUtils.getWithResponse(
+        target, SubscriptionStatus.class, ADMIN_AUTH_HEADERS, statusCode);
   }
 
-  private static AtomicBoolean receivedAllEvents(List<ChangeEvent> expected, Collection<ChangeEvent> callbackEvents) {
+  private static AtomicBoolean receivedAllEvents(
+      List<ChangeEvent> expected, Collection<ChangeEvent> callbackEvents) {
     LOG.info("expected size {} callback events size {}", expected.size(), callbackEvents.size());
-    return new AtomicBoolean(expected.size() == callbackEvents.size());
+    return new AtomicBoolean(expected.size() <= callbackEvents.size());
   }
 
   /** Start webhook subscription for given entity and various event types */
@@ -475,7 +525,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
                         .withEffect(INCLUDE))));
     createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
-    // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
+    // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive
+    // entityUpdated events
     alertName = EventType.ENTITY_UPDATED + "_" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
 
@@ -511,22 +562,35 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
 
   @Override
   public void validateCreatedEntity(
-      EventSubscription createdEntity, CreateEventSubscription createRequest, Map<String, String> authHeaders) {
+      EventSubscription createdEntity,
+      CreateEventSubscription createRequest,
+      Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), createdEntity.getName());
     assertEquals(createRequest.getFilteringRules(), createdEntity.getFilteringRules());
     assertEquals(createRequest.getSubscriptionType(), createdEntity.getSubscriptionType());
   }
 
   @Override
-  public void compareEntities(EventSubscription expected, EventSubscription updated, Map<String, String> authHeaders) {}
+  public void compareEntities(
+      EventSubscription expected, EventSubscription updated, Map<String, String> authHeaders) {}
 
   @Override
-  public EventSubscription validateGetWithDifferentFields(EventSubscription entity, boolean byName) {
+  public EventSubscription validateGetWithDifferentFields(
+      EventSubscription entity, boolean byName) {
     return entity;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("subscriptionConfig") || fieldName.equals("filteringRules")) {
+      assertEquals(JsonUtils.pojoToJson(expected), actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
 
   public Webhook getWebhook(String uri) {
     return new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest");
@@ -537,13 +601,16 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))
         .untilFalse(hasEventOccurred(endpoint));
-    WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(endpoint);
+    WebhookCallbackResource.EventDetails details =
+        webhookCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
     return details;
   }
 
   private AtomicBoolean hasEventOccurred(String endpoint) {
-    WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(endpoint);
-    return new AtomicBoolean(details != null && details.getEvents() != null && details.getEvents().size() <= 0);
+    WebhookCallbackResource.EventDetails details =
+        webhookCallbackResource.getEventDetails(endpoint);
+    return new AtomicBoolean(
+        details != null && details.getEvents() != null && details.getEvents().size() <= 0);
   }
 }

@@ -11,27 +11,23 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { User } from '../../generated/entity/teams/user';
 
 export interface Props {
   userData: User;
-  followingEntities: {
-    data: SearchedDataProps['data'];
-    total: number;
+  queryFilters: {
+    myData: string;
+    following: string;
   };
-  ownedEntities: {
-    data: SearchedDataProps['data'];
-    total: number;
-  };
-  username: string;
-  isUserEntitiesLoading: boolean;
   handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
+  authenticationMechanism?: PersonalAccessToken;
 }
 
 export enum UserPageTabs {
   ACTIVITY = 'activity_feed',
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
+  ACCESS_TOKEN = 'access-token',
 }

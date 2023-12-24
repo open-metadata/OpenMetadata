@@ -12,9 +12,10 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
-import { Settings, SettingType } from 'generated/settings/settings';
-import axiosClient from 'rest';
+import axiosClient from '.';
+import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { Settings, SettingType } from '../generated/settings/settings';
 
 export const getSettingsConfigFromConfigType = async (
   configType: SettingType
@@ -38,4 +39,26 @@ export const getCustomLogoConfig = async () => {
   );
 
   return response.data;
+};
+
+export const getLoginConfig = async () => {
+  const response = await axiosClient.get<LoginConfiguration>(
+    `system/config/loginConfig`
+  );
+
+  return response.data;
+};
+
+export const testEmailConnection = async (email: string) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await axiosClient.put<string>(
+    '/system/email/test',
+    email,
+    configOptions
+  );
+
+  return response;
 };

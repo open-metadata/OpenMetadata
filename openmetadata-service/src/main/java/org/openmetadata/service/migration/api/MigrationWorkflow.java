@@ -1,35 +1,52 @@
 package org.openmetadata.service.migration.api;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationWorkflow {
-  private final List<MigrationProcess> migrations;
+  private List<MigrationProcess> migrations;
 
+  private final String nativeSQLScriptRootPath;
+  private final ConnectionType connectionType;
+  private final String extensionSQLScriptRootPath;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
 
   private final boolean forceMigrations;
 
   public MigrationWorkflow(
-      Jdbi jdbi, String nativeSQLScriptRootPath, ConnectionType connectionType, boolean forceMigrations) {
+      Jdbi jdbi,
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath,
+      boolean forceMigrations) {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.forceMigrations = forceMigrations;
+    this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
+    this.connectionType = connectionType;
+    this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+  }
+
+  public void loadMigrations() {
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
-        Arrays.stream(Objects.requireNonNull(new File(nativeSQLScriptRootPath).listFiles(File::isDirectory)))
-            .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
-            .sorted()
-            .collect(Collectors.toList());
+        getMigrationFiles(nativeSQLScriptRootPath, connectionType, extensionSQLScriptRootPath);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
@@ -44,7 +61,43 @@ public class MigrationWorkflow {
     }
   }
 
-  private List<MigrationProcess> filterAndGetMigrationsToRun(List<MigrationFile> availableMigrations) {
+  public List<MigrationFile> getMigrationFiles(
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath) {
+    List<MigrationFile> availableOMNativeMigrations =
+        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
+
+    // If we only have OM migrations, return them
+    if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
+      return availableOMNativeMigrations;
+    }
+
+    // Otherwise, fetch the extension migrations and sort the executions
+    List<MigrationFile> availableExtensionMigrations =
+        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType);
+
+    /*
+     If we create migrations version as:
+       - OpenMetadata: 1.1.0, 1.1.1, 1.2.0
+       - Extension: 1.1.0-extension, 1.2.0-extension
+     The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
+    */
+    return Stream.concat(
+            availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
+  public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
+    return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
+        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
+  private List<MigrationProcess> filterAndGetMigrationsToRun(
+      List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
     Optional<String> previousMaxMigration = migrationDAO.getMaxServerMigrationVersion();
     List<MigrationFile> applyMigrations;
@@ -62,7 +115,8 @@ public class MigrationWorkflow {
         file.parseSQLFiles();
         String clazzName = file.getMigrationProcessClassName();
         MigrationProcess process =
-            (MigrationProcess) Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+            (MigrationProcess)
+                Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
         processes.add(process);
       }
     } catch (Exception e) {
@@ -77,6 +131,8 @@ public class MigrationWorkflow {
   public void runMigrationWorkflows() {
     try (Handle transactionHandler = jdbi.open()) {
       LOG.info("[MigrationWorkflow] WorkFlow Started");
+      MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
+      context.computeInitialContext();
       try {
         for (MigrationProcess process : migrations) {
           // Initialise Migration Steps
@@ -112,6 +168,8 @@ public class MigrationWorkflow {
               process.getPostDDLScriptFilePath());
           process.runPostDDLScripts();
 
+          context.computeMigrationContext(process);
+
           // Handle Migration Closure
           LOG.info(
               "[MigrationStep] Update Migration Status, Version: {}, DatabaseType: {}, FileName: {}",
@@ -140,7 +198,8 @@ public class MigrationWorkflow {
   }
 
   public void updateMigrationStepInDB(MigrationProcess step) {
-    migrationDAO.upsertServerMigration(step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
+    migrationDAO.upsertServerMigration(
+        step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
   }
 
   public void migrateSearchIndexes() {}

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import DomainExperts from './DomainExperts.component';
 
 const MOCK_DATA_PRODUCT: DataProduct = {
@@ -86,6 +86,10 @@ const MOCK_DATA_PRODUCT: DataProduct = {
     previousVersion: 0.6,
   },
 };
+
+jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(() => <>testProfilePicture</>);
+});
 
 describe('DomainExperts', () => {
   it('renders experts in normal view', async () => {

@@ -12,10 +12,14 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { LabelType, State, TagSource } from 'generated/entity/data/searchIndex';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockSearchIndexEntityDetails } from '../mocks/SearchIndexSummary.mock';
 import SearchIndexSummary from './SearchIndexSummary.component';
 
@@ -102,6 +106,7 @@ describe('SearchIndexSummary component tests', () => {
             ...mockSearchIndexEntityDetails,
             tags: [
               {
+                name: 'Tier1',
                 tagFQN: 'Tier.Tier1',
                 labelType: LabelType.Manual,
                 description: '',

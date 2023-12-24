@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { BaseSelectRef } from 'rc-select';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
-} from 'interface/search.interface';
-import { BaseSelectRef } from 'rc-select';
+} from '../../../interface/search.interface';
 
 export interface GlobalSearchSuggestionsProp {
   isSuggestionsLoading: boolean;
@@ -34,6 +34,7 @@ export interface CommonSource {
   fullyQualifiedName: string;
   serviceType: string;
   name: string;
+  entityType: string;
 }
 
 export interface TableSource extends CommonSource {
@@ -85,6 +86,10 @@ export interface DashboardDataModelSource extends CommonSource {
   data_model_id: string;
   data_model_name: string;
 }
+export interface DataProductSource extends CommonSource {
+  data_product_id: string;
+  data_product_name: string;
+}
 
 export interface Option {
   _index: string;
@@ -99,7 +104,8 @@ export interface Option {
     DashboardDataModelSearchSource &
     GlossarySource &
     TagSource &
-    SearchIndexSource;
+    SearchIndexSource &
+    DataProductSource;
 }
 
 export type SearchSuggestions =
@@ -113,4 +119,5 @@ export type SearchSuggestions =
   | MlModelSource[]
   | SearchIndexSource[]
   | StoredProcedureSearchSource[]
-  | DashboardDataModelSearchSource[];
+  | DashboardDataModelSearchSource[]
+  | DataProductSource[];

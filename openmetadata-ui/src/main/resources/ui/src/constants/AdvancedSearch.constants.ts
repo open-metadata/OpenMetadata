@@ -12,7 +12,6 @@
  */
 
 import { t } from 'i18next';
-import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
   Fields,
@@ -21,12 +20,11 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { getAggregateFieldOptions } from 'rest/miscAPI';
-import { suggestQuery } from 'rest/searchAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
+import { getCombinedQueryFilterObject } from '../utils/ExplorePage/ExplorePageUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
 
@@ -51,7 +49,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.service'),
-    key: 'service.name.keyword',
+    key: 'service.displayName.keyword',
   },
   {
     label: t('label.service-type'),
@@ -62,11 +60,11 @@ export const COMMON_DROPDOWN_ITEMS = [
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.database'),
-    key: 'database.name.keyword',
+    key: 'database.displayName.keyword',
   },
   {
     label: t('label.schema'),
-    key: 'databaseSchema.name.keyword',
+    key: 'databaseSchema.displayName.keyword',
   },
   {
     label: t('label.column'),
@@ -162,6 +160,79 @@ export const TAG_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DATA_PRODUCT_DROPDOWN_ITEMS = [
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+];
+
+export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
+  {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }) as string,
+    key: 'entityType',
+  },
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
+    label: t('label.service'),
+    key: 'service.displayName.keyword',
+  },
+  {
+    label: t('label.service-type'),
+    key: 'serviceType',
+  },
+];
+
+export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
+  {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }) as string,
+    key: 'entityType',
+  },
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
+    label: t('label.service'),
+    key: 'service.displayName.keyword',
+  },
+  {
+    label: t('label.service-type'),
+    key: 'serviceType',
+  },
+];
+
 export const ALL_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   ...TABLE_DROPDOWN_ITEMS,
@@ -191,7 +262,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.displayName',
+            field: 'owner.displayName.keyword',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -209,64 +280,27 @@ export const emptyJsonTree: JsonTree = {
  */
 export const autocomplete: (args: {
   searchIndex: SearchIndex | SearchIndex[];
-  entitySearchIndex: SearchIndex | SearchIndex[];
   entityField: EntityFields;
   suggestField?: SuggestionField;
-}) => SelectFieldSettings['asyncFetch'] = ({
-  searchIndex,
-  suggestField,
-  entitySearchIndex,
-  entityField,
-}) => {
-  const isUserAndTeamSearchIndex =
-    searchIndex.includes(SearchIndex.USER) ||
-    searchIndex.includes(SearchIndex.TEAM);
-
+}) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
   return (search) => {
-    if (search) {
-      return suggestQuery({
-        query: search ?? '*',
-        searchIndex: searchIndex,
-        field: suggestField,
-        // fetch source if index is type of user or team and both
-        fetchSource: isUserAndTeamSearchIndex,
-      }).then((resp) => {
-        return {
-          values: uniq(resp).map(({ text, _source }) => {
-            // set displayName or name if index is type of user or team and both.
-            // else set the text
-            const name =
-              isUserAndTeamSearchIndex && !isUndefined(_source)
-                ? _source?.displayName || _source.name
-                : text;
+    return getAggregateFieldOptions(
+      searchIndex,
+      entityField,
+      search ?? '',
+      JSON.stringify(getCombinedQueryFilterObject())
+    ).then((response) => {
+      const buckets =
+        response.data.aggregations[`sterms#${entityField}`].buckets;
 
-            return {
-              value: name,
-              title: name,
-            };
-          }),
-          hasMore: false,
-        };
-      });
-    } else {
-      return getAggregateFieldOptions(
-        entitySearchIndex,
-        entityField,
-        '',
-        JSON.stringify(getCombinedQueryFilterObject())
-      ).then((response) => {
-        const buckets =
-          response.data.aggregations[`sterms#${entityField}`].buckets;
-
-        return {
-          values: buckets.map((bucket) => ({
-            value: bucket.key,
-            title: bucket.label ?? bucket.key,
-          })),
-          hasMore: false,
-        };
-      });
-    }
+      return {
+        values: buckets.map((bucket) => ({
+          value: bucket.key,
+          title: bucket.label ?? bucket.key,
+        })),
+        hasMore: false,
+      };
+    });
   };
 };
 
@@ -288,7 +322,7 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    'owner.displayName': {
+    'owner.displayName.keyword': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
@@ -296,7 +330,6 @@ const getCommonQueryBuilderFields = (
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-          entitySearchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -309,8 +342,9 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
-          entitySearchIndex,
+          searchIndex: entitySearchIndex ?? [
+            (SearchIndex.TAG, SearchIndex.GLOSSARY),
+          ],
           entityField: EntityFields.TAG,
         }),
         useAsyncSearch: true,
@@ -323,12 +357,17 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
-          entitySearchIndex,
+          searchIndex: entitySearchIndex ?? [SearchIndex.TAG],
           entityField: EntityFields.TIER,
         }),
         useAsyncSearch: true,
       },
+    },
+    extension: {
+      label: t('label.custom-property-plural'),
+      type: '!group',
+      mainWidgetProps,
+      subfields: {},
     },
   };
 
@@ -340,16 +379,14 @@ const getCommonQueryBuilderFields = (
  */
 const getServiceQueryBuilderFields = (index: SearchIndex) => {
   const serviceQueryBuilderFields: Fields = {
-    'service.name': {
+    'service.displayName.keyword': {
       label: t('label.service'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: index,
-          entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
-          suggestField: SuggestionField.SERVICE,
         }),
         useAsyncSearch: true,
       },
@@ -363,46 +400,40 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
  * Fields specific to tables
  */
 const tableQueryBuilderFields: Fields = {
-  'database.name': {
+  'database.displayName.keyword': {
     label: t('label.database'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
-        suggestField: SuggestionField.DATABASE,
       }),
       useAsyncSearch: true,
     },
   },
 
-  'databaseSchema.name': {
+  'databaseSchema.displayName.keyword': {
     label: t('label.database-schema'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
-        suggestField: SuggestionField.SCHEMA,
       }),
       useAsyncSearch: true,
     },
   },
 
-  'columns.name': {
+  'columns.name.keyword': {
     label: t('label.column'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
-        suggestField: SuggestionField.COLUMN,
       }),
       useAsyncSearch: true,
     },

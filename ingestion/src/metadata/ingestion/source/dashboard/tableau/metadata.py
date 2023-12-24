@@ -39,13 +39,17 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.models import (
@@ -84,9 +88,9 @@ class TableauSource(DashboardServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.workbooks: List[
             TableauDashboard
         ] = []  # We will populate this in `prepare`
@@ -127,14 +131,14 @@ class TableauSource(DashboardServiceSource):
         return super().prepare()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TableauConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TableauConnection):
             raise InvalidSourceException(
                 f"Expected TableauConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
         return self.workbooks
@@ -183,18 +187,20 @@ class TableauSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
+
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
                             name=data_model_name,
                             error=f"Error yielding Data Model [{data_model_name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -220,8 +226,8 @@ class TableauSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
@@ -229,8 +235,8 @@ class TableauSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=DashboardDataModel,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        data_model_name=data_model.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        data_model_name=data_model,
                     )
                     for data_model in self.context.dataModels or []
                 ],
@@ -241,7 +247,7 @@ class TableauSource(DashboardServiceSource):
                     include_tags=self.source_config.includeTags,
                 ),
                 sourceUrl=dashboard_details.webpageUrl,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -250,7 +256,7 @@ class TableauSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.id,
                     error=f"Error to yield dashboard for {dashboard_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -291,7 +297,7 @@ class TableauSource(DashboardServiceSource):
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {err}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -331,7 +337,7 @@ class TableauSource(DashboardServiceSource):
                         classification_name=TABLEAU_TAG_CATEGORY,
                         include_tags=self.source_config.includeTags,
                     ),
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:
@@ -339,7 +345,7 @@ class TableauSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error to yield dashboard chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -399,7 +405,7 @@ class TableauSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service_name=self.context.dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

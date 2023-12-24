@@ -20,13 +20,13 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -132,10 +132,10 @@ const PipelineDetailsProps = {
   onUpdateVote: jest.fn(),
 };
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
@@ -143,7 +143,7 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
+jest.mock('../Entity/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
@@ -153,7 +153,7 @@ jest.mock('../TasksDAGView/TasksDAGView', () => {
   return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -165,7 +165,6 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getHtmlForNonAdminAction: jest.fn(),
@@ -176,12 +175,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
 }));
 
-jest.mock('utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/GlossaryUtils', () => ({
+jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
@@ -189,7 +188,7 @@ jest.mock('utils/GlossaryUtils', () => ({
 jest.mock('../Execution/Execution.component', () => {
   return jest.fn().mockImplementation(() => <p>Executions</p>);
 });
-jest.mock('components/TableTags/TableTags.component', () =>
+jest.mock('../../components/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (

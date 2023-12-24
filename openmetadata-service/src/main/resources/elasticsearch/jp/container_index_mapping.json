@@ -45,10 +45,16 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -127,6 +133,58 @@
           }
         }
       },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "domain" : {
         "properties": {
           "id": {
@@ -165,7 +223,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "dataModel": {
         "properties": {
@@ -264,7 +322,7 @@
         "type": "text"
       },
       "numberOfObjects": {
-        "type": "integer"
+        "type": "double"
       },
       "size": {
         "type": "integer"
@@ -436,6 +494,9 @@
       },
       "lifeCycle": {
         "type": "object"
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "serviceType": {
         "type": "keyword"

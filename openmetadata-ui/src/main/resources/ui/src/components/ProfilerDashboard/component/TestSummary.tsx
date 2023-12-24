@@ -13,14 +13,6 @@
 
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import {
-  GREEN_3,
-  GREEN_3_OPACITY,
-  RED_3,
-  YELLOW_2,
-} from 'constants/Color.constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -37,12 +29,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListTestCaseResults } from 'rest/testAPI';
-import { formatDateTime } from 'utils/date-time/DateTimeUtils';
-import { getTestCaseDetailsPath } from 'utils/RouterUtils';
+import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
+import {
+  GREEN_3,
+  GREEN_3_OPACITY,
+  RED_3,
+  YELLOW_2,
+} from '../../../constants/Color.constants';
 import {
   COLORS,
-  DEFAULT_RANGE_DATA,
+  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -51,16 +48,23 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
+import { getListTestCaseResults } from '../../../rest/testAPI';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
+import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
-import SchemaEditor from '../../schema-editor/SchemaEditor';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
-import './TestSummary.style.less';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
+import './test-summary.less';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
@@ -76,13 +80,26 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   data,
   showExpandIcon = true,
 }) => {
+  const defaultRange = useMemo(
+    () => ({
+      initialRange: {
+        startTs: getEpochMillisForPastDays(
+          PROFILER_FILTER_RANGE.last30days.days
+        ),
+        endTs: getCurrentMillis(),
+      },
+      key: 'last30days',
+    }),
+    []
+  );
   const history = useHistory();
   const [chartData, setChartData] = useState<ChartDataType>(
     {} as ChartDataType
   );
   const [results, setResults] = useState<TestCaseResult[]>([]);
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
+    defaultRange.initialRange
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
 
@@ -322,6 +339,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <DatePickerMenu
                     showSelectedCustomRange
+                    defaultValue={defaultRange.key}
                     handleDateRangeChange={handleDateRangeChange}
                   />
                 </Col>

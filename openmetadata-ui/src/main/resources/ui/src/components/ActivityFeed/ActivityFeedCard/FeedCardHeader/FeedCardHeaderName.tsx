@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import AppState from 'AppState';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import { observer } from 'mobx-react';
-import React, { useMemo } from 'react';
+import React from 'react';
+import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
+import { getEntityName } from '../../../../utils/EntityUtils';
 
 interface FeedCardHeaderNameProps {
   createdBy: string;
@@ -25,11 +25,10 @@ const FeedCardHeaderName = ({
   createdBy,
   onTitleClickHandler,
 }: FeedCardHeaderNameProps) => {
-  const userDisplayName = useMemo(() => {
-    const userDetails = AppState.getUserDisplayName('', createdBy);
-
-    return userDetails ?? createdBy;
-  }, [AppState.userProfilePics, createdBy]);
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: createdBy ?? '',
+  });
 
   return (
     <UserPopOverCard userName={createdBy}>
@@ -39,10 +38,10 @@ const FeedCardHeaderName = ({
           e.stopPropagation();
           onTitleClickHandler(createdBy);
         }}>
-        {userDisplayName}
+        {getEntityName(user)}
       </span>
     </UserPopOverCard>
   );
 };
 
-export default observer(FeedCardHeaderName);
+export default FeedCardHeaderName;

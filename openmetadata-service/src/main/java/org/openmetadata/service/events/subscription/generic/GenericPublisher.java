@@ -51,7 +51,8 @@ public class GenericPublisher extends SubscriptionPublisher {
       // Build Client
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
     } else {
-      throw new IllegalArgumentException("GenericWebhook Alert Invoked with Illegal Type and Settings.");
+      throw new IllegalArgumentException(
+          "GenericWebhook Alert Invoked with Illegal Type and Settings.");
     }
   }
 
@@ -73,7 +74,7 @@ public class GenericPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) throws EventPublisherException, InterruptedException {
+  public void sendAlert(EventResource.EventList list) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
       // Post Message to default
@@ -90,7 +91,8 @@ public class GenericPublisher extends SubscriptionPublisher {
       // Post to Generic Webhook with Actions
       for (ChangeEvent event : list.getData()) {
         String eventJson = JsonUtils.pojoToJson(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, daoCollection, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, daoCollection, event);
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, eventJson);
         }
@@ -98,7 +100,8 @@ public class GenericPublisher extends SubscriptionPublisher {
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
       if (cause != null && cause.getClass() == UnknownHostException.class) {
-        LOG.warn("Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
+        LOG.warn(
+            "Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
         setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);

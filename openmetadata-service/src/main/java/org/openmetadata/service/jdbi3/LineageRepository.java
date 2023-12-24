@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -32,23 +33,28 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
+@Repository
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) {
-    this.dao = dao;
+  public LineageRepository() {
+    this.dao = Entity.getCollectionDAO();
+    Entity.setLineageRepository(this);
   }
 
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {
-    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
+    EntityReference ref =
+        Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
+  public EntityLineage getByName(
+      String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
+  @Transaction
   public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
@@ -63,7 +69,8 @@ public class LineageRepository {
 
       // Validate pipeline entity
       EntityReference pipeline = addLineage.getEdge().getLineageDetails().getPipeline();
-      pipeline = Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
+      pipeline =
+          Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
       addLineage.getEdge().getLineageDetails().withPipeline(pipeline);
@@ -74,10 +81,17 @@ public class LineageRepository {
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
-        .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
+        .insert(
+            from.getId(),
+            to.getId(),
+            from.getType(),
+            to.getType(),
+            Relationship.UPSTREAM.ordinal(),
+            detailsJson);
   }
 
-  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
+  private String validateLineageDetails(
+      EntityReference from, EntityReference to, LineageDetails details) {
     if (details == null) {
       return null;
     }
@@ -96,7 +110,8 @@ public class LineageRepository {
           if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
             ColumnUtil.validateColumnFQN(fromTable.getColumns(), fromColumn);
           } else {
-            Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
+            Table otherTable =
+                dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
             ColumnUtil.validateColumnFQN(otherTable.getColumns(), fromColumn);
           }
         }
@@ -117,20 +132,29 @@ public class LineageRepository {
         || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
+  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
-    EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
+    EntityReference from =
+        Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
 
     // Validate to entity
-    EntityReference to = Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
+    EntityReference to =
+        Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
 
     // Finally, delete lineage relationship
     return dao.relationshipDAO()
-            .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
+            .delete(
+                from.getId(),
+                from.getType(),
+                to.getId(),
+                to.getType(),
+                Relationship.UPSTREAM.ordinal())
         > 0;
   }
 
-  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) {
+  private EntityLineage getLineage(
+      EntityReference primary, int upstreamDepth, int downstreamDepth) {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =
         new EntityLineage()
@@ -146,14 +170,15 @@ public class LineageRepository {
     return lineage;
   }
 
-  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
+  private void getUpstreamLineage(
+      UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
     if (upstreamDepth == 0) {
       return;
     }
     List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
     if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
-      records = dao.relationshipDAO().findFromPipleine(id, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findFromPipeline(id, Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id, entityType, Relationship.UPSTREAM.ordinal());
     }
@@ -162,11 +187,16 @@ public class LineageRepository {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       upstreamEntityReferences.add(ref);
       lineage
           .getUpstreamEdges()
-          .add(new Edge().withFromEntity(ref.getId()).withToEntity(id).withLineageDetails(lineageDetails));
+          .add(
+              new Edge()
+                  .withFromEntity(ref.getId())
+                  .withToEntity(id)
+                  .withLineageDetails(lineageDetails));
     }
     lineage.getNodes().addAll(upstreamEntityReferences);
     // from this id ---> find other ids
@@ -178,7 +208,8 @@ public class LineageRepository {
     }
   }
 
-  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
+  private void getDownstreamLineage(
+      UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
     if (downstreamDepth == 0) {
       return;
     }
@@ -193,11 +224,16 @@ public class LineageRepository {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       downstreamEntityReferences.add(ref);
       lineage
           .getDownstreamEdges()
-          .add(new Edge().withToEntity(ref.getId()).withFromEntity(id).withLineageDetails(lineageDetails));
+          .add(
+              new Edge()
+                  .withToEntity(ref.getId())
+                  .withFromEntity(id)
+                  .withLineageDetails(lineageDetails));
     }
     lineage.getNodes().addAll(downstreamEntityReferences);
 

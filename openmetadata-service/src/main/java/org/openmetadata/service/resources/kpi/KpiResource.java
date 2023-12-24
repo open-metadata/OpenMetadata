@@ -42,7 +42,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -68,8 +68,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return kpi;
   }
 
-  public KpiResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Kpi.class, new KpiRepository(dao), authorizer);
+  public KpiResource(Authorizer authorizer) {
+    super(Entity.KPI, authorizer);
   }
 
   @Override
@@ -98,7 +98,10 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of KPIs",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KpiList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = KpiList.class)))
       })
   public ResultList<Kpi> list(
       @Context UriInfo uriInfo,
@@ -108,16 +111,20 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of KIPs returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of KIPs returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tests before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -127,7 +134,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -140,12 +148,16 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of KPI versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -158,12 +170,16 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The KPI",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class))),
         @ApiResponse(responseCode = "404", description = "KPI for instance {id} is not found")
       })
   public Kpi get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -189,12 +205,17 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The KPI",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class))),
         @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
       })
   public Kpi getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -220,15 +241,19 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "KPI",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "KPI for instance {id} and version {version} is " + "not found")
+            description = "KPI for instance {id} and version {version} is not found")
       })
   public Kpi getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "KPI version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -246,11 +271,16 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The KPI",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateKpiRequest create) {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
     // TODO fix this
     //    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
@@ -263,19 +293,23 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       operationId = "patchKpi",
       summary = "Update a KPI",
       description = "Update an existing KPI using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchKpi(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -290,10 +324,15 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated KPI Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateKpiRequest create) {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
@@ -315,7 +354,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -332,7 +373,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -340,7 +382,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -354,10 +397,15 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the KPI. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class)))
       })
   public Response restoreKpi(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -371,12 +419,17 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the KPI. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class)))
       })
   public Response addKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Valid KpiResult kpiResult) {
     return repository.addKpiResult(uriInfo, name, kpiResult).toResponse();
   }
@@ -401,12 +454,18 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public ResultList<KpiResult> listKpiResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Filter KPI results after the given start timestamp", schema = @Schema(type = "number"))
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description = "Filter KPI results after the given start timestamp",
+              schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("startTs")
           Long startTs,
-      @Parameter(description = "Filter KPI results before the given end timestamp", schema = @Schema(type = "number"))
+      @Parameter(
+              description = "Filter KPI results before the given end timestamp",
+              schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
           Long endTs,
@@ -414,7 +473,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+          OrderBy orderBy) {
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
@@ -435,7 +494,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public KpiResult listKpiResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     return repository.getKpiResult(name);
   }
 
@@ -449,23 +510,31 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted the KpiResult",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Kpi.class)))
       })
   public Response deleteKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long")) @PathParam("timestamp")
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
           Long timestamp) {
     return repository.deleteKpiResult(name, timestamp).toResponse();
   }
 
   private Kpi getKpi(CreateKpiRequest create, String user) {
-    return copy(new Kpi(), create, user)
+    return repository
+        .copy(new Kpi(), create, user)
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())
         .withTargetDefinition(create.getTargetDefinition())
-        .withDataInsightChart(getEntityReference(Entity.DATA_INSIGHT_CHART, create.getDataInsightChart()))
+        .withDataInsightChart(
+            getEntityReference(Entity.DATA_INSIGHT_CHART, create.getDataInsightChart()))
         .withMetricType(create.getMetricType());
   }
 }

@@ -16,9 +16,9 @@ import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/vector.svg';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../utils/executionUtils';
 import './tree-view-tab.less';
 
@@ -61,9 +61,9 @@ const TreeViewTab = ({
         </Col>
         <Col>
           <Typography.Text className="p-b-0 m-b-0 font-medium">
-            {`${formatDateTimeFromSeconds(startTime)} ${t(
+            {`${formatDateTime(startTime)} ${t(
               'label.to-lowercase'
-            )} ${formatDateTimeFromSeconds(endTime)}`}
+            )} ${formatDateTime(endTime)}`}
           </Typography.Text>
         </Col>
         <Col>

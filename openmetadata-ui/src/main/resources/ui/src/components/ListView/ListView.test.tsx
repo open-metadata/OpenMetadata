@@ -16,24 +16,30 @@ import { ListView } from './ListView.component';
 
 const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
 const mockOnSearch = jest.fn();
+const mockHandleDeletedSwitchChange = jest.fn();
 
-jest.mock('components/common/Table/Table', () => {
+jest.mock('../../components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
-jest.mock('components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockImplementation(() => <p>Searchbar</p>);
-});
+jest.mock(
+  '../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>Searchbar</p>);
+  }
+);
 
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
           onSearch: mockOnSearch,
         }}
-        tableprops={{
+        tableProps={{
           columns: [],
           dataSource: [],
         }}
@@ -49,10 +55,12 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
           onSearch: mockOnSearch,
         }}
-        tableprops={{
+        tableProps={{
           columns: [],
           dataSource: [],
         }}
@@ -66,10 +74,12 @@ describe('ListView component', () => {
     render(
       <ListView
         cardRenderer={mockCardRenderer}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
         searchProps={{
           onSearch: mockOnSearch,
         }}
-        tableprops={{
+        tableProps={{
           columns: [],
           dataSource: [{ name: 'test' }],
         }}
@@ -82,5 +92,30 @@ describe('ListView component', () => {
     expect(mockCardRenderer).toHaveBeenCalledWith({ name: 'test' });
 
     expect(await screen.findByText('Card')).toBeInTheDocument();
+  });
+
+  it('should call handleDeletedSwitchChange after switch toggle', async () => {
+    render(
+      <ListView
+        cardRenderer={mockCardRenderer}
+        deleted={false}
+        handleDeletedSwitchChange={mockHandleDeletedSwitchChange}
+        searchProps={{
+          onSearch: mockOnSearch,
+        }}
+        tableProps={{
+          columns: [],
+          dataSource: [{ name: 'test' }],
+        }}
+      />
+    );
+
+    expect(mockHandleDeletedSwitchChange).toHaveBeenCalledTimes(0);
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('show-deleted-switch'));
+    });
+
+    expect(mockHandleDeletedSwitchChange).toHaveBeenCalledTimes(1);
   });
 });

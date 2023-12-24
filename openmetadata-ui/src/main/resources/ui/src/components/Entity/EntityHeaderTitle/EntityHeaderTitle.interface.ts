@@ -16,9 +16,11 @@ export interface EntityHeaderTitleProps {
   name: string;
   displayName?: string;
   link?: string;
+  color?: string;
   openEntityInNewPage?: boolean;
   deleted?: boolean;
   serviceName: string;
   badge?: React.ReactNode;
   isDisabled?: boolean;
+  showName?: boolean;
 }

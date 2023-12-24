@@ -12,19 +12,22 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -35,6 +38,7 @@ const DataModelSummary = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: DataModelSummaryProps) => {
   const { t } = useTranslation();
   const { columns } = entityDetails;
@@ -48,7 +52,7 @@ const DataModelSummary = ({
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns),
+    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns, highlights),
     [columns, dataModelDetails]
   );
 
@@ -74,7 +78,18 @@ const DataModelSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

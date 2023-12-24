@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { HTMLAttributes } from 'react';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
@@ -24,12 +24,12 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
-  tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
+  tagUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
-  handleToggleDelete: () => void;
+  handleToggleDelete: (version?: number) => void;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

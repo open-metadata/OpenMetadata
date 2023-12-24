@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { ReactNode } from 'react';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { Table } from '../../generated/entity/data/table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
@@ -45,6 +45,12 @@ export interface TestSuiteSchedulerProps {
   initialData?: string;
   onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
+  isQuartzCron?: boolean;
+  buttonProps?: {
+    okText: string;
+    cancelText: string;
+  };
+  includePeriodOptions?: string[];
 }
 
 export interface RightPanelProps {

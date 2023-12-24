@@ -11,30 +11,40 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DomainExperts from 'components/Domain/DomainExperts/DomainExperts.component';
-import DomainTypeSelectForm from 'components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagButton from 'components/TagButton/TagButton.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain, DomainType } from 'generated/entity/domains/domain';
-import { Operation } from 'generated/entity/policies/policy';
-import { ChangeDescription, EntityReference } from 'generated/entity/type';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getUserNames } from 'utils/DomainUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityVersionByField } from 'utils/EntityVersionUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
+import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
+import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
+import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
+import { usePermissionProvider } from '../../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import TagButton from '../../../../components/TagButton/TagButton.component';
+import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import {
+  Domain,
+  DomainType,
+} from '../../../../generated/entity/domains/domain';
+import { Operation } from '../../../../generated/entity/policies/policy';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../../generated/entity/type';
+import {
+  domainTypeTooltipDataRender,
+  getUserNames,
+} from '../../../../utils/DomainUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import { checkPermission } from '../../../../utils/PermissionsUtils';
+import FormItemLabel from '../../../Form/FormItemLabel';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -275,8 +285,15 @@ const DocumentationTab = ({
                 <Typography.Text
                   className="right-panel-label"
                   data-testid="domainType-heading-name">
-                  {t('label.domain-type')}
+                  <FormItemLabel
+                    align={{ targetOffset: [18, 0] }}
+                    helperText={domainTypeTooltipDataRender()}
+                    label={t('label.domain-type')}
+                    overlayClassName="domain-type-tooltip-container"
+                    placement="topLeft"
+                  />
                 </Typography.Text>
+
                 {editAllPermission && (domain as Domain).domainType && (
                   <Button
                     className="cursor-pointer flex-center m-l-xss"

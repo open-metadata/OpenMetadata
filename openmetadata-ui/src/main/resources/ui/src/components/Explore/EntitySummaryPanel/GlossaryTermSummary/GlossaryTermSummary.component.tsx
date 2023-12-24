@@ -12,15 +12,16 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagButton from 'components/TagButton/TagButton.component';
-import { SummaryEntityType } from 'enums/EntitySummary.enum';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagButton from '../../../TagButton/TagButton.component';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { GlossaryTermSummaryProps } from './GlossaryTermSummary.interface';
@@ -48,7 +49,10 @@ function GlossaryTermSummary({
     [selectedData]
   );
 
-  const synonyms = useMemo(() => entityDetails.synonyms ?? [], [selectedData]);
+  const synonyms = useMemo(
+    () => entityDetails.synonyms?.filter((item) => !isEmpty(item)) ?? [],
+    [selectedData]
+  );
 
   const fetchGlossaryTermDetails = useCallback(async () => {
     try {
@@ -91,9 +95,7 @@ function GlossaryTermSummary({
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-entity', {
-                  entity: t('label.children-lowercase'),
-                })}
+                {t('label.no-reviewer')}
               </Typography.Text>
             )}
           </Col>

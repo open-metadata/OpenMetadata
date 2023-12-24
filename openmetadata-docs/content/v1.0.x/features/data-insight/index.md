@@ -61,7 +61,7 @@ This chart shows the top 10 data assets the most viewed in your platform. It off
  /%}
 
 **Page views by data assets**  
-This chart shows the total number of page views by asset type. This allows you to understand which asset familly drives the most interest in your organization
+This chart shows the total number of page views by asset type. This allows you to understand which asset family drives the most interest in your organization
 
 {% image
     src="/images/v1.0/features/data-insight/views-by-assets.png"
@@ -118,7 +118,7 @@ Add any elasticsearch configuration relevant to your setup. Note that if you are
     caption="Data Insight Ingestion ES Config"
  /%}
 
-Choose a schedule exection time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
+Choose a schedule execution time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
 
 {% image
     src="/images/v1.0/features/data-insight/data-insight-ingestion-schedule.png"
@@ -226,7 +226,7 @@ import pathlib
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.workflow.data_insight import DataInsightWorkflow
 
 try:
     from airflow.operators.python import PythonOperator

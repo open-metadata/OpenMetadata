@@ -14,9 +14,9 @@ import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from 'utils/BlockEditorUtils';
-import { getEntityIcon } from 'utils/TableUtils';
-import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
+import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
+import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<
   ExtensionRef,
@@ -103,7 +103,7 @@ export default forwardRef<
 
   return (
     <Space
-      className="hashtag-menu-wrapper"
+      className="suggestion-menu-wrapper"
       direction="vertical"
       id="hashtag-viewport">
       {items.map((item, index) => {
@@ -130,7 +130,9 @@ export default forwardRef<
               <div className="w-5" style={{ marginTop: '6px' }}>
                 {getEntityIcon(item.type)}
               </div>
-              <Typography>{item.label}</Typography>
+              <Typography className="truncate w-max-200">
+                {item.label}
+              </Typography>
             </Space>
           </Space>
         );

@@ -1,0 +1,24 @@
+{
+  "name": "AutoTaggerApplication",
+  "displayName": "AutoTagger",
+  "description": "Use NLP models to automatically tag PII information and add your own business rules for automatic data tagging.",
+  "features": "Auto Tag information in your tables & columns",
+  "appType": "external",
+  "appScreenshots": [
+    "AutoPIIApplication.png"
+  ],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.AbstractNativeApplication",
+  "sourcePythonClass": "metadata.applications.auto_tagger.AutoTaggerApp",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {
+    "confidenceLevel": 80
+  }
+}

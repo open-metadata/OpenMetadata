@@ -20,6 +20,9 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 from requests.utils import quote
 
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -28,12 +31,14 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.custom_property_mixin import (
+    OMetaCustomPropertyMixin,
+)
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
-from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
@@ -51,10 +56,6 @@ from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.provider_registry import (
-    InvalidAuthProviderException,
-    auth_provider_registry,
-)
 from metadata.ingestion.ometa.routes import ROUTES
 from metadata.ingestion.ometa.utils import get_entity_type, model_str
 from metadata.utils.logger import ometa_logger
@@ -94,7 +95,6 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
-    GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
     OMetaServerMixin,
@@ -107,6 +107,7 @@ class OpenMetadata(
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
+    OMetaCustomPropertyMixin,
     Generic[T, C],
 ):
     """
@@ -118,7 +119,7 @@ class OpenMetadata(
     """
 
     client: REST
-    _auth_provider: AuthenticationProvider
+    _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
@@ -126,7 +127,11 @@ class OpenMetadata(
     api_path = "api"
     data_path = "data"
 
-    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+    ):
         self.config = config
 
         # Load the secrets' manager client
@@ -135,16 +140,7 @@ class OpenMetadata(
             config.secretsManagerLoader,
         ).get_secrets_manager()
 
-        # Load the auth provider init from the registry
-        auth_provider_fn = auth_provider_registry.registry.get(
-            self.config.authProvider.value
-        )
-        if not auth_provider_fn:
-            raise InvalidAuthProviderException(
-                f"Cannot find {self.config.authProvider.value} in {auth_provider_registry.registry}"
-            )
-
-        self._auth_provider = auth_provider_fn(self.config)
+        self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
@@ -181,6 +177,8 @@ class OpenMetadata(
         Based on the entity, return the module path
         it is found inside generated
         """
+        if issubclass(entity, CreateIngestionPipelineRequest):
+            return "services.ingestionPipelines"
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -229,6 +227,8 @@ class OpenMetadata(
             .replace("testcase", "testCase")
             .replace("searchindex", "searchIndex")
             .replace("storedprocedure", "storedProcedure")
+            .replace("ingestionpipeline", "ingestionPipeline")
+            .replace("dataproduct", "dataProduct")
         )
         class_path = ".".join(
             filter(
@@ -366,6 +366,7 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
+    # pylint: disable=too-many-locals
     def list_entities(
         self,
         entity: Type[T],
@@ -373,6 +374,7 @@ class OpenMetadata(
         after: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -389,7 +391,17 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        entities = [entity(**t) for t in resp["data"]]
+        if skip_on_failure:
+            entities = []
+            for elmt in resp["data"]:
+                try:
+                    entities.append(entity(**elmt))
+                except Exception as exc:
+                    logger.error(f"Error creating entity. Failed with exception {exc}")
+                    continue
+        else:
+            entities = [entity(**elmt) for elmt in resp["data"]]
+
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
@@ -400,6 +412,7 @@ class OpenMetadata(
         fields: Optional[List[str]] = None,
         limit: int = 1000,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -413,7 +426,11 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity, fields=fields, limit=limit, params=params
+            entity=entity,
+            fields=fields,
+            limit=limit,
+            params=params,
+            skip_on_failure=skip_on_failure,
         )
         for elem in entity_list.entities:
             yield elem
@@ -421,7 +438,12 @@ class OpenMetadata(
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity, fields=fields, limit=limit, params=params, after=after
+                entity=entity,
+                fields=fields,
+                limit=limit,
+                params=params,
+                after=after,
+                skip_on_failure=skip_on_failure,
             )
             for elem in entity_list.entities:
                 yield elem

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React from 'react';
-import { searchQuery } from 'rest/searchAPI';
-import { getListTestCase } from 'rest/testAPI';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getListTestCase } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
 
 const testCasePermission = {
@@ -32,16 +32,16 @@ const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
 const mockUseHistory = { push: jest.fn() };
 const mockLocation = { search: '' };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
     },
   })),
 }));
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    ...jest.requireActual('rest/testAPI'),
+    ...jest.requireActual('../../../rest/testAPI'),
     getListTestCase: jest
       .fn()
       .mockImplementation(() =>
@@ -50,9 +50,9 @@ jest.mock('rest/testAPI', () => {
     getTestCaseById: jest.fn().mockImplementation(() => Promise.resolve()),
   };
 });
-jest.mock('rest/searchAPI', () => {
+jest.mock('../../../rest/searchAPI', () => {
   return {
-    ...jest.requireActual('rest/searchAPI'),
+    ...jest.requireActual('../../../rest/searchAPI'),
     searchQuery: jest
       .fn()
       .mockImplementation(() =>
@@ -68,26 +68,35 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-});
-jest.mock('components/ProfilerDashboard/component/DataQualityTab', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    ));
-});
+jest.mock(
+  '../../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
+  }
+);
+jest.mock(
+  '../../../components/ProfilerDashboard/component/DataQualityTab',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>DataQualityTab.component</div>);
+  }
+);
+jest.mock(
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ type }) => (
+        <div data-testid={`error-placeholder-type-${type}`}>
+          ErrorPlaceHolder.component
+        </div>
+      ));
+  }
+);
 
 const mockProps = {
   summaryPanel: <div>SummaryPanel.component</div>,
@@ -116,6 +125,7 @@ describe('TestCases component', () => {
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: 'testDefinition,testCaseResult,testSuite',
+      limit: 15,
       orderByLastExecutionDate: true,
     });
   });
@@ -129,7 +139,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fetchSource: false,
       pageNumber: 1,
-      pageSize: 10,
+      pageSize: 15,
       query: 'sale',
       searchIndex: 'test_case_search_index',
     });

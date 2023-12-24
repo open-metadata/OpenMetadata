@@ -49,7 +49,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -80,23 +81,41 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
+        "analyzer": "om_analyzer_jp"
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
       "fields": {
         "properties": {
           "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },
@@ -109,7 +128,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
+            "analyzer": "om_analyzer_jp",
             "norms": false
           },
           "fullyQualifiedName": {
@@ -367,7 +386,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "lifeCycle": {
         "type": "object"

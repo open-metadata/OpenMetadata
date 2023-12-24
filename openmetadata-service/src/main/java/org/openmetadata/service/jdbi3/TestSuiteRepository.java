@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.HashMap;
@@ -12,9 +11,9 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -33,31 +32,32 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
-  public TestSuiteRepository(CollectionDAO dao) {
+  public TestSuiteRepository() {
     super(
         TestSuiteResource.COLLECTION_PATH,
         TEST_SUITE,
         TestSuite.class,
-        dao.testSuiteDAO(),
-        dao,
+        Entity.getCollectionDAO().testSuiteDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
-  public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
-    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
+  public void setFields(TestSuite entity, EntityUtil.Fields fields) {
+    entity.setPipelines(
+        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setSummary(
+        fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
+    entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
   @Override
-  public TestSuite clearFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
-    return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+    entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
@@ -73,7 +73,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setFullyQualifiedName(TestSuite testSuite) {
     if (testSuite.getExecutableEntityReference() != null) {
       testSuite.setFullyQualifiedName(
-          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+          FullyQualifiedName.add(
+              testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
@@ -87,13 +88,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
 
     return testCaseSummary;
-  }
-
-  private ResultSummary getResultSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
-    return new ResultSummary()
-        .withTestCaseName(testCase.getFullyQualifiedName())
-        .withStatus(testCaseStatus)
-        .withTimestamp(timestamp);
   }
 
   private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
@@ -110,7 +104,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     for (TestSuite testSuite : entities) {
       HashMap<String, Integer> testSummary = getResultSummary(testSuite);
       for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
-        testsSummary.put(entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
+        testsSummary.put(
+            entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
       }
       total += testSuite.getTestCaseResultSummary().size();
     }
@@ -160,48 +155,21 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  @Override
-  public void deleteFromSearch(TestSuite entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, TestSuite.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "testSuites.fullyQualifiedName");
-      } else {
-        if (Boolean.TRUE.equals(entity.getExecutable())) {
-          searchClient.updateSearchEntityDeleted(
-              JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.fullyQualifiedName");
-        } else {
-          String scriptTxt =
-              "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
-          searchClient.deleteEntityAndRemoveRelationships(
-              JsonUtils.deepCopy(entity, TestSuite.class), scriptTxt, "testSuites.fullyQualifiedName");
-        }
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(TestSuite entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, TestSuite.class), false, "testSuites.fullyQualifiedName");
-    }
-  }
-
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
         Entity.getEntityByName(
-            Entity.TABLE, testSuite.getExecutableEntityReference().getFullyQualifiedName(), null, null);
-    addRelationship(table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
+            Entity.TABLE,
+            testSuite.getExecutableEntityReference().getFullyQualifiedName(),
+            null,
+            null);
+    addRelationship(
+        table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(
       SecurityContext securityContext, TestSuite original, boolean hardDelete) {
-    // deleting a logical will delete the test suite and only remove
-    // the relationship to test cases if hardDelete is true. Test Cases
-    // will not be deleted.
+    // deleting a logical will delete the test suite and only remove the relationship to
+    // test cases if hardDelete is true. Test Cases will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
@@ -230,6 +198,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       List<EntityReference> origTests = listOrEmpty(original.getTests());

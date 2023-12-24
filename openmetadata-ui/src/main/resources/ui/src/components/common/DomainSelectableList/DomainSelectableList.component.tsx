@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/type';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDomainList } from 'rest/domainAPI';
-import { searchData } from 'rest/miscAPI';
-import { formatDomainsResponse } from 'utils/APIUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { getDomainList } from '../../../rest/domainAPI';
+import { searchData } from '../../../rest/miscAPI';
+import { formatDomainsResponse } from '../../../utils/APIUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
-} from 'utils/EntityUtils';
+} from '../../../utils/EntityUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
@@ -108,8 +113,27 @@ const DomainSelectableList = ({
       content={
         <SelectableList
           customTagRenderer={DomainListItemRenderer}
+          emptyPlaceholderText={
+            <Transi18next
+              i18nKey="message.no-domain-available"
+              renderElement={
+                <a
+                  href={getDomainPath()}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
+                  target="_blank"
+                />
+              }
+              values={{
+                link: t('label.domain-plural'),
+              }}
+            />
+          }
           fetchOptions={fetchOptions}
           multiSelect={false}
+          removeIconTooltipLabel={t('label.remove-entity', {
+            entity: t('label.domain-lowercase'),
+          })}
           searchPlaceholder={t('label.search-for-type', {
             type: t('label.domain'),
           })}
@@ -125,9 +149,7 @@ const DomainSelectableList = ({
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>

@@ -18,11 +18,13 @@ export default defineConfig({
   viewportWidth: 1240,
   viewportHeight: 660,
   watchForFileChanges: false,
+  videoUploadOnPasses: false,
   defaultCommandTimeout: 5000,
   chromeWebSecurity: false,
   numTestsKeptInMemory: 0,
   experimentalMemoryManagement: true,
   e2e: {
+    experimentalStudio: true,
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {

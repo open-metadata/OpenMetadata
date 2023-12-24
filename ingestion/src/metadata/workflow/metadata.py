@@ -12,6 +12,7 @@
 Workflow definition for metadata related ingestions: metadata and lineage.
 """
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Sink, Source
 from metadata.utils.importer import (
     import_from_module,
@@ -19,12 +20,12 @@ from metadata.utils.importer import (
     import_source_class,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = ingestion_logger()
 
 
-class MetadataWorkflow(BaseWorkflow):
+class MetadataWorkflow(IngestionWorkflow):
     """
     Metadata ingestion workflow implementation.
     """
@@ -40,6 +41,12 @@ class MetadataWorkflow(BaseWorkflow):
     def _get_source(self) -> Source:
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
+        if not self.config.source.serviceName:
+            raise WorkflowExecutionError(
+                "serviceName is required field for executing the Metadata Workflow. "
+                "You can find more information on how to build the YAML "
+                "configuration here: https://docs.open-metadata.org/connectors"
+            )
 
         source_class = (
             import_from_module(
@@ -51,9 +58,7 @@ class MetadataWorkflow(BaseWorkflow):
             )
         )
 
-        source: Source = source_class.create(
-            self.config.source.dict(), self.metadata_config
-        )
+        source: Source = source_class.create(self.config.source.dict(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -64,7 +69,7 @@ class MetadataWorkflow(BaseWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.dict().get("config", {})
-        sink: Sink = sink_class.create(sink_config, self.metadata_config)
+        sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink

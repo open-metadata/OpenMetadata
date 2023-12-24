@@ -19,11 +19,8 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
@@ -37,6 +34,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -69,14 +67,14 @@ class FivetranSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: FivetranConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, FivetranConnection):
             raise InvalidSourceException(
                 f"Expected FivetranConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_connections_jobs(self, pipeline_details: FivetranPipelineDetails):
         """Returns the list of tasks linked to connection"""
@@ -99,7 +97,7 @@ class FivetranSource(PipelineServiceSource):
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
             tasks=self.get_connections_jobs(pipeline_details),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
             sourceUrl=self.get_source_url(
                 connector_id=pipeline_details.source.get("id"),
                 group_id=pipeline_details.group.get("id"),
@@ -162,9 +160,18 @@ class FivetranSource(PipelineServiceSource):
                 if not from_entity or not to_entity:
                     logger.info(f"Lineage Skipped for {from_fqn} - {to_fqn}")
                     continue
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.pipeline_service,
+                    pipeline_name=self.context.pipeline,
+                )
+                pipeline_entity = self.metadata.get_by_name(
+                    entity=Pipeline, fqn=pipeline_fqn
+                )
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
-                        id=self.context.pipeline.id.__root__, type="pipeline"
+                        id=pipeline_entity.id.__root__, type="pipeline"
                     ),
                     source=LineageSource.PipelineLineage,
                 )

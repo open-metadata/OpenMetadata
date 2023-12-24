@@ -12,9 +12,9 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { SearchIndex } from 'enums/search.enum';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
+import { SearchIndex } from '../../../enums/search.enum';
+import { searchData } from '../../../rest/miscAPI';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const mockProps = {
@@ -24,7 +24,7 @@ const mockProps = {
 
 const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

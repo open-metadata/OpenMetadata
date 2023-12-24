@@ -11,29 +11,6 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
-import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
-import DataModelVersion from 'components/DataModelVersion/DataModelVersion.component';
-import Loader from 'components/Loader/Loader';
-import MlModelVersion from 'components/MlModelVersion/MlModelVersion.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import PipelineVersion from 'components/PipelineVersion/PipelineVersion.component';
-import SearchIndexVersion from 'components/SearchIndexVersion/SearchIndexVersion';
-import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
-import TableVersion from 'components/TableVersion/TableVersion.component';
-import TopicVersion from 'components/TopicVersion/TopicVersion.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { isEmpty } from 'lodash';
 import React, {
   FunctionComponent,
@@ -44,75 +21,97 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
+import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
+import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
+import Loader from '../../components/Loader/Loader';
+import MlModelVersion from '../../components/MlModelVersion/MlModelVersion.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
-  getDashboardByFqn,
-  getDashboardVersion,
-  getDashboardVersions,
-} from 'rest/dashboardAPI';
-import {
-  getDataModelDetailsByFQN,
-  getDataModelVersion,
-  getDataModelVersionsList,
-} from 'rest/dataModelsAPI';
-import {
-  getMlModelByFQN,
-  getMlModelVersion,
-  getMlModelVersions,
-} from 'rest/mlModelAPI';
-import {
-  getPipelineByFqn,
-  getPipelineVersion,
-  getPipelineVersions,
-} from 'rest/pipelineAPI';
-import {
-  getSearchIndexDetailsByFQN,
-  getSearchIndexVersion,
-  getSearchIndexVersions,
-} from 'rest/SearchIndexAPI';
-import {
-  getContainerByName,
-  getContainerVersion,
-  getContainerVersions,
-} from 'rest/storageAPI';
-import {
-  getStoredProceduresDetailsByFQN,
-  getStoredProceduresVersion,
-  getStoredProceduresVersionsList,
-} from 'rest/storedProceduresAPI';
-import {
-  getTableDetailsByFQN,
-  getTableVersion,
-  getTableVersions,
-} from 'rest/tableAPI';
-import {
-  getTopicByFqn,
-  getTopicVersion,
-  getTopicVersions,
-} from 'rest/topicsAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getSearchIndexTabPath } from 'utils/SearchIndexUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
+import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
+import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
+import TableVersion from '../../components/TableVersion/TableVersion.component';
+import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
-  getStoredProcedureDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTopicDetailsPath,
   getVersionPath,
   getVersionPathWithTab,
 } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getDashboardByFqn,
+  getDashboardVersion,
+  getDashboardVersions,
+} from '../../rest/dashboardAPI';
+import {
+  getDataModelDetailsByFQN,
+  getDataModelVersion,
+  getDataModelVersionsList,
+} from '../../rest/dataModelsAPI';
+import {
+  getMlModelByFQN,
+  getMlModelVersion,
+  getMlModelVersions,
+} from '../../rest/mlModelAPI';
+import {
+  getPipelineByFqn,
+  getPipelineVersion,
+  getPipelineVersions,
+} from '../../rest/pipelineAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  getSearchIndexVersion,
+  getSearchIndexVersions,
+} from '../../rest/SearchIndexAPI';
+import {
+  getContainerByName,
+  getContainerVersion,
+  getContainerVersions,
+} from '../../rest/storageAPI';
+import {
+  getStoredProceduresDetailsByFQN,
+  getStoredProceduresVersion,
+  getStoredProceduresVersionsList,
+} from '../../rest/storedProceduresAPI';
+import {
+  getTableDetailsByFQN,
+  getTableVersion,
+  getTableVersions,
+} from '../../rest/tableAPI';
+import {
+  getTopicByFqn,
+  getTopicVersion,
+  getTopicVersions,
+} from '../../rest/topicsAPI';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 
@@ -157,6 +156,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(() => {
+    const decodedEntityFQN = getDecodedFqn(entityFQN);
     switch (entityType) {
       case EntityType.TABLE:
         history.push(getTableTabPath(entityFQN, tab));
@@ -164,27 +164,27 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(entityFQN, tab));
+        history.push(getTopicDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(entityFQN, tab));
+        history.push(getDashboardDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(entityFQN, tab));
+        history.push(getPipelineDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(entityFQN, tab));
+        history.push(getMlModelDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(entityFQN, tab));
+        history.push(getContainerDetailPath(decodedEntityFQN, tab));
 
         break;
 
@@ -194,12 +194,12 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(entityFQN, tab));
+        history.push(getDataModelDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.STORED_PROCEDURE:
-        history.push(getStoredProcedureDetailsPath(entityFQN, tab));
+        history.push(getStoredProcedureDetailPath(decodedEntityFQN, tab));
 
         break;
 
@@ -334,14 +334,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getTopicByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -353,14 +346,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getDashboardByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -372,14 +358,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getPipelineByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -391,14 +370,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getMlModelByFQN(entityFQN, '');
 
           setEntityId(id);
 
@@ -577,7 +549,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TableVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Table}
-            datasetFQN={entityFQN}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -596,6 +568,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TopicVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Topic}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -603,7 +576,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -616,6 +588,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DashboardVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Dashboard}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -635,6 +608,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <PipelineVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Pipeline}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -642,7 +616,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -655,6 +628,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <MlModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Mlmodel}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -673,8 +647,8 @@ const EntityVersionPage: FunctionComponent = () => {
           <ContainerVersion
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
-            containerFQN={entityFQN}
             currentVersionData={currentVersionData as Container}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -693,12 +667,12 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as SearchIndex}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
-            searchIndexFQN={entityFQN}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -712,14 +686,13 @@ const EntityVersionPage: FunctionComponent = () => {
           <DataModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
-            dataModelFQN={entityFQN}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -732,13 +705,13 @@ const EntityVersionPage: FunctionComponent = () => {
           <StoredProcedureVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as StoredProcedure}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTableName={slashedEntityName}
-            storedProcedureFQN={entityFQN}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}

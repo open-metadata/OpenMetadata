@@ -419,9 +419,19 @@ processor:
     #           - ...
     #     partitionConfig:
     #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+    #       partitionColumnName: <partition column name>
+    #       partitionIntervalType: <TIME-UNIT, INTEGER-RANGE, INGESTION-TIME, COLUMN-VALUE>
+    #       Pick one of the variation shown below
+    #       ----'TIME-UNIT' or 'INGESTION-TIME'-------
     #       partitionInterval: <partition interval>
     #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+    #       ------------'INTEGER-RANGE'---------------
+    #       partitionIntegerRangeStart: <integer>
+    #       partitionIntegerRangeEnd: <integer>
+    #       -----------'COLUMN-VALUE'----------------
+    #       partitionValues:
+    #         - <value>
+    #         - <value>
 
 ```
 
@@ -472,9 +482,10 @@ Note now instead of running `ingest`, we are using the `profile` command to sele
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mariadb/airflow"
-  / %}
+   icon="mediation"
+   title="Configure Ingestion Externally"
+   description="Deploy, configure, and manage the ingestion workflows externally."
+   link="/deployment/ingestion"
+ / %}
 
 {% /tilesContainer %}

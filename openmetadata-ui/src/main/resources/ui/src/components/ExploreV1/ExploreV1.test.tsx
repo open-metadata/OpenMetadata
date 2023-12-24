@@ -12,10 +12,13 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from 'components/Explore/exlore.mock';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SearchIndex } from 'enums/search.enum';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
+import {
+  MOCK_EXPLORE_SEARCH_RESULTS,
+  MOCK_EXPLORE_TAB_ITEMS,
+} from '../Explore/Explore.mock';
+import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -26,7 +29,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -34,14 +37,14 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('components/GlobalSearchProvider/GlobalSearchProvider', () => ({
+jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
   useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
   })),
 }));
 
 jest.mock(
-  'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
@@ -61,7 +64,10 @@ const onChangePage = jest.fn();
 const props = {
   aggregations: {},
   searchResults: MOCK_EXPLORE_SEARCH_RESULTS,
+  tabItems: MOCK_EXPLORE_TAB_ITEMS,
+  activeTabKey: SearchIndex.TABLE,
   tabCounts: {
+    data_product_search_index: 0,
     table_search_index: 20,
     topic_search_index: 10,
     dashboard_search_index: 14,
@@ -70,9 +76,9 @@ const props = {
     container_search_index: 0,
     stored_procedure_search_index: 0,
     dashboard_data_model_search_index: 0,
-    glossary_search_index: 0,
+    glossary_term_search_index: 0,
     tag_search_index: 10,
-    search_entity_index: 9,
+    search_entity_search_index: 9,
   },
   onChangeAdvancedSearchQuickFilters: onChangeAdvancedSearchQuickFilters,
   searchIndex: SearchIndex.TABLE as ExploreSearchIndex,

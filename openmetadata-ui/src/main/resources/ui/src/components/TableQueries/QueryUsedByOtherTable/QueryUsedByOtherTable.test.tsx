@@ -12,12 +12,12 @@
  */
 
 import { render, screen, waitForElement } from '@testing-library/react';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from 'components/Explore/exlore.mock';
-import { Query } from 'generated/entity/data/query';
-import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
+import { Query } from '../../../generated/entity/data/query';
+import { MOCK_QUERIES } from '../../../mocks/Queries.mock';
+import { searchData } from '../../../rest/miscAPI';
+import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../Explore/Explore.mock';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 
@@ -27,13 +27,13 @@ const mockProps: QueryUsedByOtherTableProps = {
   onChange: jest.fn(),
 };
 
-jest.mock('components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockReturnValue(() => Promise.resolve(MOCK_EXPLORE_SEARCH_RESULTS)),

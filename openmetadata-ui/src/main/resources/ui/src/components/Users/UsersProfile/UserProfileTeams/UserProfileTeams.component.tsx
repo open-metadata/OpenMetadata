@@ -12,16 +12,20 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import Chip from 'components/common/Chip/Chip.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
-import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getNonDeletedTeams } from 'utils/CommonUtils';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../assets/svg/teams-grey.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
+import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
+import TeamsSelectable from '../../../../components/TeamsSelectable/TeamsSelectable';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
+import { EntityReference } from '../../../../generated/entity/type';
+import { useAuth } from '../../../../hooks/authHooks';
+import { getNonDeletedTeams } from '../../../../utils/CommonUtils';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
 const UserProfileTeams = ({
@@ -32,11 +36,11 @@ const UserProfileTeams = ({
   const { isAdminUser } = useAuth();
 
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
 
   const handleTeamsSave = () => {
     updateUserDetails({
-      teams: selectedTeams.map((teamId) => ({ id: teamId, type: 'team' })),
+      teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
     });
 
     setIsTeamsEdit(false);
@@ -46,7 +50,7 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
-        icon={<IconTeamsGrey height={20} width={20} />}
+        icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
@@ -54,12 +58,13 @@ const UserProfileTeams = ({
   );
 
   useEffect(() => {
-    setSelectedTeams(getNonDeletedTeams(teams ?? []).map((team) => team.id));
+    setSelectedTeams(getNonDeletedTeams(teams ?? []));
   }, [teams]);
 
   return (
     <Card
       className="relative card-body-border-none card-padding-y-0"
+      data-testid="user-team-card-container"
       key="teams-card"
       title={
         <Space align="center">
@@ -69,32 +74,30 @@ const UserProfileTeams = ({
 
           {!isTeamsEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
-              data-testid="edit-teams"
+              data-testid="edit-teams-button"
               {...ICON_DIMENSION}
               onClick={() => setIsTeamsEdit(true)}
             />
           )}
         </Space>
       }>
-      <div className="m-b-md">
-        {isTeamsEdit && isAdminUser ? (
-          <InlineEdit
-            direction="vertical"
-            onCancel={() => setIsTeamsEdit(false)}
-            onSave={handleTeamsSave}>
-            <TeamsSelectable
-              filterJoinable
-              maxValueCount={4}
-              selectedTeams={selectedTeams}
-              onSelectionChange={setSelectedTeams}
-            />
-          </InlineEdit>
-        ) : (
-          teamsRenderElement
-        )}
-      </div>
+      {isTeamsEdit && isAdminUser ? (
+        <InlineEdit
+          direction="vertical"
+          onCancel={() => setIsTeamsEdit(false)}
+          onSave={handleTeamsSave}>
+          <TeamsSelectable
+            filterJoinable
+            maxValueCount={4}
+            selectedTeams={selectedTeams}
+            onSelectionChange={setSelectedTeams}
+          />
+        </InlineEdit>
+      ) : (
+        teamsRenderElement
+      )}
     </Card>
   );
 };

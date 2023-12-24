@@ -48,7 +48,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return getResponse(BadRequestException.of().getResponse(), ex);
     } else if (ex instanceof UnableToExecuteStatementException) {
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
-          || ex.getCause() instanceof PSQLException && ex.getCause().getMessage().contains("duplicate")) {
+          || ex.getCause() instanceof PSQLException
+              && ex.getCause().getMessage().contains("duplicate")) {
         return getResponse(CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
       }
     } else if (ex instanceof EntityNotFoundException) {
@@ -59,8 +60,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return getResponse(UNAUTHORIZED, ex.getLocalizedMessage());
     } else if (ex instanceof AuthorizationException) {
       return getResponse(FORBIDDEN, ex.getLocalizedMessage());
-    } else if (ex instanceof WebServiceException) {
-      final Response response = ((WebServiceException) ex).getResponse();
+    } else if (ex instanceof WebServiceException webServiceException) {
+      final Response response = webServiceException.getResponse();
       Family family = response.getStatusInfo().getFamily();
       if (family.equals(Response.Status.Family.REDIRECTION)) {
         return response;
@@ -88,12 +89,14 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     return Response.status(status)
         .type(APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(status.getStatusCode(), message))
+        .header("WWW-Authenticate", "om-auth")
         .build();
   }
 
   private void logUnhandledException(Throwable ex) {
     String errMessage =
-        String.format("Got exception: [%s] / message [%s]", ex.getClass().getSimpleName(), ex.getMessage());
+        String.format(
+            "Got exception: [%s] / message [%s]", ex.getClass().getSimpleName(), ex.getMessage());
     StackTraceElement elem = findFirstResourceCallFromCallStack(ex.getStackTrace());
     String resourceClassName = null;
     if (elem != null) {

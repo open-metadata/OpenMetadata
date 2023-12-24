@@ -8,14 +8,16 @@ import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 public class LoginAttemptCache {
   private int maxAttempt = 3;
   private final LoadingCache<String, Integer> attemptsCache;
 
-  public LoginAttemptCache(OpenMetadataApplicationConfig config) {
-    LoginConfiguration loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
+  public LoginAttemptCache() {
+    LoginConfiguration loginConfiguration =
+        SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
     long accessBlockTime = 600;
     if (loginConfiguration != null) {
       maxAttempt = loginConfiguration.getMaxLoginFailAttempts();

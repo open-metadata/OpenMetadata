@@ -56,7 +56,7 @@ const visitAddAlertPage = () => {
   });
 };
 
-describe.skip('Alerts page should work properly', () => {
+describe('Alerts page should work properly', () => {
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
@@ -65,7 +65,7 @@ describe.skip('Alerts page should work properly', () => {
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/events/subscriptions', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()

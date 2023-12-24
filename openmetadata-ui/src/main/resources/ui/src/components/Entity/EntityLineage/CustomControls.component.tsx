@@ -14,18 +14,7 @@
 import { SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Select, Space } from 'antd';
 import Input from 'antd/lib/input/Input';
-import { ReactComponent as EditIconColor } from 'assets/svg/ic-edit-lineage-colored.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/ic-edit-lineage.svg';
 import classNames from 'classnames';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import {
-  MAX_ZOOM_VALUE,
-  MIN_ZOOM_VALUE,
-  ZOOM_BUTTON_STEP,
-  ZOOM_SLIDER_STEP,
-  ZOOM_TRANSITION_DURATION,
-} from 'constants/Lineage.constants';
 import React, {
   FC,
   memo,
@@ -36,13 +25,25 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';
-import { getLoadingStatusValue } from 'utils/EntityLineageUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
+import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
+import { PRIMERY_COLOR } from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import {
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+  ZOOM_BUTTON_STEP,
+  ZOOM_SLIDER_STEP,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../constants/Lineage.constants';
+import { handleSearchFilterOption } from '../../../utils/CommonUtils';
+import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 const CustomControls: FC<ControlProps> = ({
   style,
@@ -99,16 +100,6 @@ const CustomControls: FC<ControlProps> = ({
   const onFitViewHandler = useCallback(() => {
     fitView?.(fitViewParams);
   }, [fitView, fitViewParams]);
-
-  const handleSearchFilterOption = (
-    input: string,
-    option?: {
-      label: string;
-      value: string;
-    }
-  ) => {
-    return (option?.label || '').toLowerCase().includes(input.toLowerCase());
-  };
 
   const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const zoomValue = parseFloat(event.target.value);

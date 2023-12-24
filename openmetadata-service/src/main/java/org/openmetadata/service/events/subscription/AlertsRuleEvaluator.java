@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -43,7 +42,8 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchAnySource",
       input = "List of comma separated source",
-      description = "Returns true if the change event entity being accessed has source as mentioned in condition",
+      description =
+          "Returns true if the change event entity being accessed has source as mentioned in condition",
       examples = {"matchAnySource('bot', 'user')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchAnySource(String... originEntities) {
@@ -62,7 +62,8 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchAnyOwnerName",
       input = "List of comma separated ownerName",
-      description = "Returns true if the change event entity being accessed has following owners from the List.",
+      description =
+          "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyOwnerName(String... ownerNameList) {
@@ -94,17 +95,20 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchAnyEntityFqn",
       input = "List of comma separated entityName",
-      description = "Returns true if the change event entity being accessed has following entityName from the List.",
+      description =
+          "Returns true if the change event entity being accessed has following entityName from the List.",
       examples = {"matchAnyEntityFqn('Name1', 'Name')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(String... entityNames) throws IOException {
+  public boolean matchAnyEntityFqn(String... entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
       if (changeEvent.getEntityType().equals(TEST_CASE)
-          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink()).getEntityFQN().equals(name))) {
+          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink())
+              .getEntityFQN()
+              .equals(name))) {
         return true;
       }
       if (entity.getFullyQualifiedName().equals(name)) {
@@ -117,10 +121,11 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchAnyEntityId",
       input = "List of comma separated entity Ids",
-      description = "Returns true if the change event entity being accessed has following entityId from the List.",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityId(String... entityIds) throws IOException {
+  public boolean matchAnyEntityId(String... entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -136,8 +141,11 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchAnyEventType",
       input = "List of comma separated eventTypes",
-      description = "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"},
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {
+        "matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"
+      },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchAnyEventType(String... eventTypesList) {
     if (changeEvent == null || changeEvent.getEventType() == null) {
@@ -155,7 +163,8 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchTestResult",
       input = "List of comma separated eventTypes",
-      description = "Returns true if the change event entity being accessed has following entityId from the List.",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchTestResult(String... testResults) {
@@ -209,8 +218,11 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchIngestionPipelineState",
       input = "List of comma separated pipeline states",
-      description = "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchIngestionPipelineState('queued', 'success', 'failed', 'running', 'partialSuccess')"},
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {
+        "matchIngestionPipelineState('queued', 'success', 'failed', 'running', 'partialSuccess')"
+      },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchIngestionPipelineState(String... pipelineState) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
@@ -254,17 +266,20 @@ public class AlertsRuleEvaluator {
   }
 
   public static EntityInterface getEntity(ChangeEvent event) {
-    Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
+    Class<? extends EntityInterface> entityClass =
+        Entity.getEntityClassFromType(event.getEntityType());
     if (entityClass != null) {
       EntityInterface entity;
-      if (event.getEntity() instanceof String) {
-        entity = JsonUtils.readValue((String) event.getEntity(), entityClass);
+      if (event.getEntity() instanceof String str) {
+        entity = JsonUtils.readValue(str, entityClass);
       } else {
         entity = JsonUtils.convertValue(event.getEntity(), entityClass);
       }
       return entity;
     }
     throw new IllegalArgumentException(
-        String.format("Change Event Data Asset is not an entity %s", JsonUtils.pojoToJson(event.getEntity())));
+        String.format(
+            "Change Event Data Asset is not an entity %s",
+            JsonUtils.pojoToJson(event.getEntity())));
   }
 }

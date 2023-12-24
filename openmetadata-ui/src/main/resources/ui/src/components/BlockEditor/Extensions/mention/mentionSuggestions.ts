@@ -11,26 +11,28 @@
  *  limitations under the License.
  */
 import { ReactRenderer } from '@tiptap/react';
-import tippy, { Instance, Props } from 'tippy.js';
-
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { EntityUrlMapType, ENTITY_URL_MAP } from 'constants/Feeds.constants';
-import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
-import { buildMentionLink } from 'utils/FeedUtils';
-import { ExtensionRef } from '../BlockEditor.interface';
+import { isEmpty } from 'lodash';
+import tippy, { Instance, Props } from 'tippy.js';
+import {
+  EntityUrlMapType,
+  ENTITY_URL_MAP,
+} from '../../../../constants/Feeds.constants';
+import { getSearchedUsers, getUserSuggestions } from '../../../../rest/miscAPI';
+import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { ExtensionRef } from '../../BlockEditor.interface';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
     if (!query) {
-      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
+      const data = await getSearchedUsers('', 1, 5);
       const hits = data.data.hits.hits;
 
       return hits.map((hit) => ({
         id: hit._id,
         name: hit._source.name,
-        label: hit._source.displayName,
+        label: hit._source.displayName ?? hit._source.name,
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
           ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
@@ -45,7 +47,7 @@ export const mentionSuggestion = () => ({
       return hits.map((hit) => ({
         id: hit._id,
         name: hit._source.name,
-        label: hit._source.displayName,
+        label: hit._source.displayName ?? hit._source.name,
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
           ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
@@ -58,7 +60,8 @@ export const mentionSuggestion = () => ({
 
   render: () => {
     let component: ReactRenderer;
-    let popup: Instance<Props>[];
+    let popup: Instance<Props>[] = [];
+    let hasPopup = !isEmpty(popup);
 
     return {
       onStart: (props: SuggestionProps) => {
@@ -81,6 +84,7 @@ export const mentionSuggestion = () => ({
           trigger: 'manual',
           placement: 'bottom-start',
         });
+        hasPopup = !isEmpty(popup);
       },
 
       onUpdate(props: SuggestionProps) {
@@ -90,24 +94,30 @@ export const mentionSuggestion = () => ({
           return;
         }
 
-        popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
-        });
+        if (hasPopup) {
+          popup[0].setProps({
+            getReferenceClientRect:
+              props.clientRect as Props['getReferenceClientRect'],
+          });
+        }
       },
 
       onKeyDown(props: SuggestionKeyDownProps) {
-        if (props.event.key === 'Escape' && !popup[0].state.isDestroyed) {
+        if (
+          props.event.key === 'Escape' &&
+          hasPopup &&
+          !popup[0].state.isDestroyed
+        ) {
           popup[0].hide();
 
           return true;
         }
 
-        return (component.ref as ExtensionRef)?.onKeyDown(props);
+        return (component?.ref as ExtensionRef)?.onKeyDown(props);
       },
 
       onExit() {
-        if (!popup[0].state.isDestroyed) {
+        if (hasPopup && !popup[0].state.isDestroyed) {
           popup[0].destroy();
         }
       },

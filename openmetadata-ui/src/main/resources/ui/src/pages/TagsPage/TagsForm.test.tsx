@@ -12,11 +12,11 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
 import React from 'react';
+import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import TagsForm from './TagsForm';
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => {
     return <div>{initialValue}MarkdownWithPreview component</div>;
   });

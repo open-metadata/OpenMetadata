@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,22 +26,27 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
-
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+  public BotRepository() {
+    super(
+        BotResource.COLLECTION_PATH,
+        Entity.BOT,
+        Bot.class,
+        Entity.getCollectionDAO().botDAO(),
+        "",
+        BOT_UPDATE_FIELDS);
     quoteFqn = true;
   }
 
   @Override
-  public Bot setFields(Bot entity, Fields fields) {
-    return entity.withBotUser(getBotUser(entity));
+  public void setFields(Bot entity, Fields fields) {
+    entity.withBotUser(getBotUser(entity));
   }
 
   @Override
-  public Bot clearFields(Bot entity, Fields fields) {
-    return entity;
+  public void clearFields(Bot entity, Fields fields) {
+    /* Do nothing */
   }
 
   @Override
@@ -59,7 +65,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void storeRelationships(Bot entity) {
-    addRelationship(entity.getId(), entity.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+    addRelationship(
+        entity.getId(),
+        entity.getBotUser().getId(),
+        Entity.BOT,
+        Entity.USER,
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -84,6 +95,7 @@ public class BotRepository extends EntityRepository<Bot> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateUser(original, updated);
@@ -91,7 +103,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
     private void updateUser(Bot original, Bot updated) {
       deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
-      addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+      addRelationship(
+          updated.getId(),
+          updated.getBotUser().getId(),
+          Entity.BOT,
+          Entity.USER,
+          Relationship.CONTAINS);
       if (original.getBotUser() == null
           || updated.getBotUser() == null
           || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {

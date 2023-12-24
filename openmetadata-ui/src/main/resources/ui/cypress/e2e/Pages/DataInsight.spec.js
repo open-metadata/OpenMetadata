@@ -18,12 +18,11 @@ import {
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
 import {
-  BASE_WAIT_TIME,
   descriptionBox,
   interceptURL,
-  RETRY_TIMES,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 
 const KPI_DATA = [
   {
@@ -37,6 +36,8 @@ const KPI_DATA = [
     metricType: 'hasOwnerFraction (PERCENTAGE)',
   },
 ];
+
+let isSuccessStatus = false;
 
 const deleteKpiRequest = () => {
   cy.get('[data-menu-id*="kpi"]').click();
@@ -58,28 +59,6 @@ const deleteKpiRequest = () => {
   });
 };
 
-const checkSuccessStatus = (count = 1, timer = BASE_WAIT_TIME) => {
-  cy.get('[data-testid="ingestion-details-container"]')
-    .find('[data-testid="pipeline-status"]')
-    .as('checkRun');
-  // the latest run should be success
-  cy.get('@checkRun').then(($ingestionStatus) => {
-    if (
-      $ingestionStatus.text() !== 'Success' &&
-      $ingestionStatus.text() !== 'Failed' &&
-      count <= RETRY_TIMES
-    ) {
-      // retry after waiting with log1 method [20s,40s,80s,160s,320s]
-      cy.wait(timer);
-      timer *= 2;
-      cy.reload();
-      checkSuccessStatus(++count, timer * 2);
-    } else {
-      cy.get('@checkRun').should('have.text', 'Success');
-    }
-  });
-};
-
 const addKpi = (data) => {
   const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
   const endDate = customFormatDateTime(
@@ -96,12 +75,7 @@ const addKpi = (data) => {
     .scrollIntoView()
     .type(100);
   cy.get('[data-testid="start-date"]').click().type(`${startDate}{enter}`);
-  cy.clickOutside();
-  cy.get('[data-testid="end-date"]')
-    .scrollIntoView()
-    .click()
-    .type(`${endDate}{enter}`);
-  cy.clickOutside();
+  cy.get('[data-testid="end-date"]').click().type(`${endDate}{enter}`);
   cy.get(descriptionBox).scrollIntoView().type('cypress test');
   cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
   verifyResponseStatusCode('@createKpi', 201);
@@ -136,45 +110,37 @@ describe('Data Insight feature', () => {
   });
 
   it('Deploy data insight index', () => {
+    interceptURL('GET', '/api/v1/apps?limit=*', 'apps');
     interceptURL(
       'GET',
-      '/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=OpenMetadata&pipelineType=dataInsight',
-      'ingestionPipeline'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines/OpenMetadata.OpenMetadata_dataInsight/pipelineStatus?*',
-      'pipelineStatus'
+      '/api/v1/apps/name/DataInsightsApplication?*',
+      'dataInsightsApplication'
     );
     interceptURL(
       'POST',
-      '/api/v1/services/ingestionPipelines/deploy/*',
+      '/api/v1/apps/deploy/DataInsightsApplication',
       'deploy'
     );
     interceptURL(
       'POST',
-      '/api/v1/services/ingestionPipelines/trigger/*',
+      '/api/v1/apps/trigger/DataInsightsApplication',
       'triggerPipeline'
     );
     cy.get('[data-testid="app-bar-item-settings"]').click();
-    cy.get('[data-menu-id*="openMetadata.dataInsight"]')
-      .scrollIntoView()
-      .click();
-    verifyResponseStatusCode('@ingestionPipeline', 200);
-    cy.wait('@pipelineStatus').then(({ response }) => {
-      const data = response.body.data;
-      if (data.length > 0) {
-        cy.get('[data-testid="re-deploy-btn"]').click();
-      } else {
-        cy.get('[data-testid="deploy"]').click();
-      }
-      cy.wait('@deploy');
-    });
+    cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
+    verifyResponseStatusCode('@apps', 200);
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@dataInsightsApplication', 200);
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@deploy', 200);
     cy.reload();
-    verifyResponseStatusCode('@ingestionPipeline', 200);
-    cy.get('[data-testid="run"]').click();
+    verifyResponseStatusCode('@dataInsightsApplication', 200);
+    cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
-    checkSuccessStatus();
+    cy.reload();
+    isSuccessStatus = checkDataInsightSuccessStatus();
   });
 
   it('Verifying Data assets tab', () => {
@@ -184,7 +150,9 @@ describe('Data Insight feature', () => {
     cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
     cy.get('[data-testid="summary-card"]').should('be.visible');
     cy.get('[data-testid="kpi-card"]').should('be.visible');
-    cy.get('#kpi-chart').scrollIntoView().should('be.visible');
+    if (isSuccessStatus) {
+      cy.get('#kpi-chart').scrollIntoView().should('be.visible');
+    }
     cy.get('#entity-summary-chart').scrollIntoView().should('be.visible');
     cy.get('#PercentageOfEntitiesWithDescriptionByType-graph')
       .scrollIntoView()

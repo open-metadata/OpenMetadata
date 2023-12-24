@@ -22,32 +22,34 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import SourceList from 'components/MlModelDetail/SourceList.component';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { MlFeature } from 'generated/entity/data/mlmodel';
-import { TagSource } from 'generated/type/tagLabel';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getMlFeatureVersionData } from 'utils/MlModelVersionUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import SourceList from '../../components/MlModelDetail/SourceList.component';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
+import { MlFeature } from '../../generated/entity/data/mlmodel';
+import { TagSource } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getMlFeatureVersionData } from '../../utils/MlModelVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
 
@@ -57,6 +59,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedMlModelName,
   versionList,
@@ -95,7 +98,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       history.push(
         getVersionPathWithTab(
           EntityType.MLMODEL,
-          currentVersionData.fullyQualifiedName ?? '',
+          getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
           String(version),
           activeKey
         )
@@ -146,9 +149,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.PIPELINE}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -284,9 +287,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.MLMODEL}
                     key={tagType}
                     permission={false}

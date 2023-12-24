@@ -16,11 +16,8 @@ from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
     SplineConnection,
 )
@@ -38,6 +35,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
 from metadata.ingestion.source.pipeline.spline.utils import (
@@ -58,14 +56,14 @@ class SplineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SplineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SplineConnection):
             raise InvalidSourceException(
                 f"Expected SplineConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_connections_jobs(
         self, pipeline_details: ExecutionEvent, connection_url: str
@@ -100,7 +98,7 @@ class SplineSource(PipelineServiceSource):
             displayName=pipeline_details.applicationName,
             sourceUrl=connection_url,
             tasks=self.get_connections_jobs(pipeline_details, connection_url),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -222,12 +220,21 @@ class SplineSource(PipelineServiceSource):
                     else None
                 )
                 if from_table and to_table:
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.pipeline_service,
+                        pipeline_name=self.context.pipeline,
+                    )
+                    pipeline_entity = self.metadata.get_by_name(
+                        entity=Pipeline, fqn=pipeline_fqn
+                    )
                     yield Either(
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 lineageDetails=LineageDetails(
                                     pipeline=EntityReference(
-                                        id=self.context.pipeline.id.__root__,
+                                        id=pipeline_entity.id.__root__,
                                         type="pipeline",
                                     ),
                                     columnsLineage=[

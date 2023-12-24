@@ -24,7 +24,7 @@ services:
     restart: always
     command: "--work_mem=10MB"
     depends_on:
-      - elasticsearch
+      - opensearch
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -42,12 +42,13 @@ services:
       timeout: 10s
       retries: 10
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.3
-    container_name: openmetadata_elasticsearch
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: openmetadata_opensearch
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - plugins.security.disabled=true
     networks:
       - local_app_net
     expose:
@@ -57,7 +58,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/opensearch/data
 
   execute-migrate-all:
     build:
@@ -84,6 +85,7 @@ services:
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
+      AUTHENTICATION_RESPONSE_TYPE: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
       CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
@@ -113,12 +115,12 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-opensearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
-      SEARCH_TYPE: ${SEARCH_TYPE:- "elasticsearch"}
+      SEARCH_TYPE: ${SEARCH_TYPE:- "opensearch"}
       ELASTICSEARCH_TRUST_STORE_PATH: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
       ELASTICSEARCH_TRUST_STORE_PASSWORD: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
       ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
@@ -147,7 +149,7 @@ services:
       FERNET_KEY: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
       #secretsManagerConfiguration
-      SECRET_MANAGER: ${SECRET_MANAGER:-noop}
+      SECRET_MANAGER: ${SECRET_MANAGER:-db}
       #parameters:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
@@ -165,21 +167,12 @@ services:
       SMTP_SERVER_PWD: ${SMTP_SERVER_PWD:-""}
       SMTP_SERVER_STRATEGY: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-      #changeEventConfig
-      OM_URI: ${OM_URI:- "http://localhost:8585"}
-
       #extensionConfiguration
       OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
       OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
 
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-      # Application Config
-      OM_CUSTOM_LOGO_URL_PATH: ${OM_CUSTOM_LOGO_URL_PATH:-""}
-      OM_CUSTOM_MONOGRAM_URL_PATH: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
-      OM_MAX_FAILED_LOGIN_ATTEMPTS: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-      OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-      OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
       # Mask passwords values in UI
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
 
@@ -211,7 +204,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
@@ -238,6 +231,7 @@ services:
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
+      AUTHENTICATION_RESPONSE_TYPE: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
       CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
@@ -267,12 +261,12 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-opensearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
-      SEARCH_TYPE: ${SEARCH_TYPE:- "elasticsearch"}
+      SEARCH_TYPE: ${SEARCH_TYPE:- "opensearch"}
       ELASTICSEARCH_TRUST_STORE_PATH: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
       ELASTICSEARCH_TRUST_STORE_PASSWORD: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
       ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
@@ -301,7 +295,7 @@ services:
       FERNET_KEY: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
       #secretsManagerConfiguration
-      SECRET_MANAGER: ${SECRET_MANAGER:-noop}
+      SECRET_MANAGER: ${SECRET_MANAGER:-db}
       #parameters:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
@@ -318,22 +312,13 @@ services:
       SMTP_SERVER_USERNAME: ${SMTP_SERVER_USERNAME:-""}
       SMTP_SERVER_PWD: ${SMTP_SERVER_PWD:-""}
       SMTP_SERVER_STRATEGY: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
-
-      #changeEventConfig
-      OM_URI: ${OM_URI:- "http://localhost:8585"}
-
+      
       #extensionConfiguration
       OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
       OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
 
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-      # Application Config
-      OM_CUSTOM_LOGO_URL_PATH: ${OM_CUSTOM_LOGO_URL_PATH:-""}
-      OM_CUSTOM_MONOGRAM_URL_PATH: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
-      OM_MAX_FAILED_LOGIN_ATTEMPTS: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-      OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-      OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-true}
     expose:
       - 8585
@@ -344,7 +329,7 @@ services:
       - "8586:8586"
       - "5005:5005"
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
@@ -372,11 +357,21 @@ services:
       DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
       DB_SCHEME: ${AIRFLOW_DB_SCHEME:-postgresql+psycopg2}
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
+      # extra connection-string properties for the database
+      # EXAMPLE 
+      # require SSL (only for Postgres)
+      # properties: "?sslmode=require"
+      DB_PROPERTIES: ${AIRFLOW_DB_PROPERTIES:-}
+      # To test the lineage backend
+      # AIRFLOW__LINEAGE__BACKEND: airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
+      # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
+      # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
+      # AIRFLOW__LINEAGE__JWT_TOKEN: ...
     entrypoint: /bin/bash
     command:
       - "/opt/airflow/ingestion_dependency.sh"
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy

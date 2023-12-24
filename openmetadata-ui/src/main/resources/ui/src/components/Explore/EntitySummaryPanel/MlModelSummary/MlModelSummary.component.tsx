@@ -12,19 +12,23 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { TagLabel } from 'generated/type/tagLabel';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Mlmodel, TagLabel } from '../../../../generated/entity/data/mlmodel';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -34,6 +38,7 @@ interface MlModelSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function MlModelSummary({
@@ -41,6 +46,7 @@ function MlModelSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: MlModelSummaryProps) {
   const { t } = useTranslation();
 
@@ -53,7 +59,8 @@ function MlModelSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.MLFEATURE,
-        entityDetails.mlFeatures
+        entityDetails.mlFeatures,
+        highlights
       ),
     [entityDetails]
   );
@@ -73,7 +80,18 @@ function MlModelSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 

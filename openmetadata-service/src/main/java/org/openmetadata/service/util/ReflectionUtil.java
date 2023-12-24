@@ -13,13 +13,30 @@
 
 package org.openmetadata.service.util;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
 
 public class ReflectionUtil {
+  private ReflectionUtil() {
+    /* Hidden construction */
+  }
+
+  public static List<Method> getMethodsAnnotatedWith(
+      final Class<?> clazz, final Class<? extends Annotation> annotation) {
+    final List<Method> methods = new ArrayList<>();
+    for (final Method method : clazz.getDeclaredMethods()) {
+      if (method.isAnnotationPresent(annotation)) {
+        methods.add(method);
+      }
+    }
+    return methods;
+  }
 
   public static Class<?> createConnectionConfigClass(String connectionType, ServiceType serviceType)
       throws ClassNotFoundException {

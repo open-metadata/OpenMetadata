@@ -14,13 +14,14 @@
 import {
   act,
   findByTestId,
+  findByText,
   fireEvent,
   render,
   screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAuthMechanismForBotUser } from 'rest/userAPI';
+import { getAuthMechanismForBotUser } from '../../rest/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -99,7 +100,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('rest/userAPI', () => {
+jest.mock('../../rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()
@@ -110,7 +111,7 @@ jest.mock('rest/userAPI', () => {
   };
 });
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
@@ -122,7 +123,7 @@ jest.mock('./AuthMechanismForm', () =>
     )
 );
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(({ children, leftPanel, rightPanel, header }) => (
@@ -193,7 +194,7 @@ describe('Test BotsDetail Component', () => {
     expect(revokeTokenHandler).toHaveBeenCalled();
   });
 
-  it('Should render the edit form if the authmechanism is empty', async () => {
+  it('Should render the generate form if the authmechanism is empty', async () => {
     (getAuthMechanismForBotUser as jest.Mock).mockImplementationOnce(() => {
       return Promise.resolve(undefined);
     });
@@ -202,10 +203,7 @@ describe('Test BotsDetail Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const authMechanismForm = await findByTestId(
-      container,
-      'AuthMechanismForm'
-    );
+    const authMechanismForm = await findByText(container, 'label.om-jwt-token');
 
     expect(authMechanismForm).toBeInTheDocument();
   });

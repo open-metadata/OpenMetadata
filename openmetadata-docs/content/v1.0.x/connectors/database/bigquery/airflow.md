@@ -75,12 +75,20 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 5    | resourcemanager.projects.get  | Metadata Ingestion      |
 | 6    | bigquery.jobs.create          | Metadata Ingestion      |
 | 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
-| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
-| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 8    | bigquery.routines.get         | Stored Procedure        |
+| 9    | bigquery.routines.list        | Stored Procedure        |
+| 10   | datacatalog.taxonomies.get    | Fetch Policy Tags       |
+| 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
+| 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% /multiTablesWrapper %}
+
+{% note %}
+If the user has `External Tables`, please attach relevant permissions needed for external tables, alongwith the above list of permissions.
+{% /note %}
+
+
 
 {% tilesContainer %}
 {% tile
@@ -778,9 +786,19 @@ processor:
     #           - ...
     #     partitionConfig:
     #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+    #       partitionColumnName: <partition column name>
+    #       partitionIntervalType: <TIME-UNIT, INTEGER-RANGE, INGESTION-TIME, COLUMN-VALUE>
+    #       Pick one of the variation shown below
+    #       ----'TIME-UNIT' or 'INGESTION-TIME'-------
     #       partitionInterval: <partition interval>
     #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+    #       ------------'INTEGER-RANGE'---------------
+    #       partitionIntegerRangeStart: <integer>
+    #       partitionIntegerRangeEnd: <integer>
+    #       -----------'COLUMN-VALUE'----------------
+    #       partitionValues:
+    #         - <value>
+    #         - <value>
 
 ```
 
