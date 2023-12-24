@@ -60,7 +60,10 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replace(" ", "%20"), fqn.trim());
+        ChangeEventConfig.getInstance().getOmUri(),
+        entityType,
+        fqn.trim().replace(" ", "%20"),
+        fqn.trim());
   }
 
   @Override
@@ -80,7 +83,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       gChatMessage.setText(headerText);
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
       String cardHeaderText =
-          String.format(headerTemplate, event.getUserName(), event.getEntityType(), (getEntity(event)).getName());
+          String.format(
+              headerTemplate,
+              event.getUserName(),
+              event.getEntityType(),
+              (getEntity(event)).getName());
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }

@@ -88,7 +88,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
       if (result != null) {
         if (result.getPaging().getAfter() == null) {
           isDone = true;
-          int recordToRead = stats.getTotalRecords() - (stats.getSuccessRecords() + stats.getFailedRecords());
+          int recordToRead =
+              stats.getTotalRecords() - (stats.getSuccessRecords() + stats.getFailedRecords());
           updateStats(result.getData().size(), recordToRead - result.getData().size());
         } else {
           updateStats(result.getData().size(), batchSize - result.getData().size());
@@ -110,7 +111,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     int reportDataCount = dao.reportDataTimeSeriesDao().listCount(entityFQN);
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.reportDataTimeSeriesDao()
-            .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+            .getAfterExtension(
+                entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 

@@ -20,12 +20,14 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
   }
 
   @Override
-  public AppMarketPlaceDefinition setFields(AppMarketPlaceDefinition entity, EntityUtil.Fields fields) {
+  public AppMarketPlaceDefinition setFields(
+      AppMarketPlaceDefinition entity, EntityUtil.Fields fields) {
     return entity;
   }
 
   @Override
-  public AppMarketPlaceDefinition clearFields(AppMarketPlaceDefinition entity, EntityUtil.Fields fields) {
+  public AppMarketPlaceDefinition clearFields(
+      AppMarketPlaceDefinition entity, EntityUtil.Fields fields) {
     return entity;
   }
 

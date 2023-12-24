@@ -27,7 +27,10 @@ public class WebSocketManager {
   public static final String JOB_STATUS_BROADCAST_CHANNEL = "jobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
-  @Getter private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
+
+  @Getter
+  private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
+      new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     engineIoServer = new EngineIoServer(eiOptions);
@@ -45,16 +48,26 @@ public class WebSocketManager {
           List<String> remoteAddress = socket.getInitialHeaders().get("RemoteAddress");
           Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
           List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
-          String userId = userIdHeaders.isEmpty() ? socket.getInitialQuery().get("userId") : userIdHeaders.get(0);
+          String userId =
+              userIdHeaders.isEmpty()
+                  ? socket.getInitialQuery().get("userId")
+                  : userIdHeaders.get(0);
 
           if (userId != null && !userId.equals("")) {
-            LOG.info("Client : {} with Remote Address:{} connected {} ", userId, remoteAddress, initialHeaders);
+            LOG.info(
+                "Client : {} with Remote Address:{} connected {} ",
+                userId,
+                remoteAddress,
+                initialHeaders);
 
             // On Socket Disconnect
             socket.on(
                 "disconnect",
                 args1 -> {
-                  LOG.info("Client from: {} with Remote Address:{} disconnected.", userId, remoteAddress);
+                  LOG.info(
+                      "Client from: {} with Remote Address:{} disconnected.",
+                      userId,
+                      remoteAddress);
                   UUID id = UUID.fromString(userId);
                   Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
                   allUserConnection.remove(socket.getId());
@@ -66,7 +79,9 @@ public class WebSocketManager {
                 "connect_error",
                 args1 ->
                     LOG.error(
-                        "Connection ERROR for user:{} with Remote Address:{} disconnected", userId, remoteAddress));
+                        "Connection ERROR for user:{} with Remote Address:{} disconnected",
+                        userId,
+                        remoteAddress));
 
             // On Socket Connection Failure
             socket.on(
@@ -80,7 +95,9 @@ public class WebSocketManager {
             UUID id = UUID.fromString(userId);
             Map<String, SocketIoSocket> userSocketConnections;
             userSocketConnections =
-                activityFeedEndpoints.containsKey(id) ? activityFeedEndpoints.get(id) : new HashMap<>();
+                activityFeedEndpoints.containsKey(id)
+                    ? activityFeedEndpoints.get(id)
+                    : new HashMap<>();
             userSocketConnections.put(socket.getId(), socket);
             activityFeedEndpoints.put(id, userSocketConnections);
           }
@@ -93,7 +110,8 @@ public class WebSocketManager {
   }
 
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach((key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
+    activityFeedEndpoints.forEach(
+        (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
@@ -117,7 +135,8 @@ public class WebSocketManager {
     receivers.forEach(e -> sendToOne(e, event, message));
   }
 
-  public void sendToManyWithString(List<EntityRelationshipRecord> receivers, String event, String message) {
+  public void sendToManyWithString(
+      List<EntityRelationshipRecord> receivers, String event, String message) {
     receivers.forEach(e -> sendToOne(e.getId(), event, message));
   }
 

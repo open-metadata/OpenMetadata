@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
 
-public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class EntitiesDescriptionAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   public EntitiesDescriptionAggregator(A aggregations) {
@@ -22,7 +23,8 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataI
       M entityTypeBuckets = getEntityBuckets(timestampBucket);
       for (B entityTypeBucket : getBuckets(entityTypeBuckets)) {
         String entityType = getKeyAsString(entityTypeBucket);
-        S sumCompletedDescriptions = getAggregations(entityTypeBucket, COMPLETED_DESCRIPTION_FRACTION);
+        S sumCompletedDescriptions =
+            getAggregations(entityTypeBucket, COMPLETED_DESCRIPTION_FRACTION);
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
 
         data.add(
@@ -31,7 +33,8 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataI
                 .withEntityType(entityType)
                 .withEntityCount(getValue(sumEntityCount))
                 .withCompletedDescription(getValue(sumCompletedDescriptions))
-                .withCompletedDescriptionFraction(getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
+                .withCompletedDescriptionFraction(
+                    getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
       }
     }
     return data;

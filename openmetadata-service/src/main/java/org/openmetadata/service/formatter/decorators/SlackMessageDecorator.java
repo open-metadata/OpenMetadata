@@ -62,7 +62,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
+        ChangeEventConfig.getInstance().getOmUri(),
+        entityType,
+        fqn.trim().replaceAll(" ", "%20"),
+        fqn.trim());
   }
 
   @Override

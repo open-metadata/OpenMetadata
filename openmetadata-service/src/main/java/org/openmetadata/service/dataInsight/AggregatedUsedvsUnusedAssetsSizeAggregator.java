@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Objects;
 import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsSize;
 
-public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   public AggregatedUsedvsUnusedAssetsSizeAggregator(A aggregations) {

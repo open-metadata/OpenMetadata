@@ -62,7 +62,8 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
+public class DataInsightChartResource
+    extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
@@ -84,7 +85,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find the existing webAnalyticEventTypes and add them from json files
-    List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+    List<DataInsightChart> dataInsightCharts =
+        repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
       repository.initializeEntity(dataInsightChart);
     }
@@ -102,7 +104,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DataInsightChartResource.DataInsightChartList.class)))
+                    schema =
+                        @Schema(
+                            implementation = DataInsightChartResource.DataInsightChartList.class)))
       })
   public ResultList<DataInsightChart> list(
       @Context UriInfo uriInfo,
@@ -112,7 +116,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number data insight chart returned. (1 to 1000000, default = " + "10)")
+      @Parameter(
+              description =
+                  "Limit the number data insight chart returned. (1 to 1000000, default = " + "10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -135,7 +141,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -148,12 +155,16 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
         @ApiResponse(
             responseCode = "200",
             description = "List of data insight chart versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -169,12 +180,17 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             responseCode = "200",
             description = "The Data Insight Chart",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
-        @ApiResponse(responseCode = "404", description = "Data Insight Chart for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data Insight Chart for instance {id} is not found")
       })
   public DataInsightChart get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -202,12 +218,18 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             responseCode = "200",
             description = "The data insight chart",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
-        @ApiResponse(responseCode = "404", description = "Data Insight Chart for instance {fqn} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data Insight Chart for instance {fqn} is not found")
       })
   public DataInsightChart getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the data insight chart", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the data insight chart",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -236,15 +258,19 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             responseCode = "200",
             description = "DataInsight",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Data Insight Chart for instance {id} and version {version} is " + "not found")
+            description =
+                "Data Insight Chart for instance {id} and version {version} is " + "not found")
       })
   public DataInsightChart getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Data Insight Chart version number in the form `major`.`minor`",
@@ -264,12 +290,17 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             responseCode = "200",
             description = "The data insight chart",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataInsightChart create) {
-    DataInsightChart dataInsightChart = getDataInsightChart(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDataInsightChart create) {
+    DataInsightChart dataInsightChart =
+        getDataInsightChart(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataInsightChart);
   }
 
@@ -279,12 +310,16 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       operationId = "patchDataInsightChart",
       summary = "Update a data insight chart",
       description = "Update an existing data insight chart using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
@@ -292,7 +327,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -302,17 +338,23 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "createOrUpdateDataInsightChart",
       summary = "Update data insight chart",
-      description = "Create a data insight chart, if it does not exist or update an existing data insight chart.",
+      description =
+          "Create a data insight chart, if it does not exist or update an existing data insight chart.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The updated data insight chart ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataInsightChart create) {
-    DataInsightChart dataInsightChart = getDataInsightChart(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDataInsightChart create) {
+    DataInsightChart dataInsightChart =
+        getDataInsightChart(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataInsightChart);
   }
 
@@ -324,7 +366,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       description = "Delete a data insight chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Data insight chart for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data insight chart for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -333,7 +377,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -346,7 +391,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       description = "Delete a data insight chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Data insight chart for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data insight chart for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -355,7 +402,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the data insight chart", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the data insight chart",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
@@ -372,10 +421,14 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             responseCode = "200",
             description = "Successfully restored the DataInsightChart. ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class)))
       })
   public Response restoreDataInsightChart(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -392,7 +445,10 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DataInsightChartResource.DataInsightChartResultList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                DataInsightChartResource.DataInsightChartResultList.class)))
       })
   public Response listDataInsightChartResult(
       @Context SecurityContext securityContext,
@@ -402,10 +458,15 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @NonNull
           @QueryParam("dataInsightChartName")
           DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      @Parameter(description = "Query filter for the aggregation") @QueryParam("queryFilter") String queryFilter,
-      @Parameter(description = "Limit the number of results returned.") @DefaultValue("10") @QueryParam("size")
+      @Parameter(description = "Query filter for the aggregation") @QueryParam("queryFilter")
+          String queryFilter,
+      @Parameter(description = "Limit the number of results returned.")
+          @DefaultValue("10")
+          @QueryParam("size")
           Integer size,
-      @Parameter(description = "Offset the results returned. (default = 0)") @DefaultValue("0") @QueryParam("from")
+      @Parameter(description = "Offset the results returned. (default = 0)")
+          @DefaultValue("0")
+          @QueryParam("from")
           Integer from,
       @Parameter(
               description = "Specify the elasticsearch index to fetch data from",
@@ -415,7 +476,10 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           String dataReportIndex,
       @Parameter(
               description = "Tier filter. The value will be used to filter results",
-              schema = @Schema(type = "string", example = "Tier.Tier1,Tier.Tier2,Tier.Tier3,Tier.Tier4,Tier.Tier5"))
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "Tier.Tier1,Tier.Tier2,Tier.Tier3,Tier.Tier4,Tier.Tier5"))
           @QueryParam("tier")
           String tier,
       @Parameter(
@@ -428,14 +492,19 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
               schema = @Schema(type = "string"))
           @QueryParam("organization")
           String organization,
-      @Parameter(description = "Filter after the given start timestamp", schema = @Schema(type = "number"))
+      @Parameter(
+              description = "Filter after the given start timestamp",
+              schema = @Schema(type = "number"))
           @QueryParam("startTs")
           Long startTs,
-      @Parameter(description = "Filter before the given end timestamp", schema = @Schema(type = "number"))
+      @Parameter(
+              description = "Filter before the given end timestamp",
+              schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs)
       throws IOException, ParseException {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     return searchRepository.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);

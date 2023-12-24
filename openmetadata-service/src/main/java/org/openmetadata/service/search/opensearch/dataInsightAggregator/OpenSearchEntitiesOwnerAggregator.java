@@ -7,7 +7,8 @@ import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchEntitiesOwnerAggregator
-    extends EntitiesOwnerAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends EntitiesOwnerAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public OpenSearchEntitiesOwnerAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -24,7 +25,8 @@ public class OpenSearchEntitiesOwnerAggregator
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityBuckets(MultiBucketsAggregation.Bucket timestampBucket) {
+  protected MultiBucketsAggregation getEntityBuckets(
+      MultiBucketsAggregation.Bucket timestampBucket) {
     return timestampBucket.getAggregations().get(ENTITY_TYPE);
   }
 
@@ -34,7 +36,8 @@ public class OpenSearchEntitiesOwnerAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation multiBucketsAggregation) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation multiBucketsAggregation) {
     return multiBucketsAggregation.getBuckets();
   }
 

@@ -24,23 +24,28 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     searchRepository = Entity.getSearchRepository();
   }
 
-  public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) {
+  public ResultList<ReportData> getReportData(
+      ReportDataType reportDataType, Long startTs, Long endTs) {
     List<ReportData> reportData;
     reportData =
         JsonUtils.readObjects(
-            timeSeriesDao.listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
+            timeSeriesDao.listBetweenTimestamps(
+                reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
-    return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
+    return new ResultList<>(
+        reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
   }
 
   public void deleteReportDataAtDate(ReportDataType reportDataType, String date) {
-    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deleteReportDataTypeAtDate(reportDataType.value(), date);
+    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao)
+        .deleteReportDataTypeAtDate(reportDataType.value(), date);
     cleanUpIndex(reportDataType, date);
   }
 
   public void deleteReportData(ReportDataType reportDataType) {
-    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportData(reportDataType.value());
+    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao)
+        .deletePreviousReportData(reportDataType.value());
     cleanUpPreviousIndex(reportDataType);
   }
 

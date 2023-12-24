@@ -77,7 +77,10 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
-@Tag(name = "Tables", description = "`Table` organizes data in rows and columns and is defined in a `Database Schema`.")
+@Tag(
+    name = "Tables",
+    description =
+        "`Table` organizes data in rows and columns and is defined in a `Database Schema`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
@@ -104,7 +107,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     allowedFields.add("customMetrics");
     addViewOperation(
-        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel", MetadataOperation.VIEW_BASIC);
+        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel",
+        MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
     addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
@@ -149,7 +153,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of tables",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TableList.class)))
       })
   public ResultList<Table> list(
       @Context UriInfo uriInfo,
@@ -176,16 +183,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("includeEmptyTestSuite")
           @DefaultValue("true")
           boolean includeEmptyTestSuite,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(
+              description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -199,7 +211,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam)
             .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -212,13 +225,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
       })
   public Table get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "table Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -243,13 +260,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {fqn} is not found")
       })
   public Table getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(
+              description = "Fully qualified name of the table",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -275,12 +298,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of table versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
+      @Parameter(description = "Table Id", schema = @Schema(type = "string")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -294,7 +321,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Table for instance {id} and version {version} is " + "not found")
@@ -302,7 +332,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Table getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Table Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Table Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Table version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -320,11 +351,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTable create) {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table);
   }
@@ -333,16 +369,22 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "createOrUpdateTable",
       summary = "Create or update a table",
-      description = "Create a table, if it does not exist. If a table already exists, update the table.",
+      description =
+          "Create a table, if it does not exist. If a table already exists, update the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTable create) {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
   }
@@ -353,19 +395,24 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       operationId = "patchTable",
       summary = "Update a table",
       description = "Update an existing table using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -388,11 +435,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -413,11 +462,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn) {
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
@@ -431,10 +483,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -448,16 +505,24 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -472,17 +537,24 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the Table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
-        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" + " today")
+        @ApiResponse(
+            responseCode = "400",
+            description = "Date range can only include past 30 days starting" + " today")
       })
   public Table addJoins(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid TableJoins joins) {
     // TODO add EDIT_JOINS operation
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.addJoins(id, joins);
     return addHref(uriInfo, table);
@@ -498,14 +570,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully update the Table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table addSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid TableData tableData) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.addSampleData(id, tableData);
     return addHref(uriInfo, table);
@@ -521,13 +598,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully update the Table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table getSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
@@ -546,13 +628,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully update the Table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table deleteSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.deleteSampleData(id);
     return addHref(uriInfo, table);
@@ -568,14 +655,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table addDataProfilerConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid TableProfilerConfig tableProfilerConfig) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
@@ -591,16 +683,22 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table getDataProfilerConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.find(id, Include.NON_DELETED);
-    return addHref(uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
+    return addHref(
+        uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }
 
   @DELETE
@@ -613,13 +711,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted the Table profiler config",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table deleteDataProfilerConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.deleteTableProfilerConfig(id);
     return addHref(uriInfo, table);
@@ -635,14 +738,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Table with profile and column profile",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Response getLatestTableProfile(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String"))
+          @PathParam("fqn")
           String fqn) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
@@ -666,12 +774,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "List of table profiles",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TableProfileList.class)))
       })
   public Response listTableProfiles(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String"))
+          @PathParam("fqn")
           String fqn,
       @Parameter(
               description = "Filter table/column profiles after the given start timestamp",
@@ -683,7 +794,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.status(Response.Status.OK)
         .entity(JsonUtils.pojoToJson(repository.getTableProfiles(fqn, startTs, endTs)))
@@ -704,11 +816,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "List of table profiles",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ColumnProfileList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ColumnProfileList.class)))
       })
   public ResultList<ColumnProfile> listColumnProfiles(
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the column", schema = @Schema(type = "String")) @PathParam("fqn") String fqn,
+      @Parameter(description = "FQN of the column", schema = @Schema(type = "String"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(
               description = "Filter table/column profiles after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -721,7 +837,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getColumnProfiles(fqn, startTs, endTs);
   }
@@ -740,11 +857,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "List of system profiles",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SystemProfileList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SystemProfileList.class)))
       })
   public ResultList<SystemProfile> listSystemProfiles(
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the table", schema = @Schema(type = "String")) @PathParam("fqn") String fqn,
+      @Parameter(description = "FQN of the table", schema = @Schema(type = "String"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(
               description = "Filter system profiles after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -770,14 +891,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table addDataProfiler(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid CreateTableProfile createTableProfile) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
@@ -793,20 +919,27 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted the Table Profile",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfile.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TableProfile.class)))
       })
   public Response deleteDataProfiler(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String"))
+          @PathParam("fqn")
           String fqn,
-      @Parameter(description = "type of the entity table or column", schema = @Schema(type = "String"))
+      @Parameter(
+              description = "type of the entity table or column",
+              schema = @Schema(type = "String"))
           @PathParam("entityType")
           String entityType,
       @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     repository.deleteTableProfile(fqn, entityType, timestamp);
     return Response.ok().build();
@@ -817,19 +950,26 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addDataModel",
       summary = "Add data modeling information to a table",
-      description = "Add data modeling (such as DBT model) information on how the table was created to the table.",
+      description =
+          "Add data modeling (such as DBT model) information on how the table was created to the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table addDataModel(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id,
       @Valid DataModel dataModel) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.addDataModel(id, dataModel);
     return addHref(uriInfo, table);
@@ -845,14 +985,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table addCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid CreateCustomMetric createCustomMetric) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = repository.addCustomMetric(id, customMetric);
@@ -869,15 +1014,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -890,17 +1041,24 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Table deleteCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "column of the table", schema = @Schema(type = "string")) @PathParam("columnName")
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "column of the table", schema = @Schema(type = "string"))
+          @PathParam("columnName")
           String columnName,
-      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
+      @Parameter(description = "column Test Type", schema = @Schema(type = "string"))
+          @PathParam("customMetricName")
           String customMetricName) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.deleteCustomMetric(id, columnName, customMetricName);
     return addHref(uriInfo, table);
@@ -916,13 +1074,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
     return repository
@@ -952,7 +1116,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
-                .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
+                .withDatabaseSchema(
+                    getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withRetentionPeriod(create.getRetentionPeriod())
         .withSourceHash(create.getSourceHash());

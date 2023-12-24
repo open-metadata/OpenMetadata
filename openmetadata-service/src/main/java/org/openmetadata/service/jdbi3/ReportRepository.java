@@ -25,7 +25,13 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
   public ReportRepository() {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, Entity.getCollectionDAO().reportDAO(), "", "");
+    super(
+        ReportResource.COLLECTION_PATH,
+        Entity.REPORT,
+        Report.class,
+        Entity.getCollectionDAO().reportDAO(),
+        "",
+        "");
   }
 
   @Override
@@ -42,7 +48,8 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public Report clearFields(Report report, Fields fields) {
-    return report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
+    return report.withUsageSummary(
+        fields.contains("usageSummary") ? report.getUsageSummary() : null);
   }
 
   @Override
@@ -58,7 +65,8 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void storeRelationships(Report report) {
     EntityReference service = report.getService();
-    addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addRelationship(
+        service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
   }
 
   private EntityReference getService(Report report) {

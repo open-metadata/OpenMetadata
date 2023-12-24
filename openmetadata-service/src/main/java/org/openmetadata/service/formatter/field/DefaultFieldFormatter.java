@@ -82,13 +82,19 @@ public class DefaultFieldFormatter implements FieldFormatter {
   }
 
   public String formatAddedField() {
-    String message = this.messageDecorator.httpAddMarker() + this.fieldNewValue + this.messageDecorator.httpAddMarker();
-    message = String.format(("Added " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
+    String message =
+        this.messageDecorator.httpAddMarker()
+            + this.fieldNewValue
+            + this.messageDecorator.httpAddMarker();
+    message =
+        String.format(
+            ("Added " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
     String spanAdd = this.messageDecorator.getAddMarker();
     String spanAddClose = this.messageDecorator.getAddMarkerClose();
     if (message != null) {
       message =
-          this.messageDecorator.replaceMarkers(message, this.messageDecorator.httpAddMarker(), spanAdd, spanAddClose);
+          this.messageDecorator.replaceMarkers(
+              message, this.messageDecorator.httpAddMarker(), spanAdd, spanAddClose);
     }
     return message;
   }
@@ -101,8 +107,12 @@ public class DefaultFieldFormatter implements FieldFormatter {
 
   public String formatDeletedField() {
     String message =
-        this.messageDecorator.httpRemoveMarker() + this.fieldOldValue + this.messageDecorator.httpRemoveMarker();
-    message = String.format(("Deleted " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
+        this.messageDecorator.httpRemoveMarker()
+            + this.fieldOldValue
+            + this.messageDecorator.httpRemoveMarker();
+    message =
+        String.format(
+            ("Deleted " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
     String spanRemove = this.messageDecorator.getRemoveMarker();
     String spanRemoveClose = this.messageDecorator.getRemoveMarkerClose();
     if (message != null) {

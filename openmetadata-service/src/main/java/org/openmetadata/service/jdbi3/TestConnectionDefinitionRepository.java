@@ -38,12 +38,14 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+  public TestConnectionDefinition setFields(
+      TestConnectionDefinition entity, EntityUtil.Fields fields) {
     return entity; // Nothing to set
   }
 
   @Override
-  public TestConnectionDefinition clearFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+  public TestConnectionDefinition clearFields(
+      TestConnectionDefinition entity, EntityUtil.Fields fields) {
     return entity; // Nothing to set
   }
 

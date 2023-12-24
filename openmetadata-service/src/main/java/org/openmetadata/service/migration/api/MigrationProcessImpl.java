@@ -64,7 +64,8 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runSchemaChanges() {
-    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
+    performSqlExecutionAndUpdate(
+        handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
   }
 
   @Override
@@ -72,7 +73,8 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runPostDDLScripts() {
-    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
+    performSqlExecutionAndUpdate(
+        handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
   }
 
   @Override

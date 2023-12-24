@@ -111,7 +111,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of topics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TopicList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TopicList.class)))
       })
   public ResultList<Topic> list(
       @Context UriInfo uriInfo,
@@ -126,16 +129,21 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(type = "string", example = "kafkaWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = " + "10)")
+      @Parameter(
+              description = "Limit the number topics returned. (1 to 1000000, default = " + "10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of topics before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of topics before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of topics after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of topics after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -145,7 +153,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -158,12 +167,16 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of topic versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -176,12 +189,16 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Topic get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -207,12 +224,18 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {fqn} is not found")
       })
   public Topic getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the topic", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(
+              description = "Fully qualified name of the topic",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -239,7 +262,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Topic for instance {id} and version {version} is " + "not found")
@@ -247,7 +273,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Topic getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Topic version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -265,11 +292,16 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTopic create) {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic);
   }
@@ -280,19 +312,24 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       operationId = "patchTopic",
       summary = "Update a topic",
       description = "Update an existing topic using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -307,10 +344,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated topic ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTopic create) {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic);
   }
@@ -325,14 +367,19 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class))),
       })
   public Topic addSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid TopicSampleData sampleData) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Topic topic = repository.addSampleData(id, sampleData);
     return addHref(uriInfo, topic);
@@ -348,13 +395,18 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully obtained the Topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
       })
   public Topic getSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
@@ -373,15 +425,24 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -393,13 +454,19 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
     return repository
@@ -417,15 +484,21 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -445,7 +518,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -466,7 +540,10 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the topic", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(
+              description = "Fully qualified name of the topic",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
@@ -481,10 +558,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Topic. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
       })
   public Response restoreTopic(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

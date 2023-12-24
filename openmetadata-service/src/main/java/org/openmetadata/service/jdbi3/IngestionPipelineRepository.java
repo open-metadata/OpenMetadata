@@ -47,8 +47,10 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String UPDATE_FIELDS = "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
-  private static final String PATCH_FIELDS = "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+  private static final String UPDATE_FIELDS =
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+  private static final String PATCH_FIELDS =
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -72,7 +74,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     ingestionPipeline.setFullyQualifiedName(
-        FullyQualifiedName.add(ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName()));
+        FullyQualifiedName.add(
+            ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName()));
   }
 
   @Override
@@ -90,7 +93,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
-    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
+    EntityReference entityReference =
+        Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
 
@@ -110,14 +114,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = ingestionPipeline.getService();
-    OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
+    OpenMetadataConnection openmetadataConnection =
+        ingestionPipeline.getOpenMetadataServerConnection();
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
       // We store the OM sensitive values in SM separately
-      openmetadataConnection = secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
+      openmetadataConnection =
+          secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
     ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
@@ -137,7 +143,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityUpdater getUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      IngestionPipeline original, IngestionPipeline updated, Operation operation) {
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
@@ -170,7 +177,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .withPreviousVersion(prevVersion);
   }
 
-  private ChangeDescription addPipelineStatusChangeDescription(Double version, Object newValue, Object oldValue) {
+  private ChangeDescription addPipelineStatusChangeDescription(
+      Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
         new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
@@ -178,7 +186,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return change;
   }
 
-  public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
+  public RestUtil.PutResponse<?> addPipelineStatus(
+      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);
     PipelineStatus storedPipelineStatus =
@@ -210,29 +219,44 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               JsonUtils.pojoToJson(pipelineStatus));
     }
     ChangeDescription change =
-        addPipelineStatusChangeDescription(ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+        addPipelineStatusChangeDescription(
+            ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     ChangeEvent changeEvent =
-        getChangeEvent(withHref(uriInfo, ingestionPipeline), change, entityType, ingestionPipeline.getVersion());
+        getChangeEvent(
+            withHref(uriInfo, ingestionPipeline),
+            change,
+            entityType,
+            ingestionPipeline.getVersion());
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs) {
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
     IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(
-                ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, startTs, endTs),
+                ingestionPipeline.getFullyQualifiedName(),
+                PIPELINE_STATUS_EXTENSION,
+                startTs,
+                endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList =
+        pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
-        allPipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), allPipelineStatusList.size());
+        allPipelineStatusList,
+        String.valueOf(startTs),
+        String.valueOf(endTs),
+        allPipelineStatusList.size());
   }
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+        getLatestExtensionFromTimeseries(
+            ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
@@ -251,7 +275,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   /** Handles entity updated from PUT and POST operation. */
   public class IngestionPipelineUpdater extends EntityUpdater {
-    public IngestionPipelineUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+    public IngestionPipelineUpdater(
+        IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
@@ -266,15 +291,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateSourceConfig() {
-      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
-      JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
+      JSONObject origSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
 
       if (!origSourceConfig.similar(updatedSourceConfig)) {
         recordChange("sourceConfig", "old-encrypted-value", "new-encrypted-value", true);
       }
     }
 
-    private void updateAirflowConfig(AirflowConfig origAirflowConfig, AirflowConfig updatedAirflowConfig) {
+    private void updateAirflowConfig(
+        AirflowConfig origAirflowConfig, AirflowConfig updatedAirflowConfig) {
       if (!origAirflowConfig.equals(updatedAirflowConfig)) {
         recordChange("airflowConfig", origAirflowConfig, updatedAirflowConfig);
       }
@@ -300,14 +328,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
-    IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
+    IngestionPipeline decrypted =
+        JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
     SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
     return decrypted;
   }
 
   public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
 
-    JSONObject sourceConfigJson = new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
     String profileSampleType = sourceConfigJson.optString("profileSampleType");
     double profileSample = sourceConfigJson.optDouble("profileSample");
 

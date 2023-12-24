@@ -55,18 +55,25 @@ public abstract class SecretsManager {
   }
 
   public Object encryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
-      return encryptPasswordFields(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), true);
+      Object newConnectionConfig =
+          ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      return encryptPasswordFields(
+          newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), true);
     } catch (Exception e) {
-      String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
+      String message =
+          SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
       if (message != null) {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to encrypt connection instance of %s", connectionType));
     }
   }
 
@@ -74,38 +81,45 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      Object newConnectionConfig =
+          ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
       return decryptPasswordFields(newConnectionConfig);
     } catch (Exception e) {
-      String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, false);
+      String message =
+          SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, false);
       if (message != null) {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to encrypt connection instance of %s", connectionType));
     }
   }
 
-  public void encryptAuthenticationMechanism(String name, AuthenticationMechanism authenticationMechanism) {
+  public void encryptAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
         encryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), true);
       } catch (Exception e) {
         throw new CustomExceptionMessage(
-            Response.Status.BAD_REQUEST, String.format("Failed to encrypt user bot instance [%s]", name));
+            Response.Status.BAD_REQUEST,
+            String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
   }
 
-  public void decryptAuthenticationMechanism(String name, AuthenticationMechanism authenticationMechanism) {
+  public void decryptAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
         decryptPasswordFields(authenticationMechanism);
       } catch (Exception e) {
         throw new CustomExceptionMessage(
-            Response.Status.BAD_REQUEST, String.format("Failed to encrypt user bot instance [%s]", name));
+            Response.Status.BAD_REQUEST,
+            String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
   }
@@ -117,11 +131,13 @@ public abstract class SecretsManager {
     // we don't store OM conn sensitive data
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     try {
-      encryptPasswordFields(ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
+      encryptPasswordFields(
+          ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
     } catch (Exception e) {
       throw new CustomExceptionMessage(
           Response.Status.BAD_REQUEST,
-          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          String.format(
+              "Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
     ingestionPipeline.setOpenMetadataServerConnection(openMetadataConnection);
   }
@@ -137,7 +153,8 @@ public abstract class SecretsManager {
     } catch (Exception e) {
       throw new CustomExceptionMessage(
           Response.Status.BAD_REQUEST,
-          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          String.format(
+              "Failed to decrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
     ingestionPipeline.setOpenMetadataServerConnection(openMetadataConnection);
   }
@@ -145,14 +162,17 @@ public abstract class SecretsManager {
   public Workflow encryptWorkflow(Workflow workflow) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
-    Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    Workflow workflowConverted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
-      encryptPasswordFields(workflowConverted, buildSecretId(true, "workflow", workflow.getName()), true);
+      encryptPasswordFields(
+          workflowConverted, buildSecretId(true, "workflow", workflow.getName()), true);
     } catch (Exception e) {
       throw new CustomExceptionMessage(
-          Response.Status.BAD_REQUEST, String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
     return workflowConverted;
@@ -161,14 +181,16 @@ public abstract class SecretsManager {
   public Workflow decryptWorkflow(Workflow workflow) {
     OpenMetadataConnection openMetadataConnection =
         decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
-    Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    Workflow workflowConverted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
       decryptPasswordFields(workflowConverted);
     } catch (Exception e) {
       throw new CustomExceptionMessage(
-          Response.Status.BAD_REQUEST, String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
     return workflowConverted;
@@ -179,9 +201,11 @@ public abstract class SecretsManager {
     if (openMetadataConnection != null) {
       OpenMetadataConnection openMetadataConnectionConverted =
           (OpenMetadataConnection)
-              ClassConverterFactory.getConverter(OpenMetadataConnection.class).convert(openMetadataConnection);
+              ClassConverterFactory.getConverter(OpenMetadataConnection.class)
+                  .convert(openMetadataConnection);
       try {
-        encryptPasswordFields(openMetadataConnectionConverted, buildSecretId(true, "serverconnection"), store);
+        encryptPasswordFields(
+            openMetadataConnectionConverted, buildSecretId(true, "serverconnection"), store);
       } catch (Exception e) {
         throw new CustomExceptionMessage(
             Response.Status.BAD_REQUEST, "Failed to encrypt OpenMetadataConnection instance.");
@@ -196,7 +220,8 @@ public abstract class SecretsManager {
     if (openMetadataConnection != null) {
       OpenMetadataConnection openMetadataConnectionConverted =
           (OpenMetadataConnection)
-              ClassConverterFactory.getConverter(OpenMetadataConnection.class).convert(openMetadataConnection);
+              ClassConverterFactory.getConverter(OpenMetadataConnection.class)
+                  .convert(openMetadataConnection);
       try {
         decryptPasswordFields(openMetadataConnectionConverted);
       } catch (Exception e) {
@@ -220,11 +245,15 @@ public abstract class SecretsManager {
                 // if the object matches the package of openmetadata
                 if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
                   // encryptPasswordFields
-                  encryptPasswordFields(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)), store);
+                  encryptPasswordFields(
+                      obj,
+                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
+                      store);
                   // check if it has annotation
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   // store value if proceed
-                  String newFieldValue = storeValue(fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                  String newFieldValue =
+                      storeValue(fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
                   // set new value
@@ -259,13 +288,16 @@ public abstract class SecretsManager {
                 Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
                 // set new value
                 ReflectionUtil.setValueInMethod(
-                    toDecryptObject, Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue, toSet);
+                    toDecryptObject,
+                    Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
+                    toSet);
               }
             });
     return toDecryptObject;
   }
 
-  protected abstract String storeValue(String fieldName, String value, String secretId, boolean store);
+  protected abstract String storeValue(
+      String fieldName, String value, String secretId, boolean store);
 
   protected String getSecretSeparator() {
     return "/";
@@ -283,7 +315,8 @@ public abstract class SecretsManager {
     } else {
       format.append("%s");
     }
-    // skip first one in case of addClusterPrefix is false to avoid adding extra separator at the beginning
+    // skip first one in case of addClusterPrefix is false to avoid adding extra separator at the
+    // beginning
     Arrays.stream(secretIdValues)
         .skip(addClusterPrefix ? 0 : 1)
         .forEach(
@@ -305,25 +338,32 @@ public abstract class SecretsManager {
   protected abstract void deleteSecretInternal(String secretName);
 
   public void deleteSecretsFromServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType) {
 
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      Object newConnectionConfig =
+          ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
       deleteSecrets(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName));
 
     } catch (Exception e) {
-      String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
+      String message =
+          SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
       if (message != null) {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to delete secrets from connection instance of %s", connectionType));
+          connectionType,
+          String.format("Failed to delete secrets from connection instance of %s", connectionType));
     }
   }
 
   public void deleteSecretsFromWorkflow(Workflow workflow) {
-    Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    Workflow workflowConverted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -331,7 +371,8 @@ public abstract class SecretsManager {
     } catch (Exception e) {
       throw new CustomExceptionMessage(
           Response.Status.BAD_REQUEST,
-          String.format("Failed to delete secrets from workflow instance [%s]", workflow.getName()));
+          String.format(
+              "Failed to delete secrets from workflow instance [%s]", workflow.getName()));
     }
   }
 
@@ -344,12 +385,15 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDeleteSecretsFrom);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // check if it has annotation:
-                // We are replicating the logic that we use for storing the fields we need to encrypt
+                // We are replicating the logic that we use for storing the fields we need to
+                // encrypt
                 // at encryptPasswordFields
                 if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  deleteSecrets(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  deleteSecrets(
+                      obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  deleteSecretInternal(buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  deleteSecretInternal(
+                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 }
               });
     }

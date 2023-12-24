@@ -68,7 +68,8 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
             });
     for (Bot bot : bots.getData()) {
       try {
-        if (!bot.getProvider().equals(ProviderType.SYSTEM) && !applicationBotIds.contains(bot.getId())) {
+        if (!bot.getProvider().equals(ProviderType.SYSTEM)
+            && !applicationBotIds.contains(bot.getId())) {
           deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
           createUser();
         }
@@ -80,7 +81,9 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Test
   void testBotInitialization() throws IOException {
     // Ensure all the bots are bootstrapped from the data files
-    List<Bot> bots = EntityRepository.getEntitiesFromSeedData(Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
+    List<Bot> bots =
+        EntityRepository.getEntitiesFromSeedData(
+            Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
     for (Bot bot : bots) {
       assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
     }
@@ -106,7 +109,8 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     CreateBot create = createRequest(test).withBotUser(testUser.getName());
     createEntity(create, ADMIN_AUTH_HEADERS);
     // create another bot with the same bot user
-    CreateBot failCreateRequest = createRequest(test).withName("wrong-bot").withBotUser(testUser.getName());
+    CreateBot failCreateRequest =
+        createRequest(test).withName("wrong-bot").withBotUser(testUser.getName());
     assertResponse(
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -130,18 +134,21 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     if (name != null && name.contains("entityListWithPagination_200")) {
       return new CreateBot()
           .withName(name)
-          .withBotUser(Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
+          .withBotUser(
+              Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
     }
     return new CreateBot().withName(name).withBotUser(botUser.getName());
   }
 
   @Override
-  public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Bot entity, CreateBot request, Map<String, String> authHeaders) {
     if (request.getBotUser() != null) {
       assertNotNull(entity.getBotUser());
       TestUtils.validateEntityReference(entity.getBotUser());
       Assertions.assertEquals(
-          request.getBotUser().toLowerCase(), entity.getBotUser().getFullyQualifiedName().toLowerCase());
+          request.getBotUser().toLowerCase(),
+          entity.getBotUser().getFullyQualifiedName().toLowerCase());
     } else {
       Assertions.assertNull(entity.getBotUser());
     }

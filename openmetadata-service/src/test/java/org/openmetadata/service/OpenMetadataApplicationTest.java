@@ -50,9 +50,11 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
-  protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
+  protected static final String CONFIG_PATH =
+      ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
-  protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
+  protected static final WebhookCallbackResource webhookCallbackResource =
+      new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
@@ -61,9 +63,11 @@ public abstract class OpenMetadataApplicationTest {
 
   private static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
-  private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
+  private static final String JDBC_CONTAINER_CLASS_NAME =
+      "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
-  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.16.3";
+  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
+      "docker.elastic.co/elasticsearch/elasticsearch:7.16.3";
 
   private static String HOST;
   private static String PORT;
@@ -91,22 +95,28 @@ public abstract class OpenMetadataApplicationTest {
     }
     OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
     // The system properties are provided by maven-surefire for testing with mysql and postgres
-    LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
+    LOG.info(
+        "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
-            Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+            Class.forName(jdbcContainerClassName)
+                .getConstructor(String.class)
+                .newInstance(jdbcContainerImage);
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
 
     final String flyWayMigrationScripsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
-    final String nativeMigrationScripsLocation = ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
+        ResourceHelpers.resourceFilePath(
+            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
+    final String nativeMigrationScripsLocation =
+        ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
     Flyway flyway =
         Flyway.configure()
-            .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
+            .dataSource(
+                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + flyWayMigrationScripsLocation)
             .sqlMigrationPrefix("v")
@@ -127,13 +137,19 @@ public abstract class OpenMetadataApplicationTest {
     overrideDatabaseConfig(sqlContainer);
 
     // Migration overrides
-    configOverrides.add(ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScripsLocation));
-    configOverrides.add(ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScripsLocation));
+    configOverrides.add(
+        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScripsLocation));
+    configOverrides.add(
+        ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScripsLocation));
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
-    APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+    APP =
+        new DropwizardAppExtension<>(
+            OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
     // Run System Migrations
-    jdbi = Jdbi.create(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
+    jdbi =
+        Jdbi.create(
+            sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
@@ -174,7 +190,8 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static RestClient getSearchClient() {
-    return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
+    return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+        .build();
   }
 
   public static WebTarget getResource(String collection) {
@@ -182,7 +199,8 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return client.target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
+    return client.target(
+        format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
   }
 
   private static void overrideElasticSearchConfig() {
@@ -204,7 +222,8 @@ public abstract class OpenMetadataApplicationTest {
 
   private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {
     // Database overrides
-    configOverrides.add(ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
+    configOverrides.add(
+        ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
     configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
     configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
     configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));

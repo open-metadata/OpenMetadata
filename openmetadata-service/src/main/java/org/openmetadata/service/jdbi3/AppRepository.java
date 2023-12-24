@@ -47,7 +47,8 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public App setFields(App entity, EntityUtil.Fields fields) {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setPipelines(
+        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     return entity.withBot(getBotUser(entity));
   }
 
@@ -58,7 +59,8 @@ public class AppRepository extends EntityRepository<App> {
     List<EntityReference> ingestionPipelines = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : pipelines) {
       ingestionPipelines.add(
-          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
+          Entity.getEntityReferenceById(
+              Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
   }
@@ -85,7 +87,8 @@ public class AppRepository extends EntityRepository<App> {
       botUser = userRepository.findByName(botName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       // Get Bot Role
-      EntityReference roleRef = Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
+      EntityReference roleRef =
+          Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
       // Create Bot User
       AuthenticationMechanism authMechanism =
           new AuthenticationMechanism()
@@ -107,7 +110,8 @@ public class AppRepository extends EntityRepository<App> {
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
       authMechanism.setConfig(
-          JWTTokenGenerator.getInstance().generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+          JWTTokenGenerator.getInstance()
+              .generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
       user.setAuthenticationMechanism(authMechanism);
 
       // Create User
@@ -160,7 +164,12 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
-      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.CONTAINS);
+      addRelationship(
+          entity.getId(),
+          entity.getBot().getId(),
+          Entity.APPLICATION,
+          Entity.BOT,
+          Relationship.CONTAINS);
     }
   }
 
@@ -181,7 +190,9 @@ public class AppRepository extends EntityRepository<App> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
-          daoCollection.appExtensionTimeSeriesDao().listAppRunRecord(appId.toString(), limitParam, offset);
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppRunRecord(appId.toString(), limitParam, offset);
 
       for (String json : jsons) {
         AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
@@ -200,7 +211,8 @@ public class AppRepository extends EntityRepository<App> {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
     pipelineRef.forEach(
-        (reference) -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+        (reference) ->
+            Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
     super.cleanup(app);
   }
 
@@ -221,7 +233,8 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
+      recordChange(
+          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
     }
   }

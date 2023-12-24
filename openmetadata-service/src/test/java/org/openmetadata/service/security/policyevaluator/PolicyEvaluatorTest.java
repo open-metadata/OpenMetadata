@@ -28,7 +28,8 @@ class PolicyEvaluatorTest {
     // Order of precedence for access Deny > Allow > ConditionalDeny > ConditionalAllow > NotAllow
     //
 
-    // newAccess (Deny|Allow|ConditionDeny|ConditionalAllow|NotAllow) and currentAccess Deny takes precedence
+    // newAccess (Deny|Allow|ConditionDeny|ConditionalAllow|NotAllow) and currentAccess Deny takes
+    // precedence
     assertFalse(CompiledRule.overrideAccess(Access.DENY, Access.DENY));
     assertFalse(CompiledRule.overrideAccess(Access.ALLOW, Access.DENY));
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_DENY, Access.DENY));
@@ -38,7 +39,8 @@ class PolicyEvaluatorTest {
     // newAccess (Deny) and currentAccess Allow - newAccess Deny takes precedence
     assertTrue(CompiledRule.overrideAccess(Access.DENY, Access.ALLOW));
 
-    // newAccess (Allow|ConditionDeny|ConditionalAllow|NotAllow) and currentAccess Allow takes precedence
+    // newAccess (Allow|ConditionDeny|ConditionalAllow|NotAllow) and currentAccess Allow takes
+    // precedence
     assertFalse(CompiledRule.overrideAccess(Access.ALLOW, Access.ALLOW));
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_DENY, Access.ALLOW));
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_ALLOW, Access.ALLOW));
@@ -48,12 +50,14 @@ class PolicyEvaluatorTest {
     assertTrue(CompiledRule.overrideAccess(Access.DENY, Access.CONDITIONAL_DENY));
     assertTrue(CompiledRule.overrideAccess(Access.ALLOW, Access.CONDITIONAL_DENY));
 
-    // newAccess (ConditionDeny|ConditionalAllow|NotAllow) and currentAccess ConditionalDeny takes precedence
+    // newAccess (ConditionDeny|ConditionalAllow|NotAllow) and currentAccess ConditionalDeny takes
+    // precedence
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_DENY, Access.CONDITIONAL_DENY));
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_ALLOW, Access.CONDITIONAL_DENY));
     assertFalse(CompiledRule.overrideAccess(Access.NOT_ALLOW, Access.CONDITIONAL_DENY));
 
-    // newAccess (Deny|Allow|ConditionalDeny) and currentAccess ConditionalAllow - newAccess takes precedence
+    // newAccess (Deny|Allow|ConditionalDeny) and currentAccess ConditionalAllow - newAccess takes
+    // precedence
     assertTrue(CompiledRule.overrideAccess(Access.DENY, Access.CONDITIONAL_ALLOW));
     assertTrue(CompiledRule.overrideAccess(Access.ALLOW, Access.CONDITIONAL_ALLOW));
     assertTrue(CompiledRule.overrideAccess(Access.CONDITIONAL_DENY, Access.CONDITIONAL_ALLOW));
@@ -62,7 +66,8 @@ class PolicyEvaluatorTest {
     assertFalse(CompiledRule.overrideAccess(Access.CONDITIONAL_ALLOW, Access.CONDITIONAL_ALLOW));
     assertFalse(CompiledRule.overrideAccess(Access.NOT_ALLOW, Access.CONDITIONAL_ALLOW));
 
-    // newAccess (Deny|Allow|ConditionalDeny|ConditionalAllow) and currentAccess notAllow - newAccess takes precedence
+    // newAccess (Deny|Allow|ConditionalDeny|ConditionalAllow) and currentAccess notAllow -
+    // newAccess takes precedence
     assertTrue(CompiledRule.overrideAccess(Access.DENY, Access.NOT_ALLOW));
     assertTrue(CompiledRule.overrideAccess(Access.ALLOW, Access.NOT_ALLOW));
     assertTrue(CompiledRule.overrideAccess(Access.CONDITIONAL_DENY, Access.NOT_ALLOW));
@@ -74,7 +79,9 @@ class PolicyEvaluatorTest {
 
   @Test
   void trimResourcePermissions() {
-    MetadataOperation[] op1 = {ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS};
+    MetadataOperation[] op1 = {
+      ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
+    };
     ResourcePermission rp1 = getResourcePermission("r1", Access.DENY, op1);
     List<MetadataOperation> expectedOp1 = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
 
@@ -82,7 +89,8 @@ class PolicyEvaluatorTest {
       ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS, EDIT_DISPLAY_NAME
     };
     ResourcePermission rp2 = getResourcePermission("r2", Access.ALLOW, op2);
-    List<MetadataOperation> expectedOp2 = new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
+    List<MetadataOperation> expectedOp2 =
+        new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
 
     List<ResourcePermission> rpList = List.of(rp1, rp2);
     PolicyEvaluator.trimResourcePermissions(rpList);
@@ -103,8 +111,10 @@ class PolicyEvaluatorTest {
 
   @Test
   void trimPermissions_withAllowAccess_trimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
-    List<MetadataOperation> expectedOperations = Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
+    List<Permission> permissions =
+        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
+    List<MetadataOperation> expectedOperations =
+        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
     assertEqualsPermissions(expectedOperations, actual);
   }
@@ -112,14 +122,16 @@ class PolicyEvaluatorTest {
   @Test
   void trimPermissions_withDenyAccess_trimmed() {
     List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.DENY);
-    List<MetadataOperation> expectedOperations = Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
+    List<MetadataOperation> expectedOperations =
+        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
     assertEqualsPermissions(expectedOperations, actual);
   }
 
   @Test
   void trimPermissions_withNotAllowAccessToViewAll_viewOpsNotTrimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
+    List<Permission> permissions =
+        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
     List<MetadataOperation> expectedOperations =
         Arrays.stream(MetadataOperation.values())
             .filter(operation -> (!operation.value().startsWith("Edit")))
@@ -133,7 +145,8 @@ class PolicyEvaluatorTest {
 
   @Test
   void trimPermissions_withConditionalAllowAccessToEditAll_editOpsNotTrimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
+    List<Permission> permissions =
+        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
     List<MetadataOperation> expectedOperations =
         Arrays.stream(MetadataOperation.values())
             .filter(operation -> (!operation.value().startsWith("View")))
@@ -147,7 +160,8 @@ class PolicyEvaluatorTest {
 
   @Test
   void trimPermissions_withConditionalAccess_notTrimmed() {
-    List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
+    List<Permission> permissions =
+        getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
     List<MetadataOperation> expectedOperations = OperationContext.getAllOperations();
     updateAccess(permissions, VIEW_ALL, Access.CONDITIONAL_ALLOW);
     updateAccess(permissions, EDIT_ALL, Access.CONDITIONAL_DENY);
@@ -156,7 +170,8 @@ class PolicyEvaluatorTest {
     assertEqualsPermissions(expectedOperations, actual);
   }
 
-  public static void assertEqualsPermissions(List<MetadataOperation> expectedOperations, List<Permission> actual) {
+  public static void assertEqualsPermissions(
+      List<MetadataOperation> expectedOperations, List<Permission> actual) {
     assertEquals(expectedOperations.size(), actual.size());
 
     Comparator<Permission> comparator = Comparator.comparing(Permission::getOperation);

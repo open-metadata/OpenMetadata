@@ -76,7 +76,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+  static final String FIELDS =
+      "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -116,7 +117,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of pipelines",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineList.class)))
       })
   public ResultList<Pipeline> list(
       @Context UriInfo uriInfo,
@@ -131,16 +135,22 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "string", example = "airflow"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of pipelines before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of pipelines before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of pipelines after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of pipelines after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -150,7 +160,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -163,12 +174,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of pipeline versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -182,13 +198,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Pipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -213,12 +234,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {fqn} is not found")
       })
   public Pipeline getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -246,7 +272,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Pipeline for instance {id} and version {version} is " + "not found")
@@ -254,7 +283,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Pipeline version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -272,11 +303,16 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipeline create) {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, pipeline);
   }
@@ -287,19 +323,25 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "patchPipeline",
       summary = "Update a pipeline",
       description = "Update an existing pipeline using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -314,11 +356,16 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipeline create) {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
@@ -333,17 +380,23 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline with a the new status",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Pipeline pipeline = repository.addPipelineStatus(fqn, pipelineStatus);
     return addHref(uriInfo, pipeline);
@@ -370,7 +423,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(
@@ -398,18 +453,24 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully deleted the PipelineStatus",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class)))
       })
   public Pipeline deletePipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     Pipeline pipeline = repository.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
@@ -425,16 +486,25 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
           UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -447,16 +517,25 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -469,15 +548,21 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -497,11 +582,14 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -522,11 +610,14 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @QueryParam("recursive")
           @DefaultValue("false")
           boolean recursive,
-      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
@@ -542,10 +633,15 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Pipeline ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class)))
       })
   public Response restorePipeline(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

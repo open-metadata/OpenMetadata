@@ -23,7 +23,8 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
   @Test
   public void test_get_test_connection_definition() throws HttpResponseException {
     WebTarget target = getResourceByName(TEST_CONNECTION_NAME);
-    TestConnectionDefinition mysqlTest = TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
+    TestConnectionDefinition mysqlTest =
+        TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
     assertEquals(mysqlTest.getName(), "Mysql");
     assertEquals(mysqlTest.getSteps().size(), 4);
 
@@ -37,7 +38,8 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
   @Test
   public void test_list_test_connection_definition() throws HttpResponseException {
     WebTarget target = listResource();
-    ResultList testConnectionDefinitions = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    ResultList testConnectionDefinitions =
+        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
     // we get 10 as it's the default paging size
     assertEquals(testConnectionDefinitions.getData().size(), 10);
   }

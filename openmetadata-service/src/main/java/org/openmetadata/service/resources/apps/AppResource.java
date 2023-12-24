@@ -86,7 +86,9 @@ import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
-@Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
+@Tag(
+    name = "Apps",
+    description = "Apps are internal/external apps used to something on top of Open-metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apps")
@@ -104,7 +106,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
     this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
 
     // Create an On Demand DAO
     CollectionDAO dao = Entity.getCollectionDAO();
@@ -115,21 +118,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
       // Get Create App Requests
       List<CreateApp> createAppsReq =
-          getEntitiesFromSeedData(APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
+          getEntitiesFromSeedData(
+              APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       for (CreateApp createApp : createAppsReq) {
         try {
           AppMarketPlaceDefinition definition =
               repository
                   .getMarketPlace()
                   .getByName(
-                      null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+                      null,
+                      createApp.getName(),
+                      new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
           String existingJson = repository.getDao().findJsonByFqn(createApp.getName(), ALL);
 
           App app;
 
           if (existingJson == null) {
-            app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
+            app =
+                getApplication(definition, createApp, "admin")
+                    .withFullyQualifiedName(createApp.getName());
             repository.initializeEntity(app);
           } else {
             app = JsonUtils.readValue(existingJson, App.class);
@@ -137,7 +145,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
           // Schedule
           if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+            ApplicationHandler.scheduleApplication(
+                app, Entity.getCollectionDAO(), searchRepository);
           }
 
         } catch (Exception ex) {
@@ -174,7 +183,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of Installed Applications",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppList.class)))
       })
   public ResultList<App> list(
       @Context UriInfo uriInfo,
@@ -184,16 +196,22 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = " + "10)")
+      @Parameter(
+              description =
+                  "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tests before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -203,7 +221,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -219,12 +238,17 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of Installed Applications Runs",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppRunList.class)))
       })
   public Response listAppRuns(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -279,21 +303,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            description =
+                "JSON object with the task instance name of the ingestion on each key and log in the value",
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
       })
   public Response getLastLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description = "Returns log chunk after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           @DefaultValue("")
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+      return Response.status(Response.Status.OK)
+          .entity(repository.getLatestAppRuns(installation.getId()))
+          .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -303,7 +334,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
         return Response.ok(
-                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after), MediaType.APPLICATION_JSON_TYPE)
+                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
+                MediaType.APPLICATION_JSON_TYPE)
             .build();
       }
     }
@@ -320,19 +352,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of Installed Applications Runs",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppRunRecord.class)))
       })
   public Response listLatestAppRun(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description = "Returns log chunk after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           @DefaultValue("")
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+      return Response.status(Response.Status.OK)
+          .entity(repository.getLatestAppRuns(installation.getId()))
+          .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -341,8 +382,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-        PipelineStatus latestPipelineStatus = ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
-        Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+        PipelineStatus latestPipelineStatus =
+            ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
+        Map<String, String> lastIngestionLogs =
+            pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
         Map<String, Object> appRun = new HashMap<>();
         appRun.put("pipelineStatus", latestPipelineStatus);
         appRun.put("lastIngestionLogs", lastIngestionLogs);
@@ -362,12 +405,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of installed application versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -380,12 +427,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public App get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -411,12 +462,17 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public App getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -442,15 +498,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "App for instance {id} and version {version} is " + "not found")
+            description = "App for instance {id} and version {version} is not found")
       })
   public App getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "App version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -468,15 +528,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Application",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
             .getByName(
-                uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+                uriInfo,
+                create.getName(),
+                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
@@ -490,25 +556,32 @@ public class AppResource extends EntityResource<App, AppRepository> {
       operationId = "patchApplication",
       summary = "Updates a App",
       description = "Update an existing App using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchApplication(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication((App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.scheduleApplication(
+          (App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
     }
     return response;
   }
@@ -522,7 +595,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated Application Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
@@ -531,7 +607,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository
             .getMarketPlace()
             .getByName(
-                uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+                uriInfo,
+                create.getName(),
+                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
@@ -557,7 +635,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -581,7 +661,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -599,10 +680,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the App. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = App.class)))
       })
   public Response restoreApp(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
@@ -623,14 +709,22 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Application",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
-        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Response.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Application for instance {id} is not found")
       })
   public Response scheduleApplication(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Context SecurityContext securityContext) {
-    App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    App app =
+        repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
@@ -649,16 +743,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
             responseCode = "200",
             description = "Application trigger status code",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Application for instance {id} is not found")
       })
   public Response triggerApplicationRun(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.triggerApplicationOnDemand(
+          app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -670,10 +769,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
         ingestionPipeline.setOpenMetadataServerConnection(
-            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+                .build());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
-        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-        PipelineServiceClientResponse response = pipelineServiceClient.runPipeline(ingestionPipeline, service);
+        ServiceEntityInterface service =
+            Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse response =
+            pipelineServiceClient.runPipeline(ingestionPipeline, service);
         return Response.status(response.getCode()).entity(response).build();
       }
     }
@@ -691,12 +793,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
             responseCode = "200",
             description = "Application trigger status code",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Application for instance {id} is not found")
       })
   public Response deployApplicationFlow(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
@@ -713,10 +819,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
 
         ingestionPipeline.setOpenMetadataServerConnection(
-            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+                .build());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
-        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-        PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        ServiceEntityInterface service =
+            Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse status =
+            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
           ingestionPipelineRepository.createOrUpdate(uriInfo, ingestionPipeline);
         }
@@ -727,7 +836,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
+      SecurityContext securityContext,
+      IngestionPipeline ingestionPipeline,
+      String botName,
+      boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -748,7 +860,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private App getApplication(
-      AppMarketPlaceDefinition marketPlaceDefinition, CreateApp createAppRequest, String updatedBy) {
+      AppMarketPlaceDefinition marketPlaceDefinition,
+      CreateApp createAppRequest,
+      String updatedBy) {
     EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
     App app =
         new App()
@@ -814,7 +928,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           } else {
             // Just Kill Running ingestion
             if (Boolean.TRUE.equals(ingestionPipeline.getDeployed())) {
-              decryptOrNullify(securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
+              decryptOrNullify(
+                  securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
               pipelineServiceClient.killIngestion(ingestionPipeline);
             }
           }

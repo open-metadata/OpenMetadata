@@ -26,7 +26,8 @@ public class PipelineServiceClientTest {
   public void testGetVersionFromStringRaises() {
     Exception exception =
         assertThrows(
-            PipelineServiceVersionException.class, () -> mockPipelineServiceClient.getVersionFromString("random"));
+            PipelineServiceVersionException.class,
+            () -> mockPipelineServiceClient.getVersionFromString("random"));
 
     String expectedMessage = "Cannot extract version x.y.z from random";
     String actualMessage = exception.getMessage();

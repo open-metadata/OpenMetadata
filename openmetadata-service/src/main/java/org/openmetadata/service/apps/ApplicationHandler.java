@@ -23,13 +23,19 @@ public class ApplicationHandler {
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
+      Method initMethod =
+          resource
+              .getClass()
+              .getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call Trigger On Demand Method
       Method triggerOnDemandMethod = resource.getClass().getMethod("triggerOnDemand");
       triggerOnDemandMethod.invoke(resource);
-    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+    } catch (NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);
     } catch (ClassNotFoundException e) {
@@ -37,14 +43,18 @@ public class ApplicationHandler {
     }
   }
 
-  public static void scheduleApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+  public static void scheduleApplication(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
+      Method initMethod =
+          resource
+              .getClass()
+              .getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call Trigger On Demand Method
@@ -55,7 +65,10 @@ public class ApplicationHandler {
         Method scheduleMethod = resource.getClass().getMethod("initializeExternalApp");
         scheduleMethod.invoke(resource);
       }
-    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+    } catch (NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);
     } catch (ClassNotFoundException e) {

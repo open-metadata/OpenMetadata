@@ -20,14 +20,16 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   @Test
   void testExceptionConnection() {
     Map<String, Object> mysqlConnectionObject =
-        Map.of("authType", Map.of("password", "openmetadata-test"), "username1", "openmetadata-test");
+        Map.of(
+            "authType", Map.of("password", "openmetadata-test"), "username1", "openmetadata-test");
 
     EntityMaskException thrown =
         Assertions.assertThrows(
             EntityMaskException.class,
             () -> {
               EntityMaskerFactory.createEntityMasker()
-                  .maskServiceConnectionConfig(mysqlConnectionObject, "Mysql", ServiceType.DATABASE);
+                  .maskServiceConnectionConfig(
+                      mysqlConnectionObject, "Mysql", ServiceType.DATABASE);
             });
 
     Assertions.assertEquals(

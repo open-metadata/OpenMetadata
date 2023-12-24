@@ -126,7 +126,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
-    MessageSchema schema = new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
+    MessageSchema schema =
+        new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER1_REF)
@@ -149,7 +150,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
+        .withMessageSchema(
+            new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
@@ -164,7 +166,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 
-    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(
+        createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
@@ -279,7 +282,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0);
-    Field field = getField("first_name", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Field field =
+        getField("first_name", FieldDataType.STRING, null)
+            .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
@@ -297,7 +302,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withRetentionTime(1.0)
             .withRetentionSize(1.0);
     Field nestedField =
-        getField("testNested", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+        getField("testNested", FieldDataType.STRING, null)
+            .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
     create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
     assertResponse(
@@ -335,7 +341,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateMessagingService createService =
+        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a topic without domain and ensure it inherits domain from the parent
@@ -348,12 +355,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Create a messaging service with owner data consumer
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
     CreateMessagingService createMessagingService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
     MessagingService service = serviceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create topic under it
     createEntity(
-        createRequest("topic").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+        createRequest("topic").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Test
@@ -407,7 +417,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public Topic validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
+  public Topic validateGetWithDifferentFields(Topic topic, boolean byName)
+      throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "";
     topic =
@@ -426,13 +437,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return topic;
   }
 
-  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
@@ -440,7 +453,10 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Override
   public CreateTopic createRequest(String name) {
-    return new CreateTopic().withName(name).withService(getContainer().getFullyQualifiedName()).withPartitions(1);
+    return new CreateTopic()
+        .withName(name)
+        .withService(getContainer().getFullyQualifiedName())
+        .withPartitions(1);
   }
 
   @Override
@@ -454,7 +470,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
@@ -477,7 +494,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     if (fieldName.equals("cleanupPolicies")) {
       @SuppressWarnings("unchecked")
       List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
-      List<CleanupPolicy> actualCleanupPolicies = JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
+      List<CleanupPolicy> actualCleanupPolicies =
+          JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
       assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
     } else if (fieldName.equals("schemaType")) {
       SchemaType expectedSchemaType = (SchemaType) expected;
@@ -494,17 +512,23 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
 
-  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {
     List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
-    return new Field().withName(name).withDataType(fieldDataType).withDescription(name).withTags(tags);
+    return new Field()
+        .withName(name)
+        .withDataType(fieldDataType)
+        .withDescription(name)
+        .withTags(tags);
   }
 
-  private static void assertFields(List<Field> expectedFields, List<Field> actualFields) throws HttpResponseException {
+  private static void assertFields(List<Field> expectedFields, List<Field> actualFields)
+      throws HttpResponseException {
     if (expectedFields == actualFields) {
       return;
     }
@@ -521,7 +545,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     }
   }
 
-  private static void assertField(Field expectedField, Field actualField) throws HttpResponseException {
+  private static void assertField(Field expectedField, Field actualField)
+      throws HttpResponseException {
     assertNotNull(actualField.getFullyQualifiedName());
     assertTrue(
         expectedField.getName().equals(actualField.getName())

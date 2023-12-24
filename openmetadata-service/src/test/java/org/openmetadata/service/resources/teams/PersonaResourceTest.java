@@ -43,7 +43,12 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePersona> {
   public PersonaResourceTest() {
-    super(PERSONA, Persona.class, PersonaResource.PersonaList.class, "personas", PersonaResource.FIELDS);
+    super(
+        PERSONA,
+        Persona.class,
+        PersonaResource.PersonaList.class,
+        "personas",
+        PersonaResource.FIELDS);
     supportsSearchIndex = false;
   }
 
@@ -78,12 +83,17 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   void post_teamWithUsersAndDefaultRoles_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
-    User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+    User user1 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
+    User user2 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
 
     CreatePersona create =
-        createRequest(test).withDisplayName("displayName").withDescription("description").withUsers(users);
+        createRequest(test)
+            .withDisplayName("displayName")
+            .withDescription("description")
+            .withUsers(users);
 
     Persona persona = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -97,7 +107,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   @Test
   void delete_validPersona_200_OK(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    User user1 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     List<UUID> users = Collections.singletonList(user1.getId());
 
     CreatePersona create = createRequest(test).withUsers(users);
@@ -130,7 +141,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     UserResourceTest userResourceTest = new UserResourceTest();
     List<EntityReference> userRefs = new ArrayList<>();
     for (int i = 0; i < 7; i++) {
-      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
+      User user =
+          userResourceTest.createEntity(
+              userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
       userRefs.add(user.getEntityReference());
     }
 
@@ -162,11 +175,14 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     final int totalUsers = 20;
     ArrayList<UUID> users = new ArrayList<>();
     for (int i = 0; i < totalUsers; i++) {
-      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
+      User user =
+          userResourceTest.createEntity(
+              userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
       users.add(user.getId());
     }
 
-    CreatePersona create = createRequest(getEntityName(test), "description", "displayName", null).withUsers(users);
+    CreatePersona create =
+        createRequest(getEntityName(test), "description", "displayName", null).withUsers(users);
 
     Persona persona = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -194,7 +210,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   }
 
   @Override
-  public Persona validateGetWithDifferentFields(Persona expectedPersona, boolean byName) throws HttpResponseException {
+  public Persona validateGetWithDifferentFields(Persona expectedPersona, boolean byName)
+      throws HttpResponseException {
     if (expectedPersona.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create =
@@ -231,7 +248,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   }
 
   @Override
-  public void validateCreatedEntity(Persona persona, CreatePersona createRequest, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Persona persona, CreatePersona createRequest, Map<String, String> authHeaders) {
     List<EntityReference> expectedUsers = new ArrayList<>();
     for (UUID userId : listOrEmpty(createRequest.getUsers())) {
       expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
@@ -256,7 +274,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     if (List.of("users").contains(fieldName)) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      List<EntityReference> actualRefs =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEntityReferences(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

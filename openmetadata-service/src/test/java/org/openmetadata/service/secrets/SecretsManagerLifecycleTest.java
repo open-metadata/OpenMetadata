@@ -48,21 +48,26 @@ public class SecretsManagerLifecycleTest {
     String password = "openmetadata-test";
     String secretName = "/openmetadata/database/test/authtype/password";
     String connectionName = "test";
-    Map<String, Map<String, String>> mysqlConnection = Map.of("authType", Map.of("password", password));
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", password));
 
     // Ensure encrypted service connection config encrypts the password
     MysqlConnection actualConnection =
         (MysqlConnection)
             secretsManager.encryptServiceConnectionConfig(
                 mysqlConnection, Mysql.value(), connectionName, ServiceType.DATABASE);
-    assertNotEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+    assertNotEquals(
+        password,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // Decrypt the encrypted password and validate
     actualConnection =
         (MysqlConnection)
-            secretsManager.decryptServiceConnectionConfig(actualConnection, Mysql.value(), ServiceType.DATABASE);
+            secretsManager.decryptServiceConnectionConfig(
+                actualConnection, Mysql.value(), ServiceType.DATABASE);
     assertEquals(
-        DECRYPTED_VALUE, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+        DECRYPTED_VALUE,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
@@ -76,13 +81,16 @@ public class SecretsManagerLifecycleTest {
     SecretsManagerException exception =
         assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
 
-    assertEquals(exception.getMessage(), String.format("Key [%s] not found in in-memory secrets manager", secretName));
+    assertEquals(
+        exception.getMessage(),
+        String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
 
   @Test
   void testWorkflowLifecycle() {
     String password = "openmetadata_password";
-    String secretName = "/openmetadata/workflow/test-connection/request/connection/config/authtype/password";
+    String secretName =
+        "/openmetadata/workflow/test-connection/request/connection/config/authtype/password";
 
     Workflow workflow =
         new Workflow()
@@ -101,16 +109,22 @@ public class SecretsManagerLifecycleTest {
                                     .withAuthType(new basicAuth().withPassword(password)))));
 
     Workflow encrypted = secretsManager.encryptWorkflow(workflow);
-    TestServiceConnectionRequest encryptedRequest = (TestServiceConnectionRequest) encrypted.getRequest();
+    TestServiceConnectionRequest encryptedRequest =
+        (TestServiceConnectionRequest) encrypted.getRequest();
     DatabaseConnection encryptedConnection = (DatabaseConnection) encryptedRequest.getConnection();
     MysqlConnection encryptedConfig = (MysqlConnection) encryptedConnection.getConfig();
-    assertNotEquals(password, JsonUtils.convertValue(encryptedConfig.getAuthType(), basicAuth.class).getPassword());
+    assertNotEquals(
+        password,
+        JsonUtils.convertValue(encryptedConfig.getAuthType(), basicAuth.class).getPassword());
 
     Workflow decrypted = secretsManager.decryptWorkflow(encrypted);
-    TestServiceConnectionRequest decryptedRequest = (TestServiceConnectionRequest) decrypted.getRequest();
+    TestServiceConnectionRequest decryptedRequest =
+        (TestServiceConnectionRequest) decrypted.getRequest();
     DatabaseConnection decryptedConnection = (DatabaseConnection) decryptedRequest.getConnection();
     MysqlConnection decryptedConfig = (MysqlConnection) decryptedConnection.getConfig();
-    assertEquals(DECRYPTED_VALUE, JsonUtils.convertValue(decryptedConfig.getAuthType(), basicAuth.class).getPassword());
+    assertEquals(
+        DECRYPTED_VALUE,
+        JsonUtils.convertValue(decryptedConfig.getAuthType(), basicAuth.class).getPassword());
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
@@ -123,6 +137,8 @@ public class SecretsManagerLifecycleTest {
     SecretsManagerException exception =
         assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
 
-    assertEquals(exception.getMessage(), String.format("Key [%s] not found in in-memory secrets manager", secretName));
+    assertEquals(
+        exception.getMessage(),
+        String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
 }

@@ -86,7 +86,8 @@ import org.quartz.SchedulerException;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events/subscriptions")
-public class EventSubscriptionResource extends EntityResource<EventSubscription, EventSubscriptionRepository> {
+public class EventSubscriptionResource
+    extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owner,filteringRules";
 
@@ -104,7 +105,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     /* Required for serde */
   }
 
-  public static class EventSubResourceDescriptorList extends ResultList<SubscriptionResourceDescriptor> {
+  public static class EventSubResourceDescriptorList
+      extends ResultList<SubscriptionResourceDescriptor> {
     /* Required for serde */
   }
 
@@ -112,7 +114,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       repository.initSeedDataFromResources();
-      EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
+      EventsSubscriptionRegistry.initialize(
+          listOrEmpty(EventSubscriptionResource.getDescriptors()));
       ReportsHandler.initialize();
       initializeEventSubscriptions();
     } catch (Exception ex) {
@@ -128,7 +131,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           daoCollection
               .eventSubscriptionDAO()
               .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
-      List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
+      List<EventSubscription> eventSubList =
+          JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
           subscription -> {
             if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
@@ -153,7 +157,10 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = EventSubscriptionResource.EventSubscriptionList.class)))
+                    schema =
+                        @Schema(
+                            implementation =
+                                EventSubscriptionResource.EventSubscriptionList.class)))
       })
   public ResultList<EventSubscription> listEventSubscriptions(
       @Context UriInfo uriInfo,
@@ -163,7 +170,10 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number event subscriptions returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(
+              description =
+                  "Limit the number event subscriptions returned. (1 to 1000000, default = "
+                      + "10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -195,13 +205,16 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Entity events",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EventSubscription getEventsSubscriptionById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -222,7 +235,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Event Subscription with request name is returned",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Event Subscription for instance {eventSubscriptionName} is not found")
@@ -257,8 +272,11 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createEventSubscription(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription request) {
-    EventSubscription eventSub = getEventSubscription(request, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventSubscription request) {
+    EventSubscription eventSub =
+        getEventSubscription(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
     if (eventSub.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT
         && ReportsHandler.getInstance() != null
@@ -286,18 +304,22 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateEventSubscription(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventSubscription create) {
     // Only one Creation is allowed for Data Insight
     if (create.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
       try {
         repository.getByName(null, create.getName(), repository.getFields("id"));
       } catch (EntityNotFoundException ex) {
-        if (ReportsHandler.getInstance() != null && ReportsHandler.getInstance().getReportMap().size() > 0) {
+        if (ReportsHandler.getInstance() != null
+            && ReportsHandler.getInstance().getReportMap().size() > 0) {
           throw new BadRequestException("Data Insight Report Alert already exists.");
         }
       }
     }
-    EventSubscription eventSub = getEventSubscription(create, securityContext.getUserPrincipal().getName());
+    EventSubscription eventSub =
+        getEventSubscription(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
     repository.updateEventSubscription((EventSubscription) response.getEntity());
     return response;
@@ -309,12 +331,16 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       operationId = "patchEventSubscription",
       summary = "Update an Event Subscriptions",
       description = "Update an existing Event Subscriptions using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
@@ -322,7 +348,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject(
+                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
@@ -340,12 +367,16 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
         @ApiResponse(
             responseCode = "200",
             description = "List of Event Subscription versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listEventSubscriptionVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -361,15 +392,19 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Get specific version of Event Subscription",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Event Subscription for instance {id} and version {version} is " + "not found")
+            description =
+                "Event Subscription for instance {id} and version {version} is " + "not found")
       })
   public EventSubscription getEventSubscriptionVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @Parameter(
               description = "Event Subscription version number in the form `major`.`minor`",
@@ -391,13 +426,16 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Entity events",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Response deleteEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id)
       throws InterruptedException, SchedulerException {
     Response response = delete(uriInfo, securityContext, id, true, true);
@@ -419,7 +457,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public Response deleteEventSubscriptionByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name)
       throws InterruptedException, SchedulerException {
     Response response = deleteByName(uriInfo, securityContext, name, true, true);
@@ -440,7 +479,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Return the current status of the Event Subscription",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SubscriptionStatus.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionStatus.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public SubscriptionStatus getEventSubscriptionStatusByName(
@@ -449,6 +490,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("eventSubscriptionName")
           String name) {
+    authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return repository.getStatusForEventSubscription(sub.getId());
   }
@@ -465,7 +507,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "200",
             description = "Return the current status of the Event Subscription",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SubscriptionStatus.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionStatus.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public SubscriptionStatus getEventSubscriptionStatusById(
@@ -474,6 +518,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return repository.getStatusForEventSubscription(id);
   }
 
@@ -482,7 +527,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listEventSubscriptionFunctions",
       summary = "Get list of Event Subscription functions used in filtering EventSubscription",
-      description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
+      description =
+          "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
   public List<Function> listEventSubscriptionFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
@@ -494,7 +540,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
-      description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
+      description =
+          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
   public ResultList<SubscriptionResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
@@ -514,7 +561,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public void validateCondition(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Expression to validate", schema = @Schema(type = "string")) @PathParam("expression")
+      @Parameter(description = "Expression to validate", schema = @Schema(type = "string"))
+          @PathParam("expression")
           String expression) {
     authorizer.authorizeAdmin(securityContext);
     AlertUtil.validateExpression(expression, Boolean.class);
@@ -535,17 +583,23 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
       return Collections.emptyList();
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
-      String json = CommonUtil.getResourceAsStream(EventSubscriptionResource.class.getClassLoader(), jsonDataFile);
+      String json =
+          CommonUtil.getResourceAsStream(
+              EventSubscriptionResource.class.getClassLoader(), jsonDataFile);
       return JsonUtils.readObjects(json, SubscriptionResourceDescriptor.class);
     } catch (Exception e) {
-      LOG.warn("Failed to initialize the events subscription resource descriptors from file {}", jsonDataFile, e);
+      LOG.warn(
+          "Failed to initialize the events subscription resource descriptors from file {}",
+          jsonDataFile,
+          e);
     }
     return Collections.emptyList();
   }

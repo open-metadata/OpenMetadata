@@ -41,7 +41,8 @@ public class QueryFormatter implements EntityFormatter {
   }
 
   @SuppressWarnings("unchecked")
-  private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
+  private static String getFieldValue(
+      Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
     List<EntityReference> tableRefs =
@@ -49,7 +50,11 @@ public class QueryFormatter implements EntityFormatter {
             ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
             : (List<EntityReference>) fieldValue;
     if (!nullOrEmpty(tableRefs)) {
-      field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());
+      field
+          .append("for '")
+          .append(query.getQuery())
+          .append("', ")
+          .append(messageFormatter.getLineBreak());
       field.append("Query Used in :- ");
       int i = 1;
       for (EntityReference ref : tableRefs) {

@@ -116,13 +116,15 @@ public class NotificationHandler {
     Long currentTimestamp = Instant.now().getEpochSecond();
     if (announcementDetails.getStartTime() <= currentTimestamp
         && currentTimestamp <= announcementDetails.getEndTime()) {
-      WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
     }
   }
 
   private void handleConversationNotification(Thread thread) {
     String jsonThread = JsonUtils.pojoToJson(thread);
-    WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -135,7 +137,8 @@ public class NotificationHandler {
           String fqn = entityLink.getEntityFQN();
           if (USER.equals(entityLink.getEntityType())) {
             User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-            WebSocketManager.getInstance().sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
+            WebSocketManager.getInstance()
+                .sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
           } else if (TEAM.equals(entityLink.getEntityType())) {
             Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
@@ -144,7 +147,8 @@ public class NotificationHandler {
                     .relationshipDAO()
                     .findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
-            WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
+            WebSocketManager.getInstance()
+                .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }
         });
   }
@@ -159,7 +163,8 @@ public class NotificationHandler {
             EmailUtil.sendTaskAssignmentNotificationToUser(
                 user.getName(),
                 user.getEmail(),
-                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                String.format(
+                    "%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
                 thread,
                 EmailUtil.getTaskAssignmentSubject(),
                 EmailUtil.TASK_NOTIFICATION_TEMPLATE);

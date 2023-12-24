@@ -22,7 +22,8 @@ import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
-public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
+public class OpenSearchEntitiesProcessor
+    implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
   private final StepStats stats = new StepStats();
 
   public OpenSearchEntitiesProcessor(int total) {
@@ -30,15 +31,19 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
   }
 
   @Override
-  public BulkRequest process(ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
+  public BulkRequest process(
+      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws ProcessorException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
-      throw new IllegalArgumentException("[EsEntitiesProcessor] entityType cannot be null or empty.");
+      throw new IllegalArgumentException(
+          "[EsEntitiesProcessor] entityType cannot be null or empty.");
     }
 
     LOG.debug(
-        "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ", input.getData().size(), entityType);
+        "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ",
+        input.getData().size(),
+        entityType);
     BulkRequest requests;
     try {
       requests = buildBulkRequests(entityType, input.getData());
@@ -55,12 +60,14 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
           0,
           input.getData().size());
       updateStats(0, input.getData().size());
-      throw new ProcessorException("[EsEntitiesProcessor] Batch encountered Exception. Failing Completely.", e);
+      throw new ProcessorException(
+          "[EsEntitiesProcessor] Batch encountered Exception. Failing Completely.", e);
     }
     return requests;
   }
 
-  private BulkRequest buildBulkRequests(String entityType, List<? extends EntityInterface> entities) {
+  private BulkRequest buildBulkRequests(
+      String entityType, List<? extends EntityInterface> entities) {
     BulkRequest bulkRequests = new BulkRequest();
     for (EntityInterface entity : entities) {
       UpdateRequest request = getUpdateRequest(entityType, entity);
@@ -71,9 +78,11 @@ public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, Resul
 
   public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
+    UpdateRequest updateRequest =
+        new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(Objects.requireNonNull(SearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
+        JsonUtils.pojoToJson(
+            Objects.requireNonNull(SearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

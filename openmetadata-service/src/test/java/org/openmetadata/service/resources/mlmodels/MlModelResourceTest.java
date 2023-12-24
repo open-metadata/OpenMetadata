@@ -95,15 +95,21 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
               .withDataType(MlFeatureDataType.Numerical)
               .withFeatureSources(
                   Collections.singletonList(
-                      new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER))),
+                      new MlFeatureSource()
+                          .withName("age")
+                          .withDataType(FeatureSourceDataType.INTEGER))),
           new MlFeature()
               .withTags(null)
               .withName("persona")
               .withDataType(MlFeatureDataType.Categorical)
               .withFeatureSources(
                   Arrays.asList(
-                      new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER),
-                      new MlFeatureSource().withName("education").withDataType(FeatureSourceDataType.STRING)))
+                      new MlFeatureSource()
+                          .withName("age")
+                          .withDataType(FeatureSourceDataType.INTEGER),
+                      new MlFeatureSource()
+                          .withName("education")
+                          .withDataType(FeatureSourceDataType.STRING)))
               .withFeatureAlgorithm("PCA"));
   public static final List<MlHyperParameter> ML_HYPERPARAMS =
       Arrays.asList(
@@ -189,7 +195,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldUpdated(change, "algorithm", "regression", "SVM");
-    updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withAlgorithm("SVM"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
@@ -199,7 +206,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "dashboard", DASHBOARD_REFERENCE);
     updateAndCheckEntity(
-        request.withDashboard(DASHBOARD.getFullyQualifiedName()), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+        request.withDashboard(DASHBOARD.getFullyQualifiedName()),
+        Status.OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
   }
 
   @Test
@@ -217,7 +228,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "server", SERVER);
-    updateAndCheckEntity(request.withServer(SERVER), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withServer(SERVER), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
@@ -227,7 +239,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     ChangeDescription change = getChangeDescription(model.getVersion());
     URI newServer = URI.create("http://localhost.com/mlModel/v2");
     fieldUpdated(change, "server", SERVER, newServer);
-    updateAndCheckEntity(request.withServer(newServer), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withServer(newServer), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
@@ -236,7 +249,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "mlStore", ML_STORE);
-    updateAndCheckEntity(request.withMlStore(ML_STORE), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withMlStore(ML_STORE), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -249,7 +263,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "mlFeatures", ML_FEATURES);
-    updateAndCheckEntity(request.withMlFeatures(ML_FEATURES), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withMlFeatures(ML_FEATURES), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -260,13 +275,15 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     //
     // Add new ML features from previously empty
     //
-    MlFeature newMlFeature = new MlFeature().withName("color").withDataType(MlFeatureDataType.Categorical);
+    MlFeature newMlFeature =
+        new MlFeature().withName("color").withDataType(MlFeatureDataType.Categorical);
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "mlFeatures", newFeatures);
     fieldDeleted(change, "mlFeatures", ML_FEATURES);
-    updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -289,7 +306,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "mlFeatures", newFeatures);
     fieldDeleted(change, "mlFeatures", ML_FEATURES);
-    updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -297,7 +315,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test);
 
     // Create a made up table reference by picking up a random UUID
-    EntityReference invalid_table = new EntityReference().withId(UUID.randomUUID()).withType("table");
+    EntityReference invalid_table =
+        new EntityReference().withId(UUID.randomUUID()).withType("table");
 
     MlFeature newMlFeature =
         new MlFeature()
@@ -328,7 +347,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "mlHyperParameters", ML_HYPERPARAMS);
     updateAndCheckEntity(
-        request.withMlHyperParameters(ML_HYPERPARAMS), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+        request.withMlHyperParameters(ML_HYPERPARAMS),
+        Status.OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
   }
 
   @Test
@@ -337,7 +360,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldAdded(change, "target", "myTarget");
-    updateAndCheckEntity(request.withTarget("myTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withTarget("myTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
@@ -347,12 +371,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
     ChangeDescription change = getChangeDescription(model.getVersion());
     fieldUpdated(change, "target", "origTarget", "newTarget");
-    updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    updateAndCheckEntity(
+        request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
-    CreateMlModel create = createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    CreateMlModel create =
+        createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -365,15 +391,21 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
                 .withDataType(MlFeatureDataType.Numerical)
                 .withFeatureSources(
                     Collections.singletonList(
-                        new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER))),
+                        new MlFeatureSource()
+                            .withName("age")
+                            .withDataType(FeatureSourceDataType.INTEGER))),
             new MlFeature()
                 .withTags(null)
                 .withName("persona")
                 .withDataType(MlFeatureDataType.Categorical)
                 .withFeatureSources(
                     Arrays.asList(
-                        new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER),
-                        new MlFeatureSource().withName("education").withDataType(FeatureSourceDataType.STRING)))
+                        new MlFeatureSource()
+                            .withName("age")
+                            .withDataType(FeatureSourceDataType.INTEGER),
+                        new MlFeatureSource()
+                            .withName("education")
+                            .withDataType(FeatureSourceDataType.STRING)))
                 .withFeatureAlgorithm("PCA"));
     // Apply mutually exclusive tags to a MlModel feature
     CreateMlModel createMlModel = createRequest(testInfo, 1);
@@ -391,7 +423,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for an ML Model, carry it forward from the ML Model Service
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
-    CreateMlModelService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateMlModelService createService =
+        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     MlModelService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a ML Model without domain and ensure it inherits domain from the parent
@@ -404,16 +437,20 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     // Create a MlModel service with owner data consumer
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
     CreateMlModelService createMlModelService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
     MlModelService service = serviceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create MlModel under it
     createEntity(
-        createRequest("MlModel").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+        createRequest("MlModel").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override
-  public MlModel validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
+  public MlModel validateGetWithDifferentFields(MlModel model, boolean byName)
+      throws HttpResponseException {
     // .../models?fields=owner
     String fields = "";
     model =
@@ -421,7 +458,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        model.getOwner(), model.getDashboard(), model.getFollowers(), model.getTags(), model.getUsageSummary());
+        model.getOwner(),
+        model.getDashboard(),
+        model.getFollowers(),
+        model.getTags(),
+        model.getUsageSummary());
 
     // .../models?fields=mlFeatures,mlHyperParameters
     fields = "owner,dashboard,followers,tags,usageSummary";
@@ -452,9 +493,11 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
     assertEquals(expected.getDashboard(), updated.getDashboard());
     assertListProperty(expected.getMlFeatures(), updated.getMlFeatures(), assertMlFeature);
-    assertListProperty(expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyperParam);
+    assertListProperty(
+        expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyperParam);
 
-    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on
+    // sources
     validateMlFeatureSources(expected.getMlFeatures(), updated.getMlFeatures());
 
     TestUtils.validateTags(expected.getTags(), updated.getTags());
@@ -494,19 +537,28 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     }
 
     for (int i = 0; i < expected.size(); i++) {
-      assertListProperty(expected.get(i).getFeatureSources(), actual.get(i).getFeatureSources(), assertMlFeatureSource);
+      assertListProperty(
+          expected.get(i).getFeatureSources(),
+          actual.get(i).getFeatureSources(),
+          assertMlFeatureSource);
     }
   }
 
   @Override
-  public void validateCreatedEntity(MlModel createdEntity, CreateMlModel createRequest, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      MlModel createdEntity, CreateMlModel createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertReference(createRequest.getDashboard(), createdEntity.getDashboard());
-    assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
-    assertListProperty(createRequest.getMlHyperParameters(), createdEntity.getMlHyperParameters(), assertMlHyperParam);
+    assertListProperty(
+        createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
+    assertListProperty(
+        createRequest.getMlHyperParameters(),
+        createdEntity.getMlHyperParameters(),
+        assertMlHyperParam);
 
-    // assertListProperty on MlFeatures already validates size, so we can directly iterate on sources
+    // assertListProperty on MlFeatures already validates size, so we can directly iterate on
+    // sources
     validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
 
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
@@ -526,7 +578,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     } else if (fieldName.contains("mlHyperParameters")) {
       @SuppressWarnings("unchecked")
       List<MlHyperParameter> expectedConstraints = (List<MlHyperParameter>) expected;
-      List<MlHyperParameter> actualConstraints = JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
+      List<MlHyperParameter> actualConstraints =
+          JsonUtils.readObjects(actual.toString(), MlHyperParameter.class);
       assertListProperty(expectedConstraints, actualConstraints, assertMlHyperParam);
     } else if (fieldName.contains("algorithm")) {
       String expectedAlgorithm = (String) expected;
@@ -534,7 +587,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       assertEquals(expectedAlgorithm, actualAlgorithm);
     } else if (fieldName.contains("dashboard")) {
       EntityReference expectedDashboard = (EntityReference) expected;
-      EntityReference actualDashboard = JsonUtils.readValue(actual.toString(), EntityReference.class);
+      EntityReference actualDashboard =
+          JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedDashboard.getId(), actualDashboard.getId());
     } else if (fieldName.contains("server")) {
       URI expectedServer = (URI) expected;

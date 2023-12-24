@@ -36,7 +36,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class RoleRepository extends EntityRepository<Role> {
   public RoleRepository() {
     super(
-        RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, Entity.getCollectionDAO().roleDAO(), POLICIES, POLICIES);
+        RoleResource.COLLECTION_PATH,
+        Entity.ROLE,
+        Role.class,
+        Entity.getCollectionDAO().roleDAO(),
+        POLICIES,
+        POLICIES);
   }
 
   @Override
@@ -130,13 +135,19 @@ public class RoleRepository extends EntityRepository<Role> {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
-    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
+    private void updatePolicies(
+        List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
       // Record change description
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();
       boolean changed =
           recordListChange(
-              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
+              "policies",
+              origPolicies,
+              updatedPolicies,
+              addedPolicies,
+              deletedPolicies,
+              entityReferenceMatch);
 
       if (changed) {
         // Remove all the Role to policy relationships

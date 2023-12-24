@@ -52,7 +52,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Create Table Entity
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create =
-        tableResourceTest.createRequest(test).withColumns(columns).withOwner(EntityResourceTest.USER1_REF);
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(columns)
+            .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create a change Event with the Entity Table
@@ -63,7 +66,9 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Test Owner Name Present in list and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     assertTrue(
-        evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", alertsRuleEvaluator));
+        evaluateExpression(
+            "matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')",
+            alertsRuleEvaluator));
     assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", alertsRuleEvaluator));
   }
 
@@ -102,7 +107,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     String id = createdTable.getId().toString();
     assertTrue(evaluateExpression("matchAnyEntityId('" + id + "')", alertsRuleEvaluator));
-    assertFalse(evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", alertsRuleEvaluator));
+    assertFalse(
+        evaluateExpression("matchAnyEntityId('" + UUID.randomUUID() + "')", alertsRuleEvaluator));
   }
 
   @Test

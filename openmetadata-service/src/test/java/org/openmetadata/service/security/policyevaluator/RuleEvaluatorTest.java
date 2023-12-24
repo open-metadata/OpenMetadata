@@ -50,7 +50,10 @@ class RuleEvaluatorTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
     Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
         .thenAnswer(
             i ->
@@ -59,13 +62,26 @@ class RuleEvaluatorTest {
                     .getEntityReference());
 
     Mockito.when(teamRepository.findByName(anyString(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_NAME.get(
+                    new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
 
-    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+    Mockito.when(
+            teamRepository.get(
+                isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
-    Mockito.when(teamRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+    Mockito.when(
+            teamRepository.getByName(
+                isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID.get(
+                    new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     TableRepository tableRepository = mock(TableRepository.class);
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
@@ -76,7 +92,8 @@ class RuleEvaluatorTest {
     resourceContext = new ResourceContext("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
-    evaluationContext = SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
+    evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
   }
 
   @Test
@@ -95,12 +112,17 @@ class RuleEvaluatorTest {
   @Test
   void test_isOwner() {
     // Table owner is a different user (random ID) and hence isOwner returns false
-    table.setOwner(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("otherUser"));
+    table.setOwner(
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.USER)
+            .withName("otherUser"));
     assertFalse(evaluateExpression("isOwner()"));
     assertTrue(evaluateExpression("!isOwner()"));
 
     // Table owner is same as the user in subjectContext and hence isOwner returns true
-    table.setOwner(new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
+    table.setOwner(
+        new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
     assertTrue(evaluateExpression("isOwner()"));
     assertFalse(evaluateExpression("!isOwner()"));
 
@@ -110,7 +132,8 @@ class RuleEvaluatorTest {
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
 
     // noOwner() || isOwner() - with noOwner is false and isOwner true
-    table.setOwner(new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
+    table.setOwner(
+        new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
   }
@@ -172,7 +195,8 @@ class RuleEvaluatorTest {
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
-    for (Team team : listOf(team1, team12, team11)) { // For users not in team111 hierarchy matchTeam is false
+    for (Team team :
+        listOf(team1, team12, team11)) { // For users not in team111 hierarchy matchTeam is false
       user.setTeams(listOf(team.getEntityReference()));
       assertFalse(evaluateExpression("matchTeam()"), "Failed for team " + team.getName());
     }
@@ -183,14 +207,16 @@ class RuleEvaluatorTest {
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
-    for (Team team : listOf(team1, team12)) { // For users not in team11 hierarchy matchTeam is false
+    for (Team team :
+        listOf(team1, team12)) { // For users not in team11 hierarchy matchTeam is false
       user.setTeams(listOf(team.getEntityReference()));
       assertFalse(evaluateExpression("matchTeam()"), "Failed for team " + team.getName());
     }
 
     // Resource belongs to team111 and the Policy executed is coming from team1
     updatePolicyContext("team1");
-    for (Team team : listOf(team1, team11, team111, team12)) { // For users in team1 hierarchy matchTeam is true
+    for (Team team :
+        listOf(team1, team11, team111, team12)) { // For users in team1 hierarchy matchTeam is true
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
@@ -267,7 +293,8 @@ class RuleEvaluatorTest {
     Team team = new Team().withName(teamName).withId(teamId);
     if (parentName != null) {
       UUID parentId = UUID.nameUUIDFromBytes(parentName.getBytes(StandardCharsets.UTF_8));
-      EntityReference parentTeam = Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
+      EntityReference parentTeam =
+          Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
       team.setParents(listOf(parentTeam));
     }
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, team.getId()), team);
@@ -280,7 +307,8 @@ class RuleEvaluatorTest {
     team.setDefaultRoles(listOf(role.getEntityReference()));
     team.setInheritedRoles(new ArrayList<>());
     for (EntityReference parent : listOrEmpty(team.getParents())) {
-      Team parentTeam = Entity.getEntity(Entity.TEAM, parent.getId(), TEAM_FIELDS, Include.NON_DELETED);
+      Team parentTeam =
+          Entity.getEntity(Entity.TEAM, parent.getId(), TEAM_FIELDS, Include.NON_DELETED);
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getDefaultRoles()));
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getInheritedRoles()));
     }

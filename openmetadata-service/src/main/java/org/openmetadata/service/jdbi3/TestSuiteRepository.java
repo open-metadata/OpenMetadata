@@ -47,8 +47,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
+    entity.setPipelines(
+        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setSummary(
+        fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
     return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
@@ -72,7 +74,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setFullyQualifiedName(TestSuite testSuite) {
     if (testSuite.getExecutableEntityReference() != null) {
       testSuite.setFullyQualifiedName(
-          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+          FullyQualifiedName.add(
+              testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
@@ -88,7 +91,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return testCaseSummary;
   }
 
-  private ResultSummary getResultSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
+  private ResultSummary getResultSummary(
+      TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
     return new ResultSummary()
         .withTestCaseName(testCase.getFullyQualifiedName())
         .withStatus(testCaseStatus)
@@ -109,7 +113,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     for (TestSuite testSuite : entities) {
       HashMap<String, Integer> testSummary = getResultSummary(testSuite);
       for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
-        testsSummary.put(entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
+        testsSummary.put(
+            entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
       }
       total += testSuite.getTestCaseResultSummary().size();
     }
@@ -162,8 +167,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
         Entity.getEntityByName(
-            Entity.TABLE, testSuite.getExecutableEntityReference().getFullyQualifiedName(), null, null);
-    addRelationship(table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
+            Entity.TABLE,
+            testSuite.getExecutableEntityReference().getFullyQualifiedName(),
+            null,
+            null);
+    addRelationship(
+        table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(

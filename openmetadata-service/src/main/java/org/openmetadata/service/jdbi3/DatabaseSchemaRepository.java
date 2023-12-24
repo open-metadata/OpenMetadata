@@ -37,7 +37,8 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
-  public static final String DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION = "databaseSchema.databaseSchemaProfilerConfig";
+  public static final String DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION =
+      "databaseSchema.databaseSchemaProfilerConfig";
 
   public static final String DATABASE_SCHEMA_PROFILER_CONFIG = "databaseSchemaProfilerConfig";
 
@@ -78,7 +79,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void storeRelationships(DatabaseSchema schema) {
     EntityReference database = schema.getDatabase();
     addRelationship(
-        database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
+        database.getId(),
+        schema.getId(),
+        database.getType(),
+        Entity.DATABASE_SCHEMA,
+        Relationship.CONTAINS);
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) {
@@ -96,14 +101,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             ? getDatabaseSchemaProfilerConfig(schema)
             : schema.getDatabaseSchemaProfilerConfig());
     return schema.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
+        fields.contains("usageSummary")
+            ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId())
+            : null);
   }
 
   public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(fields.contains("tables") ? schema.getTables() : null);
     schema.setDatabaseSchemaProfilerConfig(
-        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null);
-    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
+            ? schema.getDatabaseSchemaProfilerConfig()
+            : null);
+    return schema.withUsageSummary(
+        fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
   private void setDefaultFields(DatabaseSchema schema) {
@@ -114,11 +124,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) {
-    Database database = Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
+    Database database =
+        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
     inheritOwner(schema, fields, database);
     inheritDomain(schema, fields, database);
     schema.withRetentionPeriod(
-        schema.getRetentionPeriod() == null ? database.getRetentionPeriod() : schema.getRetentionPeriod());
+        schema.getRetentionPeriod() == null
+            ? database.getRetentionPeriod()
+            : schema.getRetentionPeriod());
     return schema;
   }
 
@@ -152,7 +165,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
-    public DatabaseSchemaUpdater(DatabaseSchema original, DatabaseSchema updated, Operation operation) {
+    public DatabaseSchemaUpdater(
+        DatabaseSchema original, DatabaseSchema updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -188,7 +202,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     return databaseSchema.withDatabaseSchemaProfilerConfig(databaseSchemaProfilerConfig);
   }
 
-  public DatabaseSchemaProfilerConfig getDatabaseSchemaProfilerConfig(DatabaseSchema databaseSchema) {
+  public DatabaseSchemaProfilerConfig getDatabaseSchemaProfilerConfig(
+      DatabaseSchema databaseSchema) {
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionDAO()
@@ -199,7 +214,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {
     // Validate the request content
     DatabaseSchema database = dao.findEntityById(databaseSchemaId);
-    daoCollection.entityExtensionDAO().delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
+    daoCollection
+        .entityExtensionDAO()
+        .delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
   }

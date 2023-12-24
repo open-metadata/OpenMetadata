@@ -97,12 +97,16 @@ public interface EntityTimeSeriesDAO {
 
   default void updateExtensionByOperation(
       String entityFQNHash, String extension, String json, Long timestamp, String operation) {
-    updateExtensionByOperation(getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    updateExtensionByOperation(
+        getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
   }
 
-  @SqlQuery("SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
+  @SqlQuery(
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
   String getExtension(
-      @Define("table") String table, @BindFQN("entityFQNHash") String entityId, @Bind("extension") String extension);
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityId,
+      @Bind("extension") String extension);
 
   default String getExtension(String entityId, String extension) {
     return getExtension(getTimeSeriesTableName(), entityId, extension);
@@ -143,7 +147,8 @@ public interface EntityTimeSeriesDAO {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  default List<CollectionDAO.ReportDataRow> getAfterExtension(String entityFQNHash, int limit, String after) {
+  default List<CollectionDAO.ReportDataRow> getAfterExtension(
+      String entityFQNHash, int limit, String after) {
     return getAfterExtension(getTimeSeriesTableName(), entityFQNHash, limit, after);
   }
 
@@ -204,7 +209,8 @@ public interface EntityTimeSeriesDAO {
     return getLatestExtensionByFQNs(getTimeSeriesTableName(), entityFQNHashes, extension);
   }
 
-  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension " + "ORDER BY timestamp DESC LIMIT 1")
+  @SqlQuery(
+      "SELECT json FROM <table> WHERE extension = :extension " + "ORDER BY timestamp DESC LIMIT 1")
   String getLatestByExtension(@Define("table") String table, @Bind("extension") String extension);
 
   default String getLatestByExtension(String extension) {
@@ -212,7 +218,8 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery("SELECT json FROM <table> WHERE extension = :extension " + "ORDER BY timestamp DESC")
-  List<String> getAllByExtension(@Define("table") String table, @Bind("extension") String extension);
+  List<String> getAllByExtension(
+      @Define("table") String table, @Bind("extension") String extension);
 
   default List<String> getAllByExtension(String extension) {
     return getAllByExtension(getTimeSeriesTableName(), extension);
@@ -239,7 +246,9 @@ public interface EntityTimeSeriesDAO {
   @SqlUpdate(
       "DELETE FROM <table> WHERE extension = :extension AND entityFQNHash NOT IN(SELECT entityFQNHash FROM (select * from <table> WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
   void deleteLastRecords(
-      @Define("table") String table, @Bind("extension") String extension, @Bind("records") int noOfRecord);
+      @Define("table") String table,
+      @Bind("extension") String extension,
+      @Bind("records") int noOfRecord);
 
   default void deleteLastRecords(String extension, int noOfRecord) {
     deleteLastRecords(getTimeSeriesTableName(), extension, noOfRecord);
@@ -279,8 +288,10 @@ public interface EntityTimeSeriesDAO {
       @Bind("startTs") Long startTs,
       @Bind("endTs") long endTs);
 
-  default List<String> listBetweenTimestamps(String entityFQNHash, String extension, Long startTs, long endTs) {
-    return listBetweenTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs);
+  default List<String> listBetweenTimestamps(
+      String entityFQNHash, String extension, Long startTs, long endTs) {
+    return listBetweenTimestamps(
+        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs);
   }
 
   @SqlQuery(
@@ -296,7 +307,8 @@ public interface EntityTimeSeriesDAO {
 
   default List<String> listBetweenTimestampsByOrder(
       String entityFQNHash, String extension, Long startTs, long endTs, OrderBy orderBy) {
-    return listBetweenTimestampsByOrder(getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
+    return listBetweenTimestampsByOrder(
+        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -322,10 +334,12 @@ public interface EntityTimeSeriesDAO {
       @Define("mysqlCond") String mysqlCond,
       @Define("psqlCond") String psqlCond);
 
-  default void updateExtensionByKey(String key, String value, String entityFQN, String extension, String json) {
+  default void updateExtensionByKey(
+      String key, String value, String entityFQN, String extension, String json) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    updateExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, json, mysqlCond, psqlCond);
+    updateExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, json, mysqlCond, psqlCond);
   }
 
   /*
@@ -356,7 +370,8 @@ public interface EntityTimeSeriesDAO {
   default String getExtensionByKey(String key, String value, String entityFQN, String extension) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    return getExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+    return getExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
   }
 
   @ConnectionAwareSqlQuery(
@@ -383,10 +398,12 @@ public interface EntityTimeSeriesDAO {
       @Define("mysqlCond") String mysqlCond,
       @Define("psqlCond") String psqlCond);
 
-  default String getLatestExtensionByKey(String key, String value, String entityFQN, String extension) {
+  default String getLatestExtensionByKey(
+      String key, String value, String entityFQN, String extension) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    return getLatestExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+    return getLatestExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
   }
 
   default void storeTimeSeriesWithOperation(
@@ -405,9 +422,11 @@ public interface EntityTimeSeriesDAO {
   }
 
   /** @deprecated */
-  @SqlQuery("SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
+  @SqlQuery(
+      "SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
   @Deprecated(since = "1.1.1")
-  List<String> migrationListDistinctWithOffset(@Define("table") String table, @Bind("limit") int limit);
+  List<String> migrationListDistinctWithOffset(
+      @Define("table") String table, @Bind("limit") int limit);
 
   default List<String> migrationListDistinctWithOffset(int limit) {
     return migrationListDistinctWithOffset(getTimeSeriesTableName(), limit);

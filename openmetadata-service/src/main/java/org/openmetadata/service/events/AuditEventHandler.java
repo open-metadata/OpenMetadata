@@ -31,8 +31,12 @@ public class AuditEventHandler implements EventHandler {
     // Nothing to do
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    if (requestContext.getUriInfo().getPath().contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    if (requestContext
+        .getUriInfo()
+        .getPath()
+        .contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
       // we don't want to send web analytic event to the audit log
       return null;
     }
@@ -45,7 +49,8 @@ public class AuditEventHandler implements EventHandler {
         username = requestContext.getSecurityContext().getUserPrincipal().getName();
       }
       try {
-        EntityReference entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+        EntityReference entityReference =
+            ((EntityInterface) responseContext.getEntity()).getEntityReference();
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
@@ -59,7 +64,9 @@ public class AuditEventHandler implements EventHandler {
       } catch (Exception e) {
         LOG.error(
             auditMarker,
-            String.format("Failed to capture audit log for %s and method %s due to %s", path, method, e.getMessage()));
+            String.format(
+                "Failed to capture audit log for %s and method %s due to %s",
+                path, method, e.getMessage()));
       }
     }
     return null;

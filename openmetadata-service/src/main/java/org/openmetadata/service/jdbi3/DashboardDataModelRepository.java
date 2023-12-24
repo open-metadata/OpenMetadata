@@ -59,8 +59,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
-    ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
+        FullyQualifiedName.add(
+            dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+    ColumnUtil.setColumnFQN(
+        dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
 
   @Override
@@ -86,9 +88,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     ColumnDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
       threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+      column =
+          EntityUtil.findColumn(
+              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -104,9 +109,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     ColumnTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
       threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+      column =
+          EntityUtil.findColumn(
+              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -119,7 +127,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void prepare(DashboardDataModel dashboardDataModel, boolean update) {
-    DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
+    DashboardService dashboardService =
+        Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
   }
@@ -129,7 +138,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference service = dashboardDataModel.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     dashboardDataModel.withService(null);
 
     store(dashboardDataModel, update);
@@ -163,7 +173,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    dashboardDataModel.setSourceHash(fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
+    dashboardDataModel.setSourceHash(
+        fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
@@ -198,7 +209,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public EntityUpdater getUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      DashboardDataModel original, DashboardDataModel updated, Operation operation) {
     return new DataModelUpdater(original, updated, operation);
   }
 
@@ -210,7 +222,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   public class DataModelUpdater extends ColumnEntityUpdater {
 
-    public DataModelUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
+    public DataModelUpdater(
+        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
       super(original, updated, operation);
     }
 

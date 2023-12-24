@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
-public abstract class TotalEntitiesByTierAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class TotalEntitiesByTierAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
   public TotalEntitiesByTierAggregator(A aggregations) {

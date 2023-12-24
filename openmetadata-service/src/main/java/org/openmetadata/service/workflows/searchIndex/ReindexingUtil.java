@@ -60,7 +60,8 @@ public class ReindexingUtil {
     return success;
   }
 
-  public static int getSuccessFromBulkResponseEs(es.org.elasticsearch.action.bulk.BulkResponse response) {
+  public static int getSuccessFromBulkResponseEs(
+      es.org.elasticsearch.action.bulk.BulkResponse response) {
     int success = 0;
     for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {

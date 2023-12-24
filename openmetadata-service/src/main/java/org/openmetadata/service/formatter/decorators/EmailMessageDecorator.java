@@ -59,7 +59,8 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
-        "<a href = '%s/%s/%s'>%s</a>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
+        "<a href = '%s/%s/%s'>%s</a>",
+        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
   }
 
   @Override
@@ -71,7 +72,8 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
       if (event.getEntityType().equals(Entity.QUERY)) {
         emailMessage.setEntityUrl(Entity.QUERY);
       } else {
-        emailMessage.setEntityUrl(this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+        emailMessage.setEntityUrl(
+            this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
       }
     }
     Map<MessageParser.EntityLink, String> messages =

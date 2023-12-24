@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
-public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class MostViewedEntitiesAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   protected final A aggregations;
 
   public MostViewedEntitiesAggregator(A aggregations) {

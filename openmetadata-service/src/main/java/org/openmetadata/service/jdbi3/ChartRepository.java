@@ -32,13 +32,20 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
   public ChartRepository() {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, Entity.getCollectionDAO().chartDAO(), "", "");
+    super(
+        ChartResource.COLLECTION_PATH,
+        Entity.CHART,
+        Chart.class,
+        Entity.getCollectionDAO().chartDAO(),
+        "",
+        "");
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Chart chart) {
-    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
+    chart.setFullyQualifiedName(
+        FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
   }
 
   @Override
@@ -61,7 +68,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   @SneakyThrows
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
-    addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addRelationship(
+        service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
   }
 
   @Override

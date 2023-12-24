@@ -10,7 +10,8 @@ import java.util.UUID;
 
 public interface EntityTimeSeriesInterface {
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
-  Map<String, Class<? extends EntityTimeSeriesInterface>> ENTITY_TYPE_TO_CLASS_MAP = new HashMap<>();
+  Map<String, Class<? extends EntityTimeSeriesInterface>> ENTITY_TYPE_TO_CLASS_MAP =
+      new HashMap<>();
 
   UUID getId();
 

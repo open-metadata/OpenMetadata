@@ -72,8 +72,11 @@ import org.openmetadata.service.util.ResultList;
             + "for categorizing and classifying data assets and other entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "classifications", order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
-public class ClassificationResource extends EntityResource<Classification, ClassificationRepository> {
+@Collection(
+    name = "classifications",
+    order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
+public class ClassificationResource
+    extends EntityResource<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
   static final String FIELDS = "usageCount,termCount";
 
@@ -101,7 +104,9 @@ public class ClassificationResource extends EntityResource<Classification, Class
             responseCode = "200",
             description = "The user ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ClassificationList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ClassificationList.class)))
       })
   public ResultList<Classification> list(
       @Context UriInfo uriInfo,
@@ -111,17 +116,24 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter Disabled Classifications") @QueryParam("disabled") String disabled,
-      @Parameter(description = "Limit the number classifications returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(description = "Filter Disabled Classifications") @QueryParam("disabled")
+          String disabled,
+      @Parameter(
+              description =
+                  "Limit the number classifications returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of classifications before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of classifications before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of classifications after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of classifications after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -131,7 +143,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -145,13 +158,19 @@ public class ClassificationResource extends EntityResource<Classification, Class
             responseCode = "200",
             description = "classification",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
-        @ApiResponse(responseCode = "404", description = "Classification for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Classification.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Classification for instance {id} is not found")
       })
   public Classification get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -179,13 +198,18 @@ public class ClassificationResource extends EntityResource<Classification, Class
             responseCode = "200",
             description = "The user ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
-        @ApiResponse(responseCode = "404", description = "Classification for instance {name} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Classification.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Classification for instance {name} is not found")
       })
   public Classification getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -211,12 +235,17 @@ public class ClassificationResource extends EntityResource<Classification, Class
         @ApiResponse(
             responseCode = "200",
             description = "List of classification versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -231,15 +260,20 @@ public class ClassificationResource extends EntityResource<Classification, Class
             responseCode = "200",
             description = "glossaries",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Classification.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Classification for instance {id} and version {version} is " + "not found")
+            description =
+                "Classification for instance {id} and version {version} is " + "not found")
       })
   public Classification getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "classification version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -260,11 +294,15 @@ public class ClassificationResource extends EntityResource<Classification, Class
             responseCode = "200",
             description = "The user ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Classification.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return create(uriInfo, securityContext, category);
   }
@@ -275,7 +313,9 @@ public class ClassificationResource extends EntityResource<Classification, Class
       summary = "Update a classification",
       description = "Update an existing category identify by category name")
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateClassification create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateClassification create) {
     Classification category = getClassification(create, securityContext);
     return createOrUpdate(uriInfo, securityContext, category);
   }
@@ -286,19 +326,24 @@ public class ClassificationResource extends EntityResource<Classification, Class
       operationId = "patchClassification",
       summary = "Update a classification",
       description = "Update an existing classification using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -313,7 +358,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -321,7 +367,9 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -333,7 +381,9 @@ public class ClassificationResource extends EntityResource<Classification, Class
       description = "Delete a classification by `name` and all the tags under it.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "classification for instance {name} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "classification for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -342,7 +392,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
@@ -357,14 +408,20 @@ public class ClassificationResource extends EntityResource<Classification, Class
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Response restore(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Classification getClassification(CreateClassification create, SecurityContext securityContext) {
+  private Classification getClassification(
+      CreateClassification create, SecurityContext securityContext) {
     return getClassification(repository, create, securityContext.getUserPrincipal().getName());
   }
 

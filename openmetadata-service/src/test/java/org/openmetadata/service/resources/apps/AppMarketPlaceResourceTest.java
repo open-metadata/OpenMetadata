@@ -57,7 +57,8 @@ public class AppMarketPlaceResourceTest
           .withAppScreenshots(new HashSet<>(List.of("AppLogo")))
           .withFeatures("App Features");
     } catch (URISyntaxException ex) {
-      LOG.error("Encountered error in Create Request for AppMarketPlaceResourceTest for App Logo Url.");
+      LOG.error(
+          "Encountered error in Create Request for AppMarketPlaceResourceTest for App Logo Url.");
     }
     return null;
   }
@@ -71,7 +72,9 @@ public class AppMarketPlaceResourceTest
 
   @Override
   public void compareEntities(
-      AppMarketPlaceDefinition expected, AppMarketPlaceDefinition updated, Map<String, String> authHeaders)
+      AppMarketPlaceDefinition expected,
+      AppMarketPlaceDefinition updated,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(expected.getDeveloper(), updated.getDeveloper());
     assertEquals(expected.getDeveloperUrl(), updated.getDeveloperUrl());
@@ -89,8 +92,8 @@ public class AppMarketPlaceResourceTest
   }
 
   @Override
-  public AppMarketPlaceDefinition validateGetWithDifferentFields(AppMarketPlaceDefinition entity, boolean byName)
-      throws HttpResponseException {
+  public AppMarketPlaceDefinition validateGetWithDifferentFields(
+      AppMarketPlaceDefinition entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -107,7 +110,8 @@ public class AppMarketPlaceResourceTest
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

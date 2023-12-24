@@ -15,7 +15,8 @@ import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";
-  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
+  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
+      "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository() {
     super(
@@ -67,14 +68,19 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     deleteExtensionBeforeTimestamp(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }
 
-  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs) {
+  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
+      String eventType, Long startTs, Long endTs) {
     List<WebAnalyticEventData> webAnalyticEventData;
     webAnalyticEventData =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
+            getResultsFromAndToTimestamps(
+                eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
             WebAnalyticEventData.class);
 
     return new ResultList<>(
-        webAnalyticEventData, String.valueOf(startTs), String.valueOf(endTs), webAnalyticEventData.size());
+        webAnalyticEventData,
+        String.valueOf(startTs),
+        String.valueOf(endTs),
+        webAnalyticEventData.size());
   }
 }

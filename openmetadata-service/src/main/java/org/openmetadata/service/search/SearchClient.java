@@ -30,7 +30,8 @@ public interface SearchClient {
   String GLOBAL_SEARCH_ALIAS = "all";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
-  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT =
+      "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
@@ -86,9 +87,13 @@ public interface SearchClient {
 
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
-  void softDeleteOrRestoreChildren(String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
+  void softDeleteOrRestoreChildren(
+      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
-  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
+  void updateChildren(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,
@@ -115,7 +120,8 @@ public interface SearchClient {
   }
 
   default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data, es.org.elasticsearch.client.RequestOptions options)
+      es.org.elasticsearch.action.bulk.BulkRequest data,
+      es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
@@ -130,8 +136,8 @@ public interface SearchClient {
 
   void close();
 
-  default SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
-      throws KeyStoreException {
+  default SSLContext createElasticSearchSSLContext(
+      ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
     return elasticSearchConfiguration.getScheme().equals("https")
         ? SSLUtil.createSSLContext(
             elasticSearchConfiguration.getTruststorePath(),

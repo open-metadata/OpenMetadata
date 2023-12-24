@@ -6,7 +6,8 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 
-public class MetadataServiceRepository extends ServiceEntityRepository<MetadataService, MetadataConnection> {
+public class MetadataServiceRepository
+    extends ServiceEntityRepository<MetadataService, MetadataConnection> {
   private static final String UPDATE_FIELDS = "owner,tags,connection";
 
   public MetadataServiceRepository() {

@@ -19,7 +19,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   protected final boolean supportsSearchIndex = true;
 
   protected EntityTimeSeriesRepository(
-      String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
+      String collectionPath,
+      EntityTimeSeriesDAO timeSeriesDao,
+      Class<T> entityClass,
+      String entityType) {
     this.collectionPath = collectionPath;
     this.timeSeriesDao = timeSeriesDao;
     this.entityClass = entityClass;

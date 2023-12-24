@@ -73,7 +73,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public EntityUsage get(
@@ -85,15 +88,19 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date "
+                      + "(default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format. "
+                      + "(default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
@@ -115,7 +122,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity usage",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public EntityUsage getByName(
@@ -134,12 +144,15 @@ public class UsageResource {
           @PathParam("fqn")
           String fqn,
       @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+              description =
+                  "Usage for number of days going back from the given date "
+                      + "(default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format "
+                      + "(default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
@@ -162,7 +175,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -174,7 +190,8 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
@@ -195,7 +212,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -207,7 +227,8 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("id")
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
@@ -228,7 +249,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createByName(
@@ -265,7 +289,10 @@ public class UsageResource {
         @ApiResponse(
             responseCode = "200",
             description = "Usage information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateByName(

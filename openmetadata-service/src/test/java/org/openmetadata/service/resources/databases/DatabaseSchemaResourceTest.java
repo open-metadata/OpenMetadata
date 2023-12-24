@@ -51,7 +51,8 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   @Test
   void post_schemaWithoutRequiredDatabase_400(TestInfo test) {
     CreateDatabaseSchema create = createRequest(test).withDatabase(null);
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
   }
 
   @Override
@@ -61,7 +62,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     if (schema.getTables() == null) {
       TableResourceTest tableResourceTest = new TableResourceTest();
       CreateTable create =
-          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getFullyQualifiedName());
+          tableResourceTest
+              .createRequest("t1", "", "", null)
+              .withDatabaseSchema(schema.getFullyQualifiedName());
       tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
       create.withName("t2");
@@ -92,7 +95,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public CreateDatabaseSchema createRequest(String name) {
-    return new CreateDatabaseSchema().withName(name).withDatabase(getContainer().getFullyQualifiedName());
+    return new CreateDatabaseSchema()
+        .withName(name)
+        .withDatabase(getContainer().getFullyQualifiedName());
   }
 
   @Override
@@ -117,7 +122,8 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   }
 
   @Override
-  public void compareEntities(DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(

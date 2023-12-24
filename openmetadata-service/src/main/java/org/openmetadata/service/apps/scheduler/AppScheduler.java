@@ -46,11 +46,14 @@ public class AppScheduler {
     this.searchClient = searchClient;
     this.appScheduler = new StdSchedulerFactory().getScheduler();
     // Add OMJob Listener
-    this.appScheduler.getListenerManager().addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
+    this.appScheduler
+        .getListenerManager()
+        .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
     this.appScheduler.start();
   }
 
-  public static void initialize(CollectionDAO dao, SearchRepository searchClient) throws SchedulerException {
+  public static void initialize(CollectionDAO dao, SearchRepository searchClient)
+      throws SchedulerException {
     if (!initialized) {
       instance = new AppScheduler(dao, searchClient);
       initialized = true;
@@ -72,7 +75,8 @@ public class AppScheduler {
     try {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail jobDetail = jobBuilder(application, String.format("%s", application.getId().toString()));
+        JobDetail jobDetail =
+            jobBuilder(application, String.format("%s", application.getId().toString()));
         Trigger trigger = trigger(application);
         appScheduler.scheduleJob(jobDetail, trigger);
         appJobsKeyMap.put(application.getId(), jobDetail);
@@ -100,8 +104,10 @@ public class AppScheduler {
     dataMap.put(COLLECTION_DAO_KEY, collectionDAO);
     dataMap.put(SEARCH_CLIENT_KEY, searchClient);
     dataMap.put("triggerType", AppRunType.Scheduled.value());
-    Class<? extends NativeApplication> clz = (Class<? extends NativeApplication>) Class.forName(app.getClassName());
-    JobBuilder jobBuilder = JobBuilder.newJob(clz).withIdentity(jobIdentity, APPS_JOB_GROUP).usingJobData(dataMap);
+    Class<? extends NativeApplication> clz =
+        (Class<? extends NativeApplication>) Class.forName(app.getClassName());
+    JobBuilder jobBuilder =
+        JobBuilder.newJob(clz).withIdentity(jobIdentity, APPS_JOB_GROUP).usingJobData(dataMap);
     return jobBuilder.build();
   }
 
@@ -147,10 +153,15 @@ public class AppScheduler {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
         JobDetail jobDetail =
-            jobBuilder(application, String.format("%s.onDemand.%s", application.getId().toString(), UUID.randomUUID()));
+            jobBuilder(
+                application,
+                String.format("%s.onDemand.%s", application.getId().toString(), UUID.randomUUID()));
         jobDetail.getJobDataMap().put("triggerType", AppRunType.OnDemand.value());
         Trigger trigger =
-            TriggerBuilder.newTrigger().withIdentity(application.toString(), APPS_TRIGGER_GROUP).startNow().build();
+            TriggerBuilder.newTrigger()
+                .withIdentity(application.toString(), APPS_TRIGGER_GROUP)
+                .startNow()
+                .build();
         appScheduler.scheduleJob(jobDetail, trigger);
         appJobsKeyMap.put(application.getId(), jobDetail);
       } else {

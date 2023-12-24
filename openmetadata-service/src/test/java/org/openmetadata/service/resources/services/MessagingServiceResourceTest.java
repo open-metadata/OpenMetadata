@@ -51,7 +51,8 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
+public class MessagingServiceResourceTest
+    extends ServiceResourceTest<MessagingService, CreateMessagingService> {
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
   public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
@@ -73,7 +74,8 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
             .withConnection(TestUtils.KAFKA_CONNECTION);
-    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    MessagingService messagingService =
+        messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = messagingService.getEntityReference();
 
     // Create Pulsar messaging service
@@ -82,7 +84,8 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
         .withServiceType(MessagingServiceType.Redpanda)
         .withConnection(TestUtils.REDPANDA_CONNECTION);
 
-    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    messagingService =
+        messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     REDPANDA_REFERENCE = messagingService.getEntityReference();
   }
 
@@ -149,7 +152,9 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
     MessagingConnection messagingConnection1 =
         new MessagingConnection()
             .withConfig(
-                new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
+                new KafkaConnection()
+                    .withBootstrapServers("host:9092")
+                    .withSchemaRegistryURL(new URI("host:8081")));
     change = getChangeDescription(service.getVersion());
     fieldUpdated(change, "connection", messagingConnection, messagingConnection1);
     update.withConnection(messagingConnection1);
@@ -159,7 +164,9 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
     MessagingConnection messagingConnection2 =
         new MessagingConnection()
             .withConfig(
-                new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
+                new KafkaConnection()
+                    .withBootstrapServers("host1:9092")
+                    .withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
     change = getChangeDescription(service.getVersion());
     fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
@@ -176,12 +183,15 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MessagingService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -207,14 +217,18 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
 
   @Override
   public void validateCreatedEntity(
-      MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
+      MessagingService service,
+      CreateMessagingService createRequest,
+      Map<String, String> authHeaders) {
     MessagingConnection expectedMessagingConnection = createRequest.getConnection();
     MessagingConnection actualMessagingConnection = service.getConnection();
-    validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
+    validateConnection(
+        expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
   }
 
   @Override
-  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -260,10 +274,15 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
         if (actualConnection.getConfig() instanceof KafkaConnection) {
           actualKafkaConnection = (KafkaConnection) actualConnection.getConfig();
         } else {
-          actualKafkaConnection = JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
+          actualKafkaConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
         }
-        assertEquals(expectedKafkaConnection.getBootstrapServers(), actualKafkaConnection.getBootstrapServers());
-        assertEquals(expectedKafkaConnection.getSchemaRegistryURL(), actualKafkaConnection.getSchemaRegistryURL());
+        assertEquals(
+            expectedKafkaConnection.getBootstrapServers(),
+            actualKafkaConnection.getBootstrapServers());
+        assertEquals(
+            expectedKafkaConnection.getSchemaRegistryURL(),
+            actualKafkaConnection.getSchemaRegistryURL());
       }
     }
   }

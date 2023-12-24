@@ -53,14 +53,22 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", RoleResource.FIELDS, DATA_CONSUMER_ROLE_NAME);
+    super(
+        Entity.ROLE,
+        Role.class,
+        RoleList.class,
+        "roles",
+        RoleResource.FIELDS,
+        DATA_CONSUMER_ROLE_NAME);
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {
-    DATA_CONSUMER_ROLE = getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_ROLE =
+        getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_ROLE_REF = DATA_CONSUMER_ROLE.getEntityReference();
 
-    DATA_STEWARD_ROLE = getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_STEWARD_ROLE =
+        getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_ROLE_REF = DATA_STEWARD_ROLE.getEntityReference();
 
     ROLE1 = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -68,7 +76,8 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   /** Creates the given number of roles */
-  public void createRoles(TestInfo test, @Positive int numberOfRoles, @Positive int offset) throws IOException {
+  public void createRoles(TestInfo test, @Positive int numberOfRoles, @Positive int offset)
+      throws IOException {
     // Create a set of roles.
     for (int i = 0; i < numberOfRoles; i++) {
       CreateRole create = createRequest(test, offset + i);
@@ -154,15 +163,20 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  public Role validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
+  public Role validateGetWithDifferentFields(Role role, boolean byName)
+      throws HttpResponseException {
     // Assign two arbitrary users this role for testing.
     if (role.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
       userResourceTest.createEntity(
-          userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),
+          userResourceTest
+              .createRequest("roleUser1", "", "", null)
+              .withRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
       userResourceTest.createEntity(
-          userResourceTest.createRequest("roleUser2", "", "", null).withRoles(List.of(role.getId())),
+          userResourceTest
+              .createRequest("roleUser2", "", "", null)
+              .withRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -170,10 +184,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     if (role.getTeams() == null) {
       TeamResourceTest teamResourceTest = new TeamResourceTest();
       teamResourceTest.createEntity(
-          teamResourceTest.createRequest("roleTeam1", "", "", null).withDefaultRoles(List.of(role.getId())),
+          teamResourceTest
+              .createRequest("roleTeam1", "", "", null)
+              .withDefaultRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
       teamResourceTest.createEntity(
-          teamResourceTest.createRequest("roleTeam2", "", "", null).withDefaultRoles(List.of(role.getId())),
+          teamResourceTest
+              .createRequest("roleTeam2", "", "", null)
+              .withDefaultRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -200,11 +218,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public CreateRole createRequest(String name) {
-    return new CreateRole().withName(name).withPolicies(EntityUtil.getFqns(DATA_CONSUMER_ROLE.getPolicies()));
+    return new CreateRole()
+        .withName(name)
+        .withPolicies(EntityUtil.getFqns(DATA_CONSUMER_ROLE.getPolicies()));
   }
 
   @Override
-  public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Role role, CreateRole createRequest, Map<String, String> authHeaders) {
     TestUtils.assertEntityReferenceNames(createRequest.getPolicies(), role.getPolicies());
   }
 
@@ -221,7 +242,8 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     if (fieldName.equals("policies")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      List<EntityReference> actualRefs =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEntityReferences(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

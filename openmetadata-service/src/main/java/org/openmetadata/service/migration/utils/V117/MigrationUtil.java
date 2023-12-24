@@ -25,13 +25,16 @@ public class MigrationUtil {
 
   private static final String MYSQL_LIST_TABLE_FQNS =
       "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM table_entity";
-  private static final String POSTGRES_LIST_TABLE_FQNS = "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
+  private static final String POSTGRES_LIST_TABLE_FQNS =
+      "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
 
   public static void fixTestCases(Handle handle, CollectionDAO collectionDAO) {
-    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     List<TestCase> testCases =
-        testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testCaseRepository.listAll(
+            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
     try {
       List<String> fqnList;
@@ -47,9 +50,12 @@ public class MigrationUtil {
 
       for (TestCase testCase : testCases) {
         // Create New Executable Test Suites
-        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+        MessageParser.EntityLink entityLink =
+            MessageParser.EntityLink.parse(testCase.getEntityLink());
         String fqn = entityLink.getEntityFQN();
-        Table table = JsonUtils.readValue(tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
+        Table table =
+            JsonUtils.readValue(
+                tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
         if (table == null) {
           String findTableFQN = tableMap.get(fqn.toLowerCase());
           MessageParser.EntityLink newEntityLink =

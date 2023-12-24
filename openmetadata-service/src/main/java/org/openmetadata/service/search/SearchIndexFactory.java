@@ -148,6 +148,7 @@ public class SearchIndexFactory {
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
-    throw new IllegalArgumentException(String.format("Entity Type [%s] is not valid for Index Factory", entityType));
+    throw new IllegalArgumentException(
+        String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
 }

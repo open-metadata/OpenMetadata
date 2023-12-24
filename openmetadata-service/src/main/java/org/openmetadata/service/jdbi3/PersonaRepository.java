@@ -112,7 +112,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());
       updateToRelationships(
-          "users", PERSONA, origPersona.getId(), Relationship.APPLIED_TO, Entity.USER, origUsers, updatedUsers, false);
+          "users",
+          PERSONA,
+          origPersona.getId(),
+          Relationship.APPLIED_TO,
+          Entity.USER,
+          origUsers,
+          updatedUsers,
+          false);
     }
   }
 }

@@ -73,7 +73,8 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
+      addRelationship(
+          entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
     }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(entity.getId(), expert.getId(), DOMAIN, Entity.USER, Relationship.EXPERT);
@@ -120,13 +121,16 @@ public class DomainRepository extends EntityRepository<Domain> {
       entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getName()));
     } else { // Sub domain
       EntityReference parent = entity.getParent();
-      entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
     }
   }
 
   @Override
   public EntityInterface getParentEntity(Domain entity, String fields) {
-    return entity.getParent() != null ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED) : null;
+    return entity.getParent() != null
+        ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED)
+        : null;
   }
 
   public class DomainUpdater extends EntityUpdater {

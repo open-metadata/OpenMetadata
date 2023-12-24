@@ -152,6 +152,7 @@
     <snakeyaml.version>2.2</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
+    <spotless.version>2.41.1</spotless.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -718,26 +719,29 @@
           <version>${maven-dependency-plugin.version}</version>
         </plugin>
         <plugin>
-          <groupId>com.theoryinpractise</groupId>
-          <artifactId>googleformatter-maven-plugin</artifactId>
-          <version>1.7.5</version>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless.version}</version>
+          <configuration>
+            <java>
+              <includes>
+                <include>src/main/java/**/*.java</include>
+                <include>src/test/java/**/*.java</include>
+              </includes>
+              <googleJavaFormat>
+                <style>GOOGLE</style>
+                <reflowLongStrings>false</reflowLongStrings>
+                <formatJavadoc>false</formatJavadoc>
+                <groupArtifact>com.google.googlejavaformat:google-java-format</groupArtifact>
+              </googleJavaFormat>
+              <removeUnusedImports />
+            </java>
+          </configuration>
           <executions>
             <execution>
-              <id>reformat-sources</id>
-              <configuration>
-                <includeStale>false</includeStale>
-                <style>GOOGLE</style>
-                <formatMain>true</formatMain>
-                <formatTest>true</formatTest>
-                <filterModified>false</filterModified>
-                <skip>false</skip>
-                <fixImports>true</fixImports>
-                <maxLineLength>120</maxLineLength>
-              </configuration>
               <goals>
-                <goal>format</goal>
+                <goal>check</goal>
               </goals>
-              <phase>process-sources</phase>
             </execution>
           </executions>
         </plugin>

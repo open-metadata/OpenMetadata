@@ -83,7 +83,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @SneakyThrows
   public JwtFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
     this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
@@ -112,7 +113,8 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream().anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
+    if (EXCLUDED_ENDPOINTS.stream()
+        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
       return;
     }
 
@@ -140,7 +142,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // validate access token
     if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+        && ServiceTokenType.PERSONAL_ACCESS.equals(
+            ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
       validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
@@ -193,7 +196,8 @@ public class JwtFilter implements ContainerRequestFilter {
             .orElseThrow(
                 () ->
                     new AuthenticationException(
-                        "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+                        "Invalid JWT token, none of the following claims are present "
+                            + jwtPrincipalClaims));
 
     String userName;
     String domain;
@@ -208,7 +212,8 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate principal domain
     if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
       throw new AuthenticationException(
-          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
+          String.format(
+              "Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
     return userName;
   }
@@ -253,7 +258,8 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
-    LogoutRequest previouslyLoggedOutEvent = JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
+    LogoutRequest previouslyLoggedOutEvent =
+        JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
     if (previouslyLoggedOutEvent != null) {
       throw new AuthenticationException("Expired token!");
     }
