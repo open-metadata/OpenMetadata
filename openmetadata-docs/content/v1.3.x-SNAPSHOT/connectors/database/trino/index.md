@@ -95,7 +95,7 @@ In order to integrate SSL in the Metadata Ingestion Config, the user will have t
 There are a couple of types of SSL modes that redshift supports which can be added to ConnectionArguments, they are as follows:
 - **false**: In order to disable SSL verification, set the `verify` parameter to `False`.
 - **\<path-to-crt\>**: To use self-signed certificates, specify a path to the certificate in `verify` parameter.
-Find more details in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification).
+Find more details in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced.html?highlight=ssl#ssl-cert-verification).
 
 {% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 

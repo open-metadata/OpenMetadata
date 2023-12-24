@@ -95,7 +95,7 @@ public class CompiledRule extends Rule {
         if (matchExpression(policyContext, subjectContext, resourceContext)) {
           throw new AuthorizationException(
               permissionDenied(
-                  subjectContext.getUser().getName(),
+                  subjectContext.user().getName(),
                   operation,
                   policyContext.getRoleName(),
                   policyContext.getPolicyName(),

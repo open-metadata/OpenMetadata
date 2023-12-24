@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=too-many-lines
 """
 Looker source module.
 Supports:
@@ -62,6 +63,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -75,7 +79,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
@@ -440,7 +444,7 @@ class LookerSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=model.name,
                     error=f"Validation error yielding Data Model [{model.name}]: {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -448,7 +452,7 @@ class LookerSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=model.name,
                     error=f"Wild error yielding Data Model [{model.name}]: {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -511,7 +515,7 @@ class LookerSource(DashboardServiceSource):
                     left=StackTraceError(
                         name=view_name,
                         error=f"Cannot find the view [{view_name}]: empty",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -579,7 +583,7 @@ class LookerSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=view.name,
                     error=f"Error to yield lineage details for view [{view.name}]: {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -786,7 +790,7 @@ class LookerSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_entity.displayName,
                     error=f"Unexpected exception yielding lineage from [{dashboard_entity.displayName}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -879,7 +883,7 @@ class LookerSource(DashboardServiceSource):
                     left=StackTraceError(
                         name=chart.id,
                         error=f"Error creating chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -995,6 +999,6 @@ class LookerSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=f"{dashboard.name} Usage",
                     error=f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
