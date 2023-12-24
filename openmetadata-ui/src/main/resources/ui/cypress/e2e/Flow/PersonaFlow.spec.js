@@ -45,28 +45,32 @@ describe('Persona operations', () => {
   const userSearchText = `${USER_DETAILS.firstName}${USER_DETAILS.lastName}`;
   before(() => {
     cy.login();
-    const token = localStorage.getItem('oidcIdToken');
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
 
-    // Create a new user
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/users/signup`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: USER_DETAILS,
-    }).then((response) => {
-      user.details = response.body;
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: USER_DETAILS,
+      }).then((response) => {
+        user.details = response.body;
+      });
     });
   });
 
   after(() => {
     cy.login();
-    const token = localStorage.getItem('oidcIdToken');
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
 
-    // Delete created user
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${user.details.id}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${user.details.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
     });
   });
 
