@@ -1108,7 +1108,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(6, Entity.TEAM, "invalidTeam"))
         };
     assertRows(result, expectedRows);
 
@@ -1119,7 +1120,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(7, Entity.ROLE, "invalidRole"))
         };
     assertRows(result, expectedRows);
   }
