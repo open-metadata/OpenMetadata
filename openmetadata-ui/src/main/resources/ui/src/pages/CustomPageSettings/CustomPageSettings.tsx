@@ -152,7 +152,7 @@ export const CustomPageSettings = () => {
               <Card
                 bodyStyle={{ height: '100%' }}
                 className="h-full"
-                data-testid="persona-details-card"
+                data-testid={`persona-details-card-${persona.name}`}
                 extra={
                   <Button
                     className="text-link-color"

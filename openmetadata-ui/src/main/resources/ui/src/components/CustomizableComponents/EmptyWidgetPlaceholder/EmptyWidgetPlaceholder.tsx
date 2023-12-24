@@ -45,7 +45,7 @@ function EmptyWidgetPlaceholder({
     <Card
       bodyStyle={{ height: '100%' }}
       className="empty-widget-placeholder"
-      data-testid="empty-widget-placeholder-card">
+      data-testid={widgetKey}>
       <Row className="h-full">
         {isEditable && (
           <Col span={24}>
