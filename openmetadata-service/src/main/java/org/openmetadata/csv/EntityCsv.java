@@ -328,11 +328,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return;
     }
 
-    // Finally, convert record into entity for importing
-    T entity = toEntity(resultsPrinter, csvRecord);
+    T entity = toEntity(resultsPrinter, csvRecord); // Convert record into entity for importing
     if (entity != null) {
-      // Finally, create entities
-      createEntity(resultsPrinter, csvRecord, entity);
+      createEntity(resultsPrinter, csvRecord, entity); // Finally, create entities
     }
   }
 

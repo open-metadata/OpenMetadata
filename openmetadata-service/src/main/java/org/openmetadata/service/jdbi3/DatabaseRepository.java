@@ -228,10 +228,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Override
     protected DatabaseSchema toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      DatabaseSchema schema =
-          new DatabaseSchema()
-              .withDatabase(database.getEntityReference())
-              .withService(database.getService());
+      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+      DatabaseSchema schema;
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        importFailure(printer, entityNotFound(0, DATABASE_SCHEMA, schemaFqn), csvRecord);
+        processRecord = false;
+        return null;
+      }
+
       // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
       schema
