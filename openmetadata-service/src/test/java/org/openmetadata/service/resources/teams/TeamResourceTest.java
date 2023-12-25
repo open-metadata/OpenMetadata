@@ -801,7 +801,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(8, "invalidPolicy"))
+      resultsHeader,
+      getFailedRecord(record, EntityCsv.entityNotFound(8, Entity.POLICY, "invalidPolicy"))
     };
     assertRows(result, expectedRows);
 
@@ -812,7 +813,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(7, Entity.ROLE, "invalidRole"))
         };
     assertRows(result, expectedRows);
 
@@ -823,7 +825,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(5, "invalidOwner"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(5, Entity.USER, "invalidOwner"))
         };
     assertRows(result, expectedRows);
 
@@ -834,7 +837,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, "invalidParent"))
+          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, TEAM, "invalidParent"))
         };
     assertRows(result, expectedRows);
 
