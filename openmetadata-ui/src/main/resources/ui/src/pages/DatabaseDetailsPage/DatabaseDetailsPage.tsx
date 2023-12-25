@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, toLower, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
@@ -73,6 +73,7 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -329,34 +330,13 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    if (withinPageSearch) {
+    if (withinPageSearch && serviceType) {
       history.push(
         getExplorePath({
           search: withinPageSearch,
           isPersistFilters: false,
           extraParameters: {
-            quickFilter: JSON.stringify({
-              query: {
-                bool: {
-                  must: [
-                    {
-                      bool: {
-                        should: [
-                          { term: { serviceType: [toLower(serviceType)] } },
-                        ],
-                      },
-                    },
-                    {
-                      bool: {
-                        should: [
-                          { term: { 'database.name.keyword': [databaseName] } },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              },
-            }),
+            quickFilter: getQueryFilterForDatabase(serviceType, databaseName),
           },
         })
       );
@@ -377,9 +357,6 @@ const DatabaseDetails: FunctionComponent = () => {
   // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
-    // history.replace({
-    //   search: ``,
-    // });
   }, []);
 
   const handleUpdateTier = useCallback(

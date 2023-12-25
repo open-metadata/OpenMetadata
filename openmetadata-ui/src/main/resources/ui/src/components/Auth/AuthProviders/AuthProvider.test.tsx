@@ -41,7 +41,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../rest/miscAPI', () => ({
   fetchAuthenticationConfig: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      provider: AuthProviderProps.LDAP,
+      provider: AuthProviderProps.Basic,
     })
   ),
   fetchAuthorizerConfig: jest.fn().mockImplementation(() => Promise.resolve()),
