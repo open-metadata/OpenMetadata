@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -95,7 +96,9 @@ public class EntityCsvTest {
   }
 
   public static String getFailedRecord(String record, String errorDetails) {
-    return String.format("%s,\"%s\",%s", EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
+    errorDetails = StringEscapeUtils.escapeCsv(errorDetails);
+    String format = errorDetails.startsWith("\"") ? "%s,%s,%s" : "%s,\"%s\",%s";
+    return String.format(format, EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
   }
 
   private static List<CsvHeader> getHeaders(Object[][] headers) {

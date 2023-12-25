@@ -371,7 +371,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader, getFailedRecord(record, "[name must match \"\"(?U)^[\\w'\\- .&()%]+$\"\"]")
+      resultsHeader, getFailedRecord(record, "[name must match \"(?U)^[\\w'\\- .&()%]+$\"]")
     };
     assertRows(result, expectedRows);
 
@@ -382,7 +382,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
-        new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
+        new String[] {
+          resultsHeader,
+          getFailedRecord(record, entityNotFound(0, Entity.GLOSSARY_TERM, "invalidParent"))
+        };
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid tags field
@@ -391,7 +394,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     result = importCsv(glossaryName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
-        new String[] {resultsHeader, getFailedRecord(record, entityNotFound(7, "Tag.invalidTag"))};
+        new String[] {
+          resultsHeader, getFailedRecord(record, entityNotFound(7, Entity.TAG, "Tag.invalidTag"))
+        };
     assertRows(result, expectedRows);
   }
 

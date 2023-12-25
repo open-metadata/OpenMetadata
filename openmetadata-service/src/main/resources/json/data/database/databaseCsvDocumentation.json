@@ -1,0 +1,71 @@
+{
+  "summary": "Database CSV file is used for importing and exporting databaseSchema metadata from and to an **existing** database.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the database schema being updated.",
+      "examples": [
+        "`users`, `customers`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the databaseSchema.",
+      "examples": [
+        "`User Schema`, `Customer Schema`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the database schema in Markdown format.",
+      "examples": [
+        "`Customer Schema` that contains all the tables related to customer entity."
+      ]
+    },
+    {
+      "name": "owner",
+      "required": false,
+      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
+      "examples": [
+        "`team;marketing`",
+        "`user;john`"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the database schema separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    },
+    {
+      "name": "retentionPeriod",
+      "required": false,
+      "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
+      "examples": [
+        "`P23DT23H`"
+      ]
+    },
+    {
+      "name": "sourceUrl",
+      "required": false,
+      "description": "Source URL for the database schema",
+      "examples": [
+        "http://domain.com/system/customer_schema"
+      ]
+    },
+    {
+      "name": "domain",
+      "required": false,
+      "description": "Domain to which the database schema belongs to",
+      "examples": [
+        "Marketing", "Sales"
+      ]
+    }
+  ]
+}
