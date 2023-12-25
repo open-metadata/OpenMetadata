@@ -12,8 +12,9 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
+from metadata.utils import fqn
 from pandas import DataFrame
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
@@ -35,9 +36,11 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -78,6 +81,7 @@ class StorageServiceTopology(ServiceTopology):
             ),
         ],
         children=["container"],
+        post_process=["mark_containers_as_deleted"],
     )
 
     container = TopologyNode(
@@ -109,6 +113,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = StorageServiceTopology()
     context = create_source_context(topology)
+    container_source_state: Set = set()
 
     global_manifest: Optional[ManifestMetadataConfig]
 
@@ -166,10 +171,39 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
+        
+    def register_record(self, container_request: CreateContainerRequest) -> None:
+        """
+        Mark the container record as scanned and update
+        the storage_source_state
+        """
+        parent_container = self.metadata.get_by_id(
+            entity=Container, entity_id=container_request.parent.id
+        ).fullyQualifiedName.__root__ if container_request.parent else None
+        container_fqn = fqn.build(
+            self.metadata,
+            entity_type=Container,
+            service_name=self.context.objectstore_service,
+            parent_container=parent_container,
+            container_name=container_request.name.__root__,
+        )
+
+        self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+    
+    def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Method to mark the containers as deleted"""
+        if self.source_config.markDeletedContainers:
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Container,
+                entity_source_state=self.container_source_state,
+                mark_deleted_entity=self.source_config.markDeletedContainers,
+                params={"service": self.context.objectstore_service},
+            )
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
         yield Either(

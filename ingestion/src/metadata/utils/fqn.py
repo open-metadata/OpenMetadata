@@ -21,6 +21,7 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
+from metadata.generated.schema.entity.data.container import Container
 from pydantic import BaseModel, Field
 
 from metadata.antlr.split_listener import FqnSplitListener
@@ -282,6 +283,23 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
         )
     return _build(service_name, topic_name)
+
+
+@fqn_build_registry.add(Container)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Container FQN building
+    *,
+    service_name: str,
+    parent_container: str,
+    container_name: str,
+) -> str:
+    if not service_name or not container_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
+        )
+    return _build(parent_container, container_name, quote=False) if parent_container else (
+        _build(service_name, container_name)
+    )
 
 
 @fqn_build_registry.add(SearchIndex)
