@@ -417,9 +417,9 @@ public class FeedRepository {
             mention ->
                 dao.fieldRelationshipDAO()
                     .insert(
-                        mention.getFullyQualifiedFieldValue(),
+                        FullyQualifiedName.quoteName(mention.getFullyQualifiedFieldValue()),
                         thread.getId().toString(),
-                        mention.getFullyQualifiedFieldValue(),
+                        FullyQualifiedName.quoteName(mention.getFullyQualifiedFieldValue()),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
                         Entity.THREAD,
