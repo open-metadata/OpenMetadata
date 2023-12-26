@@ -52,6 +52,7 @@ export const SIDEBAR_LIST = [
         redirect_url: ROUTES.INCIDENT_MANAGER,
         icon: IncidentMangerIcon,
         dataTestId: 'app-bar-item-incident-manager',
+        isBeta: true,
       },
     ],
   },

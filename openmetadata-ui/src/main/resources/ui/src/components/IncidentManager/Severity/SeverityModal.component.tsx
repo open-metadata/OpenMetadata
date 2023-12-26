@@ -13,7 +13,7 @@
 
 import { Form, Modal, Select } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import { keys, startCase } from 'lodash';
+import { isUndefined, keys, startCase } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../generated/tests/testCase';
@@ -29,6 +29,10 @@ const SeverityModal = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleFormSubmit: FormProps['onFinish'] = (data) => {
+    if (isUndefined(onSubmit)) {
+      return;
+    }
+
     setIsLoading(true);
     onSubmit(data.severity).finally(() => {
       setIsLoading(false);
