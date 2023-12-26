@@ -17,11 +17,10 @@ import { capitalize, isEmpty, toString } from 'lodash';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { getUserById } from '../../../rest/userAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
 import CloseIcon from '../../Modals/CloseIcon.component';
-import { getUserById } from "../../../rest/userAPI";
-import { AxiosError } from 'axios';
-
 
 type Props = {
   versionList: EntityHistory;
@@ -39,19 +38,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 }: Props) => {
   const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
-  const [uname, setUname] = useState<string>()(' ');
+  const [uname, setUname] = useState<string>('');
 
   const fetchUserName = async (id: string) => {
     try {
       const userData = await getUserById(id, 'displayName');
-      
-      if(userData){
-        let nameData: string = userData.displayName ?? "Unknown User";
-        setUname(nameData);
-      }
-    }catch (error: AxiosError) {
+
+      const name: string = getEntityName(userData);
+      setUname(name);
+    } catch (err) {
       setUname(id);
-    } 
+    }
   };
 
   const versions = useMemo(() => {
@@ -97,7 +94,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         const currV = JSON.parse(v);
         const userId: string = currV?.updatedBy;
         fetchUserName(userId);
-        {userId == 'admin'?setUname('admin'):" "}
+        {
+          userId === 'admin' ? setUname('admin') : ' ';
+        }
         const majorVersionChecks = () => {
           return (
             isMajorVersion(
