@@ -1,0 +1,37 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 1`] = `
+<div
+  className="d-inline-flex w-max-90"
+>
+  <Link
+    className="break-word"
+    data-testid="database-schema-name-link"
+    to="/databaseSchema/database.schema1"
+  >
+    schema1
+  </Link>
+</div>
+`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 2`] = `
+<RichTextEditorPreviewer
+  markdown="Schema 1 description"
+/>
+`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 3`] = `"John Doe"`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 4`] = `" 80th label.pctile-lowercase"`;
