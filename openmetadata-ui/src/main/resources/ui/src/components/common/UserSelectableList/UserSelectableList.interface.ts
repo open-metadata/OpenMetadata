@@ -20,6 +20,7 @@ export type UserSelectableListProps =
       selectedUsers: EntityReference[];
       children?: ReactNode;
       popoverProps?: PopoverProps;
+      filterCurrentUser?: boolean;
     } & (
       | {
           multiSelect?: true;

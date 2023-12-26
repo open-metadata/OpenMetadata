@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { UserTag } from './UserTag.component';
+import { UserTagSize } from './UserTag.interface';
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<div>ProfilePicture</div>);
@@ -41,5 +42,36 @@ describe('UserTag Component', () => {
 
     expect(queryByTestId('user-tag')).not.toBeInTheDocument();
     expect(container).toHaveTextContent('');
+  });
+
+  const userTagProps = {
+    id: '123',
+    name: 'John Doe',
+    onRemove: jest.fn(),
+    closable: true,
+    bordered: true,
+    size: UserTagSize.default,
+    className: 'custom-class',
+    isTeam: false,
+  };
+
+  it('renders without crashing', () => {
+    render(<UserTag {...userTagProps} />);
+
+    // Add more specific assertions if needed
+    expect(screen.getByTestId('user-tag')).toBeInTheDocument();
+  });
+
+  it('calls onRemove when close icon is clicked', () => {
+    render(<UserTag {...userTagProps} />);
+    const closeIcon = screen
+      .getByTestId('user-tag')
+      .querySelector('.anticon-close');
+
+    // Simulate click on the close icon
+    closeIcon && fireEvent.click(closeIcon);
+
+    // Check if the onRemove callback is called
+    expect(userTagProps.onRemove).toHaveBeenCalledTimes(1);
   });
 });

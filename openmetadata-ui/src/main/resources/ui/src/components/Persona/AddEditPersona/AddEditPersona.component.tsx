@@ -182,7 +182,7 @@ export const AddEditPersonaForm = ({
               size={[8, 8]}>
               {usersList.map((d) => (
                 <UserTag
-                  id={d.id}
+                  id={d.name ?? d.id}
                   key={d.id}
                   name={getEntityName(d)}
                   size={UserTagSize.small}

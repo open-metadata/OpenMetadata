@@ -57,6 +57,14 @@ const GlossaryDetails = ({
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
 
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.GLOSSARY,
+      glossary.fullyQualifiedName ?? '',
+      setFeedCount
+    );
+  };
+
   const handleGlossaryUpdate = async (updatedGlossary: Glossary) => {
     await updateGlossary(updatedGlossary);
     getEntityFeedCount();
@@ -113,14 +121,6 @@ const GlossaryDetails = ({
 
     [glossary, isVersionView]
   );
-
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.GLOSSARY,
-      glossary.fullyQualifiedName ?? '',
-      setFeedCount
-    );
-  };
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
