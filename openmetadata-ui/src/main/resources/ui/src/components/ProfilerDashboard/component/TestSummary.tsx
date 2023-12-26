@@ -30,6 +30,7 @@ import {
   LineChart,
   LineProps,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -193,7 +194,18 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const referenceArea = () => {
-    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
+    const params = data.parameterValues ?? [];
+
+    if (params.length < 2) {
+      return (
+        <ReferenceLine
+          label={params[0].name}
+          stroke={GREEN_3}
+          strokeDasharray="4"
+        />
+      );
+    }
+    const yValues = params.reduce((acc, curr, i) => {
       return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
     }, {});
 
@@ -233,7 +245,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           />
           <Tooltip />
           <Legend />
-          {data.parameterValues?.length === 2 && referenceArea()}
+          {referenceArea()}
           {chartData?.information?.map((info) => (
             <Line
               dataKey={info.label}

@@ -194,11 +194,7 @@ const TestCaseResultTab = ({
 
       {testCaseData && (
         <Col className="test-case-result-tab-graph" span={24}>
-          <TestSummary
-            showOnlyGraph
-            data={testCaseData}
-            showExpandIcon={false}
-          />
+          <TestSummary showExpandIcon showOnlyGraph data={testCaseData} />
         </Col>
       )}
 
