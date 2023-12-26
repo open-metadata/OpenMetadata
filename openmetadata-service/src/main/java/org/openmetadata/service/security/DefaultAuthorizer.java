@@ -123,9 +123,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
     // Asking for some other user's permissions is admin only operation
-    if (user != null && !loggedInUser.getUser().getName().equals(user)) {
+    if (user != null && !loggedInUser.user().getName().equals(user)) {
       if (!loggedInUser.isAdmin()) {
-        throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
+        throw new AuthorizationException(notAdmin(loggedInUser.user().getName()));
       }
       LOG.debug("Changing subject context from logged-in user to {}", user);
       return SubjectContext.getSubjectContext(user);
@@ -138,7 +138,7 @@ public class DefaultAuthorizer implements Authorizer {
     if (resourceContext.getEntity() == null) {
       return false;
     }
-    String updatedBy = subjectContext.getUser().getName();
+    String updatedBy = subjectContext.user().getName();
     List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
     return !nullOrEmpty(reviewers)
         && reviewers.stream()

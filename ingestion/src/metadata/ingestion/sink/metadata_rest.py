@@ -132,14 +132,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             error = f"Failed to ingest {log} due to api request failure: {err}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -155,7 +155,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         error = f"Failed to ingest {type(entity_request).__name__}"
         return Either(
             left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stack_trace=None
+                name=type(entity_request).__name__, error=error, stackTrace=None
             )
         )
 
@@ -200,7 +200,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             left=StackTraceError(
                 name="Data Model",
                 error="Sink did not receive a table. We cannot ingest the data model.",
-                stack_trace=None,
+                stackTrace=None,
             )
         )
 
