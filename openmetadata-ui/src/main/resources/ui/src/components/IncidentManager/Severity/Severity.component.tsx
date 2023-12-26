@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import AppBadge from '../../common/Badge/Badge.component';
@@ -63,10 +59,10 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
           NO_DATA_PLACEHOLDER
         )}
         {onSubmit && hasEditPermission && (
-          <Icon
-            component={EditIcon}
+          <Button
             data-testid="edit-description-icon"
-            style={{ color: DE_ACTIVE_COLOR }}
+            icon={<EditIcon />}
+            type="text"
             onClick={onEditSeverity}
           />
         )}

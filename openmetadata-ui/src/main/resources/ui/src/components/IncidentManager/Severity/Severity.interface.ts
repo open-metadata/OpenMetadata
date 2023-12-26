@@ -21,7 +21,8 @@ export interface SeverityProps extends SeverityFormProps {
   severity?: Severities;
 }
 
-export interface SeverityModalProps extends SeverityFormProps {
+export interface SeverityModalProps {
   initialSeverity?: Severities;
   onCancel: () => void;
+  onSubmit: (severity: Severities) => Promise<void>;
 }
