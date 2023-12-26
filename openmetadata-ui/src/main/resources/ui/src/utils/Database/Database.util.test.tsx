@@ -75,27 +75,27 @@ describe('Database Util', () => {
 
       const expectedColumns = [
         {
-          title: 'Schema Name',
+          title: 'label.schema-name',
           dataIndex: 'name',
           key: 'name',
           width: 250,
           render: expect.any(Function),
         },
         {
-          title: 'Description',
+          title: 'label.description',
           dataIndex: 'description',
           key: 'description',
           render: expect.any(Function),
         },
         {
-          title: 'Owner',
+          title: 'label.owner',
           dataIndex: 'owner',
           key: 'owner',
           width: 120,
           render: expect.any(Function),
         },
         {
-          title: 'Usage',
+          title: 'label.usage',
           dataIndex: 'usageSummary',
           key: 'usageSummary',
           width: 120,
