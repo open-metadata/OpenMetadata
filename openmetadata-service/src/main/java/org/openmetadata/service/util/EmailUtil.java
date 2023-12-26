@@ -273,8 +273,9 @@ public class EmailUtil {
         return String.format("%s://%s", serverUrl.getScheme(), serverUrl.getHost());
       }
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Missing URI info from URI and SMTP settings.");
+      LOG.error("Missing URI info from URI and SMTP settings. Invalid Url will be built in mails.");
     }
+    return "";
   }
 
   public static void sendInviteMailToAdmin(User user, String pwd) {
