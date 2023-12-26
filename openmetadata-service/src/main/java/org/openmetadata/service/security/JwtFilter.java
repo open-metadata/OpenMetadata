@@ -68,6 +68,7 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/system/config/jwks",
           "v1/system/config/authorizer",
           "v1/system/config/customLogoConfiguration",
+          "v1/system/config/auth",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
