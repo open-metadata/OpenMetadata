@@ -26,13 +26,13 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) {
-    return entity;
+  public void setFields(Workflow entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public Workflow clearFields(Workflow entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(Workflow entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -52,7 +52,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
       entity = secretsManager.encryptWorkflow(entity);
     }
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     entity.withOpenMetadataServerConnection(null);
     store(entity, update);
 

@@ -12,6 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
+import { SearchSuggestions } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -33,6 +34,7 @@ import {
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
+  DORIS,
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
@@ -80,6 +82,7 @@ import {
   TABLEAU,
   TOPIC_DEFAULT,
   TRINO,
+  UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -90,6 +93,7 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { SearchSourceAlias } from '../interface/search.interface';
 import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
 import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { customServiceComparator } from './StringsUtils';
@@ -138,8 +142,11 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceTypeLogo(type: string) {
+  public getServiceTypeLogo(
+    searchSource: SearchSuggestions[number] | SearchSourceAlias
+  ) {
     const serviceTypes = this.getSupportedServiceFromList();
+    const type = searchSource?.serviceType ?? '';
     switch (type) {
       case DatabaseServiceType.Mysql:
         return MYSQL;
@@ -198,8 +205,14 @@ class ServiceUtilClassBase {
       case DatabaseServiceType.Databricks:
         return DATABRICK;
 
+      case DatabaseServiceType.UnityCatalog:
+        return UNITYCATALOG;
+
       case DatabaseServiceType.Db2:
         return IBMDB2;
+
+      case DatabaseServiceType.Doris:
+        return DORIS;
 
       case DatabaseServiceType.Druid:
         return DRUID;

@@ -36,7 +36,7 @@ The ingestion also works with Superset 2.0.0 🎉
 
 **API Connection**: To extract metadata from Superset via API, user must have at least `can read on Chart` & `can read on Dashboard` permissions.
 
-**Database Connection**: To extract metadata from Superset via MySQL or Postgres database, database user must have at least `SELECT` priviledge on `dashboards` & `slices` tables within superset schema.
+**Database Connection**: To extract metadata from Superset via MySQL or Postgres database, database user must have at least `SELECT` privilege on `dashboards` & `slices` tables within superset schema.
 
 ### Python Requirements
 
@@ -134,31 +134,11 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% codeInfo srNumber=4 %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
-
-- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
-- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
-- **projectFilterPattern**: Filter the dashboards, charts and data sources by projects. Note that all of them support regex as include or exclude. E.g., "My project, My proj.*, .*Project".
-- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
-- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
-- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
-- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=5 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
-
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -198,57 +178,17 @@ source:
         # hostPort: localhost:5432
         # database: superset
 ```
-```yaml {% srNumber=4 %}
-  sourceConfig:
-    config:
-      type: DashboardMetadata
-      overrideOwner: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
-      #   includes:
-      #     - dashboard1
-      #     - dashboard2
-      #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
-      # projectFilterPattern:
-      #   includes:
-      #     - project1
-      #     - project2
-      #   excludes:
-      #     - project3
-      #     - project4
-```
-```yaml {% srNumber=5 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/dashboard/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
 

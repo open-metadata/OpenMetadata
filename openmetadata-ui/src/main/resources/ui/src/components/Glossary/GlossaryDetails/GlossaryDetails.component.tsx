@@ -19,20 +19,22 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from '../../common/description/DescriptionV1';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import './glossary-details.less';
 import {
   GlossaryDetailsProps,
   GlossaryTabs,
 } from './GlossaryDetails.interface';
-import './GlossaryDetails.style.less';
 
 const GlossaryDetails = ({
   permissions,
@@ -46,6 +48,7 @@ const GlossaryDetails = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   isVersionView,
+  onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -54,13 +57,18 @@ const GlossaryDetails = ({
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
 
+  const handleGlossaryUpdate = async (updatedGlossary: Glossary) => {
+    await updateGlossary(updatedGlossary);
+    getEntityFeedCount();
+  };
+
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossary.description !== updatedHTML) {
-      const updatedTableDetails = {
+      const updatedGlossaryDetails = {
         ...glossary,
         description: updatedHTML,
       };
-      updateGlossary(updatedTableDetails);
+      handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -131,15 +139,19 @@ const GlossaryDetails = ({
           <Space className="w-full" direction="vertical" size={24}>
             <DescriptionV1
               description={description}
-              entityName={glossary.displayName ?? glossary.name}
+              entityFqn={glossary.fullyQualifiedName}
+              entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
+              owner={glossary?.owner}
+              showActions={!glossary.deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
+
             <GlossaryTermTab
               isGlossary
               childGlossaryTerms={glossaryTerms}
@@ -158,7 +170,8 @@ const GlossaryDetails = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
-            onUpdate={updateGlossary}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
           />
         </Col>
       </Row>
@@ -236,7 +249,7 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={updateGlossary}
+          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
         />
       </Col>
       <Col span={24}>

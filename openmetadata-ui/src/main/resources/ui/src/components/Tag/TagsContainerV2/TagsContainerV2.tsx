@@ -13,7 +13,7 @@
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,23 +22,18 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
-  DE_ACTIVE_COLOR,
-  KNOWLEDGE_CENTER_CLASSIFICATION,
-} from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
-import { SearchIndex } from '../../../enums/search.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Paging } from '../../../generated/type/paging';
+  GLOSSARY_CONSTANT,
+  TAG_CONSTANT,
+  TAG_START_WITH,
+} from '../../../constants/Tag.constants';
+import { LabelType } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getGlossaryTerms } from '../../../rest/glossaryAPI';
-import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import {
-  fetchTagsElasticSearch,
-  getTagPlaceholder,
-} from '../../../utils/TagsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -66,7 +61,6 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
-  filterClassifications = [KNOWLEDGE_CENTER_CLASSIFICATION],
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -96,51 +90,15 @@ const TagsContainerV2 = ({
     [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
-  const fetchGlossaryList = useCallback(
-    async (
-      searchQueryParam: string,
-      page: number
-    ): Promise<{
-      data: {
-        label: string;
-        value: string;
-        data: GlossaryTerm;
-      }[];
-      paging: Paging;
-    }> => {
-      const glossaryResponse = await searchQuery({
-        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
-        pageNumber: page,
-        pageSize: 10,
-        queryFilter: {},
-        searchIndex: SearchIndex.GLOSSARY,
-      });
-
-      const hits = glossaryResponse.hits.hits;
-
-      return {
-        data: hits.map(({ _source }) => ({
-          label: _source.fullyQualifiedName ?? '',
-          value: _source.fullyQualifiedName ?? '',
-          data: _source,
-        })),
-        paging: {
-          total: glossaryResponse.hits.total.value,
-        },
-      };
-    },
-    [searchQuery, getGlossaryTerms]
-  );
-
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
-        return fetchTagsElasticSearch(searchValue, page, filterClassifications);
+        return tagClassBase.getTags(searchValue, page);
       } else {
         return fetchGlossaryList(searchValue, page);
       }
     },
-    [tagType, fetchGlossaryList]
+    [tagType]
   );
 
   const showNoDataPlaceholder = useMemo(
@@ -151,8 +109,9 @@ const TagsContainerV2 = ({
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
     const updatedTags = (data as DefaultOptionType[]).map((tag) => {
       let tagData: EntityTags = {
-        tagFQN: tag.value,
+        tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
+        labelType: LabelType.Manual,
       };
 
       if (tag.data) {
@@ -161,14 +120,17 @@ const TagsContainerV2 = ({
           name: tag.data?.name,
           displayName: tag.data?.displayName,
           description: tag.data?.description,
-          style: tag.data?.style,
+          style: tag.data?.style ?? {},
+          labelType: tag.data?.labelType ?? LabelType.Manual,
         };
       }
 
       return tagData;
     });
 
-    if (onSelectionChange) {
+    const newTags = updatedTags.map((t) => t.tagFQN);
+
+    if (onSelectionChange && !isEqual(selectedTagsInternal, newTags)) {
       await onSelectionChange([
         ...updatedTags,
         ...((isGlossaryType
@@ -194,7 +156,11 @@ const TagsContainerV2 = ({
     () =>
       showAddTagButton ? (
         <Col className="m-t-xss" onClick={handleAddClick}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+          <TagsV1
+            startWith={TAG_START_WITH.PLUS}
+            tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+            tagType={tagType}
+          />
         </Col>
       ) : null,
     [showAddTagButton]
@@ -206,6 +172,7 @@ const TagsContainerV2 = ({
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
+          tagType={tagType}
           tags={tags?.[tagType] ?? []}
         />
       </Col>
@@ -220,6 +187,7 @@ const TagsContainerV2 = ({
         fetchApi={fetchAPI}
         placeholder={getTagPlaceholder(isGlossaryType)}
         tagData={initialOptions}
+        tagType={tagType}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -358,7 +326,11 @@ const TagsContainerV2 = ({
       <Space>
         {showAddTagButton ? (
           <div onClick={handleAddClick}>
-            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+            <TagsV1
+              startWith={TAG_START_WITH.PLUS}
+              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+              tagType={tagType}
+            />
           </div>
         ) : null}
         <TagsViewer

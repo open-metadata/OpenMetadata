@@ -9,7 +9,7 @@ import org.openmetadata.service.migration.api.MigrationProcess;
 
 @Slf4j
 public class MigrationWorkflowContext {
-  @Getter private HashMap<String, MigrationContext> migrationContext;
+  @Getter private final HashMap<String, MigrationContext> migrationContext;
   private final MigrationContext initialContext;
   private final Handle handle;
 
@@ -26,7 +26,8 @@ public class MigrationWorkflowContext {
   }
 
   public void computeMigrationContext(MigrationProcess process) {
-    MigrationContext context = new MigrationContext(process.getVersion(), process.getMigrationOps(), handle);
+    MigrationContext context =
+        new MigrationContext(process.getVersion(), process.getMigrationOps(), handle);
     computeMigrationSafely(context);
   }
 
@@ -36,7 +37,8 @@ public class MigrationWorkflowContext {
       context.show();
       this.migrationContext.put(context.getVersion(), context);
     } catch (Exception e) {
-      LOG.warn(String.format("Error computing context for [%s] due to [%s]", context.getVersion(), e));
+      LOG.warn(
+          String.format("Error computing context for [%s] due to [%s]", context.getVersion(), e));
     }
   }
 }

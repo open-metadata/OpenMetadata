@@ -70,7 +70,8 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
 public class MessagingServiceResource
-    extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
+    extends ServiceEntityResource<
+        MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owner,domain";
 
@@ -94,7 +95,9 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "List of messaging services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingServiceList.class)))
       })
   public ResultList<MessagingService> list(
       @Context UriInfo uriInfo,
@@ -104,19 +107,25 @@ public class MessagingServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -125,7 +134,8 @@ public class MessagingServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -139,13 +149,19 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
-        @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Messaging service for instance {id} is not found")
       })
   public MessagingService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -157,7 +173,8 @@ public class MessagingServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MessagingService messagingService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    MessagingService messagingService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, messagingService);
   }
 
@@ -172,13 +189,18 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
-        @ApiResponse(responseCode = "404", description = "Messaging service for instance {name} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Messaging service for instance {name} is not found")
       })
   public MessagingService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -191,7 +213,8 @@ public class MessagingServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MessagingService messagingService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MessagingService messagingService =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, messagingService);
   }
 
@@ -206,12 +229,16 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "Successfully updated the service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class)))
       })
   public MessagingService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -229,12 +256,16 @@ public class MessagingServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of messaging service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -243,8 +274,10 @@ public class MessagingServiceResource
             .map(
                 json -> {
                   try {
-                    MessagingService messagingService = JsonUtils.readValue((String) json, MessagingService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, messagingService));
+                    MessagingService messagingService =
+                        JsonUtils.readValue((String) json, MessagingService.class);
+                    return JsonUtils.pojoToJson(
+                        decryptOrNullify(securityContext, messagingService));
                   } catch (Exception e) {
                     return json;
                   }
@@ -265,17 +298,21 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "messaging service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Messaging service for instance {id} and version " + "{version} is not found")
+            description = "Messaging service for instance {id} and version {version} is not found")
       })
   public MessagingService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "messaging service version number in the form `major`" + ".`minor`",
+              description = "messaging service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -293,11 +330,15 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMessagingService create) {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
@@ -308,17 +349,22 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createOrUpdateMessagingService",
       summary = "Update messaging service",
-      description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
+      description =
+          "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMessagingService update) {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
@@ -331,19 +377,24 @@ public class MessagingServiceResource
       operationId = "patchMessagingService",
       summary = "Update a messaging service",
       description = "Update an existing messaging service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -354,15 +405,19 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingService",
       summary = "Delete a messaging service by Id",
-      description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
+      description =
+          "Delete a messaging service. If topics belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MessagingService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "MessagingService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -370,7 +425,8 @@ public class MessagingServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -380,12 +436,13 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingServiceByName",
       summary = "Delete a messaging service by name",
-      description = "Delete a messaging service by `name`. If topics belong the service, it can't be " + "deleted.",
+      description =
+          "Delete a messaging service by `name`. If topics belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
             responseCode = "404",
-            description = "MessagingService service for instance {name} " + "is not found")
+            description = "MessagingService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -394,9 +451,15 @@ public class MessagingServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -410,10 +473,14 @@ public class MessagingServiceResource
             responseCode = "200",
             description = "Successfully restored the MessagingService ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MessagingService.class)))
       })
   public Response restoreMessagingService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

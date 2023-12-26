@@ -13,7 +13,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
+import org.postgresql.util.PGobject;
 
 @Slf4j
 public class MigrationUtil {
@@ -53,7 +55,8 @@ public class MigrationUtil {
           + "  ON db_service.id = er_service_database.fromId";
 
   private static final String DELETE_QUERY = "DELETE FROM query_entity WHERE id = :id";
-  private static final String DELETE_RELATIONSHIP = "DELETE FROM entity_relationship WHERE fromId = :id or toId = :id";
+  private static final String DELETE_RELATIONSHIP =
+      "DELETE FROM entity_relationship WHERE fromId = :id or toId = :id";
 
   private static final String GLOSSARY_TERM_LIST_QUERY = "SELECT json FROM glossary_term_entity";
 
@@ -73,24 +76,34 @@ public class MigrationUtil {
               row -> {
                 try {
 
-                  JsonObject queryJson = JsonUtils.readJson((String) row.get("query_json")).asJsonObject();
+                  JsonObject queryJson =
+                      JsonUtils.readJson((String) row.get("query_json")).asJsonObject();
                   String serviceName = (String) row.get("service_name");
                   String serviceId = (String) row.get("service_id");
 
                   if (serviceId == null) {
                     LOG.warn(
                         String.format(
-                            "Query [%s] cannot be linked to a service. Deleting...", queryJson.getString("id")));
-                    // We cannot directly call the queryRepository for deletion, since the Query object is missing
-                    // the new `service` property we introduced and the `delete` operation would fail.
-                    // We need to delete the query entry and the relationships from/to this ID by hand.
-                    // It should be OK since queries are simple structures without any children. We should only
-                    // have relationship table <> query & user <> query
-                    handle.createUpdate(DELETE_QUERY).bind("id", queryJson.getString("id")).execute();
-                    handle.createUpdate(DELETE_RELATIONSHIP).bind("id", queryJson.getString("id")).execute();
+                            "Query [%s] cannot be linked to a service. Deleting...",
+                            queryJson.getString("id")));
+                    // We cannot directly call the queryRepository for deletion, since the Query
+                    // object is missing the new `service` property we introduced and the `delete`
+                    // operation would fail. We need to delete the query entry and the relationships
+                    // from/to this ID by hand. It should be OK since queries are simple structures
+                    // without any children. We should only have relationship
+                    // table <> query & user <> query
+                    handle
+                        .createUpdate(DELETE_QUERY)
+                        .bind("id", queryJson.getString("id"))
+                        .execute();
+                    handle
+                        .createUpdate(DELETE_RELATIONSHIP)
+                        .bind("id", queryJson.getString("id"))
+                        .execute();
 
                   } else {
-                    // Since the query does not have the service yet, it cannot be cast to the Query class.
+                    // Since the query does not have the service yet, it cannot be cast to the Query
+                    // class.
 
                     JsonObject serviceJson =
                         Json.createObjectBuilder()
@@ -104,7 +117,8 @@ public class MigrationUtil {
                     queryJson.forEach(queryWithService::add);
                     queryWithService.add("service", serviceJson);
 
-                    Query query = JsonUtils.readValue(queryWithService.build().toString(), Query.class);
+                    Query query =
+                        JsonUtils.readValue(queryWithService.build().toString(), Query.class);
                     queryRepository.setFullyQualifiedName(query);
                     collectionDAO.queryDAO().update(query);
                   }
@@ -118,15 +132,16 @@ public class MigrationUtil {
   }
 
   /**
-   * Before Release 1.2, Glossary and all of the Glossary terms , even the deeply nested glossary terms have contains
-   * relation with Glossary and also its parent GlossaryTerm. This causes delete issue as we recursively delete the
+   * Before Release 1.2, Glossary and all the Glossary terms , even the deeply nested glossary terms have contains
+   * relation with Glossary and also its parent GlossaryTerm. These causes delete issue as we recursively delete the
    * GlossaryTerms When Glossary gets deleted. We have updated the Glossary -> nested GlossaryTerm to be "Has". This
    * migration does following update 1. List all GlossaryTerms, update the status to Accepted , since we introduced the
    * Glossary Approval Workflow 2. For each term we look at who is the parent is, There should be only one parent in
    * 1.2.0 release, previous releases nested terms will have a two parents the parent GlossaryTerm and its Glossary. We
    * will update the relation to Glossary to be "Has".
    */
-  public static void updateGlossaryAndGlossaryTermRelations(Handle handle, CollectionDAO collectionDAO) {
+  public static void updateGlossaryAndGlossaryTermRelations(
+      Handle handle, CollectionDAO collectionDAO) {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     try {
@@ -136,7 +151,15 @@ public class MigrationUtil {
           .mapToMap()
           .forEach(
               row -> {
-                GlossaryTerm term = JsonUtils.readValue((String) row.get("json"), GlossaryTerm.class);
+                String jsonRow;
+                if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+                  jsonRow = (String) row.get("json");
+                } else {
+                  // Postgres stores JSON as a JSONB, so we can't just cast it as a string
+                  PGobject pgObject = (PGobject) row.get("json");
+                  jsonRow = pgObject.getValue();
+                }
+                GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
                 if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
                   term.setStatus(GlossaryTerm.Status.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);
@@ -149,9 +172,17 @@ public class MigrationUtil {
                         term.getId(), Relationship.CONTAINS, Entity.GLOSSARY_TERM, false);
                 if (glossaryTermRef != null && glossaryRef != null) {
                   glossaryTermRepository.deleteRelationship(
-                      glossaryRef.getId(), Entity.GLOSSARY, term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS);
+                      glossaryRef.getId(),
+                      Entity.GLOSSARY,
+                      term.getId(),
+                      Entity.GLOSSARY_TERM,
+                      Relationship.CONTAINS);
                   glossaryTermRepository.addRelationship(
-                      glossaryRef.getId(), term.getId(), Entity.GLOSSARY, Entity.GLOSSARY_TERM, Relationship.HAS);
+                      glossaryRef.getId(),
+                      term.getId(),
+                      Entity.GLOSSARY,
+                      Entity.GLOSSARY_TERM,
+                      Relationship.HAS);
                 }
               });
     } catch (Exception ex) {

@@ -10,25 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Skeleton } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageHeader from '../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,39 +42,45 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
+  const [showDisabled, setShowDisabled] = useState(false);
 
-  const fetchApplicationList = useCallback(async (pagingOffset?: Paging) => {
-    try {
-      setIsLoading(true);
-      const { data, paging } = await getApplicationList({
-        after: pagingOffset?.after,
-        before: pagingOffset?.before,
-        limit: pageSize,
-      });
+  const fetchApplicationList = useCallback(
+    async (showDisabled = false, pagingOffset?: Paging) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getApplicationList({
+          after: pagingOffset?.after,
+          before: pagingOffset?.before,
+          limit: pageSize,
+          include: showDisabled ? Include.Deleted : Include.NonDeleted,
+        });
 
-      setApplicationData(data);
-      handlePagingChange(paging);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setApplicationData(data);
+        handlePagingChange(paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, handlePagingChange]
+  );
 
-  const handleBotPageChange = ({
+  const handleApplicationPageChange = ({
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
     handlePageChange(currentPage);
     cursorType &&
-      fetchApplicationList({
+      fetchApplicationList(showDisabled, {
         [cursorType]: paging[cursorType],
         total: paging.total,
-      } as Paging);
+      });
   };
 
   const viewAppDetails = (item: App) => {
@@ -85,8 +91,16 @@ const ApplicationPage = () => {
     history.push(ROUTES.MARKETPLACE);
   };
 
-  const errorPlaceHolder = useMemo(
-    () => (
+  const errorPlaceHolder = useMemo(() => {
+    if (showDisabled) {
+      return (
+        <Col className="mt-24 text-center" span={24}>
+          <ErrorPlaceHolder heading={t('label.application-plural')} />
+        </Col>
+      );
+    }
+
+    return (
       <Col className="mt-24 text-center" span={24}>
         <ErrorPlaceHolder
           heading={t('label.application-plural')}
@@ -94,29 +108,43 @@ const ApplicationPage = () => {
           <div>{t('message.no-installed-applications-found')}</div>
         </ErrorPlaceHolder>
       </Col>
-    ),
-    []
-  );
+    );
+  }, [showDisabled]);
+
+  const onShowDisabledAppsChange = (value: boolean) => {
+    setShowDisabled(value);
+    fetchApplicationList(value);
+  };
 
   useEffect(() => {
     fetchApplicationList();
-  }, []);
+  }, [pageSize]);
 
   return (
     <>
       <Row gutter={[16, 16]}>
-        <Col span={20}>
+        <Col span={16}>
           <PageHeader data={PAGE_HEADERS.APPLICATION} />
         </Col>
-        <Col className="d-flex justify-end" span={4}>
-          <Button
-            data-testid="add-application"
-            type="primary"
-            onClick={handleAddApplication}>
-            {t('label.add-entity', {
-              entity: t('label.app-plural'),
-            })}
-          </Button>
+        <Col className="d-flex justify-end" span={8}>
+          <Space>
+            <div>
+              <Switch
+                checked={showDisabled}
+                data-testid="show-disabled"
+                onClick={onShowDisabledAppsChange}
+              />
+              <span className="m-l-xs">{t('label.disabled')}</span>
+            </div>
+            <Button
+              data-testid="add-application"
+              type="primary"
+              onClick={handleAddApplication}>
+              {t('label.add-entity', {
+                entity: t('label.app-plural'),
+              })}
+            </Button>
+          </Space>
         </Col>
       </Row>
       <Row className="m-t-lg">
@@ -139,6 +167,7 @@ const ApplicationPage = () => {
                   <ApplicationCard
                     appName={item.fullyQualifiedName ?? ''}
                     className="w-400"
+                    deleted={item.deleted}
                     description={item.description ?? ''}
                     key={uniqueId()}
                     linkTitle={t('label.configure')}
@@ -150,12 +179,12 @@ const ApplicationPage = () => {
               </div>
             </Col>
             <Col span={24}>
-              {showPagination(paging) && (
+              {showPagination && (
                 <NextPrevious
                   currentPage={currentPage}
                   pageSize={pageSize}
                   paging={paging}
-                  pagingHandler={handleBotPageChange}
+                  pagingHandler={handleApplicationPageChange}
                   onShowSizeChange={handlePageSizeChange}
                 />
               )}

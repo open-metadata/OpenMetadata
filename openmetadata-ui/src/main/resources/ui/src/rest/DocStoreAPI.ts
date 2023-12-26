@@ -16,6 +16,7 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateDocument } from '../generated/api/docStore/createDocument';
 import { Document } from '../generated/entity/docStore/document';
+import { getEncodedFqn } from '../utils/StringsUtils';
 
 const BASE_URL = 'docStore';
 
@@ -31,7 +32,9 @@ export const getAllKnowledgePanels = async (params: { fqnPrefix: string }) => {
 };
 
 export const getDocumentByFQN = async (fqn: string) => {
-  const response = await axiosClient.get<Document>(`${BASE_URL}/name/${fqn}`);
+  const response = await axiosClient.get<Document>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`
+  );
 
   return response.data;
 };

@@ -29,10 +29,13 @@ from metadata.generated.schema.entity.data.mlmodel import (
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
@@ -91,7 +94,7 @@ class MlflowSource(MlModelServiceSource):
                     StackTraceError(
                         name=model.name,
                         error="Version not found",
-                        stack_trace=f"Unable to ingest model {model.name} due to missing version from version list {model.latest_versions}",  # pylint: disable=line-too-long
+                        stackTrace=f"Unable to ingest model {model.name} due to missing version from version list {model.latest_versions}",  # pylint: disable=line-too-long
                     )
                 )
                 continue
@@ -123,7 +126,7 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=self.context.mlmodel_service.fullyQualifiedName,
+            service=self.context.mlmodel_service,
             sourceUrl=source_url,
         )
         yield Either(right=mlmodel_request)

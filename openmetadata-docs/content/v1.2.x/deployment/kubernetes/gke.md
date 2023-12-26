@@ -15,13 +15,97 @@ The reason being that ElasticSearch Pods require Elevated permissions to run ini
 
 {%/note%}
 
-{%note%}
+{%note noteType="Warning"%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 
 {%/note%}
 
 ## Prerequisites
+
+### Cloud Database with CloudSQL and ElasticCloud for GCP as Search Engine
+
+It is recommended to use GCP [Cloud SQL](https://cloud.google.com/sql/) services for Database and [Elastic Cloud GCP](https://www.elastic.co/partners/google-cloud) for Search Engine for Production.
+
+We support -
+- Cloud SQL (MySQL) engine version 8 or greater
+- Cloud SQL (postgreSQL) engine version 12 or greater
+- ElasticSearch Engine version 8.10
+
+We recommend -
+- CloudSQL to be Multi Zone Available
+- Elastic Cloud Environment with multiple zones and minimum 2 nodes
+
+Once you have the Database and Search Engine configured and available, update the helm values below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <ELASTIC_CLOUD_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      searchType: elasticsearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <ELASTIC_CLOUD_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <GCP_CLOUD_SQL_ENDPOINT_IP>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql 
+      dbUseSSL: true
+      databaseName: <GCP_CLOUD_SQL_DATABASE_NAME>
+      auth:
+        username: <GCP_CLOUD_SQL_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+{%note noteType="Tip"%}
+
+For Database as PostgreSQL, the use the below config for database values -
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    ...
+    database:
+      host: <GCP_CLOUD_SQL_ENDPOINT_IP>
+      port: 5432
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql 
+      dbUseSSL: true
+      databaseName: <GCP_CLOUD_SQL_DATABASE_NAME>
+      auth:
+        username: <GCP_CLOUD_SQL_DATABASE_USERNAME>
+        password:
+          secretRef: sql-secrets
+          secretKey: openmetadata-sql-password
+```
+
+{%/note%}
+
+{%note noteType="Tip"%}
+
+Make sure to create CloudSQL and ElasticSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
+
+{%/note%}
 
 ### Persistent Volumes with ReadWriteMany Access Modes
 
@@ -110,7 +194,7 @@ kubectl create -f nfs-server-deployment.yml
 kubectl create -f nfs-cluster-ip-service.yml
 ```
 
-We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
+We create a ClusterIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
 
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
 
@@ -288,7 +372,7 @@ airflow:
 ```
 {%note%}
 
-For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3).
+For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.8.0).
 
 When deploying openmeteadata dependencies helm chart, use the below command -
 
@@ -308,7 +392,26 @@ helm install openmetadata-dependencies open-metadata/openmetadata-dependencies -
 Once the openmetadata dependencies helm chart deployed, you can then run the below command to install the openmetadata helm chart - 
 
 ```commandline
-helm install openmetadata open-metadata/openmetadata
+helm install openmetadata open-metadata/openmetadata --values <path-to-values-file>
 ```
-Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
-Use the `--values` flag to point to your own YAML configuration if needed.
+
+# Troubleshooting
+
+## Pods are stuck in Pending State due to Persistent Volume Creation Failure
+
+If you came across `invalid access type while creating the pvc`, and the permission pod is stuck in "pending" state.
+
+The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mounted properly.
+
+{% image
+  src="/images/v1.2/deployment/troubleshoot/dag-log.png"
+  alt="dag-log" /%}
+{% image
+  src="/images/v1.2/deployment/troubleshoot/permission-pod-events.png"
+  alt="permission-pod-events"
+  caption="Permission pod events" /%}
+
+Please validate:
+- all the prerequisites mentioned in this [section](#prerequisites)
+- the configuration of `dags_pv_pvc.yml` file
+- `storageClassName` field in YAML file

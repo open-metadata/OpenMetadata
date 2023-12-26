@@ -16,6 +16,8 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../generated/entity/data/searchIndex';
@@ -34,12 +36,15 @@ export type EntityData =
   | Database
   | DatabaseSchema
   | DashboardDataModel
-  | SearchIndex;
+  | SearchIndex
+  | Glossary
+  | GlossaryTerm;
 
 export interface Option {
   label: string;
   value: string;
   type: string;
+  name?: string;
   children?: string;
   'data-label'?: string;
   'data-testid'?: string;

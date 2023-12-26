@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseCircleOutlined } from '@ant-design/icons';
+import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
   DatePicker,
   Dropdown,
-  Menu,
   MenuProps,
   Radio,
   Row,
@@ -27,7 +26,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
@@ -43,7 +42,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './Execution.style.less';
+import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
 
@@ -84,22 +83,19 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = (event) => {
-    if (event?.key) {
-      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
-    }
-  };
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    []
+  );
 
-  const menu = useMemo(
-    () => (
-      <Menu
-        items={map(MenuOptions, (value, key) => ({
-          key: key,
-          label: value,
-        }))}
-        onClick={handleMenuClick}
-      />
-    ),
+  const statusMenuItems = useMemo(
+    () => ({
+      items: map(MenuOptions, (value, key) => ({
+        key: key,
+        label: value,
+      })),
+      onClick: handleMenuClick,
+    }),
     [handleMenuClick]
   );
 
@@ -123,6 +119,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
       }
 
       setDatesSelected(true);
+    } else {
+      setDatesSelected(false);
+      setStartTime(
+        getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+      );
+      setEndTime(getCurrentMillis());
     }
   };
 
@@ -131,7 +133,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   return (
-    <Row className="h-full p-md" gutter={16}>
+    <Row className="h-full p-md" data-testid="execution-tab" gutter={16}>
       <Col flex="auto">
         <Row gutter={[16, 16]}>
           <Col span={24}>
@@ -139,18 +141,20 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               <Radio.Group
                 buttonStyle="solid"
                 className="radio-switch"
+                data-testid="radio-switch"
                 optionType="button"
                 options={Object.values(PIPELINE_EXECUTION_TABS)}
                 value={view}
                 onChange={(e) => setView(e.target.value)}
               />
               <Space>
-                <Dropdown overlay={menu} placement="bottom">
-                  <Button ghost type="primary">
-                    <Space>
-                      <FilterIcon />
-                      {status === MenuOptions.all ? t('label.status') : status}
-                    </Space>
+                <Dropdown menu={statusMenuItems} placement="bottom">
+                  <Button
+                    ghost
+                    data-testid="status-button"
+                    icon={<Icon component={FilterIcon} size={12} />}
+                    type="primary">
+                    {status === MenuOptions.all ? t('label.status') : status}
                   </Button>
                 </Dropdown>
                 {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
@@ -161,12 +165,13 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         'range-picker-button-width delay-100':
                           !datesSelected && !isClickedCalendar,
                       })}
+                      data-testid="data-range-picker-button"
+                      icon={<Icon component={Calendar} size={12} />}
                       type="primary"
                       onClick={() => {
                         setIsClickedCalendar(true);
                       }}>
-                      <Space>
-                        <Calendar />
+                      <span>
                         {!datesSelected && (
                           <label>{t('label.date-filter')}</label>
                         )}
@@ -176,6 +181,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                           bordered={false}
                           className="executions-date-picker"
                           clearIcon={<CloseCircleOutlined />}
+                          data-testid="data-range-picker"
                           open={isClickedCalendar}
                           placeholder={['', '']}
                           suffixIcon={null}
@@ -184,7 +190,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                             setIsClickedCalendar(isOpen);
                           }}
                         />
-                      </Space>
+                      </span>
                     </Button>
                   </>
                 ) : null}

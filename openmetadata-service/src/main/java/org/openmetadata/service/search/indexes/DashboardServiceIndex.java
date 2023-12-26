@@ -25,7 +25,8 @@ public class DashboardServiceIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
+    suggest.add(
+        SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
     doc.put(
         "fqnParts",
         getFQNParts(
@@ -33,12 +34,8 @@ public class DashboardServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DASHBOARD_SERVICE);
-    if (dashboardService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(dashboardService.getOwner()));
-    }
-    if (dashboardService.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(dashboardService.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(dashboardService.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(dashboardService.getDomain()));
     return doc;
   }
 }

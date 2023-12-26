@@ -17,7 +17,7 @@ import { Aggregations, Bucket } from '../../interface/search.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from '../../pages/explore/ExplorePage.interface';
+} from '../../pages/ExplorePage/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
   field: QueryFilterFieldsEnum,
@@ -29,6 +29,9 @@ export const getQueryFiltersArray = (
     }
     case QueryFilterFieldsEnum.MUST: {
       return queryFiltersObj?.query?.bool?.must ?? [];
+    }
+    case QueryFilterFieldsEnum.MUST_NOT: {
+      return queryFiltersObj?.query?.bool?.must_not ?? [];
     }
   }
 };
@@ -58,6 +61,13 @@ export const getCombinedQueryFilterObject = (
     advancesSearchQueryFilter,
     advancesSearchFilter,
   ]);
+
+  const mustNotField = getCombinedFields(QueryFilterFieldsEnum.MUST_NOT, [
+    elasticsearchQueryFilter,
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
+
   const shouldField = getCombinedFields(QueryFilterFieldsEnum.SHOULD, [
     elasticsearchQueryFilter,
     advancesSearchQueryFilter,
@@ -68,6 +78,7 @@ export const getCombinedQueryFilterObject = (
     query: {
       bool: {
         ...(isEmpty(mustField) ? {} : { must: mustField }),
+        ...(isEmpty(mustNotField) ? {} : { must_not: mustNotField }),
         ...(isEmpty(shouldField) ? {} : { should: shouldField }),
       },
     },

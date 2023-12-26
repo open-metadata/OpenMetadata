@@ -37,18 +37,18 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
-import { tabsInfo } from '../../constants/explore.constants';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../Loader/Loader';
+import './search-dropdown.less';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
-import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,
@@ -64,6 +64,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   onSearch,
   index,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);

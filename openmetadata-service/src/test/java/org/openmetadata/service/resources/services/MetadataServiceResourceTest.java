@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.AMUNDSEN_CONNECTION;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -37,7 +38,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class MetadataServiceResourceTest extends EntityResourceTest<MetadataService, CreateMetadataService> {
+public class MetadataServiceResourceTest
+    extends EntityResourceTest<MetadataService, CreateMetadataService> {
   public static final String DEFAULT_OPENMETADATA_SERVICE_NAME = "OpenMetadata";
 
   public MetadataServiceResourceTest() {
@@ -58,7 +60,8 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
             .withName("amundsen")
             .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
             .withConnection(TestUtils.AMUNDSEN_CONNECTION);
-    MetadataService metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
+    MetadataService metadataService =
+        metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
     AMUNDSEN_SERVICE_REFERENCE = metadataService.getEntityReference();
 
     // Create Atlas Service
@@ -73,7 +76,8 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Test
   void defaultOpenMetadataServiceMustExist() throws HttpResponseException {
-    MetadataService service = getEntityByName(DEFAULT_OPENMETADATA_SERVICE_NAME, ADMIN_AUTH_HEADERS);
+    MetadataService service =
+        getEntityByName(DEFAULT_OPENMETADATA_SERVICE_NAME, ADMIN_AUTH_HEADERS);
     assertEquals(DEFAULT_OPENMETADATA_SERVICE_NAME, service.getName());
   }
 
@@ -132,9 +136,9 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
     // Update metadata description
     CreateMetadataService update =
         createRequest(test).withDescription("description1").withConnection(metadataConnection);
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update connection
     MetadataConnection metadataConnection1 =
@@ -144,10 +148,10 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                     .withHostPort(new URI("localhost:9094"))
                     .withUsername("admin1")
                     .withPassword("admin1"));
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", metadataConnection, metadataConnection1);
     update.withConnection(metadataConnection1);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description and connection
     MetadataConnection metadataConnection2 =
@@ -158,10 +162,10 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                     .withUsername("admin2")
                     .withPassword("admin2"));
     update.withConnection(metadataConnection2);
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", metadataConnection1, metadataConnection2);
     update.setConnection(metadataConnection2);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -173,12 +177,15 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MetadataService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -199,14 +206,18 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Override
   public void validateCreatedEntity(
-      MetadataService service, CreateMetadataService createRequest, Map<String, String> authHeaders) {
+      MetadataService service,
+      CreateMetadataService createRequest,
+      Map<String, String> authHeaders) {
     MetadataConnection expectedMetadataConnection = createRequest.getConnection();
     MetadataConnection actualMetadataConnection = service.getConnection();
-    validateConnection(expectedMetadataConnection, actualMetadataConnection, service.getServiceType());
+    validateConnection(
+        expectedMetadataConnection, actualMetadataConnection, service.getServiceType());
   }
 
   @Override
-  public void compareEntities(MetadataService expected, MetadataService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      MetadataService expected, MetadataService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -231,10 +242,13 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
@@ -252,18 +266,22 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         if (actualConnection.getConfig() instanceof AtlasConnection) {
           actualAtlasConnection = (AtlasConnection) actualConnection.getConfig();
         } else {
-          actualAtlasConnection = JsonUtils.convertValue(actualConnection.getConfig(), AtlasConnection.class);
+          actualAtlasConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), AtlasConnection.class);
         }
         assertEquals(expectedAtlasConnection.getHostPort(), actualAtlasConnection.getHostPort());
       } else if (metadataServiceType == CreateMetadataService.MetadataServiceType.Amundsen) {
-        AmundsenConnection expectedAmundsenConnection = (AmundsenConnection) expectedConnection.getConfig();
+        AmundsenConnection expectedAmundsenConnection =
+            (AmundsenConnection) expectedConnection.getConfig();
         AmundsenConnection actualAmundsenConnection;
         if (actualConnection.getConfig() instanceof AmundsenConnection) {
           actualAmundsenConnection = (AmundsenConnection) actualConnection.getConfig();
         } else {
-          actualAmundsenConnection = JsonUtils.convertValue(actualConnection.getConfig(), AmundsenConnection.class);
+          actualAmundsenConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), AmundsenConnection.class);
         }
-        assertEquals(expectedAmundsenConnection.getHostPort(), actualAmundsenConnection.getHostPort());
+        assertEquals(
+            expectedAmundsenConnection.getHostPort(), actualAmundsenConnection.getHostPort());
       }
     }
   }

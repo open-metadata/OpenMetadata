@@ -19,6 +19,7 @@ from typing import Any, Iterable, List
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -27,14 +28,18 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
     GluePipelineConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
@@ -98,7 +103,7 @@ class GluepipelineSource(PipelineServiceSource):
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
             sourceUrl=source_url,
         )
         yield Either(right=pipeline_request)
@@ -164,18 +169,24 @@ class GluepipelineSource(PipelineServiceSource):
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
                     )
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.pipeline_service,
+                        pipeline_name=self.context.pipeline,
+                    )
                     yield Either(
                         right=OMetaPipelineStatus(
-                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_fqn=pipeline_fqn,
                             pipeline_status=pipeline_status,
                         )
                     )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        name=pipeline_fqn,
                         error=f"Failed to yield pipeline status: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

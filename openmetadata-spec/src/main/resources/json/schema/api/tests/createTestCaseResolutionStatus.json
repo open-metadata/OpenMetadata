@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/createTestCaseResolutionStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestCaseResolutionStatus",
+  "description": "Schema to create a new test case result resolution status.",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus",
+  "type": "object",
+  "properties": {
+    "testCaseResolutionStatusType": {
+      "description": "Status of Test Case.",
+      "$ref": "../../tests/testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+    },
+    "testCaseResolutionStatusDetails": {
+      "description": "Details of the test case failure status.",
+      "oneOf": [
+        {"$ref": "../../tests/resolved.json"},
+        {"$ref": "../../tests/assigned.json"}
+      ],
+      "default": null
+    },
+    "testCaseReference": {
+      "description": "Test case reference FQN",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "severity": {
+      "description": "Severity failure for the test associated with the resolution.",
+      "$ref": "../../tests/testCaseResolutionStatus.json#/definitions/severities"
+    }
+  },
+  "required": ["testCaseResolutionStatusType", "testCaseReference"],
+  "additionalProperties": false
+}

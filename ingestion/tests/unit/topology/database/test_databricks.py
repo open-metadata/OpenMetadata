@@ -1,3 +1,18 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test databricks using the topology
+"""
+
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -20,6 +35,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
 
+# pylint: disable=line-too-long
 mock_databricks_config = {
     "source": {
         "type": "databricks",
@@ -230,26 +246,36 @@ EXPTECTED_TABLE = [
 
 
 class DatabricksUnitTest(TestCase):
+    """
+    Databricks unit tests
+    """
+
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch(
+        "metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version"
+    )
+    def __init__(self, methodName, test_connection, db_init_version) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+        db_init_version.return_value = None
 
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
         self.databricks_source = DatabricksSource.create(
             mock_databricks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.databricks_source.context.__dict__["database"] = MOCK_DATABASE
+        self.databricks_source.context.__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
         self.databricks_source.context.__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
+        ] = MOCK_DATABASE_SERVICE.name.__root__
 
         self.databricks_source.context.__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(

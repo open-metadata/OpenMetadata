@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -44,12 +45,17 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource.MlModelServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelService, CreateMlModelService> {
+public class MlModelServiceResourceTest
+    extends ServiceResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
-    super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
+    super(
+        Entity.MLMODEL_SERVICE,
+        MlModelService.class,
+        MlModelServiceList.class,
+        "services/mlmodelServices",
+        "owner");
     this.supportsPatch = false;
     supportsSearchIndex = true;
   }
@@ -84,9 +90,12 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     MlflowConnection mlflowConnection =
-        new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000");
+        new MlflowConnection()
+            .withRegistryUri("http://localhost:8080")
+            .withTrackingUri("http://localhost:5000");
     createAndCheckEntity(
-        createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)), authHeaders);
+        createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)),
+        authHeaders);
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -102,7 +111,8 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
                     .withTrackingUri("http://localhost:5000"));
     MlModelService service =
         createAndCheckEntity(
-            createRequest(test).withDescription(null).withConnection(MlModelConnection), ADMIN_AUTH_HEADERS);
+            createRequest(test).withDescription(null).withConnection(MlModelConnection),
+            ADMIN_AUTH_HEADERS);
 
     // Update MlModel description and ingestion service that are null
     MlModelConnection MlModelConnection1 =
@@ -115,10 +125,10 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
     CreateMlModelService update =
         createRequest(test).withDescription("description1").withConnection(MlModelConnection1);
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     fieldUpdated(change, "connection", MlModelConnection, MlModelConnection1);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -130,12 +140,15 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MlModelService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -169,7 +182,8 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   }
 
   @Override
-  public void compareEntities(MlModelService expected, MlModelService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      MlModelService expected, MlModelService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -194,10 +208,13 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
@@ -207,15 +224,19 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
       MlModelServiceType MlModelServiceType) {
     if (expectedMlModelConnection != null && actualMlModelConnection != null) {
       if (MlModelServiceType == CreateMlModelService.MlModelServiceType.Mlflow) {
-        MlflowConnection expectedMlflowConnection = (MlflowConnection) expectedMlModelConnection.getConfig();
+        MlflowConnection expectedMlflowConnection =
+            (MlflowConnection) expectedMlModelConnection.getConfig();
         MlflowConnection actualMlflowConnection;
         if (actualMlModelConnection.getConfig() instanceof MlflowConnection) {
           actualMlflowConnection = (MlflowConnection) actualMlModelConnection.getConfig();
         } else {
-          actualMlflowConnection = JsonUtils.convertValue(actualMlModelConnection.getConfig(), MlflowConnection.class);
+          actualMlflowConnection =
+              JsonUtils.convertValue(actualMlModelConnection.getConfig(), MlflowConnection.class);
         }
-        assertEquals(expectedMlflowConnection.getRegistryUri(), actualMlflowConnection.getRegistryUri());
-        assertEquals(expectedMlflowConnection.getTrackingUri(), actualMlflowConnection.getTrackingUri());
+        assertEquals(
+            expectedMlflowConnection.getRegistryUri(), actualMlflowConnection.getRegistryUri());
+        assertEquals(
+            expectedMlflowConnection.getTrackingUri(), actualMlflowConnection.getTrackingUri());
       }
     }
   }

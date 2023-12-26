@@ -20,6 +20,9 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -32,11 +35,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 
 class SimpleSource(WorkflowSource):
@@ -62,6 +65,27 @@ class SimpleSource(WorkflowSource):
             yield Either(right=element)
 
 
+class BrokenSource(WorkflowSource):
+    """Source not returning an Either"""
+
+    def prepare(self):
+        """Nothing to do"""
+
+    def test_connection(self) -> None:
+        """Nothing to do"""
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "SimpleSource":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+    def _iter(self, *args, **kwargs) -> Iterable[int]:
+        for element in range(0, 5):
+            yield int(element)
+
+
 class SimpleSink(Sink):
     """
     Simple Sink for testing
@@ -70,7 +94,7 @@ class SimpleSink(Sink):
     def _run(self, element: int) -> Either:
         if element == 2:
             return Either(
-                left=StackTraceError(name="bum", error="kaboom", stack_trace="trace")
+                left=StackTraceError(name="bum", error="kaboom", stackTrace="trace")
             )
 
         return Either(right=element)
@@ -83,13 +107,24 @@ class SimpleSink(Sink):
         """Nothing to do"""
 
 
-class SimpleWorkflow(BaseWorkflow):
+class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
     """
 
     def set_steps(self):
         self.source = SimpleSource()
+
+        self.steps: Tuple[Step] = (SimpleSink(),)
+
+
+class BrokenWorkflow(IngestionWorkflow):
+    """
+    Simple Workflow for testing
+    """
+
+    def set_steps(self):
+        self.source = BrokenSource()
 
         self.steps: Tuple[Step] = (SimpleSink(),)
 
@@ -119,6 +154,7 @@ class TestBaseWorkflow(TestCase):
     """
 
     workflow = SimpleWorkflow(config=config)
+    broken_workflow = BrokenWorkflow(config=config)
 
     @pytest.mark.order(1)
     def test_workflow_executes(self):
@@ -130,16 +166,28 @@ class TestBaseWorkflow(TestCase):
     @pytest.mark.order(2)
     def test_workflow_status(self):
         # Everything is processed properly in the Source
-        self.assertEquals(
-            self.workflow.source.status.records, ["0", "1", "2", "3", "4"]
-        )
-        self.assertEquals(len(self.workflow.source.status.failures), 0)
+        self.assertEqual(self.workflow.source.status.records, ["0", "1", "2", "3", "4"])
+        self.assertEqual(len(self.workflow.source.status.failures), 0)
 
         # We catch one error in the Sink
-        self.assertEquals(len(self.workflow.steps[0].status.records), 4)
-        self.assertEquals(len(self.workflow.steps[0].status.failures), 1)
+        self.assertEqual(len(self.workflow.steps[0].status.records), 4)
+        self.assertEqual(len(self.workflow.steps[0].status.failures), 1)
 
     @pytest.mark.order(3)
     def test_workflow_raise_status(self):
         # We catch the error on the Sink
         self.assertRaises(WorkflowExecutionError, self.workflow.raise_from_status)
+
+    def test_broken_workflow(self):
+        """test our broken workflow return expected exc"""
+        self.broken_workflow.execute()
+        self.assertRaises(
+            WorkflowExecutionError, self.broken_workflow.raise_from_status
+        )
+        self.assertEqual(
+            self.broken_workflow.source.status.failures[0].name, "Not an Either"
+        )
+        assert (
+            "workflow/test_base_workflow.py"
+            in self.broken_workflow.source.status.failures[0].error
+        )

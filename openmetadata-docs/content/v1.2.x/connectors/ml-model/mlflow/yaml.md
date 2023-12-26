@@ -1,13 +1,13 @@
 ---
-title: Run the Mlflow Connector Externally
+title: Run the MLflow Connector Externally
 slug: /connectors/ml-model/mlflow/yaml
 ---
 
-# Run the Mlflow Connector Externally
+# Run the MLflow Connector Externally
 
-In this section, we provide guides and references to use the Mlflow connector.
+In this section, we provide guides and references to use the MLflow connector.
 
-Configure and schedule Mlflow metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule MLflow metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -24,7 +24,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
-To run the Mlflow ingestion, you will need to install:
+To run the MLflow ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[mlflow]"
@@ -34,18 +34,18 @@ pip3 install "openmetadata-ingestion[mlflow]"
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/mlmodel/mlflowConnection.json)
-you can find the structure to create a connection to Mlflow.
+you can find the structure to create a connection to MLflow.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following
-[JSON Schema](https://github.com/open-metadata/OpenMetadatablob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
+[JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/mlmodelServiceMetadataPipeline.json)
 
 ### 1. Define the YAML Config
 
-This is a sample config for Mlflow:
+This is a sample config for MLflow:
 
 {% codePreview %}
 
@@ -55,36 +55,22 @@ This is a sample config for Mlflow:
 
 {% codeInfo srNumber=1 %}
 
-**trackingUri**: Mlflow Experiment tracking URI. E.g., http://localhost:5000
+**trackingUri**: MLflow Experiment tracking URI. E.g., http://localhost:5000
 
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**registryUri**: Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
+**registryUri**: MLflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/ml-model/source-config-def.md" /%}
 
-{% codeInfo srNumber=3 %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
-The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
-
-**markDeletedMlModels**: Set the Mark Deleted Ml Models toggle to flag ml models as soft-deleted if they are not present anymore in the source system.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=4 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
-
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -105,31 +91,15 @@ source:
 ```yaml {% srNumber=2 %}
       registryUri: mysql+pymysql://mlflow:password@localhost:3307/experiments
 ```
-```yaml {% srNumber=3 %}
-  sourceConfig:
-    config:
-      type: MlModelMetadata
-      # markDeletedMlModels: true
-```
-```yaml {% srNumber=4 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/ml-model/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}

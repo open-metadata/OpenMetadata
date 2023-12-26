@@ -8,7 +8,8 @@ import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class EventsSubscriptionRegistry {
-  private static final List<SubscriptionResourceDescriptor> SUB_RESOURCE_DESCRIPTORS = new ArrayList<>();
+  private static final List<SubscriptionResourceDescriptor> SUB_RESOURCE_DESCRIPTORS =
+      new ArrayList<>();
 
   private EventsSubscriptionRegistry() {}
 
@@ -29,7 +30,8 @@ public class EventsSubscriptionRegistry {
             .findAny()
             .orElse(null);
     if (rd == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.resourceTypeNotFound(resourceType));
     }
     return rd;
   }

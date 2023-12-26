@@ -13,7 +13,7 @@
 
 import { Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
-import { groupBy, isUndefined } from 'lodash';
+import { debounce, groupBy, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
@@ -27,6 +27,7 @@ interface Props {
   value: Option[];
   onSearch: (value: string) => void;
   onChange: (values: Option[]) => void;
+  disabled?: boolean;
 }
 
 const Assignees: FC<Props> = ({
@@ -34,6 +35,7 @@ const Assignees: FC<Props> = ({
   onSearch,
   onChange,
   options,
+  disabled,
 }) => {
   const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {
     const newValues = (newOptions as Option[]).map((option) => ({
@@ -75,7 +77,7 @@ const Assignees: FC<Props> = ({
             <div data-testid={`assignee-option-${user.label}`}>
               <UserTag
                 className="assignee-item"
-                id={user.value}
+                id={user.name ?? ''}
                 name={user.label}
                 size={UserTagSize.small}
               />
@@ -94,6 +96,7 @@ const Assignees: FC<Props> = ({
       className="ant-select-custom select-assignee"
       data-testid="select-assignee"
       defaultActiveFirstOption={false}
+      disabled={disabled}
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
@@ -102,7 +105,7 @@ const Assignees: FC<Props> = ({
       showArrow={false}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
-      onSearch={onSearch}
+      onSearch={debounce(onSearch, 300)}
     />
   );
 };

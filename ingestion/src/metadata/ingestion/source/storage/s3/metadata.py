@@ -30,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
     StorageContainerConfig,
@@ -38,7 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
@@ -52,6 +55,7 @@ from metadata.ingestion.source.storage.storage_service import (
 )
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
@@ -98,7 +102,13 @@ class S3Source(StorageServiceSource):
                 yield self._generate_unstructured_container(
                     bucket_response=bucket_response
                 )
-                self._bucket_cache[bucket_name] = self.context.container
+                container_fqn = fqn._build(  # pylint: disable=protected-access
+                    *(self.context.objectstore_service, self.context.container)
+                )
+                container_entity = self.metadata.get_by_name(
+                    entity=Container, fqn=container_fqn
+                )
+                self._bucket_cache[bucket_name] = container_entity
                 parent_entity: EntityReference = EntityReference(
                     id=self._bucket_cache[bucket_name].id.__root__, type="container"
                 )
@@ -152,7 +162,7 @@ class S3Source(StorageServiceSource):
                     StackTraceError(
                         name=bucket_response.name,
                         error=f"Validation error while creating Container from bucket details - {err}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
             except Exception as err:
@@ -160,7 +170,7 @@ class S3Source(StorageServiceSource):
                     StackTraceError(
                         name=bucket_response.name,
                         error=f"Wild error while creating Container from bucket details - {err}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -174,7 +184,7 @@ class S3Source(StorageServiceSource):
                 numberOfObjects=container_details.number_of_objects,
                 size=container_details.size,
                 dataModel=container_details.data_model,
-                service=self.context.objectstore_service.fullyQualifiedName,
+                service=self.context.objectstore_service,
                 parent=container_details.parent,
                 sourceUrl=container_details.sourceUrl,
                 fileFormats=container_details.file_formats,

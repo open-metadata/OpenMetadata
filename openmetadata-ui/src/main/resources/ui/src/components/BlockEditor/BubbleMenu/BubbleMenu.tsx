@@ -115,7 +115,8 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       editor.isActive('image') ||
       empty ||
       isNodeSelection(selection) ||
-      editor.isActive('link')
+      editor.isActive('link') ||
+      editor.isActive('table')
     ) {
       return false;
     }

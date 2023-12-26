@@ -106,6 +106,7 @@ class DatalakeMetricsTest(TestCase):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=table_entity,
             service_connection_config=None,
+            storage_config=None,
             ometa_client=None,
             thread_count=None,
             profile_sample_config=None,

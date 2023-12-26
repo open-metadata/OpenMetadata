@@ -27,16 +27,17 @@ public final class AuthenticationMechanismBuilder {
   }
 
   /** Build `AuthenticationMechanism` object with concrete class for the config which by definition it is a `Object`. */
-  public static AuthenticationMechanism addDefinedConfig(AuthenticationMechanism authMechanism) {
+  public static void addDefinedConfig(AuthenticationMechanism authMechanism) {
     if (authMechanism != null) {
       if (JWT.equals(authMechanism.getAuthType())) {
         authMechanism.setConfig(
-            ClassConverterFactory.getConverter(JWTAuthMechanism.class).convert(authMechanism.getConfig()));
+            ClassConverterFactory.getConverter(JWTAuthMechanism.class)
+                .convert(authMechanism.getConfig()));
       } else if (SSO.equals(authMechanism.getAuthType())) {
         authMechanism.setConfig(
-            ClassConverterFactory.getConverter(SSOAuthMechanism.class).convert(authMechanism.getConfig()));
+            ClassConverterFactory.getConverter(SSOAuthMechanism.class)
+                .convert(authMechanism.getConfig()));
       }
     }
-    return authMechanism;
   }
 }

@@ -14,7 +14,7 @@ slug: /connectors/database/databricks
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | Databricks Runtime Version 9+ |
 
@@ -30,7 +30,7 @@ In this section, we provide guides and references to use the Databricks connecto
 
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
+- [Unity Catalog](#unity-catalog)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
@@ -45,6 +45,10 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
+
+## Unity Catalog
+
+If you are using unity catalog in Databricks, then checkout the [Unity Catalog](/connectors/database/unity-catalog) connector.
 
 ## Metadata Ingestion
 
@@ -69,7 +73,6 @@ To deploy OpenMetadata, check the Deployment guides.
 - **connectionTimeout**: The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.
 - **Catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
 - **DatabaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **Use Unity Catalog**: Enable this flag to extract the metadata and lineage information using databricks unity catalog instead of using legacy hive metastore. When you enable this flag make sure you have enabled the unity catalog on your instance.
 
 {% partial file="/v1.2/connectors/database/advanced-configuration.md" /%}
 

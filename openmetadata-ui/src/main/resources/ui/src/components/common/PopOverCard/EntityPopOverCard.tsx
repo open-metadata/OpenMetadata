@@ -44,7 +44,7 @@ import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
-import { EntityUnion } from '../../Explore/explore.interface';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../Loader/Loader';
 import './popover-card.less';
@@ -106,7 +106,7 @@ const PopoverContent: React.FC<{
         promise = getDatabaseSchemaDetailsByFQN(
           entityFQN,
           'owner',
-          'include=all'
+          Include.All
         );
 
         break;

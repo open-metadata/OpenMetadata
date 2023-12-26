@@ -5,10 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
 
-public abstract class EntitiesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class EntitiesOwnerAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public EntitiesOwnerAggregator(A aggregations) {
+  protected EntitiesOwnerAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

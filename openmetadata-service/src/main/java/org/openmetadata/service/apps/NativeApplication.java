@@ -9,11 +9,11 @@ import org.quartz.JobExecutionContext;
 public interface NativeApplication extends Job {
   void init(App app, CollectionDAO dao, SearchRepository searchRepository);
 
+  void install();
+
   void triggerOnDemand();
 
-  void scheduleInternal();
-
-  void initializeExternalApp();
+  void configure();
 
   default void startApp(JobExecutionContext jobExecutionContext) {}
 }

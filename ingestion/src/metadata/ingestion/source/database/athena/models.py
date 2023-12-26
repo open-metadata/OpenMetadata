@@ -39,3 +39,13 @@ class AthenaQueryExecution(BaseModel):
 
 class AthenaQueryExecutionList(BaseModel):
     QueryExecutions: Optional[List[AthenaQueryExecution]]
+
+
+class WorkGroup(BaseModel):
+    Name: Optional[str]
+    State: Optional[str]
+
+
+class WorkGroupsList(BaseModel):
+    WorkGroups: Optional[List[WorkGroup]] = []
+    NextToken: Optional[str]

@@ -27,34 +27,36 @@ import {
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import { isEmpty, isString, isUndefined, noop } from 'lodash';
+import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import {
-  ExploreProps,
-  ExploreQuickFilterField,
-  ExploreSearchIndex,
-} from '../../components/Explore/explore.interface';
-import { getSelectedValuesFromQuickFilter } from '../../components/Explore/Explore.utils';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import SearchedData from '../../components/searched-data/SearchedData';
-import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
-import { tabsInfo } from '../../constants/explore.constants';
+import { TAG_FQN_KEY } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
-} from '../../pages/explore/ExplorePage.interface';
+} from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import PageLayoutV1 from '../containers/PageLayoutV1';
+import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import searchClassBase from '../../utils/SearchClassBase';
+import {
+  ExploreProps,
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+} from '../Explore/ExplorePage.interface';
 import Loader from '../Loader/Loader';
-import './ExploreV1.style.less';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import SearchedData from '../SearchedData/SearchedData';
+import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import './exploreV1.less';
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -75,6 +77,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   loading,
   quickFilters,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -82,6 +85,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
+
+  const firstEntity = searchResults?.hits
+    ?.hits[0] as SearchedDataProps['data'][number];
 
   const parsedSearch = useMemo(
     () =>
@@ -210,7 +216,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
+      handleSummaryPanelDisplay(
+        highlightEntityNameAndDescription(
+          firstEntity._source,
+          firstEntity.highlight
+        )
+      );
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
@@ -238,8 +249,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 rootClassName="left-container"
                 selectedKeys={[activeTabKey]}
                 onClick={(info) => {
-                  info && onChangeSearchIndex(info.key as ExploreSearchIndex);
-                  setShowSummaryPanel(false);
+                  if (info && info.key !== activeTabKey) {
+                    onChangeSearchIndex(info.key as ExploreSearchIndex);
+                    setShowSummaryPanel(false);
+                  }
                 }}
               />
             </Sider>
@@ -340,6 +353,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
+                      highlights={omit(
+                        {
+                          ...firstEntity.highlight, // highlights of firstEntity that we get from the query api
+                          'tag.name': (
+                            selectedQuickFilters?.find(
+                              (filterOption) => filterOption.key === TAG_FQN_KEY
+                            )?.value ?? []
+                          ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
+                        },
+                        ['description', 'displayName']
+                      )}
                     />
                   )
                 }

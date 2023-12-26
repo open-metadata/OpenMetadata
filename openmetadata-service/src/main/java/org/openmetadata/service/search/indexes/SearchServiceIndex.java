@@ -25,7 +25,8 @@ public class SearchServiceIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(searchService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(searchService.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_SERVICE);
     doc.put(
@@ -33,9 +34,7 @@ public class SearchServiceIndex implements SearchIndex {
         getFQNParts(
             searchService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (searchService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(searchService.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(searchService.getOwner()));
     return doc;
   }
 }

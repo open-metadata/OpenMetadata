@@ -25,20 +25,21 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
-import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { CopyToClipboardButton } from '../../components/CopyToClipboardButton/CopyToClipboardButton';
 import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../constants/pipeline.constants';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
+import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
   PipelineState,
-  PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import {
   getApplicationByName,
@@ -53,9 +54,9 @@ import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './logs-viewer.style.less';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
-import './LogsViewer.style.less';
 
 const LogsViewer = () => {
   const { logEntityType, ingestionName } = useParams<LogViewerParams>();
@@ -66,7 +67,7 @@ const LogsViewer = () => {
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [appData, setAppData] = useState<App>();
-  const [appLatestRun, setAppLatestRun] = useState<PipelineStatus>();
+  const [appLatestRun, setAppLatestRun] = useState<AppRunRecord>();
   const [paging, setPaging] = useState<Paging>();
 
   const isApplicationType = useMemo(
@@ -172,7 +173,10 @@ const LogsViewer = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(ingestionName, 'owner');
+      const data = await getApplicationByName(ingestionName, {
+        fields: 'owner',
+        include: Include.All,
+      });
       setAppData(data);
       fetchLogs();
     } catch (error) {
@@ -269,11 +273,12 @@ const LogsViewer = () => {
           className="ingestion-run-badge latest"
           color={
             PIPELINE_INGESTION_RUN_STATUS[
-              appLatestRun?.pipelineState ?? PipelineState.Failed
+              (appLatestRun?.status as unknown as PipelineState) ??
+                PipelineState.Failed
             ]
           }
           data-testid="pipeline-status">
-          {startCase(appLatestRun?.pipelineState)}
+          {startCase(appLatestRun?.status)}
         </Tag>
       );
     }

@@ -7,7 +7,8 @@ import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends PageViewsByEntitiesAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public OpenSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);
@@ -15,7 +16,7 @@ public class OpenSearchPageViewsByEntitiesAggregator
 
   @Override
   protected Double getValue(Sum key) {
-    return key.getValue();
+    return key != null ? key.getValue() : 0.0;
   }
 
   @Override
@@ -34,7 +35,8 @@ public class OpenSearchPageViewsByEntitiesAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation multiBucketsAggregation) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation multiBucketsAggregation) {
     return multiBucketsAggregation.getBuckets();
   }
 

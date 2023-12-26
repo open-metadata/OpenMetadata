@@ -52,6 +52,7 @@ class Loggers(Enum):
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
+    APP = "App"
 
     @DynamicClassAttribute
     def value(self):
@@ -151,6 +152,14 @@ def great_expectations_logger():
     return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
 
 
+def app_logger():
+    """
+    Method to get the APP logger
+    """
+
+    return logging.getLogger(Loggers.APP.value)
+
+
 def query_runner_logger():
     """
     Method to get the QUERY_RUNNER logger
@@ -178,7 +187,9 @@ def log_ansi_encoded_string(
 @singledispatch
 def get_log_name(record: Entity) -> Optional[str]:
     try:
-        return f"{type(record).__name__} [{getattr(record, 'name', record.entity.name).__root__}]"
+        if hasattr(record, "name"):
+            return f"{type(record).__name__} [{getattr(record, 'name').__root__}]"
+        return f"{type(record).__name__} [{record.entity.name.__root__}]"
     except Exception:
         return str(record)
 

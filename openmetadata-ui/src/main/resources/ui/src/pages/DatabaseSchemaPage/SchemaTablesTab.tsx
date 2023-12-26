@@ -17,11 +17,11 @@ import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TableAntd from '../../components/common/Table/Table';
 import { PAGE_SIZE } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -65,7 +65,7 @@ function SchemaTablesTab({
   showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
-}: SchemaTablesTabProps) {
+}: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<Table> = useMemo(
@@ -74,18 +74,22 @@ function SchemaTablesTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: 500,
         render: (_, record: Table) => {
           return (
-            <Link
-              to={getEntityLink(
-                EntityType.TABLE,
-                record.fullyQualifiedName as string
-              )}>
-              {getEntityName(record)}
-            </Link>
+            <div className="d-inline-flex w-max-90">
+              <Link
+                className="break-word"
+                data-testid="table-name-link"
+                to={getEntityLink(
+                  EntityType.TABLE,
+                  record.fullyQualifiedName as string
+                )}>
+                {getEntityName(record)}
+              </Link>
+            </div>
           );
         },
-        className: 'truncate w-max-500',
       },
       {
         title: t('label.description'),
@@ -107,10 +111,10 @@ function SchemaTablesTab({
       <Col data-testid="description-container" span={24}>
         {isVersionView ? (
           <DescriptionV1
-            isVersionView
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
+            showActions={false}
           />
         ) : (
           <DescriptionV1
@@ -120,7 +124,7 @@ function SchemaTablesTab({
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
             isEdit={isEdit}
-            isReadOnly={databaseSchemaDetails.deleted}
+            showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}
             onDescriptionEdit={onDescriptionEdit}
             onDescriptionUpdate={onDescriptionUpdate}

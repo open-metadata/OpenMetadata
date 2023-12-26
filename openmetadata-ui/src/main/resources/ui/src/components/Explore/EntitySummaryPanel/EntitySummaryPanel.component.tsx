@@ -39,13 +39,11 @@ import { MlmodelService } from '../../../generated/entity/services/mlmodelServic
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getEncodedFqn, stringToHTML } from '../../../utils/StringsUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
@@ -58,8 +56,8 @@ import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary
 import DatabaseSummary from './DatabaseSummary/DatabaseSummary.component';
 import DataModelSummary from './DataModelSummary/DataModelSummary.component';
 import DataProductSummary from './DataProductSummary/DataProductSummary.component';
+import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
-import './EntitySummaryPanel.style.less';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
@@ -72,6 +70,7 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
+  highlights,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
   const { getEntityPermission } = usePermissionProvider();
@@ -127,31 +126,67 @@ export default function EntitySummaryPanel({
     const entity = entityDetails.details;
     switch (type) {
       case EntityType.TABLE:
-        return <TableSummary entityDetails={entity as Table} />;
+        return (
+          <TableSummary
+            entityDetails={entity as Table}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.TOPIC:
-        return <TopicSummary entityDetails={entity as Topic} />;
+        return (
+          <TopicSummary
+            entityDetails={entity as Topic}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DASHBOARD:
-        return <DashboardSummary entityDetails={entity as Dashboard} />;
+        return (
+          <DashboardSummary
+            entityDetails={entity as Dashboard}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.PIPELINE:
-        return <PipelineSummary entityDetails={entity as Pipeline} />;
+        return (
+          <PipelineSummary
+            entityDetails={entity as Pipeline}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.MLMODEL:
-        return <MlModelSummary entityDetails={entity as Mlmodel} />;
+        return (
+          <MlModelSummary
+            entityDetails={entity as Mlmodel}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.CONTAINER:
-        return <ContainerSummary entityDetails={entity as Container} />;
+        return (
+          <ContainerSummary
+            entityDetails={entity as Container}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.STORED_PROCEDURE:
         return (
-          <StoredProcedureSummary entityDetails={entity as StoredProcedure} />
+          <StoredProcedureSummary
+            entityDetails={entity as StoredProcedure}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DASHBOARD_DATA_MODEL:
         return (
-          <DataModelSummary entityDetails={entity as DashboardDataModel} />
+          <DataModelSummary
+            entityDetails={entity as DashboardDataModel}
+            highlights={highlights}
+          />
         );
 
       case EntityType.GLOSSARY_TERM:
@@ -164,20 +199,34 @@ export default function EntitySummaryPanel({
         return <DataProductSummary entityDetails={entity as DataProduct} />;
 
       case EntityType.SEARCH_INDEX:
-        return <SearchIndexSummary entityDetails={entity as SearchIndex} />;
+        return (
+          <SearchIndexSummary
+            entityDetails={entity as SearchIndex}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DATABASE:
-        return <DatabaseSummary entityDetails={entity as Database} />;
+        return (
+          <DatabaseSummary
+            entityDetails={entity as Database}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DATABASE_SCHEMA:
         return (
-          <DatabaseSchemaSummary entityDetails={entity as DatabaseSchema} />
+          <DatabaseSchemaSummary
+            entityDetails={entity as DatabaseSchema}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DATABASE_SERVICE:
         return (
           <ServiceSummary
             entityDetails={entity as DatabaseService}
+            highlights={highlights}
             type={ExplorePageTabs.DATABASE_SERVICE}
           />
         );
@@ -185,6 +234,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MessagingService}
+            highlights={highlights}
             type={ExplorePageTabs.MESSAGING_SERVICE}
           />
         );
@@ -192,6 +242,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as DashboardService}
+            highlights={highlights}
             type={ExplorePageTabs.DASHBOARD_SERVICE}
           />
         );
@@ -199,6 +250,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as PipelineService}
+            highlights={highlights}
             type={ExplorePageTabs.PIPELINE_SERVICE}
           />
         );
@@ -207,6 +259,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as MlmodelService}
+            highlights={highlights}
             type={ExplorePageTabs.ML_MODEL_SERVICE}
           />
         );
@@ -215,6 +268,7 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as StorageService}
+            highlights={highlights}
             type={ExplorePageTabs.STORAGE_SERVICE}
           />
         );
@@ -223,24 +277,18 @@ export default function EntitySummaryPanel({
         return (
           <ServiceSummary
             entityDetails={entity as SearchService}
+            highlights={highlights}
             type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
           />
         );
 
       default:
-        return null;
+        return searchClassBase.getEntitySummaryComponent(entity);
     }
   }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const entityLink = useMemo(
-    () =>
-      (entityDetails.details.fullyQualifiedName &&
-        entityDetails.details.entityType &&
-        getEntityLinkFromType(
-          entityDetails.details.fullyQualifiedName,
-          entityDetails.details.entityType as EntityType
-        )) ??
-      '',
+    () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType, getEncodedFqn]
   );
 
@@ -258,9 +306,14 @@ export default function EntitySummaryPanel({
           <Link
             className="no-underline"
             data-testid="entity-link"
+            target={searchClassBase.getSearchEntityLinkTarget(
+              entityDetails.details
+            )}
             to={entityLink}>
             <Typography.Text className="m-b-0 d-block summary-panel-title">
-              {stringToHTML(getEntityName(entityDetails.details))}
+              {stringToHTML(
+                searchClassBase.getEntityName(entityDetails.details)
+              )}
             </Typography.Text>
           </Link>
         )

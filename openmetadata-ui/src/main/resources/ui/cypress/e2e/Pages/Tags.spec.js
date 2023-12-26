@@ -198,7 +198,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=owner,usageSummary,tags*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
@@ -206,7 +206,11 @@ describe('Tags page should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
     const tag = 'Sensitive';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
@@ -263,7 +267,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
 
@@ -271,7 +275,11 @@ describe('Tags page should work', () => {
     const tag = 'Personal';
     const assignee = 'admin';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')

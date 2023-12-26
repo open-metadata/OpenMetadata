@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
@@ -24,11 +24,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mssql.queries import MSSQL_GET_DATABASE
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
+    get_foreign_keys,
+    get_pk_constraint,
     get_table_comment,
+    get_table_names,
+    get_unique_constraints,
     get_view_definition,
+    get_view_names,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -51,9 +58,14 @@ MSDialect.get_view_definition = get_view_definition
 MSDialect.get_all_view_definitions = get_all_view_definitions
 MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
+MSDialect.get_pk_constraint = get_pk_constraint
+MSDialect.get_unique_constraints = get_unique_constraints
+MSDialect.get_foreign_keys = get_foreign_keys
+MSDialect.get_table_names = get_table_names
+MSDialect.get_view_names = get_view_names
 
 
-class MssqlSource(CommonDbSourceService):
+class MssqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from MSSQL Source
@@ -70,6 +82,14 @@ class MssqlSource(CommonDbSourceService):
             )
         return cls(config, metadata)
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(MSSQL_GET_DATABASE)
+
     def get_database_names(self) -> Iterable[str]:
 
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
@@ -77,16 +97,11 @@ class MssqlSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(
-                "SELECT name FROM master.sys.databases order by name"
-            )
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 

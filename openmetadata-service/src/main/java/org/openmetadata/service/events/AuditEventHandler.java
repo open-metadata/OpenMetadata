@@ -17,6 +17,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.type.AuditLog;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -31,8 +32,12 @@ public class AuditEventHandler implements EventHandler {
     // Nothing to do
   }
 
-  public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    if (requestContext.getUriInfo().getPath().contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
+  public Void process(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    if (requestContext
+        .getUriInfo()
+        .getPath()
+        .contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
       // we don't want to send web analytic event to the audit log
       return null;
     }
@@ -45,7 +50,17 @@ public class AuditEventHandler implements EventHandler {
         username = requestContext.getSecurityContext().getUserPrincipal().getName();
       }
       try {
-        EntityReference entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+        EntityReference entityReference;
+        // TODO: EntityInterface and EntityTimeSeriesInterface share some common implementation and
+        // diverge at the edge (e.g. EntityTimeSeriesInterface does not expect owners, etc.).
+        // We should implement a parent class that captures the common fields and then have
+        // EntityInterface and EntityTimeSeriesInterface extend it.
+        if (responseContext.getEntity()
+            instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
+          entityReference = entityTimeSeriesInterface.getEntityReference();
+        } else {
+          entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+        }
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
@@ -59,7 +74,9 @@ public class AuditEventHandler implements EventHandler {
       } catch (Exception e) {
         LOG.error(
             auditMarker,
-            String.format("Failed to capture audit log for %s and method %s due to %s", path, method, e.getMessage()));
+            String.format(
+                "Failed to capture audit log for %s and method %s due to %s",
+                path, method, e.getMessage()));
       }
     }
     return null;

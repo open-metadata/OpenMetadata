@@ -24,9 +24,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import AppState from '../../AppState';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -45,15 +43,16 @@ import {
 } from '../../rest/tableAPI';
 import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
+import './sample-data-table.less';
 import {
   SampleData,
   SampleDataProps,
   SampleDataType,
-} from './sample.interface';
-import './SampleDataTable.style.less';
+} from './SampleData.interface';
 
 const SampleDataTable = ({
   isTableDeleted,
@@ -62,17 +61,13 @@ const SampleDataTable = ({
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
+  const { currentUser } = useAuthContext();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
   const [showActions, setShowActions] = useState(false);
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails]
-  );
 
   const hasPermission = useMemo(
     () =>
@@ -285,4 +280,4 @@ const SampleDataTable = ({
   );
 };
 
-export default withLoader<SampleDataProps>(observer(SampleDataTable));
+export default withLoader<SampleDataProps>(SampleDataTable);

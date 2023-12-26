@@ -25,7 +25,8 @@ public class ClassificationIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(classification.getName()).weight(10).build());
-    suggest.add(SearchSuggest.builder().input(classification.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(classification.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(
@@ -33,9 +34,7 @@ public class ClassificationIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.CLASSIFICATION);
-    if (classification.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(classification.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(classification.getOwner()));
     return doc;
   }
 }

@@ -77,6 +77,21 @@ export const mockMlModelDetails = {
       ],
     },
   ],
+  usageSummary: {
+    dailyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    weeklyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    monthlyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    date: new Date('2023-12-01'),
+  },
   mlHyperParameters: [
     {
       name: 'regularisation',
@@ -173,6 +188,7 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedMlModelName: [],
   versionList: mockVersionList,

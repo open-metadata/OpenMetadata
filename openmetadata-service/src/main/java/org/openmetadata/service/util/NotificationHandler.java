@@ -15,15 +15,14 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
 import java.io.IOException;
-import java.net.URI;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,11 +44,9 @@ import org.openmetadata.service.socket.WebSocketManager;
 
 @Slf4j
 public class NotificationHandler {
-  private final ObjectMapper mapper;
   private final ExecutorService threadScheduler;
 
   public NotificationHandler() {
-    this.mapper = new ObjectMapper();
     this.threadScheduler = Executors.newFixedThreadPool(1);
   }
 
@@ -57,37 +54,29 @@ public class NotificationHandler {
     threadScheduler.submit(
         () -> {
           try {
-            CollectionDAO collectionDAO = Entity.getCollectionDAO();
-            handleNotifications(responseContext, collectionDAO);
+            handleNotifications(responseContext);
           } catch (Exception ex) {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
           }
         });
   }
 
-  private void handleNotifications(ContainerResponseContext responseContext, CollectionDAO collectionDAO)
-      throws JsonProcessingException {
+  private void handleNotifications(ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     if (responseCode == Response.Status.CREATED.getStatusCode()
         && responseContext.getEntity() != null
         && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
       switch (thread.getType()) {
-        case Task:
-          handleTaskNotification(thread, collectionDAO);
-          break;
-        case Conversation:
-          handleConversationNotification(thread, collectionDAO);
-          break;
-        case Announcement:
-          handleAnnouncementNotification(thread, collectionDAO);
-          break;
+        case Task -> handleTaskNotification(thread);
+        case Conversation -> handleConversationNotification(thread);
+        case Announcement -> handleAnnouncementNotification(thread);
       }
     }
   }
 
-  private void handleTaskNotification(Thread thread, CollectionDAO collectionDAO) throws JsonProcessingException {
-    String jsonThread = mapper.writeValueAsString(thread);
+  public static void handleTaskNotification(Thread thread) {
+    String jsonThread = JsonUtils.pojoToJson(thread);
     if (thread.getPostsCount() == 0) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
       HashSet<UUID> receiversList = new HashSet<>();
@@ -98,7 +87,9 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                  Entity.getCollectionDAO()
+                      .relationshipDAO()
+                      .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
               records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
@@ -113,21 +104,21 @@ public class NotificationHandler {
     }
   }
 
-  private void handleAnnouncementNotification(Thread thread, CollectionDAO collectionDAO)
-      throws JsonProcessingException {
-    String jsonThread = mapper.writeValueAsString(thread);
+  private void handleAnnouncementNotification(Thread thread) {
+    String jsonThread = JsonUtils.pojoToJson(thread);
     AnnouncementDetails announcementDetails = thread.getAnnouncement();
     Long currentTimestamp = Instant.now().getEpochSecond();
     if (announcementDetails.getStartTime() <= currentTimestamp
         && currentTimestamp <= announcementDetails.getEndTime()) {
-      WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
     }
   }
 
-  private void handleConversationNotification(Thread thread, CollectionDAO collectionDAO)
-      throws JsonProcessingException {
-    String jsonThread = mapper.writeValueAsString(thread);
-    WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
+  private void handleConversationNotification(Thread thread) {
+    String jsonThread = JsonUtils.pojoToJson(thread);
+    WebSocketManager.getInstance()
+        .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -139,22 +130,25 @@ public class NotificationHandler {
         entityLink -> {
           String fqn = entityLink.getEntityFQN();
           if (USER.equals(entityLink.getEntityType())) {
-            User user = collectionDAO.userDAO().findEntityByName(fqn);
-            WebSocketManager.getInstance().sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
+            User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
+            WebSocketManager.getInstance()
+                .sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
           } else if (TEAM.equals(entityLink.getEntityType())) {
-            Team team = collectionDAO.teamDAO().findEntityByName(fqn);
+            Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
+                Entity.getCollectionDAO()
+                    .relationshipDAO()
+                    .findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
-            WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
+            WebSocketManager.getInstance()
+                .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }
         });
   }
 
-  private void handleEmailNotifications(HashSet<UUID> userList, Thread thread) {
+  public static void handleEmailNotifications(Set<UUID> userList, Thread thread) {
     UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
-    URI urlInstance = thread.getHref();
     userList.forEach(
         id -> {
           try {
@@ -162,7 +156,8 @@ public class NotificationHandler {
             EmailUtil.sendTaskAssignmentNotificationToUser(
                 user.getName(),
                 user.getEmail(),
-                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                String.format(
+                    "%s/users/%s/tasks", getSmtpSettings().getOpenMetadataUrl(), user.getName()),
                 thread,
                 EmailUtil.getTaskAssignmentSubject(),
                 EmailUtil.TASK_NOTIFICATION_TEMPLATE);

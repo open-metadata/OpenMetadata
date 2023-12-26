@@ -59,14 +59,17 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public Type setFields(Type type, Fields fields) {
-    return type.withCustomProperties(
-        fields.contains("customProperties") ? getCustomProperties(type) : type.getCustomProperties());
+  public void setFields(Type type, Fields fields) {
+    type.withCustomProperties(
+        fields.contains("customProperties")
+            ? getCustomProperties(type)
+            : type.getCustomProperties());
   }
 
   @Override
-  public Type clearFields(Type type, Fields fields) {
-    return type.withCustomProperties(fields.contains("customProperties") ? type.getCustomProperties() : null);
+  public void clearFields(Type type, Fields fields) {
+    type.withCustomProperties(
+        fields.contains("customProperties") ? type.getCustomProperties() : null);
   }
 
   @Override
@@ -93,7 +96,8 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private void updateTypeMap(Type entity) {
-    // Add entity type name to type map - example "email" -> email property type or "table" -> table entity type
+    // Add entity type name to type map - example "email" -> email property type or "table" -> table
+    // entity type
     TypeRegistry.instance().addType(entity);
   }
 
@@ -107,16 +111,19 @@ public class TypeRepository extends EntityRepository<Type> {
     return new TypeUpdater(original, updated, operation);
   }
 
-  public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
-    Type type = dao.findEntityById(id, Include.NON_DELETED);
+  public PutResponse<Type> addCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    Type type = find(id, Include.NON_DELETED);
     property.setPropertyType(
-        Entity.getEntityReferenceById(Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
+        Entity.getEntityReferenceById(
+            Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
-      throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
+      throw new IllegalArgumentException(
+          "Only entity types can be extended and field types can't be extended");
     }
     setFieldsInternal(type, putFields);
 
-    dao.findEntityById(property.getPropertyType().getId()); // Validate customProperty type exists
+    find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
 
     // If property already exists, then update it. Else add the new property.
     List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
@@ -141,7 +148,10 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+                getCustomPropertyFQNPrefix(type.getName()),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
@@ -168,7 +178,8 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> origProperties = listOrEmpty(original.getCustomProperties());
       List<CustomProperty> added = new ArrayList<>();
       List<CustomProperty> deleted = new ArrayList<>();
-      recordListChange("customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
+      recordListChange(
+          "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
       for (CustomProperty property : added) {
         storeCustomProperty(property);
       }
@@ -180,7 +191,10 @@ public class TypeRepository extends EntityRepository<Type> {
       for (CustomProperty updateProperty : updatedProperties) {
         // Find property that matches name and type
         CustomProperty storedProperty =
-            origProperties.stream().filter(c -> customFieldMatch.test(c, updateProperty)).findAny().orElse(null);
+            origProperties.stream()
+                .filter(c -> customFieldMatch.test(c, updateProperty))
+                .findAny()
+                .orElse(null);
         if (storedProperty == null) { // New property added, which is already handled
           continue;
         }
@@ -191,7 +205,8 @@ public class TypeRepository extends EntityRepository<Type> {
     private void storeCustomProperty(CustomProperty property) {
       String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
       EntityReference propertyType = property.getPropertyType();
-      String customPropertyJson = JsonUtils.pojoToJson(property.withPropertyType(null)); // Don't store entity reference
+      String customPropertyJson =
+          JsonUtils.pojoToJson(property.withPropertyType(null)); // Don't store entity reference
       property.withPropertyType(propertyType); // Restore entity reference
       LOG.info(
           "Adding customProperty {} with type {} to the entity {}",
@@ -233,9 +248,12 @@ public class TypeRepository extends EntityRepository<Type> {
     private void updateCustomPropertyDescription(
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String fieldName = getCustomField(origProperty, FIELD_DESCRIPTION);
-      if (recordChange(fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
-        String customPropertyFQN = getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-        EntityReference propertyType = updatedProperty.getPropertyType(); // Don't store entity reference
+      if (recordChange(
+          fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
+        String customPropertyFQN =
+            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+        EntityReference propertyType =
+            updatedProperty.getPropertyType(); // Don't store entity reference
         String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
         updatedProperty.withPropertyType(propertyType); // Restore entity reference
         daoCollection

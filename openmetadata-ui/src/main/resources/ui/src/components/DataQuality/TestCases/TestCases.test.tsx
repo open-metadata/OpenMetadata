@@ -68,12 +68,15 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../../components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-});
+jest.mock(
+  '../../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
+  }
+);
 jest.mock(
   '../../../components/ProfilerDashboard/component/DataQualityTab',
   () => {
@@ -83,7 +86,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()
@@ -122,6 +125,7 @@ describe('TestCases component', () => {
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: 'testDefinition,testCaseResult,testSuite',
+      limit: 15,
       orderByLastExecutionDate: true,
     });
   });
@@ -135,7 +139,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fetchSource: false,
       pageNumber: 1,
-      pageSize: 10,
+      pageSize: 15,
       query: 'sale',
       searchIndex: 'test_case_search_index',
     });

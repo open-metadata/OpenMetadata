@@ -24,6 +24,7 @@ export interface AppRunsHistoryRef {
 
 export interface AppRunsHistoryProps {
   maxRecords?: number;
-  showPagination?: boolean;
   appData?: App;
+  showPagination?: boolean;
+  runsData?: AppRunRecordWithId[];
 }

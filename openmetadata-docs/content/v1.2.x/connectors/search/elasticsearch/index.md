@@ -1,20 +1,20 @@
 ---
-title: ElasticSearch
+title: Elasticsearch
 slug: /connectors/search/elasticsearch
 ---
 
-# ElasticSearch
+# Elasticsearch
 
 | Feature            | Status               |
 |------------|------------------------------|
 | Search Indexes | {% icon iconName="check" /%} |
 | Sample Data | {% icon iconName="check" /%} |
-| Supported Versions | ElasticSearch 7.0 and above |
+| Supported Versions | Elasticsearch 7.0 and above |
 | Stage              | BETA                      |
 
-In this section, we provide guides and references to use the ElasticSearch connector.
+In this section, we provide guides and references to use the Elasticsearch connector.
 
-Configure and schedule ElasticSearch metadata workflow from the OpenMetadata UI:
+Configure and schedule Elasticsearch metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -23,7 +23,7 @@ Configure and schedule ElasticSearch metadata workflow from the OpenMetadata UI:
 
 ## Requirements
 
-We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
+We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
 
 
 ## Metadata Ingestion
@@ -43,16 +43,43 @@ We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/gu
 
 #### Connection Details
 
-- **Host and Port**: This parameter specifies the host and port of the ElasticSearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
+- **Host and Port**: This parameter specifies the host and port of the Elasticsearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
 - **Authentication Types**:
     1. Basic Authentication
-    - Username: Username to connect to ElasticSearch required when Basic Authentication is enabled on ElasticSearch.
-    - Password: Password of the user account to connect with ElasticSearch.
+    - Username: Username to connect to Elasticsearch required when Basic Authentication is enabled on Elasticsearch.
+    - Password: Password of the user account to connect with Elasticsearch.
     2. API Key Authentication
-    - API Key: API Key to connect to ElasticSearch required when API Key Authentication is enabled on ElasticSearch.
+    - API Key: API Key to connect to Elasticsearch required when API Key Authentication is enabled on Elasticsearch.
     - API Key Id: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank.
-- **Client Certificate Path**: In case the SSL is enabled on your ElasticSearch instance and CA certificate is required for authentication, then specify the path of certificate in this field. NOTE: In case of docker deployment you need to store this certificate accessible to OpenMetadata Ingestion docker container, you can do it via copying the certificate to the docker container or store it in the volume associate with the OpenMetadata Ingestion container.
-- **Connection Timeout in Seconds**: Connection timeout configuration for communicating with ElasticSearch APIs.
+- **SSL Certificates**:
+    1. SSL Certificates By Path
+    - CA Certificate Path: This field specifies the path of CA certificate required for authentication.
+    - Client Certificate Path: This field specifies the path of Clint certificate required for authentication.
+    - Private Key Path: This field specifies the path of Clint Key/Private Key required for authentication.
+    
+    2. SSL Certificates By Value
+    - CA Certificate Value: This field specifies the value of CA certificate required for authentication.
+    - Client Certificate Value: This field specifies the value of Clint certificate required for authentication.
+    - Private Key Value: This field specifies the value of Clint Key/Private Key required for authentication.
+    - Staging Directory Path: This field specifies the path to temporary staging directory, where the certificates will be stored temporarily during the ingestion process, which will de deleted once the ingestion job is over.
+    - when you are using this approach make sure you are passing the key in a correct format. If your certificate looks like this:
+    ```
+    -----BEGIN CERTIFICATE-----
+    MII..
+    MBQ...
+    CgU..
+    8Lt..
+    ...
+    h+4=
+    -----END CERTIFICATE-----
+    ```
+
+    You will have to replace new lines with `\n` and the final value that you need to pass should look like this:
+
+    ```
+    -----BEGIN CERTIFICATE-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END CERTIFICATE-----\n
+
+- **Connection Timeout in Seconds**: Connection timeout configuration for communicating with Elasticsearch APIs.
 
 {% /extraContent %}
 

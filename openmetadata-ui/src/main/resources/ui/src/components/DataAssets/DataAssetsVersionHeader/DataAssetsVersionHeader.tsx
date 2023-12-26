@@ -19,12 +19,13 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 
@@ -91,9 +92,9 @@ function DataAssetsVersionHeader({
   const logo = useMemo(
     () =>
       serviceUtilClassBase.getServiceTypeLogo(
-        currentVersionData.serviceType ?? ''
+        currentVersionData as SearchSourceAlias
       ),
-    [currentVersionData.serviceType]
+    [currentVersionData]
   );
 
   return (

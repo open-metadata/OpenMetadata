@@ -19,13 +19,16 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
@@ -64,13 +67,16 @@ class OpenMetadataSource(Source):
     We do this here as well.
     """
 
+    def init_steps(self):
+        super().__init__()
+
+    # pylint: disable=super-init-not-called
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-
-        super().__init__()
+        self.init_steps()
 
         self.config = config
         self.metadata = metadata
@@ -132,7 +138,7 @@ class OpenMetadataSource(Source):
                     left=StackTraceError(
                         name=database.fullyQualifiedName.__root__,
                         error=f"Error listing source and entities for database due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -193,7 +199,7 @@ class OpenMetadataSource(Source):
                     StackTraceError(
                         name=table.fullyQualifiedName.__root__,
                         error=f"Unexpected error filtering entities for table [{table}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -235,9 +241,7 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=[
-                "tableProfilerConfig",
-            ],
+            fields=["tableProfilerConfig", "columns", "customMetrics"],
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(

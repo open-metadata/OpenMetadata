@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from '../../../components/TableQueries/TableQueries.interface';
@@ -39,6 +38,7 @@ import { SearchService } from '../../../generated/entity/services/searchService'
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
 import { ServicesType } from '../../../interface/service.interface';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export type DataAssetsType =
   | Table
@@ -91,14 +91,16 @@ export type DataAssetsHeaderProps = {
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
-  afterDeleteAction?: (isSoftDelete?: boolean) => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
+  onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
+  onUpdateRetentionPeriod?: (value: string) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic

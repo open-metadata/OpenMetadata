@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
@@ -35,10 +36,11 @@ import {
 } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -149,12 +151,21 @@ export const getGroupLabel = (index: string) => {
 
       break;
 
-    case SearchIndex.TABLE:
-    default:
-      label = i18next.t('label.table-plural');
-      GroupIcon = IconTable;
+    case SearchIndex.DATA_PRODUCT:
+      label = i18next.t('label.data-product-plural');
+      GroupIcon = DataProductIcon;
 
       break;
+
+    default: {
+      const { label: indexLabel, GroupIcon: IndexIcon } =
+        searchClassBase.getIndexGroupLabel(index);
+
+      label = indexLabel;
+      GroupIcon = IndexIcon;
+
+      break;
+    }
   }
 
   const groupLabel = (
@@ -172,6 +183,7 @@ export const getSuggestionElement = (
   index: string,
   onClickHandler?: () => void
 ) => {
+  const entitySource = suggestion as SearchSourceAlias;
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
   let database;
   let schema;
@@ -180,7 +192,7 @@ export const getSuggestionElement = (
     schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
   }
 
-  const entityLink = getEntityLink(index, fqdn);
+  const entityLink = searchClassBase.getEntityLink(entitySource);
   const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
@@ -188,7 +200,7 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : name;
+      : searchClassBase.getEntityName(entitySource);
 
   const retn = (
     <Button
@@ -200,7 +212,7 @@ export const getSuggestionElement = (
           alt={serviceType}
           className="m-r-sm"
           height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(serviceType)}
+          src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
           width="16px"
         />
       }
@@ -210,6 +222,7 @@ export const getSuggestionElement = (
         className="text-sm"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
+        target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
@@ -231,7 +244,7 @@ export const filterOptionsByIndex = (
     .slice(0, maxItemsPerType);
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
-  const commonAssets: Record<string, string> = {
+  const commonAssets: Record<string, EntityType> = {
     [SearchIndex.TABLE]: EntityType.TABLE,
     [SearchIndex.PIPELINE]: EntityType.PIPELINE,
     [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
@@ -241,6 +254,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
     [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
     [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+    [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
     [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
     [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
     [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
@@ -248,7 +262,11 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
     [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
     [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
-    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY_TERM,
+    [SearchIndex.TAG]: EntityType.TAG,
+    [SearchIndex.DATABASE]: EntityType.DATABASE,
+    [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+    [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

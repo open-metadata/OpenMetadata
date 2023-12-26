@@ -102,7 +102,7 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-release/docker-compose-openmetadata.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
@@ -118,7 +118,7 @@ For MySQL Configurations, update the below environment variables -
 # Database configuration for MySQL
 DB_DRIVER_CLASS="com.mysql.cj.jdbc.Driver"
 DB_SCHEME="mysql"
-DB_USE_SSL="true"
+DB_PARAMS="allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC"
 DB_USER="<SQL_DATABASE_USERNAME>"
 DB_USER_PASSWORD="<SQL_DATABASE_PASSWORD>"
 DB_HOST="<SQL_DATABASE_ENDPOINT>"
@@ -191,7 +191,7 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:1.2.0                             "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+470cc8149826   openmetadata/server:1.2.2                             "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -258,7 +258,7 @@ Once you have the RDS and OpenSearch Services Setup, you can update the environm
 # MySQL Environment Variables
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER_PASSWORD='<DATABASE_USER_PASSWORD>'
 DB_HOST='<DATABASE_HOST_NAME>'
 DB_USER='<DATABASE_USER_NAME>'
@@ -367,7 +367,7 @@ installation.
 
 ## Next Steps
 
-1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+1. Refer the [How-to Guides](/how-to-guides) for an overview of all the features in OpenMetadata.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.

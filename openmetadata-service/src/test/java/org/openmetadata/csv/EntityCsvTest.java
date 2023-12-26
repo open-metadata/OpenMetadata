@@ -13,15 +13,16 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 
@@ -56,21 +57,30 @@ public class EntityCsvTest {
     String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.ABORTED, 1, 0, 1);
+    assertSummary(importResult, ApiStatus.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
   public static void assertSummary(
       CsvImportResult importResult,
-      Status expectedStatus,
+      ApiStatus expectedStatus,
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {
     assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
-    assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed(), importResult.getImportResultsCsv());
-    assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed(), importResult.getImportResultsCsv());
-    assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed(), importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsProcessed,
+        importResult.getNumberOfRowsProcessed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsPassed,
+        importResult.getNumberOfRowsPassed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsFailed,
+        importResult.getNumberOfRowsFailed(),
+        importResult.getImportResultsCsv());
   }
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {
@@ -86,13 +96,16 @@ public class EntityCsvTest {
   }
 
   public static String getFailedRecord(String record, String errorDetails) {
-    return String.format("%s,\"%s\",%s", EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
+    errorDetails = StringEscapeUtils.escapeCsv(errorDetails);
+    String format = errorDetails.startsWith("\"") ? "%s,%s,%s" : "%s,\"%s\",%s";
+    return String.format(format, EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
   }
 
   private static List<CsvHeader> getHeaders(Object[][] headers) {
     List<CsvHeader> csvHeaders = new ArrayList<>();
     for (Object[] header : headers) {
-      csvHeaders.add(new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
+      csvHeaders.add(
+          new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
     }
     return csvHeaders;
   }
@@ -102,7 +115,8 @@ public class EntityCsvTest {
     return String.join(LINE_SEPARATOR, records) + LINE_SEPARATOR;
   }
 
-  public static String createCsv(List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
+  public static String createCsv(
+      List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     // Create CSV
     List<String> csvRecords = new ArrayList<>();
     if (!nullOrEmpty(createRecords)) {

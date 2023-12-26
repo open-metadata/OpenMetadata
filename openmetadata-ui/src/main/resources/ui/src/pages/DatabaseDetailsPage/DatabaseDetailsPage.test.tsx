@@ -131,7 +131,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
   }
@@ -195,9 +195,10 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
@@ -229,11 +230,11 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
@@ -250,9 +251,12 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
   }
 );
-jest.mock('../../components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
-});
+jest.mock(
+  '../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
+  }
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -263,15 +267,18 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/DatabaseDetails.utils', () => ({
-  getDatabaseSchemaTable: jest
-    .fn()
-    .mockReturnValue(<>testDatabaseSchemaTable</>),
-}));
-
-jest.mock('../../components/router/withActivityFeed', () => ({
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Some) => Some),
 }));
+
+jest.mock(
+  '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable',
+  () => ({
+    DatabaseSchemaTable: jest
+      .fn()
+      .mockImplementation(() => <>testDatabaseSchemaTable</>),
+  })
+);
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {

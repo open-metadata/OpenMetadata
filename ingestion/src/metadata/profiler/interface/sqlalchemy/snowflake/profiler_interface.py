@@ -29,6 +29,13 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
     sqlalchemy.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def create_session(self):
+        super().create_session()
+        self.set_session_tag(self.session)
+
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
         if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
             session.bind.dialect.name

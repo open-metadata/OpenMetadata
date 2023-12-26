@@ -101,7 +101,8 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String"))
+          @PathParam("resource")
           String resource) {
     return authorizer.getPermission(securityContext, user, resource);
   }
@@ -129,10 +130,12 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String"))
+          @PathParam("resource")
           String resource,
-      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    ResourceContext resourceContext = new ResourceContext(resource, id, null);
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    ResourceContext<?> resourceContext = new ResourceContext(resource, id, null);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -159,11 +162,13 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String"))
+          @PathParam("resource")
           String resource,
-      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
+      @Parameter(description = "Name of the entity", schema = @Schema(type = "String"))
+          @PathParam("name")
           String name) {
-    ResourceContext resourceContext = new ResourceContext(resource, null, name);
+    ResourceContext<?> resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -183,12 +188,14 @@ public class PermissionsResource {
       })
   public ResultList<ResourcePermission> getPermissionForPolicies(
       @Context SecurityContext securityContext,
-      @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids")
+      @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID"))
+          @QueryParam("ids")
           List<UUID> ids) {
     // User must have read access to policies
-    OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
     for (UUID id : ids) {
-      ResourceContext resourceContext = new ResourceContext(Entity.POLICY, id, null);
+      ResourceContext<?> resourceContext = new ResourceContext(Entity.POLICY, id, null);
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
     List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);

@@ -56,7 +56,7 @@ class WebAnalyticsProducer(ProducerInterface):
     def _get_events(
         self, after: Optional[str], limit=100, fields=["*"]
     ) -> EntityList[WebAnalyticEventData]:
-        """Try to retrive events from cach otherwise retrieve them from DB"""
+        """Try to retrieve events from catch otherwise retrieve them from DB"""
         events = CACHED_EVENTS.get(str(after))
         if not events:
             events: EntityList[WebAnalyticEventData] = self.metadata.list_entities(
@@ -65,6 +65,7 @@ class WebAnalyticsProducer(ProducerInterface):
                 after=after,
                 limit=limit,
                 fields=fields,
+                skip_on_failure=True,
             )  # type: ignore
             self._cache_events(after, events)
         return events

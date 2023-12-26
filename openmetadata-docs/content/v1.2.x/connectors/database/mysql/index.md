@@ -14,8 +14,8 @@ slug: /connectors/database/mysql
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | MySQL >= 8.0.0                         |
 
 | Feature      | Status                       |
@@ -44,7 +44,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
--- Create user. If <hostName> is ommited, defaults to '%'
+-- Create user. If <hostName> is omitted, defaults to '%'
 -- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
 CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 

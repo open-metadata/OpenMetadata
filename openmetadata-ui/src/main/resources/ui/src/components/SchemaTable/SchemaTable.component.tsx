@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { FilterOutlined } from '@ant-design/icons';
-import { Table, Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -30,13 +29,16 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
-import { PRIMERY_COLOR } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -52,12 +54,20 @@ import {
 } from '../../utils/TableTags/TableTags.utils';
 import {
   getDataTypeString,
+  getFilterIcon,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
@@ -71,26 +81,46 @@ const SchemaTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
+  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
+  const [tablePermissions, setTablePermissions] =
+    useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
   );
 
+  const fetchResourcePermission = async (entityFqn: string) => {
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+      setTablePermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
+      );
+    }
+  };
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
-
+  useEffect(() => {
+    fetchResourcePermission(entityFqn);
+  }, [entityFqn]);
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
   };
@@ -124,7 +154,7 @@ const SchemaTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn && editColumn.fullyQualifiedName) {
+    if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumn.fullyQualifiedName,
@@ -191,22 +221,23 @@ const SchemaTable = ({
     dataTypeDisplay,
     record
   ) => {
-    return (
-      <>
-        {dataTypeDisplay ? (
-          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            toLower(dataTypeDisplay)
-          ) : (
-            <Tooltip title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay || record.dataType}
-              </Typography.Text>
-            </Tooltip>
-          )
-        ) : (
-          '--'
-        )}
-      </>
+    const displayValue = isEmpty(dataTypeDisplay)
+      ? record.dataType
+      : dataTypeDisplay;
+
+    if (isEmpty(displayValue)) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
+    return isReadOnly ||
+      (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+      toLower(displayValue)
+    ) : (
+      <Tooltip title={toLower(displayValue)}>
+        <Typography.Text ellipsis className="cursor-pointer">
+          {displayValue}
+        </Typography.Text>
+      </Tooltip>
     );
   };
 
@@ -269,7 +300,10 @@ const SchemaTable = ({
   };
 
   const handleEditDisplayName = ({ displayName }: EntityName) => {
-    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
+    if (
+      !isUndefined(editColumnDisplayName) &&
+      editColumnDisplayName.fullyQualifiedName
+    ) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumnDisplayName.fullyQualifiedName,
@@ -307,8 +341,8 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-full">
-              <div className="d-inline-flex">
+            <div className="d-inline-flex flex-column hover-icon-group">
+              <div className="inline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
@@ -318,7 +352,8 @@ const SchemaTable = ({
 
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted"
-                  data-testid="column-name">
+                  data-testid="column-name"
+                  ellipsis={{ tooltip: true }}>
                   {name}
                 </Typography.Text>
               </div>
@@ -331,11 +366,21 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              <Icon
-                className="hover-cell-icon text-left m-t-xss"
-                component={IconEdit}
-                onClick={() => handleEditDisplayNameClick(record)}
-              />
+              {(tablePermissions?.EditAll ||
+                tablePermissions?.EditDisplayName) && (
+                <Button
+                  className="cursor-pointer hover-cell-icon w-fit-content"
+                  data-testid="edit-displayName-button"
+                  style={{
+                    color: DE_ACTIVE_COLOR,
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                  onClick={() => handleEditDisplayNameClick(record)}>
+                  <IconEdit />
+                </Button>
+              )}
             </div>
           );
         },
@@ -357,18 +402,28 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
+      ...(tablePartitioned
+        ? [
+            {
+              title: t('label.partitioned'),
+              dataIndex: 'name',
+              key: 'name',
+              accessor: 'name',
+              width: 120,
+              render: (columnName: string) =>
+                tablePartitioned?.columns?.includes(columnName)
+                  ? t('label.partitioned')
+                  : t('label.non-partitioned'),
+            },
+          ]
+        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
         width: 250,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -393,12 +448,7 @@ const SchemaTable = ({
         key: 'glossary',
         accessor: 'tags',
         width: 250,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -460,7 +510,7 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.name}"`}
+          })}: "${getEntityName(editColumn)}"`}
           placeholder={t('message.enter-column-description')}
           value={editColumn.description as string}
           visible={Boolean(editColumn)}

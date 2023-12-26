@@ -14,8 +14,8 @@ slug: /connectors/database/sap-hana
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
@@ -94,7 +94,7 @@ We support two possible connection types:
 - **database**: Optional parameter to connect to a specific database.
 - **databaseSchema**: databaseSchema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 
-**HDB USer Store**
+**HDB USet Store**
 
 - **User Key**: HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`.
 

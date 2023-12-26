@@ -32,6 +32,8 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     Table,
@@ -39,13 +41,16 @@ from metadata.generated.schema.entity.data.table import (
     TablePartition,
     TableType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -166,7 +171,7 @@ class CommonDbSourceService(
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
                 description=self.get_database_description(database_name),
                 sourceUrl=self.get_source_url(database_name=database_name),
             )
@@ -196,10 +201,15 @@ class CommonDbSourceService(
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
                 description=self.get_schema_description(schema_name),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                 ),
             )
@@ -248,7 +258,7 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
@@ -258,9 +268,9 @@ class CommonDbSourceService(
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
                         table_name=table_name,
                         skip_es_search=True,
                     )
@@ -283,9 +293,9 @@ class CommonDbSourceService(
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
                         table_name=view_name,
                     )
 
@@ -383,7 +393,7 @@ class CommonDbSourceService(
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             (
                 columns,
@@ -392,7 +402,7 @@ class CommonDbSourceService(
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
                 table_name=table_name,
-                db_name=self.context.database.name.__root__,
+                db_name=self.context.database,
                 inspector=self.inspector,
             )
 
@@ -416,14 +426,20 @@ class CommonDbSourceService(
                 columns=columns,
                 tableConstraints=table_constraints,
                 viewDefinition=view_definition,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
                 tags=self.get_tag_labels(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     table_type=table_type,
                 ),
             )
@@ -446,7 +462,7 @@ class CommonDbSourceService(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
-                        "db_name": self.context.database.name.__root__,
+                        "db_name": self.context.database,
                         "view_definition": view_definition,
                     }
                 )
@@ -456,7 +472,7 @@ class CommonDbSourceService(
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             yield Either(
                 left=StackTraceError(
-                    name=table_name, error=error, stack_trace=traceback.format_exc()
+                    name=table_name, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -468,7 +484,7 @@ class CommonDbSourceService(
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 connection_type=self.service_connection.type.value,
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
             )
@@ -487,7 +503,7 @@ class CommonDbSourceService(
                 table_name=column.get("referred_table"),
                 schema_name=column.get("referred_schema"),
                 database_name=None,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
             )
             if referred_table:
                 for referred_column in column.get("referred_columns"):

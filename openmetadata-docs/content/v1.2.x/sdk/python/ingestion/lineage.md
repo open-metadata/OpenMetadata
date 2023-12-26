@@ -69,6 +69,9 @@ parameter for the generic `DatabaseConnection` type.
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -84,7 +87,7 @@ db_service = CreateDatabaseServiceRequest(
     connection=DatabaseConnection(
         config=MysqlConnection(
             username="username",
-            password="password",
+            authType=BasicAuth(password="password"),
             hostPort="http://localhost:1234",
         )
     ),
@@ -437,7 +440,7 @@ workflowConfig:
     authProvider: <OpenMetadata auth provider>
 ```
 
-- **serviceName**: Name of the database service which contains tha table involved in query.
+- **serviceName**: Name of the database service which contains the table involved in query.
 - **query**: You can specify the raw sql query within the yaml file itself.
 - **filePath**: In case the query is too big then you can also save query in a file and pass the path to the file in this field. 
 - **parseTimeout**: Timeout for the lineage parsing process.

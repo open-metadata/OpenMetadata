@@ -14,6 +14,8 @@ Test Deltalake using the topology
 Here we don't need to patch, as we can just create our own metastore
 """
 import shutil
+import sys
+import unittest
 from datetime import date, datetime
 from unittest import TestCase
 
@@ -72,8 +74,8 @@ MOCK_DELTA_CONFIG = {
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
-    name="local_databricks",
-    fullyQualifiedName="local_databricks",
+    name="delta",
+    fullyQualifiedName="delta",
     connection=DatabaseConnection(),
     serviceType=DatabaseServiceType.DeltaLake,
 )
@@ -100,6 +102,10 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 )
 
 
+@unittest.skipUnless(
+    sys.version_info < (3, 11),
+    reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
+)
 class DeltaLakeUnitTest(TestCase):
     """
     Add method validations from Deltalake ingestion
@@ -141,9 +147,13 @@ class DeltaLakeUnitTest(TestCase):
         )
 
         # Set context
-        cls.delta.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        cls.delta.context.__dict__["database"] = MOCK_DATABASE
-        cls.delta.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        cls.delta.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        cls.delta.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        cls.delta.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
         # We pick up the table comments when getting their name and type, so we
         # store the description in the context
         cls.delta.context.__dict__["table_description"] = "testing around"
@@ -166,7 +176,7 @@ class DeltaLakeUnitTest(TestCase):
         ).right
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service=FullyQualifiedEntityName(__root__="local_databricks"),
+            service=FullyQualifiedEntityName(__root__="delta"),
         )
 
         self.assertEqual(database_request, expected_database_request)

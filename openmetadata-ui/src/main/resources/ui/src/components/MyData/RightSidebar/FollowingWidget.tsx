@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Card, Space } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import AppState from '../../../AppState';
+import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/following-no-data-placeholder.svg';
 import { getUserPath } from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
-import './FollowingWidget.less';
+import './following-widget.less';
 
 export interface FollowingWidgetProps extends WidgetCommonProps {
   followedData: EntityReference[];
@@ -38,7 +41,7 @@ function FollowingWidget({
   widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
-  const currentUserDetails = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
@@ -56,7 +59,7 @@ function FollowingWidget({
               <Link
                 className="view-all-btn text-grey-muted"
                 data-testid="following-data"
-                to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
+                to={getUserPath(currentUser?.name ?? '', 'following')}>
                 <span className="font-normal text-xs">
                   {t('label.view-all')}{' '}
                   <span data-testid="following-data-total-count">
@@ -78,7 +81,22 @@ function FollowingWidget({
         }
         headerTextLabel={t('label.following')}
         loading={isLoadingOwnedData}
-        noDataPlaceholder={t('message.not-followed-anything')}
+        noDataPlaceholder={
+          <div className="flex-center h-full">
+            <ErrorPlaceHolder
+              icon={
+                <FollowingEmptyIcon
+                  height={SIZE.X_SMALL}
+                  width={SIZE.X_SMALL}
+                />
+              }
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph>
+                {t('message.not-followed-anything')}
+              </Typography.Paragraph>
+            </ErrorPlaceHolder>
+          </div>
+        }
         testIDText="following"
       />
     </Card>

@@ -15,7 +15,6 @@ import { Popover, Space } from 'antd';
 import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
@@ -30,6 +29,7 @@ import {
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
 
@@ -47,10 +47,7 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const isAuthor = post.from === currentUser?.name;
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

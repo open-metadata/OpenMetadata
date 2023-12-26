@@ -1,6 +1,6 @@
 {
   "name": "MyData",
-  "displayName": "MyData KnowledgePanel",
+  "displayName": "MyData",
   "description": "MyData KnowledgePanel shows the list of Assets that is owned by User or User's Team.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.MyData",

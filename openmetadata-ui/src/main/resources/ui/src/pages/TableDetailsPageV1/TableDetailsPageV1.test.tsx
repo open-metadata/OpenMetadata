@@ -44,7 +44,6 @@ jest.mock('../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
@@ -72,11 +71,11 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
@@ -86,7 +85,7 @@ jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
@@ -114,8 +113,8 @@ jest.mock('../../components/SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
 });
 
-jest.mock('../../components/TableProfiler/TableProfilerV1', () => {
-  return jest.fn().mockImplementation(() => <p>testTableProfilerV1</p>);
+jest.mock('../../components/TableProfiler/TableProfiler', () => {
+  return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
 });
 
 jest.mock('../../components/TableQueries/TableQueries', () => {

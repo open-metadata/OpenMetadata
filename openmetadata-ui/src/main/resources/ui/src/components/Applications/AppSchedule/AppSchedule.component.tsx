@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import React, {
   useCallback,
@@ -24,13 +25,26 @@ import {
   AppScheduleClass,
   AppType,
 } from '../../../generated/entity/applications/app';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Status } from '../../../generated/entity/applications/appRunRecord';
+import {
+  PipelineState,
+  PipelineStatus,
+  PipelineType,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../../../generated/type/paging';
+import { getApplicationRuns } from '../../../rest/applicationAPI';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
+import { getStatusFromPipelineState } from '../../../utils/ApplicationUtils';
 import { getIngestionFrequency } from '../../../utils/CommonUtils';
+import { getEpochMillisForPastDays } from '../../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
-import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
+import {
+  AppRunRecordWithId,
+  AppRunsHistoryRef,
+} from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
 
 const AppSchedule = ({
@@ -44,6 +58,22 @@ const AppSchedule = ({
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [appRunsHistoryData, setAppRunsHistoryData] = useState<
+    AppRunRecordWithId[]
+  >([]);
+
+  const isExternalApp = useMemo(
+    () => appData?.appType === AppType.External,
+    [appData]
+  );
+
+  const isAppRunning = useMemo(() => {
+    if (appRunsHistoryData.length > 0) {
+      return appRunsHistoryData[0].status === Status.Running;
+    } else {
+      return false;
+    }
+  }, [appRunsHistoryData]);
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -67,6 +97,60 @@ const AppSchedule = ({
     }
   }, [appData]);
 
+  const fetchAppHistory = useCallback(
+    async (pagingOffset?: Paging) => {
+      try {
+        setIsLoading(true);
+
+        if (isExternalApp) {
+          const currentTime = Date.now();
+          // past 30 days
+          const startDay = getEpochMillisForPastDays(30);
+
+          const { data } = await getApplicationRuns(
+            appData.fullyQualifiedName ?? '',
+            {
+              startTs: startDay,
+              endTs: currentTime,
+            }
+          );
+
+          setAppRunsHistoryData(
+            data
+              .map((item) => ({
+                ...item,
+                status: getStatusFromPipelineState(
+                  (item as PipelineStatus).pipelineState ?? PipelineState.Failed
+                ),
+                id: (item as PipelineStatus).runId ?? '',
+              }))
+              .slice(0, 1)
+          );
+        } else {
+          const { data } = await getApplicationRuns(
+            appData.fullyQualifiedName ?? '',
+            {
+              offset: pagingOffset?.offset ?? 0,
+              limit: 1,
+            }
+          );
+
+          setAppRunsHistoryData(
+            data.map((item) => ({
+              ...item,
+              id: `${item.appId}-${item.runType}-${item.timestamp}`,
+            }))
+          );
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [appData]
+  );
+
   const cronString = useMemo(() => {
     if (appData.appSchedule) {
       const cronExp =
@@ -74,6 +158,10 @@ const AppSchedule = ({
 
       return cronstrue.toString(cronExp, {
         throwExceptionOnParseError: false,
+        // Quartz cron format accepts 1-7 or SUN-SAT so need to increment index by 1
+        // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
+        dayOfWeekStartIndexZero: false,
+        monthStartIndexZero: false,
       });
     }
 
@@ -91,18 +179,30 @@ const AppSchedule = ({
 
   const onAppTrigger = async () => {
     await onDemandTrigger();
-    appRunsHistoryRef.current?.refreshAppHistory();
+    await fetchAppHistory();
   };
 
   const appRunHistory = useMemo(() => {
-    if (appData.appType === AppType.Internal || isPipelineDeployed) {
+    if (
+      !appData.deleted &&
+      (appData.appType === AppType.Internal || isPipelineDeployed)
+    ) {
       return (
         <AppRunsHistory
           appData={appData}
           maxRecords={1}
           ref={appRunsHistoryRef}
+          runsData={appRunsHistoryData}
           showPagination={false}
         />
+      );
+    }
+
+    if (appData.deleted) {
+      return (
+        <Typography.Text>
+          {t('message.application-disabled-message')}
+        </Typography.Text>
       );
     }
 
@@ -111,10 +211,11 @@ const AppSchedule = ({
         {t('message.no-ingestion-pipeline-found')}
       </Typography.Text>
     );
-  }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+  }, [appData, isPipelineDeployed, appRunsHistoryRef, appRunsHistoryData]);
 
   useEffect(() => {
     fetchPipelineDetails();
+    fetchAppHistory();
   }, []);
 
   if (isLoading) {
@@ -143,7 +244,9 @@ const AppSchedule = ({
                   <Typography.Text className="right-panel-label">
                     {t('label.schedule-interval')}
                   </Typography.Text>
-                  <Typography.Text className="font-medium">
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="cron-string">
                     {cronString}
                   </Typography.Text>
                 </Space>
@@ -151,31 +254,35 @@ const AppSchedule = ({
             </>
           )}
         </Col>
-        <Col className="d-flex items-center justify-end" flex="200px">
-          <Space>
-            {appData.appType === AppType.External && (
-              <Button
-                data-testid="deploy-button"
-                type="primary"
-                onClick={onDeployTrigger}>
-                {t('label.deploy')}
-              </Button>
-            )}
+        {!appData.deleted && (
+          <Col className="d-flex items-center justify-end" flex="200px">
+            <Space>
+              {appData.appType === AppType.External && (
+                <Button
+                  data-testid="deploy-button"
+                  type="primary"
+                  onClick={onDeployTrigger}>
+                  {t('label.deploy')}
+                </Button>
+              )}
 
-            <Button
-              data-testid="edit-button"
-              type="primary"
-              onClick={() => setShowModal(true)}>
-              {t('label.edit')}
-            </Button>
-            <Button
-              data-testid="run-now-button"
-              type="primary"
-              onClick={onAppTrigger}>
-              {t('label.run-now')}
-            </Button>
-          </Space>
-        </Col>
+              <Button
+                data-testid="edit-button"
+                type="primary"
+                onClick={() => setShowModal(true)}>
+                {t('label.edit')}
+              </Button>
+
+              <Button
+                data-testid="run-now-button"
+                disabled={isAppRunning}
+                type="primary"
+                onClick={onAppTrigger}>
+                {t('label.run-now')}
+              </Button>
+            </Space>
+          </Col>
+        )}
 
         <Divider />
 

@@ -81,7 +81,9 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/feed*', 'feed');
   interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
-  cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
+  cy.get('[data-testid="whats-new-alert-card"]')
+    .scrollIntoView()
+    .should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
   //   verifyResponseStatusCode('@feed', 200);
@@ -118,6 +120,9 @@ Cypress.Commands.add('storeSession', (username, password) => {
       .click();
     verifyResponseStatusCode('@login', 200);
     cy.url().should('not.eq', `${BASE_URL}/signin`);
+
+    // Don't want to show any popup in the tests
+    cy.setCookie(`STAR_OMD_USER_admin`, 'true');
   });
 });
 

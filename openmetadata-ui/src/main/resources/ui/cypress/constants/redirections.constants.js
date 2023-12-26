@@ -63,7 +63,7 @@ export const LEFT_PANEL_DETAILS = {
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="app-bar-item-explore"]',
-    url: `${BASE_URL}/explore/dataProducts`,
+    url: `${BASE_URL}/explore/tables`,
   },
   quality: {
     testid: '[data-testid="app-bar-item-data-quality"]',
@@ -158,10 +158,6 @@ export const SETTINGS_LEFT_PANEL = {
   alerts: {
     testid: '[data-menu-id*="notifications.alerts"]',
     url: `${BASE_URL}/settings/notifications/alerts`,
-  },
-  dataInsightReport: {
-    testid: '[data-menu-id*="notifications.dataInsightReport"]',
-    url: `${BASE_URL}/settings/notifications/dataInsightReport`,
   },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',

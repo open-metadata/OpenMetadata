@@ -18,16 +18,17 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
 
-  public OpenSearchIndexSink(SearchRepository repository) {
+  public OpenSearchIndexSink(SearchRepository repository, int total) {
     this.searchRepository = repository;
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
   @Override
-  public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
+  public BulkResponse write(BulkRequest data, Map<String, Object> contextData)
+      throws SinkException {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
       BulkResponse response = searchRepository.getSearchClient().bulk(data, RequestOptions.DEFAULT);
-      //      BulkResponse response = null;
       int currentSuccess = getSuccessFromBulkResponse(response);
       int currentFailed = response.getItems().length - currentSuccess;
 
@@ -47,7 +48,8 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
           0,
           data.numberOfActions());
       updateStats(0, data.numberOfActions());
-      throw new SinkException("[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
+      throw new SinkException(
+          "[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
     }
   }
 

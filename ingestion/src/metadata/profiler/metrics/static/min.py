@@ -21,6 +21,7 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
+    FLOAT_SET,
     Dialects,
     is_concatenable,
     is_date_time,
@@ -42,6 +43,15 @@ def _(element, compiler, **kw):
 @compiles(MinFn, Dialects.Trino)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
+    first_clause = element.clauses.clauses[0]
+    # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
+    # or if the type of the first clause is date time
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
+        # If the condition is true, return the minimum value of the column
+        return f"MIN({col})"
     return f"IF(is_nan(MIN({col})), NULL, MIN({col}))"
 
 
@@ -80,6 +90,9 @@ class Min(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        if is_quantifiable(self.col.type) or is_date_time(self.col.type):
+        if is_quantifiable(self.col.type):
             return min((df[self.col.name].min() for df in dfs))
+        if is_date_time(self.col.type):
+            min_ = min((df[self.col.name].min() for df in dfs))
+            return int(min_.timestamp() * 1000)
         return 0

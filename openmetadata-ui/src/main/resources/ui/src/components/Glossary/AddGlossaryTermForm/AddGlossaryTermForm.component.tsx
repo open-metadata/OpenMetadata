@@ -12,29 +12,25 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { includes, isEmpty } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { isEmpty, isString } from 'lodash';
+import React, { useEffect } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { PAGE_SIZE } from '../../../constants/constants';
 import {
   ENTITY_NAME_REGEX,
   HEX_COLOR_CODE_REGEX,
 } from '../../../constants/regex.constants';
-import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { Paging } from '../../../generated/type/paging';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
-import { searchData } from '../../../rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
-import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -49,52 +45,13 @@ const AddGlossaryTermForm = ({
   isFormInModal = false,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const [relatedTermsOptions, setRelatedTermsOptions] = useState<
-    EntityReference[]
-  >([]);
+  const { currentUser } = useAuthContext();
   const owner = Form.useWatch<EntityReference | undefined>('owner', form);
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
-  const fetchGlossaryTerms = async (
-    searchText = '',
-    page: number
-  ): Promise<{
-    data: {
-      label: string;
-      value: string;
-    }[];
-    paging: Paging;
-  }> => {
-    const res = await searchData(
-      searchText,
-      page,
-      PAGE_SIZE,
-      '',
-      '',
-      '',
-      SearchIndex.GLOSSARY
-    );
-
-    let termResult = formatSearchGlossaryTermResponse(res.data.hits.hits);
-    if (editMode && glossaryTerm) {
-      termResult = termResult.filter((item) => {
-        return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
-      });
-    }
-    const results = termResult.map(getEntityReferenceFromGlossaryTerm);
-    setRelatedTermsOptions((prev) => [...prev, ...results]);
-
-    return {
-      data: results.map((item) => ({
-        label: item.fullyQualifiedName ?? '',
-        value: item.fullyQualifiedName ?? '',
-      })),
-      paging: {
-        total: res.data.hits.total.value,
-      },
-    };
-  };
+  const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
+    relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
   const handleSave: FormProps['onFinish'] = (formObj) => {
     const {
@@ -105,13 +62,13 @@ const AddGlossaryTermForm = ({
       tags = [],
       mutuallyExclusive = false,
       references = [],
-      relatedTerms,
+      relatedTerms = [],
       color,
       iconURL,
     } = formObj;
 
     const selectedOwner = owner || {
-      id: getCurrentUserId(),
+      id: currentUser?.id ?? '',
       type: 'user',
     };
 
@@ -126,10 +83,21 @@ const AddGlossaryTermForm = ({
       description: description,
       reviewers: reviewersList,
       relatedTerms: editMode
-        ? relatedTermsOptions
-            .filter((item) => includes(relatedTerms, item.fullyQualifiedName))
-            .map((term) => term.id)
-        : relatedTerms,
+        ? relatedTerms.map((term: DefaultOptionType) => {
+            if (isString(term)) {
+              return glossaryTerm?.relatedTerms?.find(
+                (r) => r.fullyQualifiedName === term
+              )?.id;
+            }
+            if (term.data) {
+              return term.data.id;
+            }
+
+            return glossaryTerm?.relatedTerms?.find(
+              (r) => r.fullyQualifiedName === term.value
+            )?.id;
+          })
+        : getRelatedTermFqnList(relatedTerms),
       references: references.length > 0 ? references : undefined,
       synonyms: synonyms,
       mutuallyExclusive,
@@ -168,7 +136,7 @@ const AddGlossaryTermForm = ({
         tags,
         references,
         mutuallyExclusive,
-        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName || ''),
+        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName ?? ''),
       });
 
       if (reviewers) {
@@ -183,10 +151,6 @@ const AddGlossaryTermForm = ({
 
       if (owner) {
         form.setFieldValue('owner', owner);
-      }
-
-      if (relatedTerms && relatedTerms.length > 0) {
-        setRelatedTermsOptions((prev) => [...prev, ...relatedTerms]);
       }
     }
   }, [editMode, glossaryTerm, glossaryReviewers, form]);
@@ -248,6 +212,11 @@ const AddGlossaryTermForm = ({
       type: FieldTypes.TAG_SUGGESTION,
       props: {
         'data-testid': 'tags-container',
+        initialOptions: glossaryTerm?.tags?.map((data) => ({
+          label: data.tagFQN,
+          value: data.tagFQN,
+          data,
+        })),
       },
     },
     {
@@ -277,7 +246,13 @@ const AddGlossaryTermForm = ({
         placeholder: t('label.add-entity', {
           entity: t('label.related-term-plural'),
         }),
-        fetchOptions: fetchGlossaryTerms,
+        fetchOptions: fetchGlossaryList,
+        initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
+          label: data.fullyQualifiedName,
+          value: data.fullyQualifiedName,
+          data,
+        })),
+        filterOptions: [glossaryTerm?.fullyQualifiedName ?? ''],
       },
     },
     {
@@ -287,8 +262,10 @@ const AddGlossaryTermForm = ({
       required: false,
       placeholder: t('label.icon-url'),
       type: FieldTypes.TEXT,
+      helperText: t('message.govern-url-size-message'),
       props: {
         'data-testid': 'icon-url',
+        tooltipPlacement: 'right',
       },
     },
     {

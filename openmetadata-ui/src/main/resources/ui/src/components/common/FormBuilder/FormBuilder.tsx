@@ -29,10 +29,11 @@ import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate'
 import DescriptionFieldTemplate from '../../JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
+import AsyncSelectWidget from '../../JsonSchemaWidgets/AsyncSelectWidget';
+import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
-import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 
 interface Props extends FormProps {
   okText: string;
@@ -78,6 +79,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   const widgets = {
     PasswordWidget: PasswordWidget,
+    autoComplete: AsyncSelectWidget,
     ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
   };
 

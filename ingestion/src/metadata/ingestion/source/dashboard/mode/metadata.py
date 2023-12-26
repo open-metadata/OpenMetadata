@@ -23,10 +23,13 @@ from metadata.generated.schema.entity.data.dashboard import (
 from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
     ModeConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -100,12 +103,12 @@ class ModeSource(DashboardServiceSource):
                 fqn.build(
                     self.metadata,
                     entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+                    service_name=self.context.dashboard_service,
+                    chart_name=chart,
                 )
                 for chart in self.context.charts
             ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -157,7 +160,7 @@ class ModeSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -199,7 +202,7 @@ class ModeSource(DashboardServiceSource):
                             displayName=chart_name,
                             chartType=ChartType.Other,
                             sourceUrl=chart_url,
-                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                            service=self.context.dashboard_service,
                         )
                     )
                 except Exception as exc:
@@ -208,6 +211,6 @@ class ModeSource(DashboardServiceSource):
                         left=StackTraceError(
                             name=name,
                             error=f"Error to yield dashboard chart [{chart}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )

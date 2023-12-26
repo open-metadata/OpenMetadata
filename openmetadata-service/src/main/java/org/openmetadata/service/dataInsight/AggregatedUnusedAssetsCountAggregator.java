@@ -6,10 +6,11 @@ import java.util.List;
 import org.openmetadata.schema.analytics.DataAssetValues;
 import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsCount;
 
-public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUnusedAssetsCountAggregator(A aggregations) {
+  protected AggregatedUnusedAssetsCountAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
@@ -27,7 +28,8 @@ public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implemen
       S unusedSixtyDays = getAggregations(bucket, "unusedDataAssetsSixtyDays");
       S frequentlyUsedThreeDays = getAggregations(bucket, "frequentlyUsedDataAssetsThreeDays");
       S frequentlyUsedSevenDays = getAggregations(bucket, "frequentlyUsedDataAssetsSevenDays");
-      S frequentlyUsedFourteenDays = getAggregations(bucket, "frequentlyUsedDataAssetsFourteenDays");
+      S frequentlyUsedFourteenDays =
+          getAggregations(bucket, "frequentlyUsedDataAssetsFourteenDays");
       S frequentlyUsedThirtyDays = getAggregations(bucket, "frequentlyUsedDataAssetsThirtyDays");
       S frequentlyUsedSixtyDays = getAggregations(bucket, "frequentlyUsedDataAssetsSixtyDays");
 

@@ -66,5 +66,5 @@ airflowConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
 ```
 
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+**Note:** Follow [this](/how-to-guides/quick-start-guide-for-admins/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.

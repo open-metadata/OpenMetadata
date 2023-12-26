@@ -10,31 +10,85 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Switch, Table, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../../components/Loader/Loader';
-import { PAGE_SIZE } from '../../constants/constants';
+import { Link, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
 import { EntityType } from '../../enums/entity.enum';
+import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getEntityLink } from '../../utils/TableUtils';
-import { StoredProcedureTabProps } from './storedProcedure.interface';
+import { showErrorToast } from '../../utils/ToastUtils';
 
-const StoredProcedureTab = ({
-  storedProcedure,
-  pagingHandler,
-  fetchStoredProcedure,
-  onShowDeletedStoreProcedureChange,
-}: StoredProcedureTabProps) => {
+const StoredProcedureTab = () => {
   const { t } = useTranslation();
-  const { data, isLoading, deleted, paging, currentPage } = storedProcedure;
+  const {
+    currentPage,
+    handlePageChange,
+    pageSize,
+    handlePageSizeChange,
+    paging,
+    handlePagingChange,
+    showPagination,
+  } = usePaging();
+
+  const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { fqn: databaseSchemaFQN } = useParams<{ fqn: string }>();
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  const decodedDatabaseSchemaFQN = useMemo(
+    () => getDecodedFqn(databaseSchemaFQN),
+    [databaseSchemaFQN]
+  );
+
+  const fetchStoreProcedureDetails = useCallback(
+    async (params?: Partial<Paging>) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getStoredProceduresList({
+          databaseSchema: decodedDatabaseSchemaFQN,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...params,
+          limit: pageSize,
+        });
+        setStoredProcedure(data);
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, pageSize, showDeleted, handlePagingChange]
+  );
+
+  const storedProcedurePagingHandler = useCallback(
+    async ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = {
+          [cursorType]: paging[cursorType],
+        };
+
+        await fetchStoreProcedureDetails(pagingString);
+      }
+      handlePageChange(currentPage);
+    },
+    [paging, handlePageChange, fetchStoreProcedureDetails]
+  );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
@@ -44,13 +98,16 @@ const StoredProcedureTab = ({
         key: 'name',
         width: 350,
         render: (_, record) => (
-          <Link
-            to={getEntityLink(
-              EntityType.STORED_PROCEDURE,
-              record.fullyQualifiedName ?? ''
-            )}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              to={getEntityLink(
+                EntityType.STORED_PROCEDURE,
+                record.fullyQualifiedName ?? ''
+              )}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {
@@ -71,16 +128,16 @@ const StoredProcedureTab = ({
   );
 
   useEffect(() => {
-    fetchStoredProcedure();
-  }, [deleted]);
+    fetchStoreProcedureDetails();
+  }, [showDeleted, pageSize]);
 
   return (
     <Row className="p-lg" data-testid="stored-procedure-table" gutter={[0, 16]}>
       <Col className="d-flex justify-end" span={24}>
         <Switch
-          checked={deleted}
+          checked={showDeleted}
           data-testid="show-deleted-stored-procedure"
-          onClick={onShowDeletedStoreProcedureChange}
+          onClick={(checked) => setShowDeleted(checked)}
         />
         <Typography.Text className="m-l-xs">
           {t('label.deleted')}
@@ -90,11 +147,8 @@ const StoredProcedureTab = ({
         <Table
           bordered
           columns={tableColumn}
-          dataSource={data}
-          loading={{
-            spinning: isLoading,
-            indicator: <Loader size="small" />,
-          }}
+          dataSource={storedProcedure}
+          loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}
@@ -105,12 +159,13 @@ const StoredProcedureTab = ({
       </Col>
 
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             paging={paging}
-            pagingHandler={pagingHandler}
+            pagingHandler={storedProcedurePagingHandler}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

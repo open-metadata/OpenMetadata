@@ -21,10 +21,14 @@ from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.generated.schema.type.schema import Topic
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -44,6 +48,7 @@ from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
 )
+from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -119,7 +124,7 @@ class KinesisSource(MessagingServiceSource):
 
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service.fullyQualifiedName.__root__,
+                service=self.context.messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 retentionTime=self._compute_retention_time(
                     topic_details.topic_metadata.summary
@@ -135,7 +140,7 @@ class KinesisSource(MessagingServiceSource):
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -191,10 +196,17 @@ class KinesisSource(MessagingServiceSource):
     ) -> Iterable[OMetaTopicSampleData]:
         """Method to Get Sample Data of Messaging Entity"""
         try:
-            if self.context.topic and self.generate_sample_data:
+            topic_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Topic,
+                service_name=self.context.messaging_service,
+                topic_name=self.context.topic,
+            )
+            topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+            if topic_entity and self.generate_sample_data:
                 yield Either(
                     right=OMetaTopicSampleData(
-                        topic=self.context.topic,
+                        topic=topic_entity,
                         sample_data=self._get_sample_data(
                             topic_details.topic_name,
                             topic_details.topic_metadata.partitions,
@@ -206,7 +218,7 @@ class KinesisSource(MessagingServiceSource):
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

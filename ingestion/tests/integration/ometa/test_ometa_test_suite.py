@@ -41,6 +41,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
@@ -100,9 +101,9 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.metadata.add_test_case_results(
             test_results=TestCaseResult(
-                timestamp=int(datetime.utcnow().timestamp()),
+                timestamp=datetime_to_ts(datetime.utcnow()),
                 testCaseStatus=TestCaseStatus.Success,
-                result="Test Case Succes",
+                result="Test Case Success",
                 sampleData=None,
                 testResultValue=[TestResultValue(name="foo", value="10")],
             ),

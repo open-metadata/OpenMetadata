@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -29,14 +30,18 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
@@ -93,7 +98,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 displayName=pipeline_details["settings"].get("name"),
                 description=pipeline_details["settings"].get("name"),
                 tasks=self.get_tasks(pipeline_details),
-                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                service=self.context.pipeline_service,
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -106,7 +111,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         f"Error building Databricks Pipeline information from {pipeline_details}."
                         f" There might be Databricks Jobs API version incompatibilities - {err}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except ValidationError as err:
@@ -114,7 +119,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name="Pipeline",
                     error=f"Error building pydantic model for {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -122,7 +127,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name="Pipeline",
                     error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -219,18 +224,24 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 StatusType.Failed,
                             ),
                         )
+                        pipeline_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Pipeline,
+                            service_name=self.context.pipeline_service,
+                            pipeline_name=self.context.pipeline,
+                        )
                         yield Either(
                             right=OMetaPipelineStatus(
-                                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                                pipeline_fqn=pipeline_fqn,
                                 pipeline_status=pipeline_status,
                             )
                         )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        name=pipeline_fqn,
                         error=f"Failed to yield pipeline status: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

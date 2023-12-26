@@ -65,7 +65,7 @@ const mockESIngestionData: IngestionPipeline[] = [
       securityConfig: {
         jwtToken: 'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrO',
       },
-      secretsManagerProvider: SecretsManagerProvider.Noop,
+      secretsManagerProvider: SecretsManagerProvider.DB,
       secretsManagerLoader: SecretsManagerClientLoader.Noop,
       apiVersion: 'v1',
       includeTopics: true,

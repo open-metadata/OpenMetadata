@@ -18,7 +18,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Table from '../../components/common/Table/Table';
-import PageHeader from '../../components/header/PageHeader.component';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -31,7 +30,8 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
@@ -75,7 +75,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         render: (userName: string) => (
           <Space>
-            <ProfilePicture id="" name={userName} type="circle" width="24" />
+            <ProfilePicture name={userName} width="24" />
             <Link to={getUserPath(userName)}>{userName}</Link>
           </Space>
         ),

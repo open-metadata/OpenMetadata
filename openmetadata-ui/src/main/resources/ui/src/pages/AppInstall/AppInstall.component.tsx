@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
 import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import {
   GlobalSettingOptions,
@@ -69,11 +69,10 @@ const AppInstall = () => {
 
   const stepperList = useMemo(
     () =>
-      isExternalApp
+      !appData?.allowConfiguration
         ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
         : STEPS_FOR_APP_INSTALL,
-
-    [isExternalApp]
+    [appData]
   );
 
   const fetchAppDetails = useCallback(async () => {
@@ -113,6 +112,8 @@ const AppInstall = () => {
           cronExpression: repeatFrequency,
         },
         name: fqn,
+        description: appData?.description,
+        displayName: appData?.displayName,
       };
       await installApplication(data);
 
@@ -141,10 +142,14 @@ const AppInstall = () => {
           <AppInstallVerifyCard
             appData={appData}
             nextButtonLabel={
-              isExternalApp ? t('label.schedule') : t('label.configure')
+              appData?.allowConfiguration
+                ? t('label.configure')
+                : t('label.schedule')
             }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(isExternalApp ? 3 : 2)}
+            onSave={() =>
+              setActiveServiceStep(appData?.allowConfiguration ? 2 : 3)
+            }
           />
         );
 
@@ -175,7 +180,9 @@ const AppInstall = () => {
               isQuartzCron
               includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
+              onCancel={() =>
+                setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
+              }
               onSubmit={onSubmit}
             />
           </div>

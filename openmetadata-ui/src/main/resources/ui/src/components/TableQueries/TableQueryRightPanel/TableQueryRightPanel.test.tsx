@@ -36,7 +36,7 @@ jest.mock(
       .mockImplementation(() => <div>UserTeamSelectableList</div>),
   })
 );
-jest.mock('../../../components/common/description/Description', () => {
+jest.mock('../../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock('../../../components/TagsInput/TagsInput.component', () => {
@@ -50,6 +50,10 @@ jest.mock('../../../utils/TagsUtils', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
+
+jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(() => <>testProfilePicture</>);
+});
 
 describe('TableQueryRightPanel component test', () => {
   it('Component should render', async () => {

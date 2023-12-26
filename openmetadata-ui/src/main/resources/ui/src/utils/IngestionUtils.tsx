@@ -16,7 +16,7 @@ import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
@@ -37,6 +37,7 @@ import { PipelineType } from '../generated/api/services/ingestionPipelines/creat
 import { Connection } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
@@ -113,7 +114,7 @@ export const getBreadCrumbsArray = (
           name: serviceData?.name || '',
           url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
           imgSrc: serviceUtilClassBase.getServiceTypeLogo(
-            serviceData?.serviceType || ''
+            serviceData as SearchSourceAlias
           ),
           activeTitle: true,
         },

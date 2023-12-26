@@ -50,20 +50,35 @@ import org.apache.commons.io.IOUtils;
 @Slf4j
 public final class CommonUtil {
 
+  private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
+
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    String[] classPathElements = classPath.split(File.pathSeparator);
+    List<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
+            .toList();
 
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
     }
     return resources;
+  }
+
+  /** Check if any given object falls under OM, or Collate packages */
+  public static Boolean isOpenMetadataObject(Object obj) {
+    return obj != null
+        && JAR_NAME_FILTER.stream()
+            .anyMatch(
+                Arrays.stream(obj.getClass().getPackageName().split("\\.")).toList()::contains);
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
@@ -83,7 +98,8 @@ public final class CommonUtil {
     return retval;
   }
 
-  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
+  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
@@ -124,7 +140,8 @@ public final class CommonUtil {
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
-  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays) {
+  public static boolean dateInRange(
+      DateFormat dateFormat, String date, int futureDays, int pastDays) {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);

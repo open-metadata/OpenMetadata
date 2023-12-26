@@ -109,7 +109,9 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "List of mlModel services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelServiceList.class)))
       })
   public ResultList<MlModelService> list(
       @Context UriInfo uriInfo,
@@ -119,19 +121,25 @@ public class MlModelServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -140,7 +148,8 @@ public class MlModelServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -154,13 +163,19 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "MlModel service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MlModel service for instance {id} is not found")
       })
   public MlModelService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -187,13 +202,18 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "MlModel service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {name} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MlModel service for instance {name} is not found")
       })
   public MlModelService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -206,7 +226,8 @@ public class MlModelServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MlModelService mlModelService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MlModelService mlModelService =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, mlModelService);
   }
 
@@ -221,12 +242,16 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "Successfully updated the service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class)))
       })
   public MlModelService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -244,12 +269,16 @@ public class MlModelServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of mlModel service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -258,7 +287,8 @@ public class MlModelServiceResource
             .map(
                 json -> {
                   try {
-                    MlModelService mlModelService = JsonUtils.readValue((String) json, MlModelService.class);
+                    MlModelService mlModelService =
+                        JsonUtils.readValue((String) json, MlModelService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, mlModelService));
                   } catch (Exception e) {
                     return json;
@@ -280,17 +310,21 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "mlModel service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "MlModel service for instance {id} and version " + "{version} is not found")
+            description = "MlModel service for instance {id} and version {version} is not found")
       })
   public MlModelService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "mlModel service version number in the form `major`" + ".`minor`",
+              description = "mlModel service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -308,11 +342,15 @@ public class MlModelServiceResource
             responseCode = "200",
             description = "MlModel service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMlModelService create) {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
@@ -323,17 +361,22 @@ public class MlModelServiceResource
   @Operation(
       operationId = "createOrUpdateMlModelService",
       summary = "Update ML model service",
-      description = "Create a new mlModel service or update an existing mlModel service identified by `Id`.",
+      description =
+          "Create a new mlModel service or update an existing mlModel service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "MlModel service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMlModelService update) {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
@@ -346,19 +389,24 @@ public class MlModelServiceResource
       operationId = "patchMlModelService",
       summary = "Update an ML model service",
       description = "Update an existing MlModelService service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -370,15 +418,18 @@ public class MlModelServiceResource
       operationId = "deleteMlModelService",
       summary = "Delete an ML model service by Id",
       description =
-          "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be " + "deleted.",
+          "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "MlModel service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -386,7 +437,8 @@ public class MlModelServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -401,18 +453,26 @@ public class MlModelServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {name} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "MlModel service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -425,10 +485,15 @@ public class MlModelServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the MlModelService ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelService.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

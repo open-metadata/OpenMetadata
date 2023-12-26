@@ -19,12 +19,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -44,6 +45,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
@@ -143,7 +145,11 @@ function DatabaseSchemaVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, '');
+      const { id } = await getDatabaseSchemaDetailsByFQN(
+        databaseSchemaFQN,
+        '',
+        Include.All
+      );
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseSchemaVersions(id ?? '');
@@ -256,6 +262,11 @@ function DatabaseSchemaVersionPage() {
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={currentVersionData.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     displayType={DisplayType.READ_MORE}

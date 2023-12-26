@@ -7,14 +7,15 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.TotalEntitiesAggregator;
 
 public class ElasticSearchTotalEntitiesAggregator
-    extends TotalEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends TotalEntitiesAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
   public ElasticSearchTotalEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
   protected Double getValue(Sum key) {
-    return key.getValue();
+    return key != null ? key.getValue() : 0.0;
   }
 
   @Override
@@ -33,7 +34,8 @@ public class ElasticSearchTotalEntitiesAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

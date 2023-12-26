@@ -93,14 +93,14 @@
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^(?U)<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$"
+      "pattern": "(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$"
     },
     "entityName": {
       "description": "Name that identifies an entity.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^(?U)[\\w'\\- .&()%]+$"
+      "pattern": "(?U)^[\\w'\\- .&()%]+$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
@@ -148,6 +148,7 @@
       }
     },
     "status" : {
+      "javaType": "org.openmetadata.schema.type.ApiStatus",
       "description": "State of an action over API.",
       "type" : "string",
       "enum" : ["success", "failure", "aborted", "partialSuccess"]

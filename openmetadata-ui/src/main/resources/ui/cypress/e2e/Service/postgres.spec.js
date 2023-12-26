@@ -128,6 +128,10 @@ describe('Postgres Ingestion', () => {
       .scrollIntoView()
       .contains('Usage Ingestion')
       .click();
+
+    cy.get('#root\\/filterCondition')
+      .scrollIntoView()
+      .type(`s.query like '%%${tableName}%%'`);
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
@@ -165,7 +169,11 @@ describe('Postgres Ingestion', () => {
       `/api/v1/tables/name/${serviceName}.*.*${tableName}?fields=*&include=all`,
       'entityDetailsPage'
     );
-    visitEntityDetailsPage(tableName, serviceName, 'tables');
+    visitEntityDetailsPage({
+      term: tableName,
+      serviceName: serviceName,
+      entity: 'tables',
+    });
     verifyResponseStatusCode('@entityDetailsPage', 200);
     interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
     cy.get('[data-testid="table_queries"]')

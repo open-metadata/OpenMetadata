@@ -13,14 +13,16 @@
 
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
@@ -45,6 +47,7 @@ export const PropertyValue: FC<Props> = ({
   const value = extension?.[propertyName];
 
   const [showInput, setShowInput] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const onShowInput = () => {
     setShowInput(true);
@@ -55,15 +58,22 @@ export const PropertyValue: FC<Props> = ({
   };
 
   const onInputSave = async (updatedValue: string | number) => {
-    const updatedExtension = {
-      ...(extension || {}),
-      [propertyName]:
-        propertyType.name === 'integer'
-          ? toNumber(updatedValue || 0)
-          : updatedValue,
-    };
-    await onExtensionUpdate(updatedExtension);
-    setShowInput(false);
+    try {
+      const updatedExtension = {
+        ...(extension || {}),
+        [propertyName]:
+          propertyType.name === 'integer'
+            ? toNumber(updatedValue || 0)
+            : updatedValue,
+      };
+      setIsLoading(true);
+      await onExtensionUpdate(updatedExtension);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+      setShowInput(false);
+    }
   };
 
   const getPropertyInput = () => {
@@ -72,6 +82,7 @@ export const PropertyValue: FC<Props> = ({
       case 'integer':
         return (
           <PropertyInput
+            isLoading={isLoading}
             propertyName={propertyName}
             type={propertyType.name === 'integer' ? 'number' : 'text'}
             value={value}
