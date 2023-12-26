@@ -326,6 +326,7 @@ const AddGlossaryTermForm = ({
     type: FieldTypes.USER_MULTI_SELECT,
     props: {
       hasPermission: true,
+      filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },
       children: (
         <Button

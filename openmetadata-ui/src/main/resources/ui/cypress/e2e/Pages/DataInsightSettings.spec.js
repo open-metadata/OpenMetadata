@@ -29,36 +29,6 @@ describe('Data Insight settings page should work properly', () => {
     verifyResponseStatusCode('@getApplications', 200);
   });
 
-  it('Deploy & run application', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/apps/name/DataInsightsApplication?fields=*',
-      'getDataInsightDetails'
-    );
-    interceptURL(
-      'POST',
-      '/api/v1/apps/deploy/DataInsightsApplication',
-      'deploy'
-    );
-    interceptURL(
-      'POST',
-      '/api/v1/apps/trigger/DataInsightsApplication',
-      'triggerPipeline'
-    );
-    cy.get(
-      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-    ).click();
-    verifyResponseStatusCode('@getDataInsightDetails', 200);
-    cy.get('[data-testid="deploy-button"]').click();
-    verifyResponseStatusCode('@deploy', 200);
-    cy.reload();
-    verifyResponseStatusCode('@getDataInsightDetails', 200);
-    cy.get('[data-testid="run-now-button"]').click();
-    verifyResponseStatusCode('@triggerPipeline', 200);
-    cy.reload();
-    checkDataInsightSuccessStatus();
-  });
-
   it('Edit data insight application', () => {
     interceptURL(
       'GET',
@@ -118,11 +88,42 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="save-button"]').click();
     cy.get('#cronType').click();
     cy.get('[title="Day"]').click();
+    cy.get('[data-testid="cron-type"]').should('contain', 'Day');
     cy.get('[data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@installApplication', 201);
     verifyResponseStatusCode('@getApplications', 200);
     cy.get('[data-testid="data-insights-application-card"]').should(
       'be.visible'
     );
+  });
+
+  it('Deploy & run application', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/apps/name/DataInsightsApplication?fields=*',
+      'getDataInsightDetails'
+    );
+    interceptURL(
+      'POST',
+      '/api/v1/apps/deploy/DataInsightsApplication',
+      'deploy'
+    );
+    interceptURL(
+      'POST',
+      '/api/v1/apps/trigger/DataInsightsApplication',
+      'triggerPipeline'
+    );
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@deploy', 200);
+    cy.reload();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="run-now-button"]').click();
+    verifyResponseStatusCode('@triggerPipeline', 200);
+    cy.reload();
+    checkDataInsightSuccessStatus();
   });
 });
