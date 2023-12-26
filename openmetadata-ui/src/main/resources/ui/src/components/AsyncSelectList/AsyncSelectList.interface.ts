@@ -12,9 +12,10 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
+import { PagingResponse } from 'Models';
 import { Tag } from '../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Paging } from '../../generated/type/paging';
+import { TagSource } from '../../generated/type/tagLabel';
 
 export type SelectOption = {
   label: string;
@@ -29,13 +30,12 @@ export interface AsyncSelectListProps {
   debounceTimeout?: number;
   defaultValue?: string[];
   value?: string[];
+  tagType?: TagSource;
   initialOptions?: SelectOption[];
+  filterOptions?: string[]; // array of fqn
   onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
   fetchOptions: (
     search: string,
     page: number
-  ) => Promise<{
-    data: SelectOption[];
-    paging: Paging;
-  }>;
+  ) => Promise<PagingResponse<SelectOption[]>>;
 }

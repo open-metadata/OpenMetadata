@@ -27,7 +27,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -54,7 +53,8 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   }
 
   @Override
-  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData) throws SourceException {
+  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData)
+      throws SourceException {
     ResultList<? extends EntityInterface> data = null;
     if (!isDone) {
       data = read(cursor);
@@ -73,19 +73,28 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
+              null,
+              Entity.getFields(entityType, fields),
+              new ListFilter(Include.ALL),
+              batchSize,
+              cursor);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
-        String errMsg =
+        StringBuilder errMsg = new StringBuilder();
+        errMsg.append(
             String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %s",
+                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %n",
                 this.lastFailedCursor,
                 batchSize,
                 result.getData().size(),
-                result.getErrors().size(),
-                JsonUtils.pojoToJson(result.getErrors()));
-        LOG.error(errMsg);
-        throw new SourceException(errMsg);
+                result.getErrors().size()));
+        for (int i = 0; i < result.getErrors().size(); i++) {
+          errMsg.append(String.format("%s. EntityError :- %s", i, result.getErrors().get(i)));
+          errMsg.append("%n");
+        }
+        String error = errMsg.toString();
+        LOG.error(error);
+        throw new SourceException(error);
       }
 
       LOG.debug(
@@ -105,7 +114,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         String errMsg =
             String.format(
                 "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- Submitted : %s Success: %s Failed: %s, %n Errors : %s",
-                this.lastFailedCursor, batchSize, 0, batchSize, "No Relationship Issue , Json Processing or DB issue.");
+                this.lastFailedCursor,
+                batchSize,
+                0,
+                batchSize,
+                "No Relationship Issue , Json Processing or DB issue.");
         LOG.debug(errMsg);
         updateStats(0, batchSize);
       }

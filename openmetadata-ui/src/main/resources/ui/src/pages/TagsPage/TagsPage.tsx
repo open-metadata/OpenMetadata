@@ -16,11 +16,18 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omit } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
+import { ClassificationDetailsRef } from '../../components/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import Loader from '../../components/Loader/Loader';
@@ -82,6 +89,7 @@ const TagsPage = () => {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState<boolean>(false);
+  const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
     data: undefined,
@@ -117,10 +125,13 @@ const TagsPage = () => {
   );
 
   const fetchCurrentClassificationPermission = async () => {
+    if (!currentClassification?.id) {
+      return;
+    }
     try {
       const response = await getEntityPermission(
         ResourceEntity.CLASSIFICATION,
-        currentClassification?.id as string
+        currentClassification?.id
       );
       setClassificationPermissions(response);
     } catch (error) {
@@ -275,6 +286,7 @@ const TagsPage = () => {
               })
             );
           }
+          classificationDetailsRef.current?.refreshClassificationTags();
         } else {
           showErrorToast(
             t('server.delete-entity-error', {
@@ -388,6 +400,7 @@ const TagsPage = () => {
           return data;
         });
       });
+      classificationDetailsRef.current?.refreshClassificationTags();
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -690,7 +703,6 @@ const TagsPage = () => {
   if (isLoading) {
     return <Loader />;
   }
-
   if (error) {
     return (
       <ErrorPlaceHolder>
@@ -720,6 +732,7 @@ const TagsPage = () => {
           handleUpdateClassification={handleUpdateClassification}
           isAddingTag={isAddingTag}
           isEditClassification={isEditClassification}
+          ref={classificationDetailsRef}
         />
       )}
 

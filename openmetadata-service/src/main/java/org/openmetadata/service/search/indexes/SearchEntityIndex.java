@@ -25,7 +25,8 @@ public class SearchEntityIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchIndex.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(searchIndex.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(searchIndex.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_INDEX);
     doc.put(
@@ -45,6 +46,7 @@ public class SearchEntityIndex implements SearchIndex {
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("fields.name", 2.0f);
+    fields.put("fields.name.keyword", 2.0f);
     fields.put("fields.children.description", 1.0f);
     fields.put("fields.children.name", 2.0f);
     return fields;

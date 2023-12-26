@@ -14,7 +14,6 @@
 import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -30,6 +29,8 @@ import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
 import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
@@ -49,19 +50,16 @@ import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({
-  userData,
-  username,
-  queryFilters,
-  updateUserDetails,
-}: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ tab: UserPageTabs }>();
+const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+  const { fqn: username, tab: activeTab = UserPageTabs.ACTIVITY } =
+    useParams<{ fqn: string; tab: UserPageTabs }>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
   const { currentUser } = useAuthContext();
+
+  const decodedUsername = useMemo(() => getDecodedFqn(username), [username]);
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -79,7 +77,6 @@ const Users = ({
     () => isAdminUser || isLoggedInUser,
     [isAdminUser, isLoggedInUser]
   );
-
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -158,7 +155,8 @@ const Users = ({
           <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER}
-              fqn={username}
+              fqn={decodedUsername}
+              isForFeedTab={false}
               onFeedUpdate={noop}
             />
           </ActivityFeedProvider>
@@ -202,8 +200,23 @@ const Users = ({
           },
         }),
       },
+      ...(isLoggedInUser
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={UserPageTabs.ACCESS_TOKEN}
+                  isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
+                  name={t('label.access-token')}
+                />
+              ),
+              key: UserPageTabs.ACCESS_TOKEN,
+              children: <AccessTokenCard isBot={false} />,
+            },
+          ]
+        : []),
     ],
-    [activeTab, userData, username, setPreviewAsset, tabDataRender]
+    [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
   );
 
   const handleDescriptionChange = useCallback(
@@ -355,4 +368,4 @@ const Users = ({
   );
 };
 
-export default observer(Users);
+export default Users;

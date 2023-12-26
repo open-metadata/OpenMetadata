@@ -13,13 +13,17 @@
 
 import { TagProps } from 'antd';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 
 export type TagsV1Props = {
-  tag: TagLabel;
+  tag: TagLabel | HighlightedTagLabel;
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;
   className?: string;
   isVersionPage?: boolean;
   tagProps?: TagProps;
+  disabled?: boolean;
+  tooltipOverride?: string;
+  tagType?: TagSource;
 };

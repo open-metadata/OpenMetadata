@@ -11,6 +11,7 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
@@ -44,12 +45,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -99,6 +102,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["database"],
@@ -115,6 +119,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
             )
         ],
         children=["databaseSchema"],
@@ -134,10 +140,12 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
+                cache_entities=True,
+                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted"],
+        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -154,6 +162,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
+            ),
+            NodeStage(
+                type_=User,
+                context="owner",
+                processor="process_owner",
+                consumer=["database_service", "database_schema"],
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -171,6 +186,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
                 cache_all=True,
+                use_cache=True,
             ),
         ],
     )
@@ -187,6 +203,7 @@ class DatabaseServiceSource(
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     database_source_state: Set = set()
+    stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
 
@@ -403,6 +420,23 @@ class DatabaseServiceSource(
 
         self.database_source_state.add(table_fqn)
 
+    def register_record_stored_proc_request(
+        self, stored_proc_request: CreateStoredProcedureRequest
+    ) -> None:
+        """
+        Mark the table record as scanned and update the database_source_state
+        """
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            procedure_name=stored_proc_request.name.__root__,
+        )
+
+        self.stored_procedure_source_state.add(table_fqn)
+
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
     ) -> Iterable[str]:
@@ -423,6 +457,63 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def get_owner_details(  # pylint: disable=useless-return
+        self, schema_name: str, table_name: str  # pylint: disable=unused-argument
+    ) -> Optional[EntityReference]:
+        """Get database owner
+
+        Args
+        schema_name, table_nam
+        Returns:
+            Optional[EntityReference]
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
+        return None
+
+    def process_owner(self, table_name_and_type: Tuple[str, str]):
+        """
+        Method to process the table owners
+        """
+        try:
+            if self.source_config.includeOwners:
+                self.inspector.get_table_owner(
+                    connection=self.connection,  # pylint: disable=no-member
+                    table_name=table_name_and_type[0],
+                    schema=self.context.database_schema,
+                )
+                schema_name = self.context.database_schema
+                table_name = table_name_and_type[0]
+
+                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                    table_name=table_name, schema_name=schema_name
+                )
+
+                if owner:
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                        table_name=table_name,
+                    )
+                    table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
+                    self.metadata.patch_owner(
+                        entity=Table,
+                        source=table_entity,
+                        owner=owner,
+                        force=False,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
+            )
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
@@ -442,6 +533,28 @@ class DatabaseServiceSource(
                     entity_source_state=self.database_source_state,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                     params={"database": schema_fqn},
+                )
+
+    def mark_stored_procedures_as_deleted(self):
+        """
+        Use the current inspector to mark Stored Procedures as deleted
+        """
+        if self.source_config.markDeletedStoredProcedures:
+            logger.info(
+                f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
+            )
+
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
+
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=StoredProcedure,
+                    entity_source_state=self.stored_procedure_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:

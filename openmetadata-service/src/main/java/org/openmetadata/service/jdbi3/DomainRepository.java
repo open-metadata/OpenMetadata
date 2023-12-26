@@ -24,6 +24,8 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -70,7 +72,8 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
+      addRelationship(
+          entity.getParent().getId(), entity.getId(), DOMAIN, DOMAIN, Relationship.CONTAINS);
     }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(entity.getId(), expert.getId(), DOMAIN, Entity.USER, Relationship.EXPERT);
@@ -78,7 +81,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Domain setInheritedFields(Domain domain, Fields fields) {
+  public void setInheritedFields(Domain domain, Fields fields) {
     // If subdomain does not have owner and experts, then inherit it from parent domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
@@ -86,7 +89,16 @@ public class DomainRepository extends EntityRepository<Domain> {
       inheritOwner(domain, fields, parent);
       inheritExperts(domain, fields, parent);
     }
-    return domain;
+  }
+
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
   }
 
   @Override
@@ -108,13 +120,16 @@ public class DomainRepository extends EntityRepository<Domain> {
       entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getName()));
     } else { // Sub domain
       EntityReference parent = entity.getParent();
-      entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
     }
   }
 
   @Override
   public EntityInterface getParentEntity(Domain entity, String fields) {
-    return entity.getParent() != null ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED) : null;
+    return entity.getParent() != null
+        ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED)
+        : null;
   }
 
   public class DomainUpdater extends EntityUpdater {

@@ -17,7 +17,7 @@ Admin users have access to add or change data ownership.
 - Select a Team or a User as the Owner of the Data Asset.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/data-owner1.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/data-owner1.png"
 alt="Assign an Owner to a Data Asset"
 caption="Assign an Owner to a Data Asset"
 /%}
@@ -27,7 +27,7 @@ caption="Assign an Owner to a Data Asset"
 If the data asset already has an owner, you can change the owner by clicking on the edit icon for Owner and simply selecting a team or user to change ownership.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/data-owner2.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/data-owner2.png"
 alt="Change the Owner of the Data Asset"
 caption="Change the Owner of the Data Asset"
 /%}
@@ -38,13 +38,13 @@ If no owner is selected, and if the Database or Database Schema has a owner, the
 
 OpenMetadata supports Owner Propagation and the owner will be propagated based on a top-down hierarchy. The owner of the Database will be auto-propagated as the owner of the Database Schemas and Tables under it. Similarly, the owner of the Database Schema will be auto-propagated as the owner of the Tables under it.
 
-- Owner Propogation does not work for data assets that already have an Owner assigned to them. If there is **no owner**, then an Owner will be assigned based on the hierarchy.
+- Owner Propagation does not work for data assets that already have an Owner assigned to them. If there is **no owner**, then an Owner will be assigned based on the hierarchy.
 
 - If a Database or Database Schema has an Owner assigned, and you **delete the owner** from the Database Schema or Tables under it, then the Owner will be auto-assigned in this case based on the existing Owner details at the top hierarchy.
 
 - You can also assign a different owner manually.
 
-## Team Ownership is Preffered
+## Team Ownership is Preferred
 
 OpenMetadata is a data collaboration platform. We highly recommend Team Ownership of data assets, because individual users will only have part of the context about the data asset in question. Assigning team ownership will give access to all the members of a particular team. Only teams of the type ‘**Groups**’ can own data assets.
 

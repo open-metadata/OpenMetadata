@@ -63,6 +63,96 @@ describe('Test Regex', () => {
 
     // Contains Japanese characters
     expect(ENTITY_NAME_REGEX.test('こんにちは世界')).toEqual(true);
+
+    // Contains Thai characters
+    expect(ENTITY_NAME_REGEX.test('สวัสดีชาวโลก')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('สวัสดี')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ที่อยู่')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('พยัญชนะ')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ลูกค้า')).toEqual(true);
+
+    // Contains Vietnamese characters
+    expect(ENTITY_NAME_REGEX.test('Xin chào thế giới')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Xin chào')).toEqual(true);
+
+    // Contains Hindi characters
+    expect(ENTITY_NAME_REGEX.test('नमस्ते दुनिया')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('नमस्ते')).toEqual(true);
+
+    // Contains Tamil characters
+    expect(ENTITY_NAME_REGEX.test('வணக்கம் உலகம்')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('வணக்கம்')).toEqual(true);
+
+    // Contains Marathi characters
+    expect(ENTITY_NAME_REGEX.test('नमस्कार जग')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('नमस्कार')).toEqual(true);
+
+    // Contains Bengali characters
+    expect(ENTITY_NAME_REGEX.test('ওহে বিশ্ব')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ওহে')).toEqual(true);
+
+    // Contains Gujarati characters
+    expect(ENTITY_NAME_REGEX.test('નમસ્તે વિશ્વ')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('નમસ્તે')).toEqual(true);
+
+    // Contains Kannada characters
+    expect(ENTITY_NAME_REGEX.test('ಹಲೋ ವಿಶ್ವ')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ಹಲೋ')).toEqual(true);
+
+    // Contains Malayalam characters
+    expect(ENTITY_NAME_REGEX.test('ഹലോ ലോകം')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ഹലോ')).toEqual(true);
+
+    // Contains Punjabi characters
+    expect(ENTITY_NAME_REGEX.test('ਹੈਲੋ ਵਰਲਡ')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ਹੈਲੋ')).toEqual(true);
+
+    // Contains Telugu characters
+    expect(ENTITY_NAME_REGEX.test('హలో ప్రపంచం')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('హలో')).toEqual(true);
+
+    // Contains Nepali characters
+    expect(ENTITY_NAME_REGEX.test('नमस्कार संसार')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('नमस्कार')).toEqual(true);
+
+    // Contains Urdu characters
+    expect(ENTITY_NAME_REGEX.test('ہیلو دنیا')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('ہیلو')).toEqual(true);
+
+    // Contains Filipino characters
+    expect(ENTITY_NAME_REGEX.test('Kamusta mundo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Kamusta')).toEqual(true);
+
+    // Contains Indonesian characters
+    expect(ENTITY_NAME_REGEX.test('Halo dunia')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Halo')).toEqual(true);
+
+    // Contains Malay characters
+    expect(ENTITY_NAME_REGEX.test('Helo dunia')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Helo')).toEqual(true);
+
+    // Contains Turkish characters
+    expect(ENTITY_NAME_REGEX.test('Merhaba dünya')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Merhaba')).toEqual(true);
+
+    // Contains Italian characters
+    expect(ENTITY_NAME_REGEX.test('Ciao mondo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Ciao')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('àèéìíîòóùú')).toEqual(true);
+
+    // Contains French characters
+    expect(ENTITY_NAME_REGEX.test('Bonjour le monde')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Bonjour')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('àâäéèêëîïôöùûüÿçœæ')).toEqual(true);
+
+    // Contains German characters
+    expect(ENTITY_NAME_REGEX.test('Hallo Welt')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Hallo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('äöüÄÖÜß')).toEqual(true);
+
+    // Contains Portuguese characters
+    expect(ENTITY_NAME_REGEX.test('Olá mundo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Olá')).toEqual(true);
   });
 
   it('EntityName regex should fail for the invalid entity name', () => {

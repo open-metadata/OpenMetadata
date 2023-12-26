@@ -35,10 +35,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -324,12 +327,14 @@ class PowerbiSource(DashboardServiceSource):
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
             yield Either(right=data_model_request)
+            self.register_record_datamodel(datamodel_requst=data_model_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=dataset.name,
                     error=f"Error yielding Data Model [{dataset.name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -426,7 +431,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error creating dashboard [{dashboard_details}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -469,7 +474,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=f"Error to yield report and dashboard lineage details: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -523,7 +528,7 @@ class PowerbiSource(DashboardServiceSource):
                         "Error to yield datamodel and report lineage details for DB "
                         f"service name [{db_service_name}]: {exc}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -561,7 +566,7 @@ class PowerbiSource(DashboardServiceSource):
                             "Error to yield datamodel lineage details for DB "
                             f"service name [{db_service_name}]: {exc}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -590,7 +595,7 @@ class PowerbiSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Dashboard Lineage",
                     error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -634,7 +639,7 @@ class PowerbiSource(DashboardServiceSource):
                         left=StackTraceError(
                             name=chart.title,
                             error=f"Error creating chart [{chart.title}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 

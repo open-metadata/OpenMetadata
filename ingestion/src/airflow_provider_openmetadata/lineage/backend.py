@@ -64,14 +64,17 @@ class OpenMetadataLineageBackend(LineageBackend):
         """
 
         try:
+            dag = context["dag"]
+            dag.log.info("Executing OpenMetadata Lineage Backend...")
+
             config: AirflowLineageConfig = get_lineage_config()
+            xlet_list: List[XLets] = get_xlets_from_dag(dag)
             metadata = OpenMetadata(config.metadata_config)
-            xlet_list: List[XLets] = get_xlets_from_dag(context["dag"])
 
             runner = AirflowLineageRunner(
                 metadata=metadata,
                 service_name=config.airflow_service_name,
-                dag=context["dag"],
+                dag=dag,
                 xlets=xlet_list,
                 only_keep_dag_lineage=config.only_keep_dag_lineage,
                 max_status=config.max_status,

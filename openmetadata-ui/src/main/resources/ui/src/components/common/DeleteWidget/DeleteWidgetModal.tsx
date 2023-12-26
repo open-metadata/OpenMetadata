@@ -63,6 +63,8 @@ const DeleteWidgetModal = ({
   afterDeleteAction,
   successMessage,
   deleteOptions,
+  onDelete,
+  isDeleting = false,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -88,9 +90,12 @@ const DeleteWidgetModal = ({
       },
       {
         title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
-        description: `${
-          deleteMessage || getDeleteMessage(entityName, entityType)
-        } ${hardDeleteMessagePostFix}`,
+        description: (
+          <>
+            {deleteMessage ?? getDeleteMessage(entityName, entityType)}
+            {hardDeleteMessagePostFix}
+          </>
+        ),
         type: DeleteType.HARD_DELETE,
         isAllowed: true,
       },
@@ -143,7 +148,10 @@ const DeleteWidgetModal = ({
               })
           );
           if (afterDeleteAction) {
-            afterDeleteAction(deletionType === DeleteType.SOFT_DELETE);
+            afterDeleteAction(
+              deletionType === DeleteType.SOFT_DELETE,
+              response.data.version
+            );
           }
         } else {
           showErrorToast(t('server.unexpected-response'));
@@ -239,6 +247,10 @@ const DeleteWidgetModal = ({
     });
   }, [visible]);
 
+  useEffect(() => {
+    setIsLoading(isDeleting);
+  }, [isDeleting]);
+
   return (
     <Modal
       destroyOnClose
@@ -251,7 +263,7 @@ const DeleteWidgetModal = ({
       open={visible}
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
-      <Form form={form} onFinish={handleOnEntityDeleteConfirm}>
+      <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
           <Radio.Group onChange={onChange}>
             {(deleteOptions ?? DELETE_OPTION).map(

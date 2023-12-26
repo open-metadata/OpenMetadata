@@ -30,6 +30,7 @@ import {
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
 export const INFO_COLOR = '#2196f3';
+export const ERROR_COLOR = '#ff4c3b';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
@@ -98,7 +99,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_SUB_TAB = ':subTab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
-export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 
@@ -320,6 +320,8 @@ export const ROUTES = {
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
+
+  ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -804,6 +806,13 @@ export const VALIDATION_MESSAGES = {
       max: '${max}',
     }),
   },
+  number: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
 };
 
 export const ERROR_MESSAGE = {
@@ -818,5 +827,3 @@ export const ICON_DIMENSION = {
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };
-
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';

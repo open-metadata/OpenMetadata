@@ -68,7 +68,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseService, CreateDatabaseService> {
+public class DatabaseServiceResourceTest
+    extends ServiceResourceTest<DatabaseService, CreateDatabaseService> {
   public DatabaseServiceResourceTest() {
     super(
         Entity.DATABASE_SERVICE,
@@ -95,21 +96,24 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
         .withName("redshiftDB")
         .withServiceType(DatabaseServiceType.Redshift)
         .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    databaseService =
+        databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
         .withName("bigQueryDB")
         .withServiceType(DatabaseServiceType.BigQuery)
         .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    databaseService =
+        databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
         .withName("mysqlDB")
         .withServiceType(DatabaseServiceType.Mysql)
         .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    databaseService =
+        databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = databaseService.getEntityReference();
   }
 
@@ -126,7 +130,8 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
 
   @Test
   void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws IOException {
-    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+    DatabaseService service =
+        createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
@@ -135,35 +140,45 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test").withPassword("test12");
-    DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
+    SnowflakeConnection snowflakeConnection =
+        new SnowflakeConnection().withUsername("test").withPassword("test12");
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection().withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
-    validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType(), true);
+    validateDatabaseConnection(
+        databaseConnection, service.getConnection(), service.getServiceType(), true);
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
             .withAdditionalProperty("credentials", "/tmp/creds.json")
             .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
     ConnectionOptions connectionOptions =
-        new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
-    snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
+        new ConnectionOptions()
+            .withAdditionalProperty("key1", "value1")
+            .withAdditionalProperty("key2", "value2");
+    snowflakeConnection
+        .withConnectionArguments(connectionArguments)
+        .withConnectionOptions(connectionOptions);
     update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // Get the recently updated entity and verify the changes
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
-    validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType(), true);
+    validateDatabaseConnection(
+        databaseConnection, service.getConnection(), service.getServiceType(), true);
     assertEquals("description1", service.getDescription());
     // non admin/bot user, password fields must be masked
     DatabaseService newService = getEntity(service.getId(), "*", TEST_AUTH_HEADERS);
     assertEquals(newService.getName(), service.getName());
-    validateDatabaseConnection(databaseConnection, newService.getConnection(), newService.getServiceType(), true);
+    validateDatabaseConnection(
+        databaseConnection, newService.getConnection(), newService.getServiceType(), true);
     snowflakeConnection.setPassword("test123");
     databaseConnection.setConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // bot user, password fields must be unmasked.
     service = getEntity(service.getId(), INGESTION_BOT_AUTH_HEADERS);
-    validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType(), false);
+    validateDatabaseConnection(
+        databaseConnection, service.getConnection(), service.getServiceType(), false);
   }
 
   @Test
@@ -172,23 +187,30 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
         new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
     assertResponseContains(
-        () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
+        () ->
+            createEntity(
+                createRequest(test).withDescription(null).withConnection(dbConn),
+                ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
-    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+        String.format(
+            "Failed to convert [%s] to type [Snowflake]. Review the connection.",
+            getEntityName(test)));
+    DatabaseService service =
+        createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    MysqlConnection mysqlConnection = new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
+    MysqlConnection mysqlConnection =
+        new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
     update.withConnection(databaseConnection);
     assertResponseContains(
         () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to unmask connection instance of Snowflake].");
+        "Failed to load the connection of type [Snowflake]. Did migrations run properly?");
   }
 
   @Test
@@ -199,8 +221,12 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     DatabaseConnection oldDatabaseConnection = create.getConnection();
 
     SnowflakeConnection snowflakeConnection =
-        new SnowflakeConnection().withDatabase("test").withPassword("password").withUsername("username");
-    DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
+        new SnowflakeConnection()
+            .withDatabase("test")
+            .withPassword("password")
+            .withUsername("username");
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection().withConfig(snowflakeConnection);
 
     // Update database connection to a new connection
     CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
@@ -217,8 +243,12 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
             .withAdditionalProperty("credentials", "/tmp/creds.json")
             .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
     ConnectionOptions connectionOptions =
-        new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
-    snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
+        new ConnectionOptions()
+            .withAdditionalProperty("key1", "value1")
+            .withAdditionalProperty("key2", "value2");
+    snowflakeConnection
+        .withConnectionArguments(connectionArguments)
+        .withConnectionOptions(connectionOptions);
     databaseConnection.withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     change = getChangeDescription(service, MINOR_UPDATE);
@@ -226,7 +256,8 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add ingestion pipeline to the database service
-    IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    IngestionPipelineResourceTest ingestionPipelineResourceTest =
+        new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
         ingestionPipelineResourceTest.createRequest(test).withService(service.getEntityReference());
 
@@ -234,8 +265,10 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
         new DatabaseServiceMetadataPipeline()
             .withMarkDeletedTables(true)
             .withIncludeViews(true)
-            .withSchemaFilterPattern(new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
-            .withTableFilterPattern(new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
+            .withSchemaFilterPattern(
+                new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
+            .withTableFilterPattern(
+                new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
 
     SourceConfig sourceConfig = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
     createIngestionPipeline.withSourceConfig(sourceConfig);
@@ -260,12 +293,15 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DatabaseService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -275,9 +311,14 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     queryParams.put("include", "invalid-enum-value");
 
     assertResponse(
-        () -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class, "include"));
+        () -> listEntities(queryParams, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidEnumValue(Include.class, "include"));
 
-    assertResponse(() -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class));
+    assertResponse(
+        () -> listEntities(queryParams, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidEnumValue(Include.class));
   }
 
   public DatabaseService putTestConnectionResult(
@@ -297,15 +338,21 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
 
   @Override
   public void validateCreatedEntity(
-      DatabaseService service, CreateDatabaseService createRequest, Map<String, String> authHeaders) {
+      DatabaseService service,
+      CreateDatabaseService createRequest,
+      Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     boolean maskPasswords = !INGESTION_BOT_AUTH_HEADERS.equals(authHeaders);
     validateDatabaseConnection(
-        createRequest.getConnection(), service.getConnection(), service.getServiceType(), maskPasswords);
+        createRequest.getConnection(),
+        service.getConnection(),
+        service.getServiceType(),
+        maskPasswords);
   }
 
   @Override
-  public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -352,63 +399,84 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     // Validate Database Connection if available. We nullify when not admin or bot
     if (expectedDatabaseConnection != null && actualDatabaseConnection != null) {
       if (databaseServiceType == DatabaseServiceType.Mysql) {
-        MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
+        MysqlConnection expectedMysqlConnection =
+            (MysqlConnection) expectedDatabaseConnection.getConfig();
         MysqlConnection actualMysqlConnection;
         if (actualDatabaseConnection.getConfig() instanceof MysqlConnection) {
           actualMysqlConnection = (MysqlConnection) actualDatabaseConnection.getConfig();
         } else {
-          actualMysqlConnection = JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
+          actualMysqlConnection =
+              JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
         }
         validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, maskedPasswords);
       } else if (databaseServiceType == DatabaseServiceType.BigQuery) {
-        BigQueryConnection expectedBigQueryConnection = (BigQueryConnection) expectedDatabaseConnection.getConfig();
+        BigQueryConnection expectedBigQueryConnection =
+            (BigQueryConnection) expectedDatabaseConnection.getConfig();
         BigQueryConnection actualBigQueryConnection;
         if (actualDatabaseConnection.getConfig() instanceof BigQueryConnection) {
           actualBigQueryConnection = (BigQueryConnection) actualDatabaseConnection.getConfig();
         } else {
           actualBigQueryConnection =
-              JsonUtils.convertValue(actualDatabaseConnection.getConfig(), BigQueryConnection.class);
+              JsonUtils.convertValue(
+                  actualDatabaseConnection.getConfig(), BigQueryConnection.class);
         }
-        validateBigQueryConnection(expectedBigQueryConnection, actualBigQueryConnection, maskedPasswords);
+        validateBigQueryConnection(
+            expectedBigQueryConnection, actualBigQueryConnection, maskedPasswords);
       } else if (databaseServiceType == DatabaseServiceType.Redshift) {
-        RedshiftConnection expectedRedshiftConnection = (RedshiftConnection) expectedDatabaseConnection.getConfig();
+        RedshiftConnection expectedRedshiftConnection =
+            (RedshiftConnection) expectedDatabaseConnection.getConfig();
         RedshiftConnection actualRedshiftConnection;
         if (actualDatabaseConnection.getConfig() instanceof RedshiftConnection) {
           actualRedshiftConnection = (RedshiftConnection) actualDatabaseConnection.getConfig();
         } else {
           actualRedshiftConnection =
-              JsonUtils.convertValue(actualDatabaseConnection.getConfig(), RedshiftConnection.class);
+              JsonUtils.convertValue(
+                  actualDatabaseConnection.getConfig(), RedshiftConnection.class);
         }
-        validateRedshiftConnection(expectedRedshiftConnection, actualRedshiftConnection, maskedPasswords);
+        validateRedshiftConnection(
+            expectedRedshiftConnection, actualRedshiftConnection, maskedPasswords);
       } else if (databaseServiceType == DatabaseServiceType.Snowflake) {
-        SnowflakeConnection expectedSnowflakeConnection = (SnowflakeConnection) expectedDatabaseConnection.getConfig();
+        SnowflakeConnection expectedSnowflakeConnection =
+            (SnowflakeConnection) expectedDatabaseConnection.getConfig();
         SnowflakeConnection actualSnowflakeConnection;
         if (actualDatabaseConnection.getConfig() instanceof SnowflakeConnection) {
           actualSnowflakeConnection = (SnowflakeConnection) actualDatabaseConnection.getConfig();
         } else {
           actualSnowflakeConnection =
-              JsonUtils.convertValue(actualDatabaseConnection.getConfig(), SnowflakeConnection.class);
+              JsonUtils.convertValue(
+                  actualDatabaseConnection.getConfig(), SnowflakeConnection.class);
         }
-        validateSnowflakeConnection(expectedSnowflakeConnection, actualSnowflakeConnection, maskedPasswords);
+        validateSnowflakeConnection(
+            expectedSnowflakeConnection, actualSnowflakeConnection, maskedPasswords);
       }
     }
   }
 
   public static void validateMysqlConnection(
-      MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection, boolean maskedPasswords) {
-    assertEquals(expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
+      MysqlConnection expectedMysqlConnection,
+      MysqlConnection actualMysqlConnection,
+      boolean maskedPasswords) {
+    assertEquals(
+        expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
-    assertEquals(expectedMysqlConnection.getConnectionOptions(), actualMysqlConnection.getConnectionOptions());
-    assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
+    assertEquals(
+        expectedMysqlConnection.getConnectionOptions(),
+        actualMysqlConnection.getConnectionOptions());
+    assertEquals(
+        expectedMysqlConnection.getConnectionArguments(),
+        actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
       assertEquals(
           PasswordEntityMasker.PASSWORD_MASK,
-          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class)
+              .getPassword());
     } else {
       assertEquals(
-          JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
-          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
+          JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class)
+              .getPassword(),
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class)
+              .getPassword());
     }
   }
 
@@ -417,13 +485,18 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
       BigQueryConnection actualBigQueryConnection,
       boolean maskedPasswords) {
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
-    assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
+    assertEquals(
+        expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
     assertEquals(
-        expectedBigQueryConnection.getConnectionArguments(), actualBigQueryConnection.getConnectionArguments());
-    assertEquals(expectedBigQueryConnection.getConnectionOptions(), actualBigQueryConnection.getConnectionOptions());
+        expectedBigQueryConnection.getConnectionArguments(),
+        actualBigQueryConnection.getConnectionArguments());
+    assertEquals(
+        expectedBigQueryConnection.getConnectionOptions(),
+        actualBigQueryConnection.getConnectionOptions());
     if (!maskedPasswords) {
-      assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
+      assertEquals(
+          expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     }
   }
 
@@ -436,12 +509,16 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     assertEquals(expectedRedshiftConnection.getScheme(), actualRedshiftConnection.getScheme());
     assertEquals(expectedRedshiftConnection.getDatabase(), actualRedshiftConnection.getDatabase());
     assertEquals(
-        expectedRedshiftConnection.getConnectionArguments(), actualRedshiftConnection.getConnectionArguments());
-    assertEquals(expectedRedshiftConnection.getConnectionOptions(), actualRedshiftConnection.getConnectionOptions());
+        expectedRedshiftConnection.getConnectionArguments(),
+        actualRedshiftConnection.getConnectionArguments());
+    assertEquals(
+        expectedRedshiftConnection.getConnectionOptions(),
+        actualRedshiftConnection.getConnectionOptions());
     if (maskedPasswords) {
       assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
     } else {
-      assertEquals(expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
+      assertEquals(
+          expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
     }
   }
 
@@ -450,16 +527,22 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
       SnowflakeConnection actualSnowflakeConnection,
       boolean maskedPasswords) {
     assertEquals(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
-    assertEquals(expectedSnowflakeConnection.getUsername(), actualSnowflakeConnection.getUsername());
-    assertEquals(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());
-    assertEquals(expectedSnowflakeConnection.getDatabase(), actualSnowflakeConnection.getDatabase());
     assertEquals(
-        expectedSnowflakeConnection.getConnectionArguments(), actualSnowflakeConnection.getConnectionArguments());
-    assertEquals(expectedSnowflakeConnection.getConnectionOptions(), actualSnowflakeConnection.getConnectionOptions());
+        expectedSnowflakeConnection.getUsername(), actualSnowflakeConnection.getUsername());
+    assertEquals(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());
+    assertEquals(
+        expectedSnowflakeConnection.getDatabase(), actualSnowflakeConnection.getDatabase());
+    assertEquals(
+        expectedSnowflakeConnection.getConnectionArguments(),
+        actualSnowflakeConnection.getConnectionArguments());
+    assertEquals(
+        expectedSnowflakeConnection.getConnectionOptions(),
+        actualSnowflakeConnection.getConnectionOptions());
     if (maskedPasswords) {
       assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualSnowflakeConnection.getPassword());
     } else {
-      assertEquals(expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
+      assertEquals(
+          expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }
   }
 }

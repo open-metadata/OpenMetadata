@@ -10,7 +10,7 @@ This installation doc will help you start a OpenMetadata standalone instance on 
 If you'd rather see the steps in a guided tutorial, we've got you covered! Otherwise, feel free to read the
 content below 👇
 
-{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" /%}
+{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" width="560px" height="315px" /%}
 
 # Requirements (OSX, Linux and Windows)
 
@@ -95,7 +95,7 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
 - Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
   - Once installed, please follow the steps [here](https://docs.docker.com/desktop/windows/wsl/) and complete all the pre-requisites for a seamless installation and deployment.
   - After completion of the pre-requisites, please install `python3-pip` and `python3-venv` on your Ubuntu system.
-    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the priviledge to install packages, if not, please use Super User.)
+    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the privilege to install packages, if not, please use Super User.)
 
 
 ## Procedure
@@ -254,7 +254,7 @@ installation.
 
 ## Next Steps
 
-1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+1. Refer the [How-to Guides](/how-to-guides) for an overview of all the features in OpenMetadata.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.

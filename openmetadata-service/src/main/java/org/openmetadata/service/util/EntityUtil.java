@@ -67,15 +67,22 @@ public final class EntityUtil {
   //
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
+  public static final Comparator<EntityReference> compareEntityReferenceById =
+      Comparator.comparing(EntityReference::getId).thenComparing(EntityReference::getType);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
-  public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
-  public static final Comparator<FieldChange> compareFieldChange = Comparator.comparing(FieldChange::getName);
+  public static final Comparator<TagLabel> compareTagLabel =
+      Comparator.comparing(TagLabel::getTagFQN);
+  public static final Comparator<FieldChange> compareFieldChange =
+      Comparator.comparing(FieldChange::getName);
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
-  public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
-  public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
-  public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
+  public static final Comparator<ChangeEvent> compareChangeEvent =
+      Comparator.comparing(ChangeEvent::getTimestamp);
+  public static final Comparator<GlossaryTerm> compareGlossaryTerm =
+      Comparator.comparing(GlossaryTerm::getName);
+  public static final Comparator<CustomProperty> compareCustomProperty =
+      Comparator.comparing(CustomProperty::getName);
 
   //
   // Matchers used for matching two items in a list
@@ -86,9 +93,11 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
-      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
+      (tag1, tag2) ->
+          tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
 
-  public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
+  public static final BiPredicate<Task, Task> taskMatch =
+      (task1, task2) -> task1.getName().equals(task2.getName());
 
   public static final BiPredicate<String, String> stringMatch = String::equals;
 
@@ -105,38 +114,46 @@ public final class EntityUtil {
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
               && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null)
+              && ((constraint1.getReferredColumns() == null
+                      && constraint2.getReferredColumns() == null)
                   || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
-  public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
+  public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
+      MlHyperParameter::equals;
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
-  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch = Enum::equals;
+  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat>
+      containerFileFormatMatch = Enum::equals;
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
-      (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
+      (ref1, ref2) ->
+          ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
   public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) ->
           ref1.getName().equals(ref2.getName())
               && entityReferenceMatch.test(ref1.getPropertyType(), ref2.getPropertyType());
 
-  public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
+  public static final BiPredicate<Rule, Rule> ruleMatch =
+      (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   public static final BiPredicate<Field, Field> schemaFieldMatch =
       (field1, field2) ->
-          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+          field1.getName().equalsIgnoreCase(field2.getName())
+              && field1.getDataType() == field2.getDataType();
 
   public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
       (field1, field2) ->
-          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+          field1.getName().equalsIgnoreCase(field2.getName())
+              && field1.getDataType() == field2.getDataType();
 
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(Object id, String json, Class<T> clz) throws WebApplicationException {
+  public static <T> T validate(Object id, String json, Class<T> clz)
+      throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -148,7 +165,6 @@ public final class EntityUtil {
     return entity;
   }
 
-  // TODO delete
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -160,7 +176,6 @@ public final class EntityUtil {
     return list;
   }
 
-  // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
@@ -173,7 +188,8 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType) {
+  public static List<EntityReference> populateEntityReferencesById(
+      List<UUID> list, String entityType) {
     List<EntityReference> refs = toEntityReferences(list, entityType);
     return populateEntityReferences(refs);
   }
@@ -206,7 +222,8 @@ public final class EntityUtil {
       return;
     }
     for (TagLabel fromTag : mergeFrom) {
-      TagLabel tag = mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
+      TagLabel tag =
+          mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
       if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
         mergeTo.add(fromTag);
       }
@@ -236,7 +253,9 @@ public final class EntityUtil {
     if (ids == null) {
       return null;
     }
-    return ids.stream().map(id -> new EntityReference().withId(id).withType(entityType)).collect(Collectors.toList());
+    return ids.stream()
+        .map(id -> new EntityReference().withId(id).withType(entityType))
+        .collect(Collectors.toList());
   }
 
   public static List<UUID> refToIds(List<EntityReference> refs) {
@@ -325,7 +344,8 @@ public final class EntityUtil {
 
   public static String getLocalColumnName(String tableFqn, String columnFqn) {
     // Return for fqn=service:database:table:c1 -> c1
-    // Return for fqn=service:database:table:c1:c2 -> c1:c2 (note different from just the local name of the column c2)
+    // Return for fqn=service:database:table:c1:c2 -> c1:c2 (note different from just the local name
+    // of the column c2)
     return columnFqn.replace(tableFqn + Entity.SEPARATOR, "");
   }
 
@@ -345,16 +365,20 @@ public final class EntityUtil {
   /** Return schema field name of format "schemaFields".fieldName.fieldName */
   public static String getSchemaField(Topic topic, Field field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName = EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
+    String localFieldName =
+        EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
   }
+
   /** Return searchIndex field name of format "fields".fieldName.fieldName */
-  public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
+  public static String getSearchIndexField(
+      SearchIndex searchIndex, SearchIndexField field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
     String localFieldName =
-        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+        EntityUtil.getLocalColumnName(
+            searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
     return fieldName == null
         ? FullyQualifiedName.build("fields", localFieldName)
         : FullyQualifiedName.build("fields", localFieldName, fieldName);
@@ -455,15 +479,19 @@ public final class EntityUtil {
     }
   }
 
-  public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
+  public static void fieldUpdated(
+      ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
     if (change != null) {
-      FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
+      FieldChange fieldChange =
+          new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
       change.getFieldsUpdated().add(fieldChange);
     }
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
-    return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
+  public static MetadataOperation createOrUpdateOperation(ResourceContext<?> resourceContext) {
+    return resourceContext.getEntity() == null
+        ? MetadataOperation.CREATE
+        : MetadataOperation.EDIT_ALL;
   }
 
   public static UUID getId(EntityReference ref) {
@@ -494,7 +522,9 @@ public final class EntityUtil {
   }
 
   public static EntityReference getEntityReference(String entityType, String fqn) {
-    return fqn == null ? null : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+    return fqn == null
+        ? null
+        : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
   }
 
   public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
@@ -509,7 +539,10 @@ public final class EntityUtil {
   }
 
   public static Column getColumn(Table table, String columnName) {
-    return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
+    return table.getColumns().stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElse(null);
   }
 
   public static void sortByFQN(List<? extends EntityInterface> entities) {
@@ -522,7 +555,8 @@ public final class EntityUtil {
    * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
    * fully populated object such that ElasticSearch index has all the details.
    */
-  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include) {
+  public static List<EntityReference> getEntityReferences(
+      List<EntityReference> entities, Include include) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
@@ -535,7 +569,8 @@ public final class EntityUtil {
   }
 
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
-    if (profileSampleType.equals("PERCENTAGE") && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
+    if (profileSampleType.equals("PERCENTAGE")
+        && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
       throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
     }
   }
@@ -561,12 +596,18 @@ public final class EntityUtil {
     return taskType == TaskType.RequestApproval;
   }
 
+  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
+    return taskType == TaskType.RequestTestCaseFailureResolution;
+  }
+
   public static Column findColumn(List<Column> columns, String columnName) {
     return columns.stream()
         .filter(c -> c.getName().equals(columnName))
         .findFirst()
         .orElseThrow(
-            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
+            () ->
+                new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
@@ -575,7 +616,8 @@ public final class EntityUtil {
     return flattenedFields;
   }
 
-  private static <T extends FieldInterface> void flattenEntityField(T field, List<T> flattenedFields) {
+  private static <T extends FieldInterface> void flattenEntityField(
+      T field, List<T> flattenedFields) {
     flattenedFields.add(field);
     List<T> children = (List<T>) field.getChildren();
     for (T child : listOrEmpty(children)) {

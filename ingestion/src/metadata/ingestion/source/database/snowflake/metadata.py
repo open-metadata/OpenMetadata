@@ -30,18 +30,22 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -360,7 +364,7 @@ class SnowflakeSource(
                         left=StackTraceError(
                             name="Tags and Classifications",
                             error=f"Failed to fetch tags due to [{inner_exc}]",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -477,33 +481,43 @@ class SnowflakeSource(
         """
         Get the life cycle data of the table
         """
-        table = self.context.table
-        try:
-            life_cycle_data = self.life_cycle_query_dict(
-                query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
-                    database_name=table.database.name,
-                    schema_name=table.databaseSchema.name,
-                )
-            ).get(table.name.__root__)
-            if life_cycle_data:
-                life_cycle = LifeCycle(
-                    created=AccessDetails(
-                        timestamp=convert_timestamp_to_milliseconds(
-                            life_cycle_data.created_at.timestamp()
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            table_name=self.context.table,
+            skip_es_search=True,
+        )
+        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        if table:
+            try:
+                life_cycle_data = self.life_cycle_query_dict(
+                    query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+                        database_name=table.database.name,
+                        schema_name=table.databaseSchema.name,
+                    )
+                ).get(table.name.__root__)
+                if life_cycle_data:
+                    life_cycle = LifeCycle(
+                        created=AccessDetails(
+                            timestamp=convert_timestamp_to_milliseconds(
+                                life_cycle_data.created_at.timestamp()
+                            )
                         )
                     )
-                )
+                    yield Either(
+                        right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                    )
+            except Exception as exc:
                 yield Either(
-                    right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                    left=StackTraceError(
+                        name=table.name.__root__,
+                        error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
                 )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=table.name.__root__,
-                    error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
-                    stack_trace=traceback.format_exc(),
-                )
-            )
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -552,39 +566,38 @@ class SnowflakeSource(
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    description=stored_procedure.comment,
-                    storedProcedureCode=StoredProcedureCode(
-                        language=STORED_PROC_LANGUAGE_MAP.get(
-                            stored_procedure.language
-                        ),
-                        code=stored_procedure.definition,
-                    ),
-                    databaseSchema=fqn.build(
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.database_service,
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                description=stored_procedure.comment,
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+                sourceUrl=SourceUrl(
+                    __root__=self._get_source_url_root(
                         database_name=self.context.database,
                         schema_name=self.context.database_schema,
-                    ),
-                    sourceUrl=SourceUrl(
-                        __root__=self._get_source_url_root(
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
-                        )
-                        + f"/procedure/{stored_procedure.name}"
-                        + f"{stored_procedure.signature if stored_procedure.signature else ''}"
-                    ),
-                )
+                    )
+                    + f"/procedure/{stored_procedure.name}"
+                    + f"{stored_procedure.signature if stored_procedure.signature else ''}"
+                ),
             )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

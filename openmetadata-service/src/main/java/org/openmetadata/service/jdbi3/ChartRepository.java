@@ -21,7 +21,6 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -30,13 +29,20 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
   public ChartRepository() {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, Entity.getCollectionDAO().chartDAO(), "", "");
+    super(
+        ChartResource.COLLECTION_PATH,
+        Entity.CHART,
+        Chart.class,
+        Entity.getCollectionDAO().chartDAO(),
+        "",
+        "");
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Chart chart) {
-    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
+    chart.setFullyQualifiedName(
+        FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
   }
 
   @Override
@@ -58,13 +64,13 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   @SneakyThrows
   public void storeRelationships(Chart chart) {
-    EntityReference service = chart.getService();
-    addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addServiceRelationship(chart, chart.getService());
   }
 
   @Override
   public void setFields(Chart chart, Fields fields) {
     chart.withService(getContainer(chart.getId()));
+    chart.setSourceHash(fields.contains("sourceHash") ? chart.getSourceHash() : null);
   }
 
   @Override
@@ -86,7 +92,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public EntityInterface getParentEntity(Chart entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   public class ChartUpdater extends ColumnEntityUpdater {
@@ -99,6 +105,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

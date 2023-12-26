@@ -17,15 +17,24 @@ import {
   findByText,
   queryByTestId,
   render,
+  screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { mockTeamsData, mockUserData, mockUserRole } from './mocks/User.mocks';
+import { AuthProvider } from '../../generated/settings/settings';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import {
+  mockAccessData,
+  mockTeamsData,
+  mockUserData,
+  mockUserRole,
+} from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
 
 const mockParams = {
+  fqn: 'test',
   tab: UserPageTabs.ACTIVITY,
 };
 
@@ -107,6 +116,16 @@ jest.mock(
       .mockImplementation(() => <>ActivityFeedTabTest</>),
   })
 );
+jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    authConfig: {
+      provider: AuthProvider.Basic,
+    },
+    currentUser: {
+      name: 'test',
+    },
+  })),
+}));
 
 jest.mock('../../rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
@@ -140,7 +159,6 @@ jest.mock('../common/EntityDescription/Description', () => {
 const updateUserDetails = jest.fn();
 
 const mockProp = {
-  username: 'test',
   queryFilters: {
     myData: 'my-data',
     following: 'following',
@@ -254,6 +272,28 @@ describe('Test User Component', () => {
       }
     );
     const assetComponent = await findByText(container, 'AssetsTabs');
+
+    expect(assetComponent).toBeInTheDocument();
+  });
+
+  it('Access Token tab should show user access component', async () => {
+    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
+      currentUser: {
+        name: 'test',
+      },
+    }));
+    mockParams.tab = UserPageTabs.ACCESS_TOKEN;
+    render(
+      <Users
+        authenticationMechanism={mockAccessData}
+        userData={mockUserData}
+        {...mockProp}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const assetComponent = await screen.findByTestId('center-panel');
 
     expect(assetComponent).toBeInTheDocument();
   });

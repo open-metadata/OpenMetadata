@@ -20,6 +20,11 @@ We'd recommend to go through the example to better understand how all the pieces
 
 {% /note %}
 
+Watch OpenMetadata's [Webinar on Custom Connectors](https://www.youtube.com/watch?v=fDUj30Ub9VE)
+
+{% youtube videoId="fDUj30Ub9VE" start="0:00" end="36:33" width="560px" height="315px" /%}
+
+# Steps to Set Up a Custom Connector
 
 ## Step 1 - Prepare your Connector
 
@@ -31,7 +36,7 @@ In [connector/my_awesome_connector.py](https://github.com/open-metadata/openmeta
 Note how the important method is the `next_record`. This is the generator function that will be iterated over
 to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](https://docs.open-metadata.org/sdk/python/build-connector).
 
-## Step 2 - Yield the data
+## Step 2 - Yield the Data
 
 The `Sink` is expecting Create Entity Requests. To get familiar with the Python SDK and understand how to create
 the different Entities, a recommended read is the Python SDK [docs](https://docs.open-metadata.org/sdk/python).
@@ -39,7 +44,7 @@ the different Entities, a recommended read is the Python SDK [docs](https://docs
 We do not have docs and examples of all the supported Services. A way to get examples on how to create and fetch
 other types of Entities is to directly refer to the `ometa` [integration tests](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/tests/integration/ometa).
 
-## Step 3 - Prepare the package installation
+## Step 3 - Prepare the Package Installation
 
 We'll need to package the code so that it can be shipped to the ingestion container and used there. In this demo
 you can find a simple `setup.py` that builds the `connector` module.
@@ -67,7 +72,7 @@ COPY setup.py .
 RUN pip install --no-deps .
 ```
 
-## Step 5 - Run OpenMetadata with the custom Ingestion image
+## Step 5 - Run OpenMetadata with the Custom Ingestion Image
 
 We have a `Makefile` prepared for you to run `make run`. This will get OpenMetadata up in Docker Compose using the
 custom Ingestion image.

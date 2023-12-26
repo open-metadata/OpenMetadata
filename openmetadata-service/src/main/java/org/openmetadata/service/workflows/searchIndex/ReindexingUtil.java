@@ -18,6 +18,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
 
@@ -44,7 +45,9 @@ public class ReindexingUtil {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         total += repository.getDao().listTotalCount();
       } else {
-        total += dao.reportDataTimeSeriesDao().listCount(entityType);
+        total +=
+            dao.reportDataTimeSeriesDao()
+                .listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
       }
     }
     return total;
@@ -60,7 +63,8 @@ public class ReindexingUtil {
     return success;
   }
 
-  public static int getSuccessFromBulkResponseEs(es.org.elasticsearch.action.bulk.BulkResponse response) {
+  public static int getSuccessFromBulkResponseEs(
+      es.org.elasticsearch.action.bulk.BulkResponse response) {
     int success = 0;
     for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {

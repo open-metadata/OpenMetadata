@@ -241,14 +241,14 @@ const PipelineDetails = ({
 
   const handleRestorePipeline = async () => {
     try {
-      await restorePipeline(pipelineDetails.id);
+      const { version: newVersion } = await restorePipeline(pipelineDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.pipeline'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -516,8 +516,8 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -605,6 +605,7 @@ const PipelineDetails = ({
                 domain={pipelineDetails?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={pipelineFQN}
+                entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}
@@ -719,6 +720,7 @@ const PipelineDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updatePipelineDetailsState}
             dataAsset={pipelineDetails}

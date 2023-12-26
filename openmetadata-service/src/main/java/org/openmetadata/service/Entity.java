@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -34,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
@@ -62,6 +64,7 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -72,7 +75,8 @@ public final class Entity {
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityRepository<? extends EntityInterface>>
+      ENTITY_REPOSITORY_MAP = new HashMap<>();
   private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
@@ -193,10 +197,14 @@ public final class Entity {
   //
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
-  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
-  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
+      "webAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
+      "webAnalyticUserActivityReportData";
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
-  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "aggregatedCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA =
+      "aggregatedCostAnalysisReportData";
 
   //
   // Reserved names in OpenMetadata
@@ -294,7 +302,8 @@ public final class Entity {
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
       Class<T> clazz, String entity, EntityTimeSeriesRepository<T> entityRepository) {
     ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
-    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
+        entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
@@ -302,7 +311,8 @@ public final class Entity {
     LOG.info("Registering entity time series {} {}", clazz, entity);
   }
 
-  public static void registerResourcePermissions(String entity, List<MetadataOperation> entitySpecificOperations) {
+  public static void registerResourcePermissions(
+      String entity, List<MetadataOperation> entitySpecificOperations) {
     // Set up entity operations for permissions
     Class<?> clazz = getEntityClassFromType(entity);
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
@@ -327,13 +337,15 @@ public final class Entity {
         : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
+  public static EntityReference getEntityReferenceById(
+      @NonNull String entityType, @NonNull UUID id, Include include) {
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
     return repository.getReference(id, include);
   }
 
-  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
+  public static EntityReference getEntityReferenceByName(
+      @NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
       return null;
     }
@@ -381,10 +393,12 @@ public final class Entity {
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include, boolean fromCache) {
+  public static <T> T getEntity(
+      String entityType, UUID id, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, fromCache);
+    T entity =
+        (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, fromCache);
     return entity;
   }
 
@@ -397,29 +411,37 @@ public final class Entity {
       String entityType, String fqn, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, fromCache);
+    T entity =
+        (T)
+            entityRepository.getByName(
+                null, fqn, entityRepository.getFields(fields), include, fromCache);
     return entity;
   }
 
-  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
+  public static <T> T getEntityByName(
+      String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
-    EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
+  public static EntityRepository<? extends EntityInterface> getEntityRepository(
+      @NonNull String entityType) {
+    EntityRepository<? extends EntityInterface> entityRepository =
+        ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityRepositoryNotFound(entityType));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityRepositoryNotFound(entityType));
     }
     return entityRepository;
   }
 
-  public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> getEntityTimeSeriesRepository(
-      @NonNull String entityType) {
+  public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
+      getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
         ENTITY_TS_REPOSITORY_MAP.get(entityType);
     if (entityTimeSeriesRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityTimeSeriesRepository;
   }
@@ -430,7 +452,8 @@ public final class Entity {
     EntityRepository<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
   }
@@ -452,19 +475,23 @@ public final class Entity {
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
-    return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(clz.getSimpleName().toLowerCase(Locale.ROOT));
+    return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(
+        clz.getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   public static String getEntityTypeFromObject(Object object) {
-    return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+    return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(
+        object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
-  public static Class<? extends EntityTimeSeriesInterface> getEntityTimeSeriesClassFromType(String entityType) {
-    return EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
+  public static Class<? extends EntityTimeSeriesInterface> getEntityTimeSeriesClassFromType(
+      String entityType) {
+    return EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.get(
+        entityType.toLowerCase(Locale.ROOT));
   }
 
   /**
@@ -518,7 +545,8 @@ public final class Entity {
     private static void validateEntities(String name, List<String> list) {
       for (String entity : list) {
         if (ENTITY_REPOSITORY_MAP.get(entity) == null) {
-          throw new IllegalArgumentException(String.format("Invalid entity %s in query param %s", entity, name));
+          throw new IllegalArgumentException(
+              String.format("Invalid entity %s in query param %s", entity, name));
         }
       }
     }
@@ -539,14 +567,26 @@ public final class Entity {
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
     // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
+        List<TagLabel> columnTag =
+            allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
+        if (columnTag == null) {
+          c.setTags(new ArrayList<>());
+        } else {
+          c.setTags(addDerivedTags(columnTag));
+        }
       } else {
         c.setTags(c.getTags());
       }
     }
+  }
+
+  public static SearchIndex buildSearchIndex(String entityType, Object entity) {
+    if (searchRepository != null) {
+      return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+    }
+    throw new BadRequestException("searchrepository not initialized");
   }
 }

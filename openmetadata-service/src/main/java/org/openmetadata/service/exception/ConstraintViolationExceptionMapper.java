@@ -28,7 +28,8 @@ import javax.ws.rs.ext.Provider;
  * mapping the response code to 400 bad request.
  */
 @Provider
-public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
+public class ConstraintViolationExceptionMapper
+    implements ExceptionMapper<ConstraintViolationException> {
   @Override
   public Response toResponse(ConstraintViolationException exception) {
     Set<ConstraintViolation<?>> constraintViolations = exception.getConstraintViolations();
@@ -41,7 +42,8 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
                 })
             .toList();
     return Response.status(Response.Status.BAD_REQUEST)
-        .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
+        .entity(
+            new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
         .build();
   }
 }

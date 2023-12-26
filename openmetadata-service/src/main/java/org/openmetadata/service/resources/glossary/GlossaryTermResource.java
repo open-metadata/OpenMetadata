@@ -49,6 +49,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
@@ -60,6 +61,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -76,13 +78,18 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/glossaryTerms")
-@Tag(name = "Glossaries", description = "A `Glossary` is collection of hierarchical `GlossaryTerms`.")
+@Tag(
+    name = "Glossaries",
+    description = "A `Glossary` is collection of hierarchical `GlossaryTerms`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "glossaryTerms", order = 7) // Initialized after Glossary, Classification, and Tags
+@Collection(
+    name = "glossaryTerms",
+    order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
-  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension";
+  static final String FIELDS =
+      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -111,13 +118,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     // Load glossaries provided by OpenMetadata
-    GlossaryRepository glossaryRepository = (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     List<LoadGlossary> loadGlossaries =
         EntityRepository.getEntitiesFromSeedData(
             GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
-          GlossaryResource.getGlossary(glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+          GlossaryResource.getGlossary(
+              glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+      glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
 
       List<GlossaryTerm> termsToCreate = new ArrayList<>();
@@ -152,13 +162,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             responseCode = "200",
             description = "List of glossary terms",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermList.class)))
       })
   public ResultList<GlossaryTerm> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "List glossary terms filtered by glossary identified by Id given in `glossary` parameter.",
+              description =
+                  "List glossary terms filtered by glossary identified by Id given in `glossary` parameter.",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("glossary")
           String glossaryIdParam,
@@ -174,16 +187,22 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number glossary terms returned. (1 to 1000000, default = 10)")
+      @Parameter(
+              description =
+                  "Limit the number glossary terms returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of glossary terms before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of glossary terms before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of glossary terms after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of glossary terms after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -192,7 +211,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO make this common implementation
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -201,7 +219,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = glossary.getName();
+      fqn = glossary.getFullyQualifiedName();
     }
 
     // Filter by glossary parent term
@@ -212,14 +230,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       // Ensure parent glossary term belongs to the glossary
       if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.glossaryTermMismatch(parentTermParam.toString(), glossaryIdParam));
+            CatalogExceptionMessage.glossaryTermMismatch(
+                parentTermParam.toString(), glossaryIdParam));
       }
     }
     ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
-      terms = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      terms =
+          repository.listBefore(
+              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
       terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
@@ -236,13 +257,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "The glossary term",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
       })
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -267,12 +293,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "The glossary term",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "404", description = "Glossary for instance {fqn} is not found")
       })
   public GlossaryTerm getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -300,12 +331,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "List of glossary term versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -319,7 +355,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "glossaries",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Glossary for instance {id} and version {version} is not found")
@@ -327,7 +366,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "glossary term version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -345,11 +386,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "The glossary term",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateGlossaryTerm create) {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term);
   }
@@ -360,18 +406,25 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       operationId = "patchGlossaryTerm",
       summary = "Update a glossary term",
       description = "Update an existing glossary term using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -380,16 +433,22 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "createOrUpdateGlossaryTerm",
       summary = "Create or update a glossary term",
-      description = "Create a new glossary term, if it does not exist or update an existing glossary term.",
+      description =
+          "Create a new glossary term, if it does not exist or update an existing glossary term.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The glossary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateGlossaryTerm create) {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term);
   }
@@ -404,15 +463,96 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/assets/add")
+  @Operation(
+      operationId = "bulkAddGlossaryTermToAssets",
+      summary = "Bulk Add Glossary Term to Assets",
+      description = "Bulk Add Glossary Term to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddGlossaryToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/tags/validate")
+  @Operation(
+      operationId = "validateGlossaryTermTagsAddition",
+      summary = "Validate Tags Addition to Glossary Term",
+      description = "Validate Tags Addition to Glossary Term",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response validateGlossaryTermTagsAddition(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveGlossaryTermFromAssets",
+      summary = "Bulk Remove Glossary Term from Assets",
+      description = "Bulk Remove Glossary Term from Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
   @DELETE
@@ -422,12 +562,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       description = "Delete a glossary term by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "glossaryTerm for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -435,7 +578,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -447,7 +592,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       description = "Delete a glossary term by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "glossaryTerm for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -456,10 +603,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -472,10 +626,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Chart ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 

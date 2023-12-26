@@ -38,7 +38,7 @@ import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
-  tabsInfo,
+  TABS_SEARCH_INDEXES,
 } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -51,6 +51,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -60,6 +61,7 @@ import {
 } from './ExplorePage.interface';
 
 const ExplorePageV1: FunctionComponent = () => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
@@ -311,7 +313,9 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: !isEmpty(searchQueryParam)
+          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          : '',
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
@@ -338,8 +342,9 @@ const ExplorePageV1: FunctionComponent = () => {
       }).then((res) => {
         const buckets = res.aggregations[`index_count`].buckets;
         const counts: Record<string, number> = {};
+
         buckets.forEach((item) => {
-          if (item) {
+          if (item && TABS_SEARCH_INDEXES.includes(item.key as SearchIndex)) {
             counts[item.key ?? ''] = item.doc_count;
           }
         });

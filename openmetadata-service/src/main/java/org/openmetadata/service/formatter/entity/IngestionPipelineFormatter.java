@@ -43,9 +43,12 @@ public class IngestionPipelineFormatter implements EntityFormatter {
     String ingestionPipelineName = entity.getName();
     PipelineStatus status = (PipelineStatus) fieldChange.getNewValue();
     if (status != null) {
-      String date = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+      String date =
+          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
       String format =
-          String.format("Ingestion Pipeline %s %s at %s", messageFormatter.getBold(), messageFormatter.getBold(), date);
+          String.format(
+              "Ingestion Pipeline %s %s at %s",
+              messageFormatter.getBold(), messageFormatter.getBold(), date);
       return String.format(format, ingestionPipelineName, status.getPipelineState());
     }
     String format = String.format("Ingestion Pipeline %s is updated", messageFormatter.getBold());

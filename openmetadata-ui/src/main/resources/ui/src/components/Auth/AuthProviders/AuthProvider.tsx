@@ -16,7 +16,11 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
-import { AxiosError, AxiosRequestConfig } from 'axios';
+import {
+  AxiosError,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isNumber } from 'lodash';
@@ -36,7 +40,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { NO_AUTH } from '../../../constants/auth.constants';
 import {
   ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
@@ -64,9 +67,9 @@ import {
   setMsalInstance,
 } from '../../../utils/AuthProvider.util';
 import localState from '../../../utils/LocalStorageUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
@@ -411,7 +414,8 @@ export const AuthProvider = ({
     }
   };
 
-  const withDomainFilter = (config: AxiosRequestConfig) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const activeDomain =
       localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
@@ -429,7 +433,9 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
+        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+          activeDomain
+        )}")`;
         queryParams.q = queryParams.q ?? '';
         queryParams.q += isEmpty(queryParams.q)
           ? domainStatement
@@ -463,7 +469,8 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      config
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      config: InternalAxiosRequestConfig<any>
     ) {
       const token: string = localState.getOidcToken() || '';
       if (token) {
@@ -472,7 +479,7 @@ export const AuthProvider = ({
         } else {
           config.headers = {
             Authorization: `Bearer ${token}`,
-          };
+          } as AxiosRequestHeaders;
         }
       }
 
@@ -502,8 +509,7 @@ export const AuthProvider = ({
         fetchAuthenticationConfig(),
         fetchAuthorizerConfig(),
       ]);
-      const isSecureMode =
-        !isNil(authConfig) && authConfig.provider !== NO_AUTH;
+      const isSecureMode = !isNil(authConfig);
       if (isSecureMode) {
         const provider = authConfig?.provider;
         // show an error toast if provider is null or not supported
@@ -534,7 +540,6 @@ export const AuthProvider = ({
       } else {
         setLoading(false);
         setIsAuthDisabled(true);
-        fetchAllUsers();
       }
     } catch (error) {
       setLoading(false);

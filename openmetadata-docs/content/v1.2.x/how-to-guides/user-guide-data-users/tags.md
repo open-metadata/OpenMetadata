@@ -10,7 +10,7 @@ slug: /how-to-guides/guide-for-data-users/tags
 - Click on the checkmark to save the changes.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/tag7.png"
+src="/images/v1.2/how-to-guides/governance/tag7.png"
 alt="Add Tags to Classify Data Assets"
 caption="Add Tags to Classify Data Assets"
 /%}
@@ -21,22 +21,22 @@ The tagged data assets can be discovered right from the Classification page.
 - Click on the Usage number to view the tagged assets.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/tag2.png"
+src="/images/v1.2/how-to-guides/governance/tag2.png"
 alt="Usage: Number of Assets Tagged"
 caption="Usage: Number of Assets Tagged"
 /%}
 
 {% image
-src="/images/v1.1/how-to-guides/governance/tag3.png"
+src="/images/v1.2/how-to-guides/governance/tag3.png"
 alt="Discover the Tagged Data Assets"
 caption="Discover the Tagged Data Assets"
 /%}
 
 You can view all the tags in the right panel.
 
-Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/openmetadata/data-governance/glossary-classification/tiers).
+Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/data-governance/classification/tiers).
 
-Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/openmetadata/data-governance/glossary-classification/classification).
+Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/data-governance/classification/overview#classification-in-openmetadata).
 
 ## Auto-Classification in OpenMetadata
 
@@ -45,7 +45,7 @@ OpenMetadata identifies PII data and auto tags or suggests the tags. The data pr
 In the example below, the columns ‘user_name’ and ‘social security number’ are auto-tagged as PII-sensitive. This works using NLP as part of the profiler during ingestion.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/auto1.png"
+src="/images/v1.2/how-to-guides/governance/auto1.png"
 alt="User_name and Social Security Number are Auto-Classified as PII Sensitive"
 caption="User_name and Social Security Number are Auto-Classified as PII Sensitive"
 /%}
@@ -53,7 +53,7 @@ caption="User_name and Social Security Number are Auto-Classified as PII Sensiti
 In the below example, the column ‘dwh_x10’ is also auto-tagged as PII Sensitive, even though the column name does not provide much information. 
 
 {% image
-src="/images/v1.1/how-to-guides/governance/auto2.png"
+src="/images/v1.2/how-to-guides/governance/auto2.png"
 alt="Column Name does not provide much information"
 caption="Column Name does not provide much information"
 /%}
@@ -61,12 +61,12 @@ caption="Column Name does not provide much information"
 When we look at the content of the column ‘dwh_x10’ in the Sample Data tab, it becomes clear that the auto-classification is based on the data in the column.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/auto3.png"
+src="/images/v1.2/how-to-guides/governance/auto3.png"
 alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
 
-You can read more about [Auto PII Tagging](https://docs.open-metadata.org/v1.1.x/connectors/ingestion/auto_tagging) here.
+You can read more about [Auto PII Tagging](/connectors/ingestion/auto_tagging) here.
 
 {%inlineCallout
   color="violet-70"

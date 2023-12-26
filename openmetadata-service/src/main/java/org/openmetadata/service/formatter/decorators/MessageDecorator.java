@@ -71,7 +71,9 @@ public interface MessageDecorator<T> {
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
     diff = this.replaceMarkers(diff, addMarker, this.getAddMarker(), this.getAddMarkerClose());
-    diff = this.replaceMarkers(diff, removeMarker, this.getRemoveMarker(), this.getRemoveMarkerClose());
+    diff =
+        this.replaceMarkers(
+            diff, removeMarker, this.getRemoveMarker(), this.getRemoveMarkerClose());
     return diff;
   }
 

@@ -24,13 +24,16 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.type.basic import SqlQuery, Timestamp
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
@@ -115,7 +118,7 @@ class StoredProcedureMixin(ABC):
                     StackTraceError(
                         name="Stored Procedure",
                         error=f"Error trying to get procedure name due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -157,7 +160,7 @@ class StoredProcedureMixin(ABC):
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
-                    self.context.database_service.serviceType.value
+                    self.service_connection.type.value
                 ),
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
@@ -203,14 +206,18 @@ class StoredProcedureMixin(ABC):
             # First, get all the query history
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
-            for procedure in self.context.stored_procedures:
-                logger.debug(f"Processing Lineage for [{procedure.name}]")
-                for query_by_procedure in (
-                    queries_dict.get(procedure.name.__root__.lower()) or []
-                ):
-                    yield from self.yield_procedure_lineage(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
-                    yield from self.yield_procedure_query(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
+            for procedure_fqn in self.context.stored_procedures:
+                procedure = self.metadata.get_by_name(
+                    entity=StoredProcedure, fqn=procedure_fqn
+                )
+                if procedure:
+                    logger.debug(f"Processing Lineage for [{procedure.name}]")
+                    for query_by_procedure in (
+                        queries_dict.get(procedure.name.__root__.lower()) or []
+                    ):
+                        yield from self.yield_procedure_lineage(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )
+                        yield from self.yield_procedure_query(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )

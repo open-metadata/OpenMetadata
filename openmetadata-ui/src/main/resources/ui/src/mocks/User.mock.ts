@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../enums/entity.enum';
 import { User } from '../generated/entity/teams/user';
 
 export const USER_DATA: User = {
@@ -66,6 +67,15 @@ export const USER_DATA: User = {
     previousVersion: 3.2,
   },
   deleted: false,
+  domain: {
+    id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
+    type: EntityType.DOMAIN,
+    name: 'Engineering',
+    fullyQualifiedName: 'Engineering',
+    description: 'description',
+    inherited: true,
+    href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
+  },
   roles: [
     {
       id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',

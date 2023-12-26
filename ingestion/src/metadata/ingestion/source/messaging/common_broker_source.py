@@ -25,12 +25,16 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import SchemaType, Topic
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.messaging_service import (
@@ -144,7 +148,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -218,7 +222,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             service_name=self.context.messaging_service,
             topic_name=self.context.topic,
         )
-        topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+        topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
@@ -235,7 +239,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     left=StackTraceError(
                         name=topic_details.topic_name,
                         error=f"Failed to fetch sample data from topic {topic_name}: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
             else:

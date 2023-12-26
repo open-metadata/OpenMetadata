@@ -6,11 +6,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
-import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -22,6 +22,10 @@ import org.openmetadata.service.util.jdbi.BindFQN;
 
 public interface EntityTimeSeriesDAO {
   String getTimeSeriesTableName();
+
+  default String getPartitionFieldName() {
+    return "entityFQNHash";
+  }
 
   enum OrderBy {
     ASC,
@@ -62,6 +66,26 @@ public interface EntityTimeSeriesDAO {
 
   @ConnectionAwareSqlUpdate(
       value =
+          "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :jsonSchema, :json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb))",
+      connectionType = POSTGRES)
+  void insertWithoutExtension(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("jsonSchema") String jsonSchema,
+      @Bind("json") String json);
+
+  default void insert(String entityFQNHash, String jsonSchema, String json) {
+    insertWithoutExtension(getTimeSeriesTableName(), entityFQNHash, jsonSchema, json);
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value =
           "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
@@ -77,6 +101,61 @@ public interface EntityTimeSeriesDAO {
 
   default void update(String entityFQNHash, String extension, String json, Long timestamp) {
     update(getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp);
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> set json = :json where id=:id",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> set json = (:json :: jsonb) where id=:id",
+      connectionType = POSTGRES)
+  void update(@Define("table") String table, @Bind("json") String json, @Bind("id") String id);
+
+  default void update(String json, UUID id) {
+    update(getTimeSeriesTableName(), json, id.toString());
+  }
+
+  @SqlQuery(
+      "SELECT json FROM <table> <cond> "
+          + "AND timestamp BETWEEN :startTs AND :endTs "
+          + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset,
+      @Bind("startTs") Long startTs,
+      @Bind("endTs") Long endTs);
+
+  @SqlQuery(
+      "SELECT json FROM "
+          + "(SELECT id, json, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+          + "FROM <table> <cond> "
+          + "AND timestamp BETWEEN :startTs AND :endTs "
+          + "ORDER BY timestamp DESC) ranked "
+          + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Define("partition") String partition,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset,
+      @Bind("startTs") Long startTs,
+      @Bind("endTs") Long endTs);
+
+  default List<String> listWithOffset(
+      ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
+    return latest
+        ? listWithOffset(
+            getTimeSeriesTableName(),
+            filter.getCondition(),
+            getPartitionFieldName(),
+            limit,
+            offset,
+            startTs,
+            endTs)
+        : listWithOffset(
+            getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -97,22 +176,63 @@ public interface EntityTimeSeriesDAO {
 
   default void updateExtensionByOperation(
       String entityFQNHash, String extension, String json, Long timestamp, String operation) {
-    updateExtensionByOperation(getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    updateExtensionByOperation(
+        getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
   }
 
-  @SqlQuery("SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
+  @SqlQuery(
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
   String getExtension(
-      @Define("table") String table, @BindFQN("entityFQNHash") String entityId, @Bind("extension") String extension);
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityId,
+      @Bind("extension") String extension);
 
   default String getExtension(String entityId, String extension) {
     return getExtension(getTimeSeriesTableName(), entityId, extension);
   }
 
-  @SqlQuery("SELECT count(*) FROM <table> WHERE entityFQNHash = :entityFQNHash")
-  int listCount(@Define("table") String table, @BindFQN("entityFQNHash") String entityFQNHash);
+  @SqlQuery("SELECT count(*) FROM <table> <cond>")
+  int listCount(@Define("table") String table, @Define("cond") String cond);
 
-  default int listCount(String entityFQNHash) {
-    return listCount(getTimeSeriesTableName(), entityFQNHash);
+  default int listCount(ListFilter filter) {
+    return listCount(getTimeSeriesTableName(), filter.getCondition());
+  }
+
+  @SqlQuery("SELECT count(*) FROM <table> <cond> AND timestamp BETWEEN :startTs AND :endTs")
+  int listCount(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Bind("startTs") Long startTs,
+      @Bind("endTs") Long endTs);
+
+  @SqlQuery(
+      "SELECT count(*) FROM "
+          + "(SELECT id, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num FROM "
+          + "<table> <cond> AND timestamp BETWEEN :startTs AND :endTs) ranked "
+          + "WHERE ranked.row_num = 1")
+  int listCount(
+      @Define("table") String table,
+      @Define("partition") String partition,
+      @Define("cond") String cond,
+      @Bind("startTs") Long startTs,
+      @Bind("endTs") Long endTs);
+
+  default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
+    return latest
+        ? listCount(
+            getTimeSeriesTableName(),
+            getPartitionFieldName(),
+            filter.getCondition(),
+            startTs,
+            endTs)
+        : listCount(getTimeSeriesTableName(), filter.getCondition(), startTs, endTs);
+  }
+
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id")
+  String getById(@Define("table") String table, @Bind("id") String id);
+
+  default String getById(UUID id) {
+    return getById(getTimeSeriesTableName(), id.toString());
   }
 
   /** @deprecated */
@@ -143,7 +263,8 @@ public interface EntityTimeSeriesDAO {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  default List<CollectionDAO.ReportDataRow> getAfterExtension(String entityFQNHash, int limit, String after) {
+  default List<CollectionDAO.ReportDataRow> getAfterExtension(
+      String entityFQNHash, int limit, String after) {
     return getAfterExtension(getTimeSeriesTableName(), entityFQNHash, limit, after);
   }
 
@@ -193,36 +314,13 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
-      "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS row_num "
-          + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) AND extension = :extension) ranked WHERE ranked.row_num = 1")
-  List<String> getLatestExtensionByFQNs(
-      @Define("table") String table,
-      @BindList("entityFQNHashes") List<String> entityFQNHashes,
-      @Bind("extension") String extension);
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash "
+          + "ORDER BY timestamp DESC LIMIT 1")
+  String getLatestRecord(
+      @Define("table") String table, @BindFQN("entityFQNHash") String entityFQNHash);
 
-  default List<String> getLatestExtensionByFQNs(List<String> entityFQNHashes, String extension) {
-    return getLatestExtensionByFQNs(getTimeSeriesTableName(), entityFQNHashes, extension);
-  }
-
-  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension ORDER BY timestamp DESC LIMIT 1")
-  String getLatestByExtension(@Define("table") String table, @Bind("extension") String extension);
-
-  default String getLatestByExtension(String extension) {
-    return getLatestByExtension(getTimeSeriesTableName(), extension);
-  }
-
-  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension ORDER BY timestamp DESC")
-  List<String> getAllByExtension(@Define("table") String table, @Bind("extension") String extension);
-
-  default List<String> getAllByExtension(String extension) {
-    return getAllByExtension(getTimeSeriesTableName(), extension);
-  }
-
-  @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash")
-  void deleteAll(@Define("table") String table, @Bind("entityFQNHash") String entityFQNHash);
-
-  default void deleteAll(String entityFQNHash) {
-    deleteAll(getTimeSeriesTableName(), entityFQNHash);
+  default String getLatestRecord(String entityFQNHash) {
+    return getLatestRecord(getTimeSeriesTableName(), entityFQNHash);
   }
 
   @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
@@ -233,16 +331,6 @@ public interface EntityTimeSeriesDAO {
 
   default void delete(String entityFQNHash, String extension) {
     delete(getTimeSeriesTableName(), entityFQNHash, extension);
-  }
-
-  // This just saves the limit number of records, and remove all other with given extension
-  @SqlUpdate(
-      "DELETE FROM <table> WHERE extension = :extension AND entityFQNHash NOT IN(SELECT entityFQNHash FROM (select * from <table> WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
-  void deleteLastRecords(
-      @Define("table") String table, @Bind("extension") String extension, @Bind("records") int noOfRecord);
-
-  default void deleteLastRecords(String extension, int noOfRecord) {
-    deleteLastRecords(getTimeSeriesTableName(), extension, noOfRecord);
   }
 
   @SqlUpdate(
@@ -279,8 +367,10 @@ public interface EntityTimeSeriesDAO {
       @Bind("startTs") Long startTs,
       @Bind("endTs") long endTs);
 
-  default List<String> listBetweenTimestamps(String entityFQNHash, String extension, Long startTs, long endTs) {
-    return listBetweenTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs);
+  default List<String> listBetweenTimestamps(
+      String entityFQNHash, String extension, Long startTs, long endTs) {
+    return listBetweenTimestamps(
+        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs);
   }
 
   @SqlQuery(
@@ -296,7 +386,8 @@ public interface EntityTimeSeriesDAO {
 
   default List<String> listBetweenTimestampsByOrder(
       String entityFQNHash, String extension, Long startTs, long endTs, OrderBy orderBy) {
-    return listBetweenTimestampsByOrder(getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
+    return listBetweenTimestampsByOrder(
+        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -322,10 +413,12 @@ public interface EntityTimeSeriesDAO {
       @Define("mysqlCond") String mysqlCond,
       @Define("psqlCond") String psqlCond);
 
-  default void updateExtensionByKey(String key, String value, String entityFQN, String extension, String json) {
+  default void updateExtensionByKey(
+      String key, String value, String entityFQN, String extension, String json) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    updateExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, json, mysqlCond, psqlCond);
+    updateExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, json, mysqlCond, psqlCond);
   }
 
   /*
@@ -356,7 +449,8 @@ public interface EntityTimeSeriesDAO {
   default String getExtensionByKey(String key, String value, String entityFQN, String extension) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    return getExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+    return getExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
   }
 
   @ConnectionAwareSqlQuery(
@@ -383,10 +477,12 @@ public interface EntityTimeSeriesDAO {
       @Define("mysqlCond") String mysqlCond,
       @Define("psqlCond") String psqlCond);
 
-  default String getLatestExtensionByKey(String key, String value, String entityFQN, String extension) {
+  default String getLatestExtensionByKey(
+      String key, String value, String entityFQN, String extension) {
     String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
     String psqlCond = String.format("AND json->>'%s' = :value", key);
-    return getLatestExtensionByKeyInternal(getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+    return getLatestExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
   }
 
   default void storeTimeSeriesWithOperation(
@@ -405,9 +501,11 @@ public interface EntityTimeSeriesDAO {
   }
 
   /** @deprecated */
-  @SqlQuery("SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
+  @SqlQuery(
+      "SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
   @Deprecated(since = "1.1.1")
-  List<String> migrationListDistinctWithOffset(@Define("table") String table, @Bind("limit") int limit);
+  List<String> migrationListDistinctWithOffset(
+      @Define("table") String table, @Bind("limit") int limit);
 
   default List<String> migrationListDistinctWithOffset(int limit) {
     return migrationListDistinctWithOffset(getTimeSeriesTableName(), limit);

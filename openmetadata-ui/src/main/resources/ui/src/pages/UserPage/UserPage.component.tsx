@@ -15,7 +15,6 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import Qs from 'qs';
 import {
   default as React,
@@ -48,7 +47,7 @@ const UserPage = () => {
     try {
       const res = await getUserByName(
         username,
-        'profile,roles,teams,personas,defaultPersona'
+        'profile,roles,teams,personas,defaultPersona,domain'
       );
       setUserData(res);
     } catch (error) {
@@ -116,7 +115,7 @@ const UserPage = () => {
           if (userData.id === currentUser?.id) {
             updateCurrentUser(response);
           }
-          setUserData(response);
+          setUserData((prev) => ({ ...prev, ...response }));
         } else {
           throw t('message.unexpected-error');
         }
@@ -148,9 +147,8 @@ const UserPage = () => {
       }}
       updateUserDetails={updateUserDetails}
       userData={userData}
-      username={username}
     />
   );
 };
 
-export default observer(UserPage);
+export default UserPage;

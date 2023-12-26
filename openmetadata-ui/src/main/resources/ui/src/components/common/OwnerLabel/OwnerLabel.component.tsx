@@ -63,16 +63,17 @@ export const OwnerLabel = ({
         style={{ fontSize: '18px' }}
       />
     ) : (
-      <ProfilePicture
-        displayName={displayName}
-        id={owner.id}
-        key="profile-picture"
-        name={owner.name ?? ''}
-        type="circle"
-        width="18"
-      />
+      <div style={{ flexBasis: '18px' }}>
+        <ProfilePicture
+          displayName={displayName}
+          key="profile-picture"
+          name={owner.name ?? ''}
+          type="circle"
+          width="18"
+        />
+      </div>
     );
-  }, [owner]);
+  }, [owner, displayName]);
 
   return (
     <div className="d-flex gap-2 items-center" data-testid="owner-label">

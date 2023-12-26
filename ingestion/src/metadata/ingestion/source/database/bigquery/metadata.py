@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-We require Taxonomy Admin permissions to fetch all Policy Tags
+Bigquery source module
 """
 import os
 import traceback
@@ -40,6 +40,9 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -48,7 +51,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -306,7 +309,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 left=StackTraceError(
                     name="Tags and Classifications",
                     error=f"Skipping Policy Tag ingestion due to: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -604,38 +607,38 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    storedProcedureCode=StoredProcedureCode(
-                        language=STORED_PROC_LANGUAGE_MAP.get(
-                            stored_procedure.language or "SQL",
-                        ),
-                        code=stored_procedure.definition,
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(
+                        stored_procedure.language or "SQL",
                     ),
-                    databaseSchema=fqn.build(
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.database_service,
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+                sourceUrl=SourceUrl(
+                    __root__=self.get_stored_procedure_url(
                         database_name=self.context.database,
                         schema_name=self.context.database_schema,
-                    ),
-                    sourceUrl=SourceUrl(
-                        __root__=self.get_stored_procedure_url(
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
-                            # Follow the same building strategy as tables
-                            table_name=stored_procedure.name,
-                        )
-                    ),
-                )
+                        # Follow the same building strategy as tables
+                        table_name=stored_procedure.name,
+                    )
+                ),
             )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

@@ -35,13 +35,15 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/storedProcedures")
 @Tag(
     name = "Stored Procedures",
-    description = "A `StoredProcedure` entity that contains the set of code statements with an assigned name .")
+    description =
+        "A `StoredProcedure` entity that contains the set of code statements with an assigned name .")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storedProcedures")
-public class StoredProcedureResource extends EntityResource<StoredProcedure, StoredProcedureRepository> {
+public class StoredProcedureResource
+    extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain";
+  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -73,7 +75,9 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
             responseCode = "200",
             description = "List of stored  procedures",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedureList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedureList.class)))
       })
   public ResultList<StoredProcedure> list(
       @Context UriInfo uriInfo,
@@ -94,10 +98,14 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of schemas before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of schemas before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of schemas after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of schemas after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -106,7 +114,8 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -120,12 +129,17 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         @ApiResponse(
             responseCode = "200",
             description = "List of schema versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -140,12 +154,16 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
             responseCode = "200",
             description = "The Stored Procedure",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedure.class))),
         @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
       })
   public StoredProcedure get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -172,12 +190,18 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
             responseCode = "200",
             description = "The schema",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
-        @ApiResponse(responseCode = "404", description = "Stored Procedure for instance {fqn} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedure.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Stored Procedure for instance {fqn} is not found")
       })
   public StoredProcedure getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the Stored Procedure", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the Stored Procedure",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -206,7 +230,9 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
             responseCode = "200",
             description = "database schema",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedure.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Stored Procedure for instance {id} and version {version} is not found")
@@ -214,7 +240,9 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
   public StoredProcedure getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Stored Procedure version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -233,12 +261,17 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
             responseCode = "200",
             description = "The Stored Procedure",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedure.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStoredProcedure create) {
-    StoredProcedure storedProcedure = getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateStoredProcedure create) {
+    StoredProcedure storedProcedure =
+        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
 
@@ -248,18 +281,25 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
       operationId = "patchStoredProcedure",
       summary = "Update a Stored Procedure",
       description = "Update an existing StoredProcedure using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Stored Procedure Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -268,17 +308,23 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
   @Operation(
       operationId = "createOrUpdateStoredProcedure",
       summary = "Create or update Stored Procedure",
-      description = "Create a stored procedure, if it does not exist or update an existing stored procedure.",
+      description =
+          "Create a stored procedure, if it does not exist or update an existing stored procedure.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The updated schema ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StoredProcedure.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStoredProcedure create) {
-    StoredProcedure storedProcedure = getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateStoredProcedure create) {
+    StoredProcedure storedProcedure =
+        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
@@ -292,15 +338,27 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "StoredProcedure for instance {id} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "StoredProcedure for instance {id} is not found")
       })
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the StoredProcedure", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the StoredProcedure", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -312,13 +370,20 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Stored Procedure", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the Stored Procedure", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
     return repository
@@ -336,15 +401,21 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -355,12 +426,15 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
       description = "Delete a StoredProcedure by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "StoredProcedure for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "StoredProcedure for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -368,7 +442,9 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -377,7 +453,8 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
   @Operation(
       operationId = "deleteDBSchemaByFQN",
       summary = "Delete a schema by fully qualified name",
-      description = "Delete a schema by `fullyQualifiedName`. Schema can only be deleted if it has no tables.",
+      description =
+          "Delete a schema by `fullyQualifiedName`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Schema for instance {fqn} is not found")
@@ -389,9 +466,15 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string"))
+          @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -404,10 +487,15 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the DatabaseSchema ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseSchema.class)))
       })
   public Response restoreDatabaseSchema(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -416,6 +504,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

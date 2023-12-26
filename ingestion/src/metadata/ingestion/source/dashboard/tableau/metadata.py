@@ -39,11 +39,14 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -190,12 +193,14 @@ class TableauSource(DashboardServiceSource):
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
+
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
                             name=data_model_name,
                             error=f"Error yielding Data Model [{data_model_name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -251,7 +256,7 @@ class TableauSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.id,
                     error=f"Error to yield dashboard for {dashboard_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -292,7 +297,7 @@ class TableauSource(DashboardServiceSource):
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {err}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -340,7 +345,7 @@ class TableauSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error to yield dashboard chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

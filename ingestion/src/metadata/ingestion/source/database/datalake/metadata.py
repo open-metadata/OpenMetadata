@@ -41,6 +41,9 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -50,7 +53,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -363,13 +366,13 @@ class DatalakeSource(DatabaseServiceSource):
                     fileFormat=table_extension.value if table_extension else None,
                 )
                 yield Either(right=table_request)
-                self.register_record(table_request)
+                self.register_record(table_request=table_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name="Table",
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

@@ -81,6 +81,11 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -107,7 +112,7 @@ const DomainDetailsPage = ({
     tab: activeTab,
     version,
   } = useParams<{ fqn: string; tab: string; version: string }>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : '';
+  const domainFqn = fqn ? getDecodedFqn(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -234,11 +239,14 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${domainFqn})`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -254,11 +262,14 @@ const DomainDetailsPage = ({
   const fetchDomainAssets = async () => {
     if (fqn && !isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${fqn}) AND !(entityType:"dataProduct")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`,
           '',
           '',
           SearchIndex.ALL
@@ -502,7 +513,7 @@ const DomainDetailsPage = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
-  }, [fqn]);
+  }, [domain.fullyQualifiedName]);
 
   return (
     <>
@@ -626,15 +637,17 @@ const DomainDetailsPage = ({
           }
         />
       )}
+      {assetModalVisible && (
+        <AssetSelectionModal
+          entityFqn={domainFqn}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+          type={AssetsOfEntity.DOMAIN}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
-      <AssetSelectionModal
-        entityFqn={domainFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
-        type={AssetsOfEntity.DOMAIN}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
       {domain && (
         <DeleteWidgetModal
           afterDeleteAction={() => onDelete(domain.id)}
