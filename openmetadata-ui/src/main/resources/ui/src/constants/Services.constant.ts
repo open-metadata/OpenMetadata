@@ -32,6 +32,7 @@ import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
+import duckdb from '../assets/img/service-icon-duckdb.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -189,7 +190,7 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
-
+export const DUCKDB = duckdb;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [
