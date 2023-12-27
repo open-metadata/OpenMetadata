@@ -126,12 +126,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("testSuiteType")
           String testSuiteType,
       @Parameter(
-              description =
-                      "Include empty test suite in the response.",
+              description = "Include empty test suite in the response.",
               schema = @Schema(type = "boolean", example = "true"))
-      @QueryParam("includeEmptyTestSuites")
-      @DefaultValue("true")
-      Boolean includeEmptyTestSuites,
+          @QueryParam("includeEmptyTestSuites")
+          @DefaultValue("true")
+          Boolean includeEmptyTestSuites,
       @Parameter(
               description = "Returns list of test definitions before this cursor",
               schema = @Schema(type = "string"))
