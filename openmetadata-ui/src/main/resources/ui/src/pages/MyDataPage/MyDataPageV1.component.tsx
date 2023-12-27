@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -22,8 +22,6 @@ import React, {
 } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
-import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
@@ -35,7 +33,6 @@ import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
-import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
@@ -48,9 +45,7 @@ import './my-data.less';
 const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPageV1 = () => {
-  const location = useLocation();
   const { t } = useTranslation();
-  const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
   const { selectedPersona } = useApplicationConfigContext();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
@@ -140,14 +135,10 @@ const MyDataPageV1 = () => {
   };
 
   useEffect(() => {
-    if (
-      ((isAuthDisabled && AppState.users.length) ||
-        !isEmpty(AppState.userDetails)) &&
-      isNil(followedData)
-    ) {
+    if (currentUser) {
       fetchMyData();
     }
-  }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+  }, [currentUser]);
 
   const widgets = useMemo(
     () =>

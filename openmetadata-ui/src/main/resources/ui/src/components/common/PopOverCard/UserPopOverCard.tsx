@@ -219,6 +219,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   showUserName?: boolean;
   showUserProfile?: boolean;
   profileWidth?: number;
+  className?: string;
 }
 
 const UserPopOverCard: FC<Props> = ({
@@ -228,6 +229,7 @@ const UserPopOverCard: FC<Props> = ({
   showUserName = false,
   showUserProfile = true,
   children,
+  className,
   profileWidth = 24,
 }) => {
   const profilePicture = (
@@ -257,7 +259,8 @@ const UserPopOverCard: FC<Props> = ({
             'assignee-item d-flex gap-1 cursor-pointer items-center',
             {
               'm-r-xs': !showUserName && showUserProfile,
-            }
+            },
+            className
           )}
           data-testid={userName}
           to={

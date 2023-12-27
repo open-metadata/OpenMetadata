@@ -1242,6 +1242,7 @@
     "assigned-you-a-new-task-lowercase": "te ha asignado una nueva tarea",
     "assigning-team-entity-description": "Add a {{entity}} to {{name}}. This {{entity}} will be inherited by all the Users in the Team {{name}} as well as all the Teams under {{name}}",
     "at-least-one-policy": "Ingresa al menos una política",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "el AuthProvider no es básico",
     "bot-email-confirmation": "{{email}} para el bot {{botName}}",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",

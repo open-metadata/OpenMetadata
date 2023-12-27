@@ -1242,6 +1242,7 @@
     "assigned-you-a-new-task-lowercase": "分配了一个新任务给您",
     "assigning-team-entity-description": "添加{{entity}}到{{name}}，该{{entity}}将会被{{name}}团队中的所有人及其子团队继承",
     "at-least-one-policy": "至少一个策略",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "AuthProvider 不是 Basic 类型的",
     "bot-email-confirmation": "{{botName}}机器人的邮箱{{email}}",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
