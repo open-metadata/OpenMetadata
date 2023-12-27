@@ -332,9 +332,9 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.search-index'),
+          label: i18next.t('label.search-index-plural'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.searchIndex',
+          key: 'customAttributes.searchIndexes',
           icon: <SearchOutlined className="side-panel-icons" />,
         },
         {

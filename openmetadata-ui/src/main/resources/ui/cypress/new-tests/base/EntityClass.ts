@@ -63,6 +63,7 @@ export enum EntityType {
   Domain = 'domains',
   Glossary = 'glossaries',
   GlossaryTerm = 'glossaryTerms',
+  SeachIndex = 'searchIndexes',
   DatabaseService = 'services/databaseServices',
   DashboardService = 'services/dashboardServices',
   StorageService = 'services/storageServices',
@@ -72,6 +73,18 @@ export enum EntityType {
   SearchService = 'services/searchServices',
   Database = 'database',
 }
+
+export const CustomPropertyTypeList = [
+  EntityType.Table,
+  EntityType.Topic,
+  EntityType.Dashboard,
+  EntityType.Pipeline,
+  EntityType.Container,
+  EntityType.MlModel,
+  EntityType.GlossaryTerm,
+  EntityType.Database,
+  EntityType.SeachIndex,
+];
 
 const description =
   // eslint-disable-next-line max-len
@@ -256,20 +269,23 @@ class EntityClass {
         token,
       });
 
-      createCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
+      // Create custom property only for supported entities
+      if (CustomPropertyTypeList.includes(this.endPoint)) {
+        createCustomPropertyForEntity({
+          property: this.intergerPropertyDetails,
+          type: this.endPoint,
+        });
 
-      createCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
+        createCustomPropertyForEntity({
+          property: this.stringPropertyDetails,
+          type: this.endPoint,
+        });
 
-      createCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
-      });
+        createCustomPropertyForEntity({
+          property: this.markdownPropertyDetails,
+          type: this.endPoint,
+        });
+      }
     });
   }
 
@@ -312,20 +328,23 @@ class EntityClass {
         token,
       });
 
-      deleteCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
+      // Delete custom property only for supported entities
+      if (CustomPropertyTypeList.includes(this.endPoint)) {
+        deleteCustomPropertyForEntity({
+          property: this.intergerPropertyDetails,
+          type: this.endPoint,
+        });
 
-      deleteCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
+        deleteCustomPropertyForEntity({
+          property: this.stringPropertyDetails,
+          type: this.endPoint,
+        });
 
-      deleteCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
-      });
+        deleteCustomPropertyForEntity({
+          property: this.markdownPropertyDetails,
+          type: this.endPoint,
+        });
+      }
     });
   }
 

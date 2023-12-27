@@ -16,6 +16,7 @@ import ContainerClass from './base/ContainerClass';
 import DashboardClass from './base/DashboardClass';
 import MlModelClass from './base/MlModelClass';
 import PipelineClass from './base/PipelineClass';
+import SearchIndexClass from './base/SearchIndexClass';
 import TableClass from './base/TableClass';
 import TopicClass from './base/TopicClass';
 
@@ -26,6 +27,7 @@ const entities = [
   new TopicClass(),
   new MlModelClass(),
   new ContainerClass(),
+  new SearchIndexClass(),
 ];
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';

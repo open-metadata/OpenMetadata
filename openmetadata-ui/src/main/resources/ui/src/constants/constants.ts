@@ -780,7 +780,7 @@ export const ENTITY_PATH = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-  searchIndex: 'searchIndex',
+  searchIndexes: 'searchIndex',
   storedProcedure: 'storedProcedure',
   glossaryTerm: 'glossaryTerm',
   database: 'database',

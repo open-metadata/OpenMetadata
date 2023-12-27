@@ -161,13 +161,14 @@ export const updateDescriptioForEntity = (
   description: string,
   endPoint: EntityType
 ) => {
+  interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'updateEntity');
   cy.get('[data-testid="edit-description"]').click();
 
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .click()
     .clear()
     .type(description);
-  interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'updateEntity');
+
   cy.get('[data-testid="save"]').click();
 
   verifyResponseStatusCode('@updateEntity', 200);
