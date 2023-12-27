@@ -93,8 +93,8 @@ public class AppScheduler {
   public void deleteScheduledApplication(App app) throws SchedulerException {
     JobDetail jobDetail = getJobKey(app.getId());
     if (jobDetail != null) {
-        scheduler.deleteJob(jobDetail.getKey());
-        scheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
+      scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
       appJobsKeyMap.remove(app.getId());
     }
   }
