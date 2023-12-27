@@ -178,41 +178,44 @@ def bigquery_table_construct(runner: QueryRunner, **kwargs):
     except AttributeError:
         raise AttributeError(ERROR_MSG)
 
-    conn_config = cast(BigQueryConnection, kwargs.get("conn_config"))
-
     where_clause = [
         Column("table_id") == table_name,
     ]
+    col_names, col_count = _get_col_names_and_count(runner.table)
 
     columns = [
         Column("row_count").label("rowCount"),
         Column("size_bytes").label("sizeInBytes"),
         Column("creation_time").label("createDateTime"),
-    ]
-
-    table_metadata_deprecated = _build_table("__TABLES__", schema_name)
-    query = _build_query(columns, table_metadata_deprecated, where_clause)
-    return runner._session.execute(query).first()
-    table_storage = _build_table(
-        "TABLE_STORAGE", f"region-{conn_config.usageLocation}.INFORMATION_SCHEMA"
-    )
-    col_names, col_count = _get_col_names_and_count(runner.table)
-    columns = [
-        Column("total_rows").label("rowCount"),
-        Column("total_logical_bytes").label("sizeInBytes"),
-        Column("creation_time").label("createDateTime"),
         col_names,
         col_count,
     ]
 
-    where_clause = [
-        Column("table_schema") == schema_name,
-        Column("table_name") == table_name,
-    ]
+    table_metadata_deprecated = _build_table("__TABLES__", f"{schema_name}")
+    query = _build_query(columns, table_metadata_deprecated, where_clause)
+    result = runner._session.execute(query).first()
+    if not result:
+        conn_config = cast(BigQueryConnection, kwargs.get("conn_config"))
+        table_storage = _build_table(
+            "TABLE_STORAGE", f"region-{conn_config.usageLocation}.INFORMATION_SCHEMA"
+        )
 
-    query = _build_query(columns, table_storage, where_clause)
+        columns = [
+            Column("total_rows").label("rowCount"),
+            Column("total_logical_bytes").label("sizeInBytes"),
+            Column("creation_time").label("createDateTime"),
+            col_names,
+            col_count,
+        ]
 
-    return runner._session.execute(query).first()
+        where_clause = [
+            Column("table_schema") == schema_name,
+            Column("table_name") == table_name,
+        ]
+
+        query = _build_query(columns, table_storage, where_clause)
+
+        return runner._session.execute(query).first()
 
 
 def clickhouse_table_construct(runner: QueryRunner, **kwargs):
