@@ -21,9 +21,6 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
-    MssqlConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -79,15 +76,6 @@ def _(airflow_connection: PostgresConnection) -> Engine:
     )
 
     return get_postgres_connection(airflow_connection)
-
-
-@_get_connection.register
-def _(airflow_connection: MssqlConnection) -> Engine:
-    from metadata.ingestion.source.database.mssql.connection import (
-        get_connection as get_mssql_connection,
-    )
-
-    return get_mssql_connection(airflow_connection)
 
 
 @_get_connection.register

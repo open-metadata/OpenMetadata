@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.service.apps.NativeApplication;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.CronScheduleBuilder;
@@ -36,7 +37,7 @@ public class AppScheduler {
   public static final String SEARCH_CLIENT_KEY = "searchClientKey";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
-  private final Scheduler appScheduler;
+  private final Scheduler scheduler;
   private static final ConcurrentHashMap<UUID, JobDetail> appJobsKeyMap = new ConcurrentHashMap<>();
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchClient;
@@ -44,12 +45,12 @@ public class AppScheduler {
   private AppScheduler(CollectionDAO dao, SearchRepository searchClient) throws SchedulerException {
     this.collectionDAO = dao;
     this.searchClient = searchClient;
-    this.appScheduler = new StdSchedulerFactory().getScheduler();
+    this.scheduler = new StdSchedulerFactory().getScheduler();
     // Add OMJob Listener
-    this.appScheduler
+    this.scheduler
         .getListenerManager()
         .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
-    this.appScheduler.start();
+    this.scheduler.start();
   }
 
   public static void initialize(CollectionDAO dao, SearchRepository searchClient)
@@ -64,7 +65,7 @@ public class AppScheduler {
 
   public static AppScheduler getInstance() {
     if (initialized) return instance;
-    throw new RuntimeException("App Scheduler is not Initialized");
+    throw new UnhandledServerException("App Scheduler is not Initialized");
   }
 
   public ConcurrentMap<UUID, JobDetail> getReportMap() {
@@ -78,22 +79,22 @@ public class AppScheduler {
         JobDetail jobDetail =
             jobBuilder(application, String.format("%s", application.getId().toString()));
         Trigger trigger = trigger(application);
-        appScheduler.scheduleJob(jobDetail, trigger);
+        scheduler.scheduleJob(jobDetail, trigger);
         appJobsKeyMap.put(application.getId(), jobDetail);
       } else {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
       }
     } catch (Exception ex) {
       LOG.error("Failed in setting up job Scheduler for Data Reporting", ex);
-      throw new RuntimeException("Failed in scheduling Job for the Application", ex);
+      throw new UnhandledServerException("Failed in scheduling Job for the Application", ex);
     }
   }
 
   public void deleteScheduledApplication(App app) throws SchedulerException {
     JobDetail jobDetail = getJobKey(app.getId());
     if (jobDetail != null) {
-      appScheduler.deleteJob(jobDetail.getKey());
-      appScheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
+        scheduler.deleteJob(jobDetail.getKey());
+        scheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
       appJobsKeyMap.remove(app.getId());
     }
   }
@@ -124,7 +125,7 @@ public class AppScheduler {
 
   public static void shutDown() throws SchedulerException {
     if (instance != null) {
-      instance.appScheduler.shutdown();
+      instance.scheduler.shutdown();
     }
   }
 
@@ -162,7 +163,7 @@ public class AppScheduler {
                 .withIdentity(application.toString(), APPS_TRIGGER_GROUP)
                 .startNow()
                 .build();
-        appScheduler.scheduleJob(jobDetail, trigger);
+        scheduler.scheduleJob(jobDetail, trigger);
         appJobsKeyMap.put(application.getId(), jobDetail);
       } else {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");

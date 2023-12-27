@@ -23,6 +23,8 @@ import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class MessageParser {
@@ -167,18 +169,19 @@ public final class MessageParser {
       EntityLink entityLink = null;
       while (matcher.find()) {
         if (entityLink == null) {
+          String entityType = matcher.group(1);
           String entityFQN = matcher.group(2);
           if (entityFQN == null) {
             throw new IllegalArgumentException(
                 "Invalid Entity Link. Entity FQN is missing in " + link);
           }
+          if (entityType.equalsIgnoreCase(Entity.USER)
+              || entityType.equalsIgnoreCase(Entity.TEAM)) {
+            entityFQN = FullyQualifiedName.quoteName(entityFQN);
+          }
           entityLink =
               new EntityLink(
-                  matcher.group(1),
-                  entityFQN,
-                  matcher.group(4),
-                  matcher.group(6),
-                  matcher.group(8));
+                  entityType, entityFQN, matcher.group(4), matcher.group(6), matcher.group(8));
         } else {
           throw new IllegalArgumentException("Unexpected multiple entity links in " + link);
         }

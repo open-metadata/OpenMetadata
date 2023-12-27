@@ -145,8 +145,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     filter.addQueryParam("testSuiteType", testSuiteType);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
-    ResourceContext resourceContext;
-    resourceContext = getResourceContext();
+    ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
 
@@ -316,8 +315,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(type = "String", format = "uuid"))
           @QueryParam("testSuiteId")
           UUID testSuiteId) {
-    ResourceContext resourceContext;
-    resourceContext = getResourceContext();
+    ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -488,8 +486,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
-    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
-    addHref(uriInfo, response.getEntity());
+    repository.deleteFromSearch(response.entity(), response.changeType());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -523,7 +521,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -563,7 +561,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 
@@ -602,7 +600,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    addHref(uriInfo, response.getEntity());
+    addHref(uriInfo, response.entity());
     return response.toResponse();
   }
 

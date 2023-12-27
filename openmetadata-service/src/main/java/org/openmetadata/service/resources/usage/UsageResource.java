@@ -102,7 +102,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -152,7 +152,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fqn);
+    ResourceContext<?> resourceContext = new ResourceContext<>(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -191,7 +191,7 @@ public class UsageResource {
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.create(entity, id, usage).toResponse();
   }
@@ -228,7 +228,7 @@ public class UsageResource {
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, id, null);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
@@ -268,7 +268,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -308,7 +308,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -338,7 +338,7 @@ public class UsageResource {
           @PathParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();

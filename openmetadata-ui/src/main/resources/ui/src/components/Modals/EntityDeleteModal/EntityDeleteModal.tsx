@@ -16,19 +16,18 @@ import { t } from 'i18next';
 import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { LOADING_STATE } from '../../../enums/common.enum';
-import { getTitleCase } from '../../../utils/EntityUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
 const EntityDeleteModal = ({
   loadingState = 'initial',
   className,
   entityName,
-  entityType,
   onCancel,
   onConfirm,
-  bodyText,
   softDelete = false,
   visible,
+  bodyText,
 }: EntityDeleteModalProp) => {
   const [name, setName] = useState('');
 
@@ -92,12 +91,19 @@ const EntityDeleteModal = ({
       }
       width={600}>
       <div data-testid="body-text">
-        <Typography className="mb-2">
-          {bodyText ||
-            t('message.delete-entity-permanently', {
-              entityType: getTitleCase(entityType),
-            })}
-        </Typography>
+        <div className="mb-2">
+          {bodyText || (
+            <Transi18next
+              i18nKey="message.permanently-delete-metadata"
+              renderElement={
+                <span data-testid="entityName" style={{ fontWeight: 500 }} />
+              }
+              values={{
+                entityName: entityName,
+              }}
+            />
+          )}
+        </div>
         <Typography className="mb-2">
           <Trans
             i18nKey="label.type-to-confirm"

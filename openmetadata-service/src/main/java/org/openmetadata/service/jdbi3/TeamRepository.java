@@ -226,7 +226,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setInheritedFields(Team team, Fields fields) {
+  public void setInheritedFields(Team team, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
@@ -237,7 +237,6 @@ public class TeamRepository extends EntityRepository<Team> {
         inheritDomain(team, fields, parent);
       }
     }
-    return team;
   }
 
   @Override
@@ -489,8 +488,7 @@ public class TeamRepository extends EntityRepository<Team> {
       case DIVISION:
         validateChildren(team, children, DEPARTMENT, DIVISION, GROUP);
         break;
-      case BUSINESS_UNIT:
-      case ORGANIZATION:
+      case BUSINESS_UNIT, ORGANIZATION:
         validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT, GROUP);
         break;
     }
@@ -509,8 +507,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<Team> parents = getTeams(parentRefs);
     switch (team.getTeamType()) {
-      case GROUP:
-      case DEPARTMENT:
+      case GROUP, DEPARTMENT:
         validateParents(team, parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
       case DIVISION:
@@ -678,8 +675,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     private void getParents(CSVPrinter printer, CSVRecord csvRecord, Team importedTeam)
         throws IOException {
-      List<EntityReference> parentRefs =
-          getUserOrTeamEntityReferences(printer, csvRecord, 4, Entity.TEAM);
+      List<EntityReference> parentRefs = getEntityReferences(printer, csvRecord, 4, Entity.TEAM);
 
       // Validate team being created is under the hierarchy of the team for which CSV is being
       // imported to

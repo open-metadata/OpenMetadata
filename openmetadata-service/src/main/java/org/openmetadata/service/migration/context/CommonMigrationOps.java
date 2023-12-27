@@ -3,6 +3,10 @@ package org.openmetadata.service.migration.context;
 import java.util.List;
 
 public class CommonMigrationOps {
+  private CommonMigrationOps() {
+    /** Hidden constructor */
+  }
+
   public static final List<MigrationOps> COMMON_OPS =
       List.of(
           // Entities

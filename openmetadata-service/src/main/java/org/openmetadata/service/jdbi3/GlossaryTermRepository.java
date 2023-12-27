@@ -90,6 +90,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.NotificationHandler;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
@@ -126,12 +127,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTerm setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
+  public void setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
     EntityInterface parent = getParentEntity(glossaryTerm, "owner,domain,reviewers");
     inheritOwner(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
-    return glossaryTerm;
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
@@ -653,6 +653,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .withUpdatedAt(System.currentTimeMillis());
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
+
+    // Send WebSocket Notification
+    NotificationHandler.handleTaskNotification(thread);
   }
 
   private void closeApprovalTask(GlossaryTerm entity, String comment) {

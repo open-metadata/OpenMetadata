@@ -38,7 +38,6 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import AppState from '../AppState';
 import {
   getDayCron,
   getHourCron,
@@ -68,10 +67,11 @@ import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../generated/entity/teams/user';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
-import { getEntityFeedLink, getTitleCase } from './EntityUtils';
+import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
@@ -201,14 +201,13 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string) => {
-  const loggedInUser = AppState.getCurrentUserDetails();
+export const hasEditAccess = (type: string, id: string, currentUser: User) => {
   if (type === 'user') {
-    return id === loggedInUser?.id;
+    return id === currentUser.id;
   } else {
     return Boolean(
-      loggedInUser?.teams?.length &&
-        loggedInUser?.teams?.some((team) => team.id === id)
+      currentUser.teams?.length &&
+        currentUser.teams.some((team) => team.id === id)
     );
   }
 };
@@ -375,7 +374,9 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceUtilClassBase.getServiceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo({
+    serviceType,
+  } as SearchSourceAlias);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;
@@ -495,19 +496,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   }
 };
 
-export const getEntityDeleteMessage = (entity: string, dependents: string) => {
-  if (dependents) {
-    return t('message.permanently-delete-metadata-and-dependents', {
-      entityName: getTitleCase(entity),
-      dependents,
-    });
-  } else {
-    return t('message.permanently-delete-metadata', {
-      entityName: getTitleCase(entity),
-    });
-  }
-};
-
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
@@ -580,10 +568,10 @@ export const digitFormatter = (value: number) => {
 };
 
 export const getTeamsUser = (
-  data?: ExtraInfo
+  data: ExtraInfo,
+  currentUser: User
 ): Record<string, string | undefined> | undefined => {
   if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
-    const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
     const dataFound = teams?.find((team) => {
@@ -727,6 +715,26 @@ export const Transi18next = ({
   </Trans>
 );
 
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: entity,
+      dependents,
+    });
+  } else {
+    return (
+      <Transi18next
+        i18nKey="message.permanently-delete-metadata"
+        renderElement={
+          <span className="font-medium" data-testid="entityName" />
+        }
+        values={{
+          entityName: entity,
+        }}
+      />
+    );
+  }
+};
 /**
  * It takes a state and an action, and returns a new state with the action merged into it
  * @param {S} state - S - The current state of the reducer.

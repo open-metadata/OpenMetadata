@@ -73,7 +73,8 @@ public class SlackEventPublisher extends AbstractEventConsumer {
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, slackMessage);
         }
-      } catch (Exception e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
         throw new EventPublisherException(
             String.format("Failed to publish event %s to slack due to %s ", event, e.getMessage()));

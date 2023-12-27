@@ -13,7 +13,7 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+import static org.openmetadata.service.util.MicrometerBundleSingleton.setWebAnalyticsEvents;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -223,8 +223,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
 
-    webAnalyticEvents =
-        MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
+    setWebAnalyticsEvents(catalogConfig);
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +101,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
 
-  private final Authorizer authorizer;
-
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
@@ -122,40 +121,34 @@ public class AppResource extends EntityResource<App, AppRepository> {
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       for (CreateApp createApp : createAppsReq) {
-        try {
-          AppMarketPlaceDefinition definition =
-              repository
-                  .getMarketPlace()
-                  .getByName(
-                      null,
-                      createApp.getName(),
-                      new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+        AppMarketPlaceDefinition definition =
+            repository
+                .getMarketPlace()
+                .getByName(
+                    null,
+                    createApp.getName(),
+                    new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
-          App app = repository.findByNameOrNull(createApp.getName(), ALL);
-          if (app == null) {
-            app =
-                getApplication(definition, createApp, "admin")
-                    .withFullyQualifiedName(createApp.getName());
-            repository.initializeEntity(app);
-          }
+        App app = repository.findByNameOrNull(createApp.getName(), ALL);
+        if (app == null) {
+          app =
+              getApplication(definition, createApp, "admin")
+                  .withFullyQualifiedName(createApp.getName());
+          repository.initializeEntity(app);
+        }
 
-          // Schedule
-          if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
-          }
-
-        } catch (Exception ex) {
-          LOG.error("Failed in App Initialization, AppName : {}", createApp.getName(), ex);
+        // Schedule
+        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
-    } catch (Exception ex) {
+    } catch (SchedulerException | IOException ex) {
       LOG.error("Failed in Create App Requests", ex);
     }
   }
 
   public AppResource(Authorizer authorizer) {
     super(Entity.APPLICATION, authorizer);
-    this.authorizer = authorizer;
   }
 
   public static class AppList extends ResultList<App> {
@@ -271,23 +264,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
       return Response.status(Response.Status.OK)
           .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
           .build();
-    } else {
-      if (!installation.getPipelines().isEmpty()) {
-        EntityReference pipelineRef = installation.getPipelines().get(0);
-        IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-        IngestionPipeline ingestionPipeline =
-            ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-        return Response.ok(
-                ingestionPipelineRepository.listPipelineStatus(
-                    ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
-                MediaType.APPLICATION_JSON_TYPE)
-            .build();
-      } else {
-        throw new RuntimeException("App does not have an associated pipeline.");
-      }
     }
+    if (!installation.getPipelines().isEmpty()) {
+      EntityReference pipelineRef = installation.getPipelines().get(0);
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      IngestionPipeline ingestionPipeline =
+          ingestionPipelineRepository.get(
+              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+      return Response.ok(
+              ingestionPipelineRepository.listPipelineStatus(
+                  ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
+              MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+    throw new IllegalArgumentException("App does not have an associated pipeline.");
   }
 
   @GET

@@ -67,4 +67,19 @@ describe('InlineEdit component', () => {
 
     expect(mockProps.onSave).toHaveBeenCalled();
   });
+
+  it('should show the loading when isLoading is true', async () => {
+    render(
+      <InlineEdit {...mockProps} isLoading>
+        <input data-testid="children" />
+      </InlineEdit>
+    );
+
+    const saveBtn = await screen.findByTestId('inline-save-btn');
+    const cancelBtn = await screen.findByTestId('inline-cancel-btn');
+
+    expect(saveBtn).toHaveClass('ant-btn-loading');
+
+    expect(cancelBtn).toBeDisabled();
+  });
 });

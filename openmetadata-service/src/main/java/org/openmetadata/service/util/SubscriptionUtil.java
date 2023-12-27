@@ -50,6 +50,10 @@ import org.quartz.CronScheduleBuilder;
 
 @Slf4j
 public class SubscriptionUtil {
+  private SubscriptionUtil() {
+    /* Hidden constructor */
+  }
+
   /*
       This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
       DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.

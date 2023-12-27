@@ -33,7 +33,6 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
@@ -149,7 +148,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(
+        getLatestExtensionFromTimeSeries(
             pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
@@ -250,13 +249,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void storeRelationships(Pipeline pipeline) {
-    EntityReference service = pipeline.getService();
-    addRelationship(
-        service.getId(),
-        pipeline.getId(),
-        service.getType(),
-        Entity.PIPELINE,
-        Relationship.CONTAINS);
+    addServiceRelationship(pipeline, pipeline.getService());
   }
 
   @Override

@@ -56,9 +56,9 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 /**
- * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
- * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
- * record.
+ * EntityCsv provides export and import capabilities for an entity. Each entity must implement the
+ * abstract methods to provide entity specific processing functionality to export an entity to a CSV
+ * record, and import an entity from a CSV record.
  */
 @Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {
@@ -153,17 +153,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
   /** Owner field is in entityType;entityName format */
   public EntityReference getOwner(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
-    String owner = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(owner)) {
+    String ownerField = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(ownerField)) {
       return null;
     }
 
-    List<String> list = CsvUtil.fieldToStrings(owner);
+    List<String> list = CsvUtil.fieldToStrings(ownerField);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), csvRecord);
       return null;
     }
-    return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+    EntityReference owner =
+        getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+    return owner == null || Boolean.TRUE.equals(owner.getInherited()) ? null : owner;
   }
 
   /** Owner field is in entityName format */
@@ -218,7 +220,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     EntityInterface entity = getEntityByName(entityType, fqn);
     if (entity == null) {
-      importFailure(printer, entityNotFound(fieldNumber, fqn), csvRecord);
+      importFailure(printer, entityNotFound(fieldNumber, entityType, fqn), csvRecord);
       processRecord = false;
       return null;
     }
@@ -226,27 +228,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
-      throws IOException {
-    String fqns = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
-    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    List<EntityReference> refs = new ArrayList<>();
-    for (String fqn : fqnList) {
-      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
-      if (!processRecord) {
-        return null;
-      }
-      if (ref != null) {
-        refs.add(ref);
-      }
-    }
-    return refs.isEmpty() ? null : refs;
-  }
-
-  protected final List<EntityReference> getUserOrTeamEntityReferences(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     String fqns = csvRecord.get(fieldNumber);
@@ -304,7 +285,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private Iterator<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
     try {
-      return CSVFormat.DEFAULT.parse(in).iterator();
+      return CSVFormat.DEFAULT.withEscape('\\').parse(in).iterator();
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
@@ -347,11 +328,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return;
     }
 
-    // Finally, convert record into entity for importing
-    T entity = toEntity(resultsPrinter, csvRecord);
+    T entity = toEntity(resultsPrinter, csvRecord); // Convert record into entity for importing
     if (entity != null) {
-      // Finally, create entities
-      createEntity(resultsPrinter, csvRecord, entity);
+      createEntity(resultsPrinter, csvRecord, entity); // Finally, create entities
     }
   }
 
@@ -419,8 +398,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
-  public static String entityNotFound(int field, String fqn) {
-    String error = String.format("Entity %s not found", fqn);
+  public static String entityNotFound(int field, String entityType, String fqn) {
+    String error = String.format("Entity %s of type %s not found", fqn, entityType);
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 

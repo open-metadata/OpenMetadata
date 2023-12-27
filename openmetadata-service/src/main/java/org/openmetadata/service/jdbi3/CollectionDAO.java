@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
@@ -51,7 +52,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.api.configuration.LogoConfiguration;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -123,6 +123,7 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -1734,7 +1735,7 @@ public interface CollectionDAO {
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
-      if (!CommonUtil.nullOrEmpty(serviceType)) {
+      if (!nullOrEmpty(serviceType)) {
 
         condition =
             String.format(
@@ -1765,7 +1766,7 @@ public interface CollectionDAO {
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
-      if (!CommonUtil.nullOrEmpty(serviceType)) {
+      if (!nullOrEmpty(serviceType)) {
 
         condition =
             String.format(
@@ -1799,7 +1800,7 @@ public interface CollectionDAO {
 
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
-      if (!CommonUtil.nullOrEmpty(serviceType)) {
+      if (!nullOrEmpty(serviceType)) {
         condition =
             String.format(
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name < :before order by ingestion_pipeline_entity.name DESC LIMIT :limit",
@@ -2021,7 +2022,7 @@ public interface CollectionDAO {
       String condition =
           "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
-      if (!CommonUtil.nullOrEmpty(entityId)) {
+      if (!nullOrEmpty(entityId)) {
         condition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntityType",
@@ -2040,7 +2041,7 @@ public interface CollectionDAO {
       String condition =
           "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
-      if (!CommonUtil.nullOrEmpty(entityId)) {
+      if (!nullOrEmpty(entityId)) {
         condition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name < :before order by query_entity.name DESC LIMIT :limit",
@@ -2061,7 +2062,7 @@ public interface CollectionDAO {
       String condition =
           "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
-      if (!CommonUtil.nullOrEmpty(entityId)) {
+      if (!nullOrEmpty(entityId)) {
         condition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name > :after order by query_entity.name ASC LIMIT :limit",
@@ -2424,11 +2425,6 @@ public interface CollectionDAO {
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
-
-    @SqlQuery(
-        "select * from tag_usage where targetFQNHash in (select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash) and tagFQNHash != :tagFQNHash")
-    @RegisterRowMapper(TagLabelMapper.class)
-    List<TagLabel> getEntityTagsFromTag(@BindFQN("tagFQNHash") String tagFQNHash);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
@@ -3158,7 +3154,7 @@ public interface CollectionDAO {
     void deleteAll(@Bind("entityType") String entityType);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
-      if (CommonUtil.nullOrEmpty(entityTypes)) {
+      if (nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
@@ -3584,10 +3580,10 @@ public interface CollectionDAO {
 
     default String getLatestAppRun(UUID appId) {
       List<String> result = listAppRunRecord(appId.toString(), 1, 0);
-      if (result != null && !result.isEmpty()) {
+      if (!nullOrEmpty(result)) {
         return result.get(0);
       }
-      throw new RuntimeException("No Available Application Run Records.");
+      throw new UnhandledServerException("No Available Application Run Records.");
     }
   }
 
