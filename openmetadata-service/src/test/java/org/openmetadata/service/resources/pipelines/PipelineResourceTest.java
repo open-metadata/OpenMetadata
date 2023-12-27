@@ -98,8 +98,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               .withName("task" + i)
               .withDescription("description")
               .withDisplayName("displayName")
-              .withSourceUrl("http://localhost:0")
-              .withOwner(USER1_REF);
+              .withSourceUrl("http://localhost:0");
       TASKS.add(task);
     }
   }
@@ -226,6 +225,27 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = created.getTasks().get(0);
     assertEquals("ta.sk", actualTask.getName());
+  }
+
+  @Test
+  void post_pipelineWithTaskWithOwner(TestInfo test) throws IOException {
+    CreatePipeline create = createRequest(test);
+    Task task =
+        new Task()
+            .withName("task")
+            .withDescription("description")
+            .withSourceUrl("http://localhost:0")
+            .withOwner(USER1_REF);
+    create.setTasks(List.of(task));
+    Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Task actualTask = created.getTasks().get(0);
+    assertEquals(USER1_REF.getName(), actualTask.getOwner().getName());
+
+    // We can GET the task retrieving the owner info
+    Pipeline storedPipeline =
+        getPipelineByName(created.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
+    Task storedTask = storedPipeline.getTasks().get(0);
+    assertEquals(USER1_REF.getName(), storedTask.getOwner().getName());
   }
 
   @Test

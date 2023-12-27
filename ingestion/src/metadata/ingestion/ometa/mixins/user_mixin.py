@@ -45,7 +45,9 @@ class OMetaUserMixin:
         + ES_INDEX_MAP[User.__name__]
     )
 
-    def _get_user_by_es(self, query_string: str, fields: Optional[list] = None) -> Optional[User]:
+    def _get_user_by_es(
+        self, query_string: str, fields: Optional[list] = None
+    ) -> Optional[User]:
         """Fetch user information via ES"""
 
         try:
@@ -56,10 +58,7 @@ class OMetaUserMixin:
                 return user
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not get user info from ES due to {err}"
-            )
-
+            logger.warning(f"Could not get user info from ES due to {err}")
 
     @lru_cache(maxsize=None)
     def get_user_by_email(
@@ -88,11 +87,11 @@ class OMetaUserMixin:
 
     @lru_cache(maxsize=None)
     def get_user_by_name(
-            self,
-            name: Optional[str],
-            from_count: int = 0,
-            size: int = 1,
-            fields: Optional[list] = None,
+        self,
+        name: Optional[str],
+        from_count: int = 0,
+        size: int = 1,
+        fields: Optional[list] = None,
     ) -> Optional[User]:
         """
         GET user entity by name

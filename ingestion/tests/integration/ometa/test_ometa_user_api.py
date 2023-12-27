@@ -15,9 +15,10 @@ import logging
 import time
 from unittest import TestCase
 
-from ..integration_base import int_admin_ometa
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.teams.user import User
+
+from ..integration_base import int_admin_ometa
 
 
 class OMetaUserTest(TestCase):
@@ -127,9 +128,7 @@ class OMetaUserTest(TestCase):
         self.assertIsNone(self.metadata.get_user_by_name(name=None))
 
         # Non existing email returns None
-        self.assertIsNone(
-            self.metadata.get_user_by_name(name="idonotexist")
-        )
+        self.assertIsNone(self.metadata.get_user_by_name(name="idonotexist"))
 
         # We can get the user matching its name
         self.assertEqual(

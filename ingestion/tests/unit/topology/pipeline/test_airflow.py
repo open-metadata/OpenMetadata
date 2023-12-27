@@ -14,10 +14,11 @@ Test Airflow processing
 from unittest import TestCase
 from unittest.mock import patch
 
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
-
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
@@ -32,7 +33,7 @@ MOCK_CONFIG = {
             "config": {
                 "type": "Airflow",
                 "hostPort": "https://localhost:8080",
-                "connection": {"type": "Backend"}
+                "connection": {"type": "Backend"},
             }
         },
         "sourceConfig": {
@@ -54,110 +55,106 @@ MOCK_CONFIG = {
 
 
 SERIALIZED_DAG = {
-            "__version": 1,
-            "dag": {
-                "_dag_id": "test-lineage-253",
-                "fileloc": "/opt/airflow/dags/lineage-test.py",
-                "default_args": {
-                    "__var": {
-                        "owner": "my_owner",
-                        "depends_on_past": False,
-                        "email": ["airflow@example.com"],
-                        "email_on_failure": False,
-                        "email_on_retry": False,
-                        "retries": 1,
-                        "retry_delay": {"__var": 1, "__type": "timedelta"},
-                    },
-                    "__type": "dict",
-                },
-                "timezone": "UTC",
-                "catchup": False,
-                "edge_info": {},
-                "dataset_triggers": [],
-                "_description": "An example DAG which simulate dbt run of fct_application_summary for airflow lineage backend",
-                "_task_group": {
-                    "_group_id": None,
-                    "prefix_group_id": True,
-                    "tooltip": "",
-                    "ui_color": "CornflowerBlue",
-                    "ui_fgcolor": "#000",
-                    "children": {
-                        "task0": ["operator", "task0"],
-                        "task1": ["operator", "task1"],
-                    },
-                    "upstream_group_ids": [],
-                    "downstream_group_ids": [],
-                    "upstream_task_ids": [],
-                    "downstream_task_ids": [],
-                },
-                "is_paused_upon_creation": False,
-                "start_date": 1688860800,
-                "schedule_interval": None,
-                "_processor_dags_folder": "/opt/airflow/dags",
-                "tasks": [
-                    {
-                        "owner": "another_owner",
-                        "retry_delay": 1,
-                        "retries": 1,
-                        "ui_color": "#e8f7e4",
-                        "email": ["airflow@example.com"],
-                        "task_id": "task0",
-                        "email_on_failure": False,
-                        "email_on_retry": False,
-                        "pool": "default_pool",
-                        "downstream_task_ids": ["task1"],
-                        "template_ext": [],
-                        "template_fields_renderers": {},
-                        "inlets": [
-                            {
-                                "__var": {
-                                    "tables": [
-                                        "sample_data.ecommerce_db.shopify.dim_location"
-                                    ]
-                                },
-                                "__type": "dict",
-                            }
-                        ],
-                        "template_fields": [],
-                        "ui_fgcolor": "#000",
-                        "_task_type": "EmptyOperator",
-                        "_task_module": "airflow.operators.empty",
-                        "_is_empty": True,
-                    },
-                    {
-                        "outlets": [
-                            {
-                                "__var": {
-                                    "tables": [
-                                        "sample_data.ecommerce_db.shopify.dim_staff"
-                                    ]
-                                },
-                                "__type": "dict",
-                            }
-                        ],
-                        "owner": "another_owner",
-                        "retry_delay": 1,
-                        "retries": 1,
-                        "ui_color": "#e8f7e4",
-                        "email": ["airflow@example.com"],
-                        "task_id": "task1",
-                        "email_on_failure": False,
-                        "email_on_retry": False,
-                        "pool": "default_pool",
-                        "downstream_task_ids": [],
-                        "template_ext": [],
-                        "template_fields_renderers": {},
-                        "template_fields": [],
-                        "ui_fgcolor": "#000",
-                        "_task_type": "EmptyOperator",
-                        "_task_module": "airflow.operators.empty",
-                        "_is_empty": True,
-                    },
-                ],
-                "dag_dependencies": [],
-                "params": {},
+    "__version": 1,
+    "dag": {
+        "_dag_id": "test-lineage-253",
+        "fileloc": "/opt/airflow/dags/lineage-test.py",
+        "default_args": {
+            "__var": {
+                "owner": "my_owner",
+                "depends_on_past": False,
+                "email": ["airflow@example.com"],
+                "email_on_failure": False,
+                "email_on_retry": False,
+                "retries": 1,
+                "retry_delay": {"__var": 1, "__type": "timedelta"},
             },
-        }
+            "__type": "dict",
+        },
+        "timezone": "UTC",
+        "catchup": False,
+        "edge_info": {},
+        "dataset_triggers": [],
+        "_description": "An example DAG which simulate dbt run of fct_application_summary for airflow lineage backend",
+        "_task_group": {
+            "_group_id": None,
+            "prefix_group_id": True,
+            "tooltip": "",
+            "ui_color": "CornflowerBlue",
+            "ui_fgcolor": "#000",
+            "children": {
+                "task0": ["operator", "task0"],
+                "task1": ["operator", "task1"],
+            },
+            "upstream_group_ids": [],
+            "downstream_group_ids": [],
+            "upstream_task_ids": [],
+            "downstream_task_ids": [],
+        },
+        "is_paused_upon_creation": False,
+        "start_date": 1688860800,
+        "schedule_interval": None,
+        "_processor_dags_folder": "/opt/airflow/dags",
+        "tasks": [
+            {
+                "owner": "another_owner",
+                "retry_delay": 1,
+                "retries": 1,
+                "ui_color": "#e8f7e4",
+                "email": ["airflow@example.com"],
+                "task_id": "task0",
+                "email_on_failure": False,
+                "email_on_retry": False,
+                "pool": "default_pool",
+                "downstream_task_ids": ["task1"],
+                "template_ext": [],
+                "template_fields_renderers": {},
+                "inlets": [
+                    {
+                        "__var": {
+                            "tables": ["sample_data.ecommerce_db.shopify.dim_location"]
+                        },
+                        "__type": "dict",
+                    }
+                ],
+                "template_fields": [],
+                "ui_fgcolor": "#000",
+                "_task_type": "EmptyOperator",
+                "_task_module": "airflow.operators.empty",
+                "_is_empty": True,
+            },
+            {
+                "outlets": [
+                    {
+                        "__var": {
+                            "tables": ["sample_data.ecommerce_db.shopify.dim_staff"]
+                        },
+                        "__type": "dict",
+                    }
+                ],
+                "owner": "another_owner",
+                "retry_delay": 1,
+                "retries": 1,
+                "ui_color": "#e8f7e4",
+                "email": ["airflow@example.com"],
+                "task_id": "task1",
+                "email_on_failure": False,
+                "email_on_retry": False,
+                "pool": "default_pool",
+                "downstream_task_ids": [],
+                "template_ext": [],
+                "template_fields_renderers": {},
+                "template_fields": [],
+                "ui_fgcolor": "#000",
+                "_task_type": "EmptyOperator",
+                "_task_module": "airflow.operators.empty",
+                "_is_empty": True,
+            },
+        ],
+        "dag_dependencies": [],
+        "params": {},
+    },
+}
 
 
 class TestAirflow(TestCase):
@@ -227,11 +224,19 @@ class TestAirflow(TestCase):
         self.assertEqual("another_owner", self.airflow.fetch_dag_owners(data))
 
         # if we monkey-patch the data dict with tasks with different owner counts...
-        data = {"tasks": [{"owner": "my_owner"}, {"owner": "my_owner"}, {"owner": "another_owner"}]}
+        data = {
+            "tasks": [
+                {"owner": "my_owner"},
+                {"owner": "my_owner"},
+                {"owner": "another_owner"},
+            ]
+        }
         self.assertEqual("my_owner", self.airflow.fetch_dag_owners(data))
 
         # If there are no owners, return None
-        data = {"tasks": [{"something": None}, {"another_thing": None}, {"random": None}]}
+        data = {
+            "tasks": [{"something": None}, {"another_thing": None}, {"random": None}]
+        }
         self.assertIsNone(self.airflow.fetch_dag_owners(data))
 
     def test_get_schedule_interval(self):

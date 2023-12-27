@@ -308,12 +308,18 @@ class AirflowSource(PipelineServiceSource):
         """
         try:
             if self.source_config.includeOwners:
-                task_owners = [task.get("owner") for task in data.get("tasks", []) if task.get("owner") is not None]
+                task_owners = [
+                    task.get("owner")
+                    for task in data.get("tasks", [])
+                    if task.get("owner") is not None
+                ]
                 if task_owners:
                     most_common_owner, _ = Counter(task_owners).most_common(1)[0]
                     return most_common_owner
         except Exception as exc:
-            self.status.warning(data.get("dag_id"), f"Could not extract owner information due to {exc}")
+            self.status.warning(
+                data.get("dag_id"), f"Could not extract owner information due to {exc}"
+            )
         return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
@@ -322,8 +328,7 @@ class AirflowSource(PipelineServiceSource):
         """
         return pipeline_details.dag_id
 
-    @staticmethod
-    def get_tasks_from_dag(dag: AirflowDagDetails, host_port: str) -> List[Task]:
+    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: AirflowDagDetails
@@ -344,6 +349,7 @@ class AirflowSource(PipelineServiceSource):
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
+                owner=self.get_owner(task.owner),
             )
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
