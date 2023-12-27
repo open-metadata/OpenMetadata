@@ -32,6 +32,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         for key, value in columns.items():
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
+                col._set_parent(self.table.__table__)
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(

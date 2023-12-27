@@ -15,6 +15,7 @@ for the profiler
 from typing import Dict, Optional
 
 from sqlalchemy.orm import Query
+from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
 from metadata.profiler.api.models import ProfileSampleConfig
@@ -49,6 +50,29 @@ class BigQuerySampler(SQASampler):
             sample_data_count,
         )
         self.table_type: TableType = table_type
+
+    def _base_sample_query(self, column: Optional[Column], label=None):
+        """Base query for sampling
+
+        Args:
+            column (Optional[Column]): if computing a column metric only sample for the column
+            label (_type_, optional):
+
+        Returns:
+        """
+        from sqlalchemy_bigquery import STRUCT
+
+        if column is not None:
+            column_parts = column.name.split(".")
+            if len(column_parts) > 1:
+                # for struct columns (e.g. `foo.bar`) we need to create a new column corresponding to
+                # the struct (e.g. `foo`) and then use that in the sample query as the column that
+                # will be query is `foo.bar`.
+                # e.g. WITH sample AS (SELECT `foo` FROM table) SELECT `foo.bar` FROM sample TABLESAMPLE SYSTEM (n PERCENT)
+                column = Column(column_parts[0], STRUCT)
+                column._set_parent(self.table.__table__)
+
+        return super()._base_sample_query(column, label=label)
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self, *, column=None) -> Query:
