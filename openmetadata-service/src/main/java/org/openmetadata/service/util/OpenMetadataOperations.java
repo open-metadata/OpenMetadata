@@ -18,9 +18,11 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +33,17 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -51,6 +58,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.quartz.SchedulerException;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -64,7 +72,7 @@ import picocli.CommandLine.Option;
     description =
         "Creates or Migrates Database/Search Indexes. ReIndex the existing data into Elastic Search "
             + "or OpenSearch. Re-Deploys the service pipelines.")
-public class OpenMetadataSetup implements Callable<Integer> {
+public class OpenMetadataOperations implements Callable<Integer> {
 
   private OpenMetadataApplicationConfig config;
   private Flyway flyway;
@@ -80,7 +88,7 @@ public class OpenMetadataSetup implements Callable<Integer> {
   DefaultConfig defaultConfig;
 
   @CommandLine.ArgGroup(multiplicity = "1", order = 2, heading = "OpenMetadata Operations %n")
-  OpenMetadataOperations operations;
+  OpenMetadataOptions options;
 
   static class DefaultConfig {
     @Option(
@@ -104,7 +112,7 @@ public class OpenMetadataSetup implements Callable<Integer> {
     boolean force;
   }
 
-  static class OpenMetadataOperations {
+  static class OpenMetadataOptions {
 
     @Option(
         names = {"-dc", "--drop-create"},
@@ -178,21 +186,21 @@ public class OpenMetadataSetup implements Callable<Integer> {
         root.setLevel(Level.DEBUG);
       }
       parseConfig();
-      if (operations.dropCreate) {
+      if (options.dropCreate) {
         dropCreate();
-      } else if (operations.migrate) {
+      } else if (options.migrate) {
         migrate();
-      } else if (operations.reIndex) {
-
-      } else if (operations.deployPipelines) {
+      } else if (options.reIndex) {
+        reIndex();
+      } else if (options.deployPipelines) {
         deployPipelines();
-      } else if (operations.info) {
+      } else if (options.info) {
         info();
-      } else if (operations.validate) {
+      } else if (options.validate) {
         validate();
-      } else if (operations.repair) {
+      } else if (options.repair) {
         repair();
-      } else if (operations.checkConnection) {
+      } else if (options.checkConnection) {
         checkConnection();
       }
       return 0;
@@ -240,6 +248,25 @@ public class OpenMetadataSetup implements Callable<Integer> {
     LOG.info("Migrating the Search Indexes.");
     searchRepository.updateIndexes();
     LOG.info("OpenMetadata Migrate operation is completed.");
+  }
+
+  private void reIndex() throws SchedulerException {
+    AppScheduler.initialize(collectionDAO, searchRepository);
+    App searchIndexApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("SearchIndexApp")
+            .withClassName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp")
+            .withAppSchedule(new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.DAILY))
+            .withAppConfiguration(
+                new EventPublisherJob()
+                    .withEntities(new HashSet<>(List.of("all")))
+                    .withRecreateIndex(true)
+                    .withBatchSize(100)
+                    .withSearchIndexMappingLanguage(
+                        config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+    AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
   }
 
   private void parseConfig() throws Exception {
@@ -403,7 +430,8 @@ public class OpenMetadataSetup implements Callable<Integer> {
   }
 
   public static void main(String... args) {
-    int exitCode = new CommandLine(new OpenMetadataSetup()).execute(args);
+    int exitCode =
+        new CommandLine(new org.openmetadata.service.util.OpenMetadataOperations()).execute(args);
     System.exit(exitCode);
   }
 }

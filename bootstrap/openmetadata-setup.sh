@@ -32,7 +32,7 @@ else
   JAVA="${JAVA_HOME}/bin/java"
 fi
 
-OPENMETADATA_SETUP_MAIN_CLASS=org.openmetadata.service.util.OpenMetadataSetup
+OPENMETADATA_SETUP_MAIN_CLASS=org.openmetadata.service.util.OpenMetadataOperations
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
 if  [ ${debug} ] ; then
   echo $LIBS_DIR
