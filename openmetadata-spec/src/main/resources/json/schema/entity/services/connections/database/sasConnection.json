@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/sasConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sasConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SASConnection",
   "description": "SAS Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.metadata.SASConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.SASConnection",
   "definitions": {
     "sasType": {
       "description": "Service type.",

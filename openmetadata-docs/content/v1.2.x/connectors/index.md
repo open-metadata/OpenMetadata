@@ -64,6 +64,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Trino](/connectors/database/trino)
 - [Unity Catalog](/connectors/database/unity-catalog)
 - [Vertica](/connectors/database/vertica)
+- [SAS](/connectors/database/sas)
 
 ## Dashboard Services
 
@@ -109,7 +110,6 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 - [Amundsen](/connectors/metadata/amundsen)
 - [Atlas](/connectors/metadata/atlas)
-- [SAS](/connectors/metadata/sas)
 
 ## Search Services
 

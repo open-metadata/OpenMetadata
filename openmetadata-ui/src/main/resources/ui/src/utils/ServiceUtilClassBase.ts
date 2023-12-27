@@ -245,6 +245,9 @@ class ServiceUtilClassBase {
       case DatabaseServiceType.MongoDB:
         return MONGODB;
 
+      case DatabaseServiceType.SAS:
+        return SAS;
+
       case DatabaseServiceType.Couchbase:
         return COUCHBASE;
 
@@ -333,9 +336,6 @@ class ServiceUtilClassBase {
 
       case MetadataServiceType.Atlas:
         return ATLAS;
-
-      case MetadataServiceType.SAS:
-        return SAS;
 
       case MetadataServiceType.OpenMetadata:
         return LOGO;

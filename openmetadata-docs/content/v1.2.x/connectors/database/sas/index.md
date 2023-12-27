@@ -1,11 +1,11 @@
 ---
 title: SAS
-slug: /connectors/metadata/sas
+slug: /connectors/database/sas
 ---
 
 # SAS
 
-{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/sas/yaml"} /%}
+{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sas/yaml"} /%}
 
 ## Requirements
 

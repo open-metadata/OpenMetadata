@@ -1,6 +1,6 @@
 ---
 title: Run the SAS Connector Externally
-slug: /connectors/metadata/sas/yaml
+slug: /connectors/database/sas/yaml
 ---
 
 # Run the SAS Connector Externally
@@ -33,7 +33,7 @@ pip3 install "openmetadata-ingestion[sas]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sasConnection.json)
 you can find the structure to create a connection to SAS.
 
 In order to create and run a Metadata Ingestion workflow, we will follow

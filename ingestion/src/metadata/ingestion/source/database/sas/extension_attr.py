@@ -1,6 +1,18 @@
-# String id = 9fc463a5-84bc-49c8-84f2-acfdcd3dc705
-# Int id = 189dc756-717d-4630-8478-e2ffb8866b0f
-# The string and int id's can be found using http://localhost:8585/api/v1/metadata/types?category=field
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Extension attributes
+"""
+
 
 TABLE_CUSTOM_ATTR = [
     # Dataset attributes
@@ -53,7 +65,7 @@ TABLE_CUSTOM_ATTR = [
         "name": "source",
         "description": "The context from which the referenced resource was obtained.",
         "propertyType": {
-            "id": "9fc463a5-84bc-49c8-84f2-acfdcd3dc705",  # String type
+            "id": "9fc463a5-84bc-49c8-84f2-acfdcd3dc705",
             "type": "type",
         },
     },

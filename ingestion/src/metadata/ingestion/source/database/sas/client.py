@@ -1,6 +1,21 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Client to interact with SAS Viya apis
+"""
+
+# pylint: disable=protected-access
 import requests
 
-from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
+from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SASConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
@@ -37,6 +52,9 @@ class SASClient:
         self.custom_filter_dataflows = config.dataflowsCustomFilter
 
     def check_connection(self):
+        """
+        Check metadata connection to SAS
+        """
         check_list = []
         if self.enable_datatables:
             check_list.append("datasets")
@@ -47,10 +65,9 @@ class SASClient:
 
         for asset in check_list:
             self.list_assets(asset)
-        return
 
-    def get_instance(self, instanceId):
-        endpoint = f"catalog/instances/{instanceId}"
+    def get_instance(self, instance_id):
+        endpoint = f"catalog/instances/{instance_id}"
         headers = {
             "Accept": "application/vnd.sas.metadata.instance.entity.detail+json",
         }
@@ -63,6 +80,9 @@ class SASClient:
         return f"{self.config.serverHost}/SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
 
     def list_assets(self, assets):
+        """
+        Get all assets based on asset types
+        """
         if assets == "datasets":
             enable_asset = self.enable_datatables
             asset_filter = self.custom_filter_datatables
@@ -78,20 +98,15 @@ class SASClient:
             f"custom {assets} filter - {asset_filter}"
         )
         endpoint = (
-            f"/catalog/search?indices={assets}&q="
-            f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=1000"
+            f"catalog/search?indices={assets}&q="
+            # f"{asset_filter if str(asset_filter) != 'None' else '*'}"
+            f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=10"  # TODO: MAKE THE CHANGE
         )
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client._request("GET", path=endpoint, headers=headers)
         if "error" in response.keys():
             raise APIError(response["error"])
         return response["items"]
-
-    def get_report(self, report_id):
-        endpoint = f"reports/reports/{report_id}"
-        response = self.client.get(endpoint)
-        if "error" in response.keys():
-            return response
 
     def get_views(self, query):
         endpoint = "catalog/instances"
@@ -105,7 +120,6 @@ class SASClient:
         )
         if "error" in response.keys():
             raise APIError(f"{response}")
-        logger.info("get_views success")
         return response
 
     def get_data_source(self, endpoint):
@@ -154,16 +168,16 @@ class SASClient:
         return self.auth_token, 0
 
 
-def get_token(baseURL, user, password):
+def get_token(base_url, user, password):
     endpoint = "/SASLogon/oauth/token"
     payload = {"grant_type": "password", "username": user, "password": password}
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
         "Authorization": "Basic c2FzLmNsaTo=",
     }
-    url = baseURL + endpoint
+    url = base_url + endpoint
     response = requests.request(
-        "POST", url, headers=headers, data=payload, verify=False
+        "POST", url, headers=headers, data=payload, verify=False, timeout=10
     )
     text_response = response.json()
     logger.info(f"this is user: {user}, password: {password}, text: {text_response}")
