@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { noop } from 'lodash';
 import React, {
   RefObject,
   useCallback,
@@ -32,6 +31,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
@@ -44,7 +44,7 @@ import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import './test-case-issue-tab.style.less';
 
-const TestCaseIssueTab = () => {
+const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
@@ -137,9 +137,20 @@ const TestCaseIssueTab = () => {
     handleUpdateTaskFilter('close');
   };
 
+  const handleOpenCloseTaskClick = (currentFilter: TaskFilter) => {
+    if (currentFilter === taskFilter) {
+      return;
+    }
+    handleUpdateTaskFilter(taskFilter === 'close' ? 'open' : 'close');
+    setActiveThread();
+  };
+
   return (
-    <div className="incident-page-issue-tab">
-      <div className="left-container" id="left-container">
+    <div className="incident-page-issue-tab" data-testid="issue-tab-container">
+      <div
+        className="left-container"
+        data-testid="left-container"
+        id="left-container">
         <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
           <Typography.Text
             className={classNames(
@@ -148,12 +159,8 @@ const TestCaseIssueTab = () => {
                 'font-medium': taskFilter === 'open',
               }
             )}
-            onClick={() => {
-              if (taskFilter === 'close') {
-                handleUpdateTaskFilter('open');
-                setActiveThread();
-              }
-            }}>
+            data-testid="open-task"
+            onClick={() => handleOpenCloseTaskClick('open')}>
             <TaskIcon className="m-r-xss" width={14} /> {openTasks}{' '}
             {t('label.open')}
           </Typography.Text>
@@ -161,12 +168,8 @@ const TestCaseIssueTab = () => {
             className={classNames('cursor-pointer d-flex items-center', {
               'font-medium': taskFilter === 'close',
             })}
-            onClick={() => {
-              if (taskFilter === 'open') {
-                handleUpdateTaskFilter('close');
-                setActiveThread();
-              }
-            }}>
+            data-testid="closed-task"
+            onClick={() => handleOpenCloseTaskClick('close')}>
             <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
             {t('label.closed')}
           </Typography.Text>
@@ -192,17 +195,16 @@ const TestCaseIssueTab = () => {
           style={{ height: '2px' }}
         />
       </div>
-      <div className="right-container">
+      <div className="right-container" data-testid="right-container">
         {loader}
         {selectedThread && !loading && (
           <div id="task-panel">
             <TaskTab
               entityType={EntityType.TEST_CASE}
               isForFeedTab={false}
-              // owner={owner}
+              owner={owner}
               taskThread={selectedThread}
               onAfterClose={handleAfterTaskClose}
-              onUpdateEntityDetails={noop}
             />
           </div>
         )}

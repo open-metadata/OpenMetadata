@@ -102,7 +102,7 @@ const IncidentManagerDetailPage = () => {
         key: IncidentManagerTabs.ISSUES,
         children: (
           <ActivityFeedProvider>
-            <TestCaseIssueTab />
+            <TestCaseIssueTab owner={testCaseData.data?.owner} />
           </ActivityFeedProvider>
         ),
       },
