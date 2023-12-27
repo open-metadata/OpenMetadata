@@ -1770,7 +1770,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
   }
 
-  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
+  public ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
       Long startTs,
       Long endTs,
       String assignee,

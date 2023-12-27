@@ -29,7 +29,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
 import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getTableTabPath } from '../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
