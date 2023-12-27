@@ -243,7 +243,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
-        getPipelineByName(created.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
+        getPipelineByName(created.getFullyQualifiedName(), "owner,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
     assertEquals(USER1_REF.getName(), storedTask.getOwner().getName());
   }
