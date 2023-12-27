@@ -117,6 +117,7 @@ class LineageParser:
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
         return self.retrieve_tables(self.parser.target_tables)
 
+    # pylint: disable=protected-access
     @cached_property
     def column_lineage(self) -> List[Tuple[Column, Column]]:
         """
@@ -124,9 +125,7 @@ class LineageParser:
         """
         column_lineage = []
         try:
-            if (
-                self.parser._dialect == SQLPARSE_DIALECT
-            ):  # pylint: disable=protected-access
+            if self.parser._dialect == SQLPARSE_DIALECT:
                 return self.parser.get_column_lineage()
 
             for col_lineage in self.parser.get_column_lineage():
@@ -142,7 +141,7 @@ class LineageParser:
                 tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
                 column_lineage.append((src_col, tgt_col))
         except Exception as err:
-            logger.warn(f"Failed to fetch column level lineage due to: {err}")
+            logger.warning(f"Failed to fetch column level lineage due to: {err}")
             logger.debug(traceback.format_exc())
         return column_lineage
 
