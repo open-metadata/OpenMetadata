@@ -21,11 +21,14 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import { EntityUnion } from '../Explore/ExplorePage.interface';
 
 export interface ApplicationContextConfig
   extends LogoConfiguration,
@@ -33,7 +36,12 @@ export interface ApplicationContextConfig
   routeElements?: ReactNode;
   userProfilePics: Record<string, User>;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
-
+  cachedEntityData: Record<string, EntityUnion>;
+  updateCachedEntityData: (data: {
+    id: string;
+    entityDetails: EntityUnion;
+  }) => void;
+  urlPathName: string;
   selectedPersona: EntityReference;
   updateSelectedPersona: (personaFqn: EntityReference) => void;
 }
@@ -66,6 +74,7 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
   routeElements,
 }) => {
+  const location = useLocation();
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
     {} as LogoConfiguration
   );
@@ -75,6 +84,17 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   const [userProfilePics, setUserProfilePics] = useState<Record<string, User>>(
     {}
   );
+  const [cachedEntityData, setCachedEntityData] = useState<
+    Record<string, EntityUnion>
+  >({});
+
+  const [urlPathName, setUrlPathName] = useState<string>('');
+
+  useEffect(() => {
+    if (isProtectedRoute(location.pathname)) {
+      setUrlPathName(location.pathname);
+    }
+  }, [location.pathname]);
 
   const fetchApplicationConfig = async () => {
     try {
@@ -108,6 +128,13 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     []
   );
 
+  const updateCachedEntityData = useCallback(
+    ({ id, entityDetails }: { id: string; entityDetails: EntityUnion }) => {
+      setCachedEntityData((prev) => ({ ...prev, [id]: entityDetails }));
+    },
+    []
+  );
+
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
@@ -131,6 +158,9 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
       updateSelectedPersona,
       userProfilePics,
       updateUserProfilePics,
+      cachedEntityData,
+      updateCachedEntityData,
+      urlPathName,
     }),
     [
       applicationConfig,
@@ -139,6 +169,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
       updateSelectedPersona,
       userProfilePics,
       updateUserProfilePics,
+      cachedEntityData,
+      updateCachedEntityData,
     ]
   );
 

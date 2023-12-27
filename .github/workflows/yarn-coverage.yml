@@ -28,7 +28,7 @@ jobs:
   ui-coverage-tests:
     strategy:
       matrix:
-        node-version: [16.x]
+        node-version: [18.x]
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
