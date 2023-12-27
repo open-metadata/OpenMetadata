@@ -178,9 +178,21 @@ def bigquery_table_construct(runner: QueryRunner, **kwargs):
     except AttributeError:
         raise AttributeError(ERROR_MSG)
 
-    conn_config = kwargs.get("conn_config")
-    conn_config = cast(BigQueryConnection, conn_config)
+    conn_config = cast(BigQueryConnection, kwargs.get("conn_config"))
 
+    where_clause = [
+        Column("table_id") == table_name,
+    ]
+
+    columns = [
+        Column("row_count").label("rowCount"),
+        Column("size_bytes").label("sizeInBytes"),
+        Column("creation_time").label("createDateTime"),
+    ]
+
+    table_metadata_deprecated = _build_table("__TABLES__", schema_name)
+    query = _build_query(columns, table_metadata_deprecated, where_clause)
+    return runner._session.execute(query).first()
     table_storage = _build_table(
         "TABLE_STORAGE", f"region-{conn_config.usageLocation}.INFORMATION_SCHEMA"
     )
