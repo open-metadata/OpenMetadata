@@ -126,6 +126,13 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("testSuiteType")
           String testSuiteType,
       @Parameter(
+              description =
+                      "Include empty test suite in the response.",
+              schema = @Schema(type = "boolean", example = "true"))
+      @QueryParam("includeEmptyTestSuites")
+      @DefaultValue("true")
+      Boolean includeEmptyTestSuites,
+      @Parameter(
               description = "Returns list of test definitions before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -143,6 +150,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           Include include) {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
+    filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
     ResourceContext<?> resourceContext = getResourceContext();
