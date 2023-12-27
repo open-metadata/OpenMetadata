@@ -32,6 +32,9 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         for key, value in columns.items():
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
+                # pylint: disable=protected-access
+                col._set_parent(self.table.__table__)
+                # pylint: enable=protected-access
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(

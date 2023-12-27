@@ -82,7 +82,7 @@ def test_get_partition_details():
     assert partition.enablePartitioning == True
     assert partition.partitionColumnName == "_PARTITIONTIME"
     assert partition.partitionIntervalType == PartitionIntervalType.INGESTION_TIME
-    assert partition.partitionInterval == 30
+    assert partition.partitionInterval == 1
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.HOUR
 
     table_entity = MockTable(
@@ -97,5 +97,5 @@ def test_get_partition_details():
     assert partition.enablePartitioning == True
     assert partition.partitionColumnName == "_PARTITIONDATE"
     assert partition.partitionIntervalType == PartitionIntervalType.INGESTION_TIME
-    assert partition.partitionInterval == 30
+    assert partition.partitionInterval == 1
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY

@@ -15,6 +15,7 @@ from typing import Optional
 
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    PartitionIntervalUnit,
     PartitionProfilerConfig,
     Table,
 )
@@ -47,8 +48,10 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionColumnName=entity.tablePartition.columns[0],
-                    partitionIntervalUnit=entity.tablePartition.interval,
-                    partitionInterval=30,
+                    partitionIntervalUnit=PartitionIntervalUnit.DAY
+                    if entity.tablePartition.interval != "HOUR"
+                    else entity.tablePartition.interval,
+                    partitionInterval=1,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=None,
@@ -60,8 +63,10 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                     partitionColumnName="_PARTITIONDATE"
                     if entity.tablePartition.interval == "DAY"
                     else "_PARTITIONTIME",
-                    partitionIntervalUnit=entity.tablePartition.interval,
-                    partitionInterval=30,
+                    partitionIntervalUnit=PartitionIntervalUnit.DAY
+                    if entity.tablePartition.interval != "HOUR"
+                    else entity.tablePartition.interval,
+                    partitionInterval=1,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=None,
@@ -72,7 +77,7 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                     enablePartitioning=True,
                     partitionColumnName=entity.tablePartition.columns[0],
                     partitionIntervalUnit=None,
-                    partitionInterval=30,
+                    partitionInterval=None,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=1,
