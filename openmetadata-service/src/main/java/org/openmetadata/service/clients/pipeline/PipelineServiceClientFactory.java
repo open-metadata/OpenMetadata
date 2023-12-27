@@ -35,7 +35,7 @@ public final class PipelineServiceClientFactory {
     }
 
     String pipelineServiceClientClass = config.getClassName();
-    LOG.info("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
+    LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
     try {
       pipelineServiceClient =

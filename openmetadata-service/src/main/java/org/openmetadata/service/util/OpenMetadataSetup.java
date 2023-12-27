@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -15,25 +16,39 @@ import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.flywaydb.core.internal.util.AsciiTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.slf4j.LoggerFactory;
@@ -58,6 +73,8 @@ public class OpenMetadataSetup implements Callable<Integer> {
   private String nativeSQLScriptRootPath;
   private String extensionSQLScriptRootPath;
   private String flywayRootPath;
+  private SecretsManager secretsManager;
+  private CollectionDAO collectionDAO;
 
   @CommandLine.ArgGroup(exclusive = false, multiplicity = "1", order = 1, heading = "Config%n")
   DefaultConfig defaultConfig;
@@ -168,7 +185,7 @@ public class OpenMetadataSetup implements Callable<Integer> {
       } else if (operations.reIndex) {
 
       } else if (operations.deployPipelines) {
-
+        deployPipelines();
       } else if (operations.info) {
         info();
       } else if (operations.validate) {
@@ -180,12 +197,13 @@ public class OpenMetadataSetup implements Callable<Integer> {
       }
       return 0;
     } catch (Exception e) {
+      LOG.error("Failed due to", e);
       return 1;
     }
   }
 
   private void info() {
-    dumpToAsciiTable(flyway.info().all());
+    LOG.info(dumpToAsciiTable(flyway.info().all()));
   }
 
   private void validate() {
@@ -289,8 +307,61 @@ public class OpenMetadataSetup implements Callable<Integer> {
         new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
 
     // Initialize secrets manager
-    SecretsManagerFactory.createSecretsManager(
-        config.getSecretsManagerConfiguration(), config.getClusterName());
+    secretsManager =
+        SecretsManagerFactory.createSecretsManager(
+            config.getSecretsManagerConfiguration(), config.getClusterName());
+
+    collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setCollectionDAO(collectionDAO);
+    Entity.initializeRepositories(config, jdbi);
+  }
+
+  private void deployPipelines() {
+    PipelineServiceClient pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+    IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    List<IngestionPipeline> pipelines =
+        pipelineRepository.listAll(
+            new EntityUtil.Fields(Set.of(FIELD_OWNER, "service")),
+            new ListFilter(Include.NON_DELETED));
+    LOG.debug(String.format("Pipelines %d", pipelines.size()));
+    List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
+    List<List<String>> pipelineStatuses = new ArrayList<>();
+    for (IngestionPipeline pipeline : pipelines) {
+      try {
+        LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
+        pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config).build());
+        secretsManager.decryptIngestionPipeline(pipeline);
+        OpenMetadataConnection openMetadataServerConnection =
+            new OpenMetadataConnectionBuilder(config).build();
+        pipeline.setOpenMetadataServerConnection(
+            secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+        ServiceEntityInterface service =
+            Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
+        pipelineServiceClient.deployPipeline(pipeline, service);
+      } catch (Exception e) {
+        LOG.error(
+            String.format(
+                "Failed to deploy pipeline %s of type %s for service %s",
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName()),
+            e);
+        pipeline.setDeployed(false);
+      } finally {
+        LOG.debug("update the pipeline");
+        collectionDAO.ingestionPipelineDAO().update(pipeline);
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName(),
+                pipeline.getDeployed().toString()));
+      }
+    }
+    printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
   }
 
   private void promptUserForDelete() {
@@ -322,11 +393,13 @@ public class OpenMetadataSetup implements Callable<Integer> {
             connType,
             extensionSQLScriptRootPath,
             defaultConfig.force);
-    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
-    Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();
+  }
+
+  private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
+    LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
   }
 
   public static void main(String... args) {
