@@ -60,7 +60,8 @@ class BigQuerySampler(SQASampler):
 
         Returns:
         """
-        from sqlalchemy_bigquery import STRUCT  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy_bigquery import STRUCT
 
         if column is not None:
             column_parts = column.name.split(".")
@@ -71,7 +72,9 @@ class BigQuerySampler(SQASampler):
                 # e.g. WITH sample AS (SELECT `foo` FROM table) SELECT `foo.bar`
                 # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
-                column._set_parent(self.table.__table__)  # pylint: disable=protected-access
+                # pylint: disable=protected-access
+                column._set_parent(self.table.__table__)
+                # pylint: enable=protected-access
 
         return super()._base_sample_query(column, label=label)
 
