@@ -48,7 +48,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionColumnName=entity.tablePartition.columns[0],
-                    partitionIntervalUnit=PartitionIntervalUnit.DAY,
+                    partitionIntervalUnit=PartitionIntervalUnit.DAY
+                    if entity.tablePartition.interval != "HOUR"
+                    else entity.tablePartition.interval,
                     partitionInterval=1,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
@@ -61,7 +63,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                     partitionColumnName="_PARTITIONDATE"
                     if entity.tablePartition.interval == "DAY"
                     else "_PARTITIONTIME",
-                    partitionIntervalUnit=PartitionIntervalUnit.DAY,
+                    partitionIntervalUnit=PartitionIntervalUnit.DAY
+                    if entity.tablePartition.interval != "HOUR"
+                    else entity.tablePartition.interval,
                     partitionInterval=1,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
