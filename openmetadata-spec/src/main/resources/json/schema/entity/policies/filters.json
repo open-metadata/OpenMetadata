@@ -15,7 +15,7 @@
       "description": "Set of tags to match on (OR among all tags).",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/entityName"
+        "$ref": "../classification/tag.json#/definitions/tagName"
       }
     }
   }

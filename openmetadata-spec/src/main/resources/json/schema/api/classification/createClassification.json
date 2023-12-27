@@ -9,7 +9,7 @@
 
   "properties": {
     "name": {
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
     },
     "displayName": {
       "description": "Display Name that identifies this classification.",
