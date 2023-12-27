@@ -21,15 +21,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-  isProfilePicLoading: jest.fn(),
-}));
-
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
   getEntityFQN: jest.fn(),

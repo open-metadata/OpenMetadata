@@ -231,7 +231,7 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
-    case DatabaseServiceType.DuckDb: {
+    case DatabaseServiceType.DuckDB: {
       schema = duckdbConnection;
 
       break;

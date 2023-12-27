@@ -85,7 +85,7 @@ const handlePostAnalytic = async (
  * @param pageData PageData
  * @param userId string
  */
-export const trackPageView = (pageData: AnalyticsData, userId: string) => {
+export const trackPageView = (pageData: AnalyticsData, userId?: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -126,7 +126,7 @@ export const trackPageView = (pageData: AnalyticsData, userId: string) => {
   }
 };
 
-export const trackCustomEvent = (eventData: AnalyticsData) => {
+export const trackCustomEvent = (eventData: AnalyticsData, userId?: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -138,22 +138,24 @@ export const trackCustomEvent = (eventData: AnalyticsData) => {
   // timestamp for the current event
   const timestamp = meta.ts;
 
-  const customEventData: CustomEvent = {
-    url: location.pathname,
-    fullUrl: location.href,
-    hostname: location.hostname,
-    eventType: CustomEventTypes.Click,
-    sessionId: currentSession.id,
-    eventValue,
-  };
+  if (userId) {
+    const customEventData: CustomEvent = {
+      url: location.pathname,
+      fullUrl: location.href,
+      hostname: location.hostname,
+      eventType: CustomEventTypes.Click,
+      sessionId: currentSession.id,
+      eventValue,
+    };
 
-  const webAnalyticEventData: WebAnalyticEventData = {
-    eventType: WebAnalyticEventType.CustomEvent,
-    eventData: customEventData,
-    timestamp,
-  };
+    const webAnalyticEventData: WebAnalyticEventData = {
+      eventType: WebAnalyticEventType.CustomEvent,
+      eventData: customEventData,
+      timestamp,
+    };
 
-  handlePostAnalytic(webAnalyticEventData);
+    handlePostAnalytic(webAnalyticEventData);
+  }
 };
 
 /**
@@ -161,7 +163,7 @@ export const trackCustomEvent = (eventData: AnalyticsData) => {
  * @param userId string
  * @returns AnalyticsInstance
  */
-export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
+export const getAnalyticInstance = (userId?: string): AnalyticsInstance => {
   return Analytics({
     app: 'OpenMetadata',
     plugins: [
@@ -171,7 +173,7 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
           trackPageView(pageData, userId);
         },
         track: (trackingData: AnalyticsData) => {
-          trackCustomEvent(trackingData);
+          trackCustomEvent(trackingData, userId);
         },
       },
     ],

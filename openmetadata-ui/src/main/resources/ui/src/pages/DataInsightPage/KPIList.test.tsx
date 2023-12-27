@@ -15,11 +15,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { mockUserData } from '../../components/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
 const mockPush = jest.fn();
-
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    currentUser: { ...mockUserData, isAdmin: true },
+  })),
+}));
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,

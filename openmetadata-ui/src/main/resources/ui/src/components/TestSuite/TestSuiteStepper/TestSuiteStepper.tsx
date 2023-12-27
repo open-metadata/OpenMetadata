@@ -21,7 +21,7 @@ import { getRightPanelForAddTestSuitePage } from '../../../components/AddDataQua
 import { AddTestCaseList } from '../../../components/AddTestCaseList/AddTestCaseList.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
-import { HTTP_STATUS_CODE } from '../../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
   TEST_SUITE_STEPPER_BREADCRUMB,

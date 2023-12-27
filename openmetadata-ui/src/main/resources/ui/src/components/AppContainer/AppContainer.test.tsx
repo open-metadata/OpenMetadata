@@ -16,22 +16,6 @@ import { MemoryRouter, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import AppContainer from './AppContainer';
 
-jest.mock('../../AppState', () => ({
-  getCurrentUserDetails: jest.fn().mockReturnValue({
-    id: '2e424734-761a-443f-bf2a-a5b361823c80',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  }),
-  newUser: {
-    name: 'Sample Name',
-    email: 'sample123@sample.com',
-    picture: 'Profile Picture',
-  },
-}));
-
 jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({

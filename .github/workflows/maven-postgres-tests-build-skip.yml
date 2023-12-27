@@ -38,6 +38,6 @@ jobs:
             os:
               - ubuntu-latest
             node-version:
-              - 16.x
+              - 18.x
         steps:
           - run: 'echo "Step is not required"'

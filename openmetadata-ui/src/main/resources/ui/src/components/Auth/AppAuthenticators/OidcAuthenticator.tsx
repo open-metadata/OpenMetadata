@@ -23,7 +23,6 @@ import React, {
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
 import SigninPage from '../../../pages/LoginPage/index';
 import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
@@ -70,14 +69,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       loading,
       isAuthenticated,
       setIsAuthenticated,
-      isAuthDisabled,
       isSigningIn,
       setIsSigningIn,
       setLoadingIndicator,
       updateAxiosInterceptors,
     } = useAuthContext();
     const history = useHistory();
-    const { userDetails, newUser } = AppState;
+    const { currentUser, newUser } = useAuthContext();
     const userManager = useMemo(
       () => makeUserManager(userConfig),
       [userConfig]
@@ -119,7 +117,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       <>
         <Switch>
           <Route exact path={ROUTES.HOME}>
-            {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
+            {!isAuthenticated && !isSigningIn ? (
               <Redirect to={ROUTES.SIGNIN} />
             ) : (
               <Redirect to={ROUTES.MY_DATA} />
@@ -168,9 +166,9 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
-          {isAuthenticated || isAuthDisabled ? (
+          {isAuthenticated ? (
             <Fragment>{children}</Fragment>
-          ) : !isSigningIn && isEmpty(userDetails) && isEmpty(newUser) ? (
+          ) : !isSigningIn && isEmpty(currentUser) && isEmpty(newUser) ? (
             <Redirect to={ROUTES.SIGNIN} />
           ) : (
             <AppWithAuth />

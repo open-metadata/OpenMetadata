@@ -16,26 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import WebAnalyticsProvider from './WebAnalyticsProvider';
 
-jest.mock('../../AppState', () => {
-  const mockUser = {
-    id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-    isAdmin: true,
-    href: 'http://localhost:8585/api/v1/users/011bdb24-90a7-4a97-ba66-24002adb2b12',
-    teams: [{ id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss' }],
-  };
-
-  return {
-    getCurrentUserDetails: jest.fn().mockReturnValue(mockUser),
-    userDetails: undefined,
-    nonSecureUserDetails: mockUser,
-  };
-});
-
 describe('Test WebAnalytics Component', () => {
   it('Should render the child component', async () => {
     await act(async () => {

@@ -36,12 +36,13 @@ const TeamsHeadingLabel = ({
     currentTeam ? currentTeam.displayName : ''
   );
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-
+  const { currentUser } = useAuthContext();
   const { owner } = useMemo(() => currentTeam, [currentTeam]);
 
   const isCurrentTeamOwner = useMemo(
-    () => hasEditAccess(owner?.type ?? '', owner?.id ?? ''),
+    () =>
+      currentUser &&
+      hasEditAccess(owner?.type ?? '', owner?.id ?? '', currentUser),
     [owner]
   );
 
@@ -50,7 +51,7 @@ const TeamsHeadingLabel = ({
       hasEditPermission: entityPermissions.EditAll,
       hasEditDisplayNamePermission:
         entityPermissions.EditDisplayName || entityPermissions.EditAll,
-      hasAccess: isAuthDisabled || isAdminUser,
+      hasAccess: isAdminUser,
     }),
 
     [entityPermissions]

@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
@@ -27,7 +26,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { default as appState } from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -61,6 +59,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
+import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -74,6 +73,7 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -85,6 +85,8 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { withinPageSearch } =
+    useLocationSearch<{ withinPageSearch: string }>();
 
   const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
@@ -328,20 +330,18 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    if (!isMounting.current && appState.inPageSearchText) {
+    if (withinPageSearch && serviceType) {
       history.push(
         getExplorePath({
-          search: appState.inPageSearchText,
+          search: withinPageSearch,
+          isPersistFilters: false,
           extraParameters: {
-            facetFilter: {
-              serviceType: [serviceType],
-              'database.name.keyword': [databaseName],
-            },
+            quickFilter: getQueryFilterForDatabase(serviceType, databaseName),
           },
         })
       );
     }
-  }, [appState.inPageSearchText]);
+  }, [withinPageSearch]);
 
   useEffect(() => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
@@ -357,7 +357,6 @@ const DatabaseDetails: FunctionComponent = () => {
   // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
-    appState.inPageSearchText = '';
   }, []);
 
   const handleUpdateTier = useCallback(
@@ -699,4 +698,4 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 };
 
-export default observer(withActivityFeed(DatabaseDetails));
+export default withActivityFeed(DatabaseDetails);

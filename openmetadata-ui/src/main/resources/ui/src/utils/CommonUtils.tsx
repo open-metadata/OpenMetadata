@@ -38,7 +38,6 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import AppState from '../AppState';
 import {
   getDayCron,
   getHourCron,
@@ -68,7 +67,7 @@ import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../generated/entity/teams/user';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
@@ -202,14 +201,13 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string) => {
-  const loggedInUser = AppState.getCurrentUserDetails();
+export const hasEditAccess = (type: string, id: string, currentUser: User) => {
   if (type === 'user') {
-    return id === loggedInUser?.id;
+    return id === currentUser.id;
   } else {
     return Boolean(
-      loggedInUser?.teams?.length &&
-        loggedInUser?.teams?.some((team) => team.id === id)
+      currentUser.teams?.length &&
+        currentUser.teams.some((team) => team.id === id)
     );
   }
 };
@@ -570,10 +568,10 @@ export const digitFormatter = (value: number) => {
 };
 
 export const getTeamsUser = (
-  data?: ExtraInfo
+  data: ExtraInfo,
+  currentUser: User
 ): Record<string, string | undefined> | undefined => {
   if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
-    const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
     const dataFound = teams?.find((team) => {

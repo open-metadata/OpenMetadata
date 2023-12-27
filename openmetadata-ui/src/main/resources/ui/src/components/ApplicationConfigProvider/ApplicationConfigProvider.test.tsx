@@ -28,6 +28,10 @@ jest.mock('../../rest/settingConfigAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockApplicationConfig)),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
+}));
+
 describe('ApplicationConfigProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -50,8 +50,6 @@ export enum JWT_PRINCIPAL_CLAIMS {
 export interface IAuthContext {
   isAuthenticated: boolean;
   setIsAuthenticated: (authenticated: boolean) => void;
-  isAuthDisabled: boolean;
-  setIsAuthDisabled: (authenticated: boolean) => void;
   authConfig?: AuthenticationConfiguration;
   authorizerConfig?: AuthorizerConfiguration;
   isSigningIn: boolean;
@@ -61,6 +59,8 @@ export interface IAuthContext {
   getCallBackComponent: () => FC | null;
   loading: boolean;
   currentUser?: User;
+  newUser?: UserProfile;
+  updateNewUser: (user: UserProfile) => void;
   setLoadingIndicator: (authenticated: boolean) => void;
   handleSuccessfulLogin: (user: OidcUser) => void;
   updateAxiosInterceptors: () => void;

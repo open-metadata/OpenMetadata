@@ -59,8 +59,8 @@ const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const history = useHistory();
   const location = useLocation();
-  const { isAdminUser } = useAuth();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
+  const { isAdminUser } = useAuth();
 
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);

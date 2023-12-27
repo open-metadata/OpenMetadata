@@ -12,35 +12,13 @@
  */
 
 import { isEmpty } from 'lodash';
-import AppState from '../AppState';
-import { ROUTES } from '../constants/constants';
+import { useAuthContext } from '../components/Auth/AuthProviders/AuthProvider';
 
-export const useAuth = (pathname = '') => {
-  const { authDisabled, userDetails, newUser, authProvider, userPermissions } =
-    AppState;
-  const isAuthenticatedRoute =
-    pathname !== ROUTES.SIGNUP &&
-    pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.FORGOT_PASSWORD &&
-    pathname !== ROUTES.CALLBACK &&
-    pathname !== ROUTES.SAML_CALLBACK &&
-    pathname !== ROUTES.SILENT_CALLBACK;
-  const isTourRoute = pathname === ROUTES.TOUR;
+export const useAuth = () => {
+  const { currentUser, newUser } = useAuthContext();
 
   return {
-    isSigningIn: authProvider.signingIn,
-    isSignedIn: authDisabled || !isEmpty(userDetails),
-    isSigningUp: !authDisabled && !isEmpty(newUser),
-    isSignedOut:
-      !authDisabled &&
-      !authProvider.signingIn &&
-      isEmpty(userDetails) &&
-      isEmpty(newUser),
-    isAuthenticatedRoute,
-    isAuthDisabled: authDisabled,
-    isAdminUser: userDetails?.isAdmin,
-    isFirstTimeUser: !isEmpty(userDetails) && !isEmpty(newUser),
-    isTourRoute,
-    userPermissions,
+    isAdminUser: currentUser?.isAdmin,
+    isFirstTimeUser: !isEmpty(currentUser) && !isEmpty(newUser),
   };
 };

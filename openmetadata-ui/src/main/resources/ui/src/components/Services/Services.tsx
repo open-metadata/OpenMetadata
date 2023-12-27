@@ -52,7 +52,6 @@ import {
 } from '../../utils/ServiceUtils';
 import { FilterIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
@@ -65,7 +64,6 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
@@ -443,7 +441,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   })
                 : NO_PERMISSION_FOR_ACTION
             }>
-            {(addServicePermission || isAuthDisabled) && (
+            {addServicePermission && (
               <Button
                 className="m-b-xs"
                 data-testid="add-service-button"

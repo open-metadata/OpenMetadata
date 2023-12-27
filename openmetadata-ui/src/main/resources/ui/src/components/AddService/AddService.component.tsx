@@ -19,7 +19,7 @@ import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {

@@ -43,7 +43,6 @@ const TeamsInfo = ({
   const { t } = useTranslation();
 
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -58,7 +57,7 @@ const TeamsInfo = ({
   const { hasEditPermission, hasAccess } = useMemo(
     () => ({
       hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasAccess: isAuthDisabled || (isAdminUser && !isTeamDeleted),
+      hasAccess: isAdminUser && !isTeamDeleted,
     }),
 
     [entityPermissions, isTeamDeleted]

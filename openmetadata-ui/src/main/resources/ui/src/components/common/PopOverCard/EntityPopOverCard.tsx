@@ -17,9 +17,9 @@ import React, {
   HTMLAttributes,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
@@ -44,6 +44,7 @@ import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../Loader/Loader';
@@ -58,15 +59,17 @@ const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
-  const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
   const [loading, setLoading] = useState(true);
+  const { cachedEntityData, updateCachedEntityData } =
+    useApplicationConfigContext();
+  const entityData = useMemo(
+    () => cachedEntityData[entityFQN],
+    [cachedEntityData, entityFQN]
+  );
 
-  const getData = useCallback(() => {
-    const setEntityDetails = (entityDetail: EntityUnion) => {
-      AppState.entityData[entityFQN] = entityDetail;
-    };
-
+  const getData = useCallback(async () => {
     const fields = 'tags,owner';
+    setLoading(true);
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
@@ -148,35 +151,24 @@ const PopoverContent: React.FC<{
     }
 
     if (promise) {
-      setLoading(true);
-      promise
-        .then((res) => {
-          setEntityDetails(res);
-          setEntityData(res);
-        })
-        .catch(() => {
-          // do nothing
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      try {
+        const res = await promise;
+        updateCachedEntityData({ id: entityFQN, entityDetails: res });
+      } catch (error) {
+        // Error
+      } finally {
+        setLoading(false);
+      }
     } else {
       setLoading(false);
     }
   }, [entityType, entityFQN]);
 
-  const onMouseOver = () => {
-    const entityData = AppState.entityData[entityFQN];
-    if (entityData) {
-      setEntityData(entityData);
-      setLoading(false);
-    } else {
+  useEffect(() => {
+    const entityData = cachedEntityData[entityFQN];
+    if (!entityData) {
       getData();
     }
-  };
-
-  useEffect(() => {
-    onMouseOver();
   }, [entityFQN]);
 
   if (loading) {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import AppState from '../AppState';
 import {
   OperationPermission,
   ResourceEntity,
@@ -36,10 +35,9 @@ export const checkPermission = (
   resourceType: ResourceEntity,
   permissions: UIPermission
 ) => {
-  const isAuthDisabled = AppState.authDisabled;
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPermission = isAuthDisabled;
+  let hasPermission = false;
 
   /**
    * If allResource is present then check for permission and return it

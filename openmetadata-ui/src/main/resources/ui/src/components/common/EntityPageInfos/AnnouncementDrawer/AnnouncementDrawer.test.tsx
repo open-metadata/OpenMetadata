@@ -39,15 +39,6 @@ jest.mock('../../../Modals/AnnouncementModal/AddAnnouncementModal', () => {
   return jest.fn().mockReturnValue(<div>AddAnnouncementModal</div>);
 });
 
-jest.mock('../../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-  isProfilePicLoading: jest.fn(),
-}));
-
 const mockProps = {
   open: true,
   entityType: 'string',

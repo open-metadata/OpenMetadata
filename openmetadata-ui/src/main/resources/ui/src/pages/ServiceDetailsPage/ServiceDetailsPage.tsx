@@ -29,7 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -129,6 +129,7 @@ export type ServicePageData =
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { isAirflowAvailable } = useAirflowStatus();
   const {
     fqn: serviceFQN,
@@ -168,8 +169,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
-  const { isAdminUser } = useAuth();
 
+  const { isAdminUser } = useAuth();
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
@@ -952,13 +953,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
-    const userOwnsService =
-      AppState.userDetails.id === serviceDetails?.owner?.id;
+    const userOwnsService = currentUser?.id === serviceDetails?.owner?.id;
 
     const userInOwnerTeam = Boolean(
-      AppState.userDetails.teams?.some(
-        (team) => team.id === serviceDetails?.owner?.id
-      )
+      currentUser?.teams?.some((team) => team.id === serviceDetails?.owner?.id)
     );
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
@@ -1027,7 +1025,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
         children: tab.children,
       }));
   }, [
-    AppState,
     serviceDetails,
     isAdminUser,
     serviceCategory,
