@@ -414,7 +414,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 profile_sample_query=self.profile_query,
             )
             return thread_local.runner
-        thread_local.runner._sample = sample
+        thread_local.runner._sample = sample  # pylint: disable=protected-access
         return thread_local.runner
 
     def compute_metrics_in_thread(

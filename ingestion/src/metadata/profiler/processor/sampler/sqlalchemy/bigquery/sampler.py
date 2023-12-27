@@ -60,7 +60,7 @@ class BigQuerySampler(SQASampler):
 
         Returns:
         """
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # pylint: disable=import-outside-toplevel
 
         if column is not None:
             column_parts = column.name.split(".")
@@ -68,9 +68,10 @@ class BigQuerySampler(SQASampler):
                 # for struct columns (e.g. `foo.bar`) we need to create a new column corresponding to
                 # the struct (e.g. `foo`) and then use that in the sample query as the column that
                 # will be query is `foo.bar`.
-                # e.g. WITH sample AS (SELECT `foo` FROM table) SELECT `foo.bar` FROM sample TABLESAMPLE SYSTEM (n PERCENT)
+                # e.g. WITH sample AS (SELECT `foo` FROM table) SELECT `foo.bar`
+                # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
-                column._set_parent(self.table.__table__)
+                column._set_parent(self.table.__table__)  # pylint: disable=protected-access
 
         return super()._base_sample_query(column, label=label)
 
