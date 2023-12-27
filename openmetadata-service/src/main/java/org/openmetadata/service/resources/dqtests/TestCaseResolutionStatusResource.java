@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -55,9 +54,8 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
 @Tag(
-    name = "Test Case Failure Status",
-    description = "APIs to test case failure status from resolution center.")
-@Hidden
+    name = "Test Case Incident Manager",
+    description = "APIs to test case incident status from incident manager.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
