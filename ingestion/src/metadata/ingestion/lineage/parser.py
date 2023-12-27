@@ -117,26 +117,32 @@ class LineageParser:
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
         return self.retrieve_tables(self.parser.target_tables)
 
+    # pylint: disable=protected-access
     @cached_property
     def column_lineage(self) -> List[Tuple[Column, Column]]:
         """
         Get a list of tuples of column lineage
         """
-        if self.parser._dialect == SQLPARSE_DIALECT:  # pylint: disable=protected-access
-            return self.parser.get_column_lineage()
         column_lineage = []
-        for col_lineage in self.parser.get_column_lineage():
-            # In case of column level lineage it is possible that we get
-            # two or more columns as there might be some intermediate columns
-            # but the source columns will be the first value and
-            # the target column always will be the last columns
-            src_column = col_lineage[0]
-            tgt_column = col_lineage[-1]
-            src_col = Column(src_column.raw_name)
-            src_col._parent = src_column._parent  # pylint: disable=protected-access
-            tgt_col = Column(tgt_column.raw_name)
-            tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
-            column_lineage.append((src_col, tgt_col))
+        try:
+            if self.parser._dialect == SQLPARSE_DIALECT:
+                return self.parser.get_column_lineage()
+
+            for col_lineage in self.parser.get_column_lineage():
+                # In case of column level lineage it is possible that we get
+                # two or more columns as there might be some intermediate columns
+                # but the source columns will be the first value and
+                # the target column always will be the last columns
+                src_column = col_lineage[0]
+                tgt_column = col_lineage[-1]
+                src_col = Column(src_column.raw_name)
+                src_col._parent = src_column._parent  # pylint: disable=protected-access
+                tgt_col = Column(tgt_column.raw_name)
+                tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
+                column_lineage.append((src_col, tgt_col))
+        except Exception as err:
+            logger.warning(f"Failed to fetch column level lineage due to: {err}")
+            logger.debug(traceback.format_exc())
         return column_lineage
 
     @cached_property
