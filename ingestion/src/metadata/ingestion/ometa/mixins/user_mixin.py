@@ -60,6 +60,8 @@ class OMetaUserMixin:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not get user info from ES due to {err}")
 
+        return None
+
     @lru_cache(maxsize=None)
     def get_user_by_email(
         self,
