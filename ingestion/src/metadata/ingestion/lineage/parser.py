@@ -124,9 +124,11 @@ class LineageParser:
         """
         column_lineage = []
         try:
-            if self.parser._dialect == SQLPARSE_DIALECT:  # pylint: disable=protected-access
+            if (
+                self.parser._dialect == SQLPARSE_DIALECT
+            ):  # pylint: disable=protected-access
                 return self.parser.get_column_lineage()
-            
+
             for col_lineage in self.parser.get_column_lineage():
                 # In case of column level lineage it is possible that we get
                 # two or more columns as there might be some intermediate columns
