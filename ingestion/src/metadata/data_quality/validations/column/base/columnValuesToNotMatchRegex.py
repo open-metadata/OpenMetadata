@@ -64,12 +64,19 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
                 [TestResultValue(name=NOT_LIKE_COUNT, value=None)],
             )
 
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self.get_row_count()
+        else:
+            row_count = None
+
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(not not_match_count),
             f"Found {not_match_count} value(s) matching the forbidden regex pattern vs "
             f"{not_match_count} value(s) in the column.",
             [TestResultValue(name=NOT_LIKE_COUNT, value=str(not_match_count))],
+            row_count=row_count,
+            failed_rows=not_match_count,
         )
 
     @abstractmethod
@@ -81,3 +88,23 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
     ):
         raise NotImplementedError
+
+    @abstractmethod
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        raise NotImplementedError
+
+    def get_row_count(self) -> int:
+        """Get row count
+
+        Returns:
+            Tuple[int, int]:
+        """
+        return self.compute_row_count(self._get_column_name())

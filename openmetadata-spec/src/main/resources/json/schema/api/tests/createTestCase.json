@@ -39,6 +39,11 @@
     "owner": {
       "description": "Owner of this test",
       "$ref": "../../type/entityReference.json"
+    },
+    "computePassedFailedRowCount": {
+      "description": "Compute the passed and failed row count for the test case.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

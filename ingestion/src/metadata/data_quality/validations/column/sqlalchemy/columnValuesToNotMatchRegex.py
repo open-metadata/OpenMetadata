@@ -62,3 +62,14 @@ class ColumnValuesToNotMatchRegexValidator(
             return self.run_query_results(
                 self.runner, Metrics.NOT_LIKE_COUNT, column, **kwargs
             )
+
+    def compute_row_count(self, column: Column):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)

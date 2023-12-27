@@ -14,5 +14,6 @@
       "dataType": "ARRAY",
       "required": true
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true
 }

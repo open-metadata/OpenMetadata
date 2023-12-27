@@ -15,3 +15,17 @@ SET json = json::jsonb#-'{testCaseResult,testCaseFailureStatus}';
 UPDATE data_quality_data_time_series d
 SET json = json::jsonb#-'{testCaseFailureStatus}';
 -- END: Incident Manager Migration
+
+-- Test Case passed/failed row level migration
+UPDATE test_definition
+SET json = JSONB_SET(json, '{supportsRowLevelPassedFailed}', 'true', true)
+WHERE name IN (
+	'columnValuesToBeUnique',
+	'columnValueLengthsToBeBetween',
+	'columnValuesToBeBetween',
+	'columnValuesToBeInSet',
+	'columnValuesToBeNotInSet',
+	'columnValuesToBeNotNull',
+	'columnValuesToMatchRegex',
+	'columnValuesToNotMatchRegex'
+);

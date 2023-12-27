@@ -83,3 +83,43 @@ class SQAValidatorMixin:
             )
 
         return res
+
+    def _compute_row_count_between(
+        self,
+        runner: QueryRunner,
+        column: Column,
+        query_filter: dict,
+    ):
+        """compute row count for between tests
+
+        Args:
+            runner (QueryRunner): runner
+            column (Column): column
+            query_filter (dict): filter to apply to the query
+
+        Raises:
+            SQLAlchemyError:
+
+        Returns:
+        """
+        try:
+            value = dict(
+                runner.dispatch_query_select_first(
+                    Metrics.ROW_COUNT(column).fn(),
+                    query_filter_=query_filter,
+                )
+            )
+            res = value.get(Metrics.ROW_COUNT.name)
+        except Exception as exc:
+            raise SQLAlchemyError(exc)
+
+        return res
+
+    def _compute_row_count(self, runner: QueryRunner, column: Column, **kwargs):
+        """compute row count
+
+        Args:
+            runner (QueryRunner): runner to run the test case against)
+            column (SQALikeColumn): column to compute row count for
+        """
+        return self.run_query_results(runner, Metrics.ROW_COUNT, column, **kwargs)

@@ -71,6 +71,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 TestResultValue(name=VALUE_COUNT, value=str(count)),
                 TestResultValue(name=UNIQUE_COUNT, value=str(unique_count)),
             ],
+            row_count=count,
+            passed_rows=unique_count,
         )
 
     @abstractmethod
@@ -79,8 +81,21 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
     @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
         raise NotImplementedError
 
     @abstractmethod
     def _get_unique_count(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+        """Get row count
+
+        Returns:
+            Tuple[int, int]:
+        """
         raise NotImplementedError

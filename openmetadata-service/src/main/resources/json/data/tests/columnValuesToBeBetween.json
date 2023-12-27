@@ -19,5 +19,6 @@
       "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum",
       "dataType": "INT"
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true
 }
