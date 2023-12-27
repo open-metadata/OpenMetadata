@@ -14,8 +14,8 @@ for the profiler
 """
 from typing import Dict, Optional
 
-from sqlalchemy.orm import Query
 from sqlalchemy import Column
+from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
 from metadata.profiler.api.models import ProfileSampleConfig

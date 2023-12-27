@@ -15,8 +15,8 @@ from typing import Optional
 
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    PartitionProfilerConfig,
     PartitionIntervalUnit,
+    PartitionProfilerConfig,
     Table,
 )
 from metadata.generated.schema.entity.services.databaseService import (
