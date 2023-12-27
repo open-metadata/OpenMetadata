@@ -196,5 +196,4 @@ public class MigrationWorkflow {
     migrationDAO.upsertServerMigration(
         step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
   }
-
 }
