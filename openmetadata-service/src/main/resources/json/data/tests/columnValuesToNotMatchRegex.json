@@ -14,5 +14,6 @@
       "dataType": "STRING",
       "required": true
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true
 }
