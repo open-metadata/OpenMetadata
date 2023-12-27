@@ -27,6 +27,7 @@ import deltaLakeConnection from '../jsons/connectionSchemas/connections/database
 import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
 import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
+import duckdbConnection from '../jsons/connectionSchemas/connections/database/duckdbConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
@@ -227,6 +228,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.UnityCatalog: {
       schema = unityCatalogConnection;
+
+      break;
+    }
+    case DatabaseServiceType.DuckDB: {
+      schema = duckdbConnection;
 
       break;
     }

@@ -90,8 +90,7 @@
             "description": "Reference to the failure status object for the test case result.",
             "$ref": "./testCaseResolutionStatus.json"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",

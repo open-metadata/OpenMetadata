@@ -13,8 +13,6 @@
 
 import i18n from '../utils/i18next/LocalUtil';
 
-export const NO_AUTH = 'no-auth';
-
 export const LOGIN_FAILED_ERROR = i18n.t('server.invalid-username-or-password');
 
 export const HTTP_STATUS_CODE = {

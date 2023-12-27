@@ -54,7 +54,7 @@ authorizerConfiguration:
 ```
 
 {% note noteType="Tip" %}
- Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+ Follow [this guide](/how-to-guides/admin-guide/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
 {% /note %}
 
 

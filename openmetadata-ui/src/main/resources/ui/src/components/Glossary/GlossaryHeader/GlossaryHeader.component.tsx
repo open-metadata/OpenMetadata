@@ -43,7 +43,6 @@ import { useEntityExportModalProvider } from '../../../components/Entity/EntityE
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import Voting from '../../../components/Voting/Voting.component';
 import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -76,19 +75,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-
-export interface GlossaryHeaderProps {
-  isVersionView?: boolean;
-  supportAddOwner?: boolean;
-  selectedData: Glossary | GlossaryTerm;
-  permissions: OperationPermission;
-  isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => void;
-  onDelete: (id: string) => void;
-  onAssetAdd?: () => void;
-  updateVote?: (data: VotingDataProps) => Promise<void>;
-  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
-}
+import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
   selectedData,
