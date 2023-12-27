@@ -98,7 +98,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               .withName("task" + i)
               .withDescription("description")
               .withDisplayName("displayName")
-              .withSourceUrl("http://localhost:0");
+              .withSourceUrl("http://localhost:0")
+              .withOwner(USER1_REF);
       TASKS.add(task);
     }
   }

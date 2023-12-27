@@ -12,6 +12,7 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
+from collections import Counter
 from datetime import datetime
 from typing import Iterable, List, Optional, cast
 
@@ -98,7 +99,7 @@ class AirflowSource(PipelineServiceSource):
         self._session = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(cls, config_dict, metadata: OpenMetadata) -> "AirflowSource":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirflowConnection):
@@ -283,7 +284,7 @@ class AirflowSource(PipelineServiceSource):
                     start_date=data.get("start_date", None),
                     tasks=data.get("tasks", []),
                     schedule_interval=get_schedule_interval(data),
-                    owners=self.fetch_owners(data),
+                    owner=self.fetch_dag_owners(data),
                 )
 
                 yield dag
@@ -296,12 +297,23 @@ class AirflowSource(PipelineServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
 
-    def fetch_owners(self, data) -> Optional[str]:
+    def fetch_dag_owners(self, data) -> Optional[str]:
+        """
+        In Airflow, ownership is defined as:
+        - `default_args`: Applied to all tasks and available on the DAG payload
+        - `owners`: Applied at the tasks. In Airflow's source code, DAG ownership is then a
+          list joined with the owners of all the tasks.
+
+        We will pick the owner from the tasks that appears in most tasks.
+        """
         try:
-            if self.source_config.includeOwners and data.get("default_args"):
-                return data.get("default_args", [])["__var"].get("email", [])
-        except TypeError:
-            pass
+            if self.source_config.includeOwners:
+                task_owners = [task.get("owner") for task in data.get("tasks", []) if task.get("owner") is not None]
+                if task_owners:
+                    most_common_owner, _ = Counter(task_owners).most_common(1)[0]
+                    return most_common_owner
+        except Exception as exc:
+            self.status.warning(data.get("dag_id"), f"Could not extract owner information due to {exc}")
         return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
@@ -336,24 +348,23 @@ class AirflowSource(PipelineServiceSource):
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
-    def get_user_details(self, email) -> Optional[EntityReference]:
-        user = self.metadata.get_user_by_email(email=email)
-        if user:
-            return EntityReference(id=user.id.__root__, type="user")
-        return None
+    def get_owner(self, owner) -> Optional[EntityReference]:
+        """
+        Fetching users by name via ES to keep things as fast as possible.
 
-    def get_owner(self, owners) -> Optional[EntityReference]:
+        We use the `owner` field since it's the onw used by Airflow to showcase
+        the info in its UI. In other connectors we might use the mail (e.g., in Looker),
+        but we use name here to be consistent with Airflow itself.
+
+        If data is not indexed, we can live without this information
+        until the next run.
+        """
         try:
-            if isinstance(owners, str) and owners:
-                return self.get_user_details(email=owners)
-
-            if isinstance(owners, List) and owners:
-                for owner in owners or []:
-                    return self.get_user_details(email=owner)
-
-            logger.debug(f"No user found with email [{owners}] in OMD")
+            if user := self.metadata.get_user_by_name(name=owner):
+                return EntityReference(id=user.id.__root__, type="user")
+            logger.debug(f"No user found with name [{owner}] in OM")
         except Exception as exc:
-            logger.warning(f"Error while getting details of user {owners} - {exc}")
+            logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
 
     def yield_pipeline(
@@ -380,7 +391,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_details, self.service_connection.hostPort
                 ),
                 service=self.context.pipeline_service,
-                owner=self.get_owner(pipeline_details.owners),
+                owner=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
             yield Either(right=pipeline_request)

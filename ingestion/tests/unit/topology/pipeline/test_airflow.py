@@ -12,6 +12,11 @@
 Test Airflow processing
 """
 from unittest import TestCase
+from unittest.mock import patch
+
+from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
 
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
@@ -19,26 +24,43 @@ from metadata.ingestion.source.pipeline.airflow.models import (
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 
+MOCK_CONFIG = {
+    "source": {
+        "type": "airflow",
+        "serviceName": "test_airflow",
+        "serviceConnection": {
+            "config": {
+                "type": "Airflow",
+                "hostPort": "https://localhost:8080",
+                "connection": {"type": "Backend"}
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "PipelineMetadata",
+                "includeOwners": True,
+            }
+        },
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
+        },
+    },
+}
 
-class TestAirflow(TestCase):
-    """
-    Test Airflow model processing
-    """
 
-    def test_parsing(self):
-        """
-        We can properly pick up Airflow's payload and convert
-        it to our models
-        """
-
-        serialized_dag = {
+SERIALIZED_DAG = {
             "__version": 1,
             "dag": {
                 "_dag_id": "test-lineage-253",
                 "fileloc": "/opt/airflow/dags/lineage-test.py",
                 "default_args": {
                     "__var": {
-                        "owner": "airflow",
+                        "owner": "my_owner",
                         "depends_on_past": False,
                         "email": ["airflow@example.com"],
                         "email_on_failure": False,
@@ -74,7 +96,7 @@ class TestAirflow(TestCase):
                 "_processor_dags_folder": "/opt/airflow/dags",
                 "tasks": [
                     {
-                        "owner": "airflow",
+                        "owner": "another_owner",
                         "retry_delay": 1,
                         "retries": 1,
                         "ui_color": "#e8f7e4",
@@ -113,7 +135,7 @@ class TestAirflow(TestCase):
                                 "__type": "dict",
                             }
                         ],
-                        "owner": "airflow",
+                        "owner": "another_owner",
                         "retry_delay": 1,
                         "retries": 1,
                         "ui_color": "#e8f7e4",
@@ -137,18 +159,44 @@ class TestAirflow(TestCase):
             },
         }
 
-        data = serialized_dag["dag"]
+
+class TestAirflow(TestCase):
+    """
+    Test Airflow model processing
+    """
+
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    def __init__(self, methodName, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_CONFIG)
+
+        # This already validates that the source can be initialized
+        self.airflow: AirflowSource = AirflowSource.create(
+            MOCK_CONFIG["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+
+    def test_parsing(self):
+        """
+        We can properly pick up Airflow's payload and convert
+        it to our models
+        """
+
+        data = SERIALIZED_DAG["dag"]
 
         dag = AirflowDagDetails(
             dag_id="id",
             fileloc="loc",
-            data=AirflowDag.parse_obj(serialized_dag),
+            data=AirflowDag.parse_obj(SERIALIZED_DAG),
             max_active_runs=data.get("max_active_runs", None),
             description=data.get("_description", None),
             start_date=data.get("start_date", None),
             tasks=data.get("tasks", []),
             schedule_interval=None,
-            owners=None,
+            owner=None,
         )
 
         self.assertEqual(
@@ -171,6 +219,20 @@ class TestAirflow(TestCase):
                 }
             ],
         )
+
+    def test_get_dag_owners(self):
+        data = SERIALIZED_DAG["dag"]
+
+        # The owner will be the one appearing as owner in most of the tasks
+        self.assertEqual("another_owner", self.airflow.fetch_dag_owners(data))
+
+        # if we monkey-patch the data dict with tasks with different owner counts...
+        data = {"tasks": [{"owner": "my_owner"}, {"owner": "my_owner"}, {"owner": "another_owner"}]}
+        self.assertEqual("my_owner", self.airflow.fetch_dag_owners(data))
+
+        # If there are no owners, return None
+        data = {"tasks": [{"something": None}, {"another_thing": None}, {"random": None}]}
+        self.assertIsNone(self.airflow.fetch_dag_owners(data))
 
     def test_get_schedule_interval(self):
         """

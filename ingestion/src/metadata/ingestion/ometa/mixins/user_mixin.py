@@ -39,6 +39,28 @@ class OMetaUserMixin:
         + ES_INDEX_MAP[User.__name__]
     )
 
+    # Allow for more flexible name lookup
+    name_search = (
+        "/search/query?q={name}&from={from_}&size={size}&index="
+        + ES_INDEX_MAP[User.__name__]
+    )
+
+    def _get_user_by_es(self, query_string: str, fields: Optional[list] = None) -> Optional[User]:
+        """Fetch user information via ES"""
+
+        try:
+            entity_list = self._search_es_entity(
+                entity_type=User, query_string=query_string, fields=fields
+            )
+            for user in entity_list or []:
+                return user
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not get user info from ES due to {err}"
+            )
+
+
     @lru_cache(maxsize=None)
     def get_user_by_email(
         self,
@@ -48,28 +70,43 @@ class OMetaUserMixin:
         fields: Optional[list] = None,
     ) -> Optional[User]:
         """
-        GET user entity by name
+        GET user entity by mail
 
         Args:
             email: user email to search
             from_count: records to expect
             size: number of records
+            fields: Optional field list to pass to ES request
         """
         if email:
             query_string = self.email_search.format(
                 email=email, from_=from_count, size=size
             )
+            return self._get_user_by_es(query_string=query_string, fields=fields)
 
-            try:
-                entity_list = self._search_es_entity(
-                    entity_type=User, query_string=query_string, fields=fields
-                )
-                for user in entity_list or []:
-                    return user
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Could not get user info from ES for user email {email} due to {err}"
-                )
+        return None
+
+    @lru_cache(maxsize=None)
+    def get_user_by_name(
+            self,
+            name: Optional[str],
+            from_count: int = 0,
+            size: int = 1,
+            fields: Optional[list] = None,
+    ) -> Optional[User]:
+        """
+        GET user entity by name
+
+        Args:
+            name: user name to search
+            from_count: records to expect
+            size: number of records
+            fields: Optional field list to pass to ES request
+        """
+        if name:
+            query_string = self.name_search.format(
+                name=name, from_=from_count, size=size
+            )
+            return self._get_user_by_es(query_string=query_string, fields=fields)
 
         return None
