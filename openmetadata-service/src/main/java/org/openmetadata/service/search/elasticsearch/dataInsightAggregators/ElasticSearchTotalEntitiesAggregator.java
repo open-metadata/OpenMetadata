@@ -4,6 +4,8 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.TotalEntitiesAggregator;
 
 public class ElasticSearchTotalEntitiesAggregator
@@ -14,7 +16,7 @@ public class ElasticSearchTotalEntitiesAggregator
   }
 
   @Override
-  protected Double getValue(Sum key) {
+  protected Optional<Double> getValue(Sum key) {
     return key != null ? key.getValue() : null;
   }
 

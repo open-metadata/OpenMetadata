@@ -5,6 +5,8 @@ import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Max;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
 
 public class ElasticSearchMostActiveUsersAggregator
@@ -16,12 +18,12 @@ public class ElasticSearchMostActiveUsersAggregator
   }
 
   @Override
-  protected Double getSumValue(Sum key) {
+  protected Optional<Double> getSumValue(Sum key) {
     return key != null ? key.getValue() : null;
   }
 
   @Override
-  protected Long getMaxValue(Max key) {
+  protected Optional<Long> getMaxValue(Max key) {
     return key != null ? (long) key.getValue() : null;
   }
 

@@ -4,6 +4,8 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.EntitiesOwnerAggregator;
 
 public class ElasticSearchEntitiesOwnerAggregator
@@ -15,7 +17,7 @@ public class ElasticSearchEntitiesOwnerAggregator
   }
 
   @Override
-  protected Double getValue(Sum key) {
+  protected Optional<Double> getValue(Sum key) {
     return key != null ? key.getValue() : null;
   }
 

@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
@@ -16,7 +18,7 @@ public class OpenSearchMostActiveUsersAggregator
   }
 
   @Override
-  protected Double getSumValue(Sum key) {
+  protected Optional<Double> getSumValue(Sum key) {
     return key != null ? key.getValue() : null;
   }
 

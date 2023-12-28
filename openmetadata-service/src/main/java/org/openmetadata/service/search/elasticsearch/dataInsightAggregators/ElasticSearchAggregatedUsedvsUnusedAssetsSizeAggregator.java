@@ -5,6 +5,8 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsSizeAggregator;
 
 public class ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator
@@ -34,7 +36,7 @@ public class ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator
   }
 
   @Override
-  protected Double getValue(Sum aggregations) {
+  protected Optional<Double> getValue(Sum aggregations) {
     return aggregations != null ? aggregations.getValue() : null;
   }
 }

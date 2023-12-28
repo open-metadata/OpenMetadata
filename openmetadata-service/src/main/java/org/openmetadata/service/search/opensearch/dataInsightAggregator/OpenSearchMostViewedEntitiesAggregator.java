@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.MostViewedEntitiesAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
@@ -14,7 +16,7 @@ public class OpenSearchMostViewedEntitiesAggregator
   }
 
   @Override
-  protected Double getValue(Sum key) {
+  protected Optional<Double> getValue(Sum key) {
     return key != null ? key.getValue() : null;
   }
 

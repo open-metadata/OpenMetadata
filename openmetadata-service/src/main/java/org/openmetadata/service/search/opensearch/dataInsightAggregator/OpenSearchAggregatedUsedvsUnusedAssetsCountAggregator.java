@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsCountAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
@@ -34,7 +36,7 @@ public class OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator
   }
 
   @Override
-  protected Double getValue(Sum aggregations) {
+  protected Optional<Double> getValue(Sum aggregations) {
     return aggregations != null ? aggregations.getValue() : null;
   }
 }
