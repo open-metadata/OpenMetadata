@@ -50,6 +50,14 @@ jobs:
         parallel-machine: [1, 2, 3, 4]
     environment: test
     steps:
+      - name: Set Project ID Environment variable
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request_target" ]; then
+            echo "PROJECT_ID=${{ secrets.PR_PROJECT_ID }}" >> $GITHUB_ENV
+          else
+            echo "PROJECT_ID=${{ secrets.SCHEDULE_PROJECT_ID }}" >> $GITHUB_ENV
+          fi
+
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -145,7 +153,7 @@ jobs:
           CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          CYPRESS_BQ_PROJECT_ID: ${{ env.PROJECT_ID }}
           CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
