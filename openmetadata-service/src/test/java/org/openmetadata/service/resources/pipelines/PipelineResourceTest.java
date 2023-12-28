@@ -256,7 +256,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             .withOwner(TEAM11_REF);
     create.setTasks(List.of(task));
 
-    created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    created = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     actualTask = created.getTasks().get(0);
 
     assertEquals(TEAM11_REF.getName(), actualTask.getOwner().getName());
