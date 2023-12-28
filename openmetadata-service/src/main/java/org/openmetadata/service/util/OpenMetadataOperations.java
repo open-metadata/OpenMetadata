@@ -6,6 +6,9 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -18,7 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
@@ -27,7 +32,6 @@ import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
-import org.flywaydb.core.internal.util.AsciiTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -48,6 +52,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -198,9 +203,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       flyway.migrate();
       validateAndRunSystemDataMigrations(force);
+      printChangeLog();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "changelog", description = "Prints the change log of database migration.")
+  public Integer changelog() {
+    try {
+      parseConfig();
+      printChangeLog();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to fetch db change log due to ", e);
       return 1;
     }
   }
@@ -416,6 +434,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
+  }
+
+  private void printChangeLog() {
+    MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
+    List<MigrationDAO.ServerChangeLog> serverChangeLogs =
+        migrationDAO.listMetricsFromDBMigrations();
+    Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn"));
+    List<List<String>> rows = new ArrayList<>();
+    for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
+      List<String> row = new ArrayList<>();
+      JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+      Set<String> keys = metricsJson.keySet();
+      columns.addAll(keys);
+      row.add(serverChangeLog.getVersion());
+      row.add(serverChangeLog.getInstalledOn());
+      row.addAll(
+          metricsJson.entrySet().stream()
+              .map(Map.Entry::getValue)
+              .map(JsonElement::toString)
+              .toList());
+      rows.add(row);
+    }
+    printToAsciiTable(columns.stream().toList(), rows, "No Server Change log found");
   }
 
   public static void main(String... args) {

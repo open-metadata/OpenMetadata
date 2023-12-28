@@ -32,7 +32,6 @@ public class MigrationWorkflowContext {
       context.compute();
       context.show();
       this.migrationContext.put(context.getVersion(), context);
-
     } catch (Exception e) {
       LOG.warn(
           String.format("Error computing context for [%s] due to [%s]", context.getVersion(), e));

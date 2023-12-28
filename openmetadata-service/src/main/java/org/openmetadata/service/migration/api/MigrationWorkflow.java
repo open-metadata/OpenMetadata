@@ -11,8 +11,10 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.json.JSONObject;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -131,6 +133,7 @@ public class MigrationWorkflow {
       LOG.info("[MigrationWorkflow] WorkFlow Started");
       MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
       if (currentMaxMigrationVersion.isPresent()) {
+        LOG.debug("Current Max version {}", currentMaxMigrationVersion.get());
         context.computeInitialContext(currentMaxMigrationVersion.get());
       } else {
         context.computeInitialContext("1.1.0");
@@ -178,7 +181,7 @@ public class MigrationWorkflow {
               process.getVersion(),
               process.getDatabaseConnectionType(),
               process.getMigrationsPath());
-          updateMigrationStepInDB(process);
+          updateMigrationStepInDB(process, context);
         }
 
       } catch (Exception e) {
@@ -192,8 +195,14 @@ public class MigrationWorkflow {
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
   }
 
-  public void updateMigrationStepInDB(MigrationProcess step) {
+  public void updateMigrationStepInDB(
+      MigrationProcess step, MigrationWorkflowContext workflowContext) {
+    MigrationContext context = workflowContext.getMigrationContext().get(step.getVersion());
+    JSONObject metrics = new JSONObject(context.getResults());
     migrationDAO.upsertServerMigration(
-        step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
+        step.getVersion(),
+        step.getMigrationsPath(),
+        UUID.randomUUID().toString(),
+        metrics.toString());
   }
 }

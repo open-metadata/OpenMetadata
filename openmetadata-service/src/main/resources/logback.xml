@@ -16,5 +16,6 @@
     </appender>
     <root level="${LOG_LEVEL:-INFO}">
         <appender-ref ref="STDOUT" />
+        <appender-ref ref="file"/>
     </root>
 </configuration>
