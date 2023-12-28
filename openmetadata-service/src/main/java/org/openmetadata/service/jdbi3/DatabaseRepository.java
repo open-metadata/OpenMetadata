@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -227,7 +229,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    protected DatabaseSchema toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
       DatabaseSchema schema;
       try {
@@ -235,7 +239,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       } catch (Exception ex) {
         importFailure(printer, entityNotFound(0, DATABASE_SCHEMA, schemaFqn), csvRecord);
         processRecord = false;
-        return null;
+        return;
       }
 
       // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
@@ -244,28 +248,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
+          .withOwner(getOwner(printer, csvRecord, 3))
+          .withTags(getTagLabels(printer, csvRecord, 4))
           .withRetentionPeriod(csvRecord.get(5))
-          .withSourceUrl(csvRecord.get(6));
-
-      // Field 4 - owner
-      schema.withOwner(getOwner(printer, csvRecord, 3));
-
-      // Field 5 - tags
-      schema.withTags(getTagLabels(printer, csvRecord, 4));
-      if (!processRecord) {
-        return null;
+          .withSourceUrl(csvRecord.get(6))
+          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+      if (processRecord) {
+        createEntity(printer, csvRecord, schema);
       }
-
-      // Field 8 - domain
-      schema.withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
-      if (!processRecord) {
-        return null;
-      }
-      return schema;
     }
 
     @Override
-    protected List<String> toRecord(DatabaseSchema entity) {
+    protected void addRecord(CsvFile csvFile, DatabaseSchema entity) {
       // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
@@ -280,7 +274,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
-      return recordList;
+      addRecord(csvFile, recordList);
     }
   }
 }
