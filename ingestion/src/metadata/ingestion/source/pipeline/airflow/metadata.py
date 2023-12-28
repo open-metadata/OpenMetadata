@@ -172,7 +172,7 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.end_date,
                     TaskInstance.run_id,
                 )
-                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
+                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id,  TaskInstance.state != "removed")
                 .all()
             )
         except Exception as exc:  # pylint: disable=broad-except
