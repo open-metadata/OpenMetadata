@@ -302,9 +302,9 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const viewButton = await findByTestId(container, 'ingestion-dag-link');
+    const pipelineName = await findByText(container, 'test3_metadata');
 
-    expect(viewButton).toBeInTheDocument();
+    expect(pipelineName).toBeInTheDocument();
   });
 
   it('Pause button should be present if enabled is available', async () => {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
@@ -72,20 +72,7 @@ export const IngestionPipelineList = ({
   const { t } = useTranslation();
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
-    return (
-      <Tooltip
-        title={t('label.view-entity', {
-          entity: t('label.dag'),
-        })}>
-        <Typography.Link
-          className="m-r-xs overflow-wrap-anywhere"
-          data-testid="ingestion-dag-link"
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    );
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
