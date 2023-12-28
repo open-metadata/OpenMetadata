@@ -4,6 +4,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsSize;
 
 public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S>
@@ -51,5 +52,5 @@ public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S>
 
   protected abstract S getAggregations(B bucket, String key);
 
-  protected abstract Double getValue(S aggregations);
+  protected abstract Optional<Double> getValue(S aggregations);
 }

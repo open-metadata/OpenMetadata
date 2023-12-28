@@ -2,6 +2,7 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
 public abstract class MostViewedEntitiesAggregator<A, B, M, S>
@@ -38,7 +39,7 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
     return data;
   }
 
-  protected abstract Double getValue(S sumPageViews);
+  protected abstract Optional<Double> getValue(S sumPageViews);
 
   protected abstract M getBucketAggregation(B bucket, String key);
 

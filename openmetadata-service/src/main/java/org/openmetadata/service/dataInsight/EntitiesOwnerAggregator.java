@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
 
 public abstract class EntitiesOwnerAggregator<A, B, M, S>
@@ -38,7 +39,7 @@ public abstract class EntitiesOwnerAggregator<A, B, M, S>
     return data;
   }
 
-  protected abstract Double getValue(S sumEntityCount);
+  protected abstract Optional<Double> getValue(S sumEntityCount);
 
   protected abstract S getAggregations(B entityTypeBucket, String key);
 

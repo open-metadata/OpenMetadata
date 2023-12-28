@@ -2,6 +2,7 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
 public abstract class MostActiveUsersAggregator<A, B, M, S, X>
@@ -42,9 +43,9 @@ public abstract class MostActiveUsersAggregator<A, B, M, S, X>
     return data;
   }
 
-  protected abstract Double getSumValue(S key);
+  protected abstract Optional<Double> getSumValue(S key);
 
-  protected abstract Long getMaxValue(X key);
+  protected abstract Optional<Long> getMaxValue(X key);
 
   protected abstract String getKeyAsString(B bucket);
 

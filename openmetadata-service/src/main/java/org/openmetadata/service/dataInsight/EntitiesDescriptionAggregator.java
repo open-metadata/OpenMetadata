@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
 
 public abstract class EntitiesDescriptionAggregator<A, B, M, S>
@@ -50,5 +51,5 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S>
 
   protected abstract S getAggregations(B bucket, String key);
 
-  protected abstract Double getValue(S aggregations);
+  protected abstract Optional<Double> getValue(S aggregations);
 }

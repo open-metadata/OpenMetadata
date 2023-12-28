@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescription;
 
 public abstract class ServicesDescriptionAggregator<A, B, M, S>
@@ -40,7 +41,7 @@ public abstract class ServicesDescriptionAggregator<A, B, M, S>
     return data;
   }
 
-  protected abstract Double getValue(S key);
+  protected abstract Optional<Double> getValue(S key);
 
   protected abstract S getSumAggregations(B bucket, String key);
 

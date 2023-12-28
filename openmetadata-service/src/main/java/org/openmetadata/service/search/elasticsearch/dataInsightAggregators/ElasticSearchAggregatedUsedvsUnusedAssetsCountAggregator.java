@@ -6,7 +6,6 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucke
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
 import java.util.Optional;
-
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsCountAggregator;
 
 public class ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator
