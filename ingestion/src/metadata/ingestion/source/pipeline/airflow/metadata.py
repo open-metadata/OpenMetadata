@@ -13,6 +13,7 @@ Airflow source to extract metadata from OM UI
 """
 import traceback
 from datetime import datetime
+from enum import Enum
 from typing import Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
@@ -47,7 +48,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.clickhouse.utils import Enum
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     XLets,
     get_xlets_from_dag,
@@ -74,9 +74,9 @@ class AirflowTaskStatus(Enum):
 
 
 STATUS_MAP = {
-    AirflowTaskStatus.SUCCESS: StatusType.Successful.value,
-    AirflowTaskStatus.FAILED: StatusType.Failed.value,
-    AirflowTaskStatus.QUEUED: StatusType.Pending.value,
+    AirflowTaskStatus.SUCCESS.value: StatusType.Successful.value,
+    AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
+    AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
 }
 
 
