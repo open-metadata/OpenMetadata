@@ -253,9 +253,8 @@ class LookerUnitTest(TestCase):
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
         with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
-            # This does not really return a ref, but for simplicity
             OpenMetadata,
-            "get_user_by_email",
+            "get_reference_by_email",
             return_value=ref,
         ):
             self.assertEqual(self.looker.get_owner_details(MOCK_LOOKER_DASHBOARD), ref)

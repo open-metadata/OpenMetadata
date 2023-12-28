@@ -32,6 +32,8 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
@@ -92,4 +94,7 @@ ENTITY_REFERENCE_TYPE_MAP = {
     SearchIndex.__name__: "searchIndex",
     MlModel.__name__: "mlmodel",
     Container.__name__: "container",
+    # User Entities
+    User.__name__: "user",
+    Team.__name__: "team",
 }

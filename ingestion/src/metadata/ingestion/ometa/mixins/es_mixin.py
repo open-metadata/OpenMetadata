@@ -79,6 +79,23 @@ class ESMixin(Generic[T]):
 
         return None
 
+    def _get_entity_from_es(
+        self, entity: Type[T], query_string: str, fields: Optional[list] = None
+    ) -> Optional[T]:
+        """Fetch an entity instance from ES"""
+
+        try:
+            entity_list = self._search_es_entity(
+                entity_type=entity, query_string=query_string, fields=fields
+            )
+            for instance in entity_list or []:
+                return instance
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get {entity.__name__} info from ES due to {err}")
+
+        return None
+
     def es_search_from_fqn(
         self,
         entity_type: Type[T],

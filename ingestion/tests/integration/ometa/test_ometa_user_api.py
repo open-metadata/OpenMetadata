@@ -15,15 +15,12 @@ import logging
 import time
 from unittest import TestCase
 
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import int_admin_ometa
 
 
 class OMetaUserTest(TestCase):
@@ -32,16 +29,7 @@ class OMetaUserTest(TestCase):
     Install the ingestion package before running the tests
     """
 
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
+    metadata = int_admin_ometa()
 
     @classmethod
     def check_es_index(cls) -> None:
@@ -67,9 +55,15 @@ class OMetaUserTest(TestCase):
         Prepare ingredients
         """
 
+        cls.team: Team = cls.metadata.create_or_update(
+            data=CreateTeamRequest(
+                teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io"
+            )
+        )
+
         cls.user_1: User = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="random.user", email="random.user@getcollate.io"
+                name="random.user.es", email="random.user.es@getcollate.io"
             ),
         )
 
@@ -102,34 +96,92 @@ class OMetaUserTest(TestCase):
             hard_delete=True,
         )
 
+        cls.metadata.delete(
+            entity=User,
+            entity_id=cls.user_3.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=Team,
+            entity_id=cls.team.id,
+            hard_delete=True,
+        )
+
     def test_es_search_from_email(self):
         """
         We can fetch users by its email
         """
 
         # No email returns None
-        self.assertIsNone(self.metadata.get_user_by_email(email=None))
+        self.assertIsNone(self.metadata.get_reference_by_email(email=None))
 
         # Non existing email returns None
         self.assertIsNone(
-            self.metadata.get_user_by_email(email="idonotexist@random.com")
+            self.metadata.get_reference_by_email(email="idonotexist@random.com")
         )
 
         # Non existing email returns, even if they have the same domain
         # To get this fixed, we had to update the `email` field in the
         # index as a `keyword` and search by `email.keyword` in ES.
         self.assertIsNone(
-            self.metadata.get_user_by_email(email="idonotexist@getcollate.io")
+            self.metadata.get_reference_by_email(email="idonotexist@getcollate.io")
         )
 
         # I can get User 1, who has the name equal to its email
         self.assertEqual(
             self.user_1.id,
-            self.metadata.get_user_by_email(email="random.user@getcollate.io").id,
+            self.metadata.get_reference_by_email(
+                email="random.user.es@getcollate.io"
+            ).id,
         )
 
         # I can get User 2, who has an email not matching the name
         self.assertEqual(
             self.user_2.id,
-            self.metadata.get_user_by_email(email="user2.1234@getcollate.io").id,
+            self.metadata.get_reference_by_email(email="user2.1234@getcollate.io").id,
+        )
+
+        # I can get the team by its mail
+        self.assertEqual(
+            self.team.id,
+            self.metadata.get_reference_by_email(email="ops.team@getcollate.io").id,
+        )
+
+    def test_es_search_from_name(self):
+        """
+        We can fetch users by its name
+        """
+        # No email returns None
+        self.assertIsNone(self.metadata.get_reference_by_name(name=None))
+
+        # Non existing email returns None
+        self.assertIsNone(self.metadata.get_reference_by_name(name="idonotexist"))
+
+        # We can get the user matching its name
+        self.assertEqual(
+            self.user_1.id,
+            self.metadata.get_reference_by_name(name="random.user.es").id,
+        )
+
+        # Casing does not matter
+        self.assertEqual(
+            self.user_2.id,
+            self.metadata.get_reference_by_name(name="levy").id,
+        )
+
+        self.assertEqual(
+            self.user_2.id,
+            self.metadata.get_reference_by_name(name="Levy").id,
+        )
+
+        self.assertEqual(
+            self.user_1.id,
+            self.metadata.get_reference_by_name(name="Random User Es").id,
+        )
+
+        # I can get the team by its name
+        self.assertEqual(
+            self.team.id,
+            self.metadata.get_reference_by_name(name="OPS Team").id,
         )

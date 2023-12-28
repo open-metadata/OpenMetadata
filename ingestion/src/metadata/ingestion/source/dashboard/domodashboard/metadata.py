@@ -100,12 +100,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 owner_details = self.client.domo.users_get(owner.id)
                 if owner_details.get("email"):
-                    user = self.metadata.get_user_by_email(owner_details["email"])
-                    if user:
-                        return EntityReference(id=user.id.__root__, type="user")
-                    logger.warning(
-                        f"No user found with email [{owner_details['email']}] in OMD"
-                    )
+                    return self.metadata.get_reference_by_email(owner_details["email"])
             except Exception as exc:
                 logger.warning(
                     f"Error while getting details of user {owner.displayName} - {exc}"
