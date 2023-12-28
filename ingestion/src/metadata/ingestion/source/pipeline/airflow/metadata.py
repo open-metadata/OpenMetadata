@@ -366,9 +366,7 @@ class AirflowSource(PipelineServiceSource):
         until the next run.
         """
         try:
-            if user := self.metadata.get_user_by_name(name=owner):
-                return EntityReference(id=user.id.__root__, type="user")
-            logger.debug(f"No user found with name [{owner}] in OM")
+            return self.metadata.get_reference_by_name(name=owner)
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None

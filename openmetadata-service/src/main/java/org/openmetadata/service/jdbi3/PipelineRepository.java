@@ -279,7 +279,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 FullyQualifiedName.buildHash(task.getFullyQualifiedName()), // to FQN hash
                 task.getOwner().getFullyQualifiedName(), // from FQN
                 task.getFullyQualifiedName(), // to FQN
-                Entity.USER, // from type
+                task.getOwner().getType(), // from type
                 Entity.TASK, // to type
                 OWNS.ordinal(),
                 null);
@@ -421,7 +421,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .delete(
               FullyQualifiedName.buildHash(task.getOwner().getFullyQualifiedName()),
               FullyQualifiedName.buildHash(task.getFullyQualifiedName()),
-              Entity.USER,
+              task.getOwner().getType(),
               Entity.TASK,
               OWNS.ordinal());
     }

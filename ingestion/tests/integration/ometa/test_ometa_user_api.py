@@ -15,7 +15,9 @@ import logging
 import time
 from unittest import TestCase
 
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
 
 from ..integration_base import int_admin_ometa
@@ -53,6 +55,12 @@ class OMetaUserTest(TestCase):
         Prepare ingredients
         """
 
+        cls.team: Team = cls.metadata.create_or_update(
+            data=CreateTeamRequest(
+                teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io"
+            )
+        )
+
         cls.user_1: User = cls.metadata.create_or_update(
             data=CreateUserRequest(
                 name="random.user.es", email="random.user.es@getcollate.io"
@@ -88,36 +96,56 @@ class OMetaUserTest(TestCase):
             hard_delete=True,
         )
 
+        cls.metadata.delete(
+            entity=User,
+            entity_id=cls.user_3.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=Team,
+            entity_id=cls.team.id,
+            hard_delete=True,
+        )
+
     def test_es_search_from_email(self):
         """
         We can fetch users by its email
         """
 
         # No email returns None
-        self.assertIsNone(self.metadata.get_user_by_email(email=None))
+        self.assertIsNone(self.metadata.get_reference_by_email(email=None))
 
         # Non existing email returns None
         self.assertIsNone(
-            self.metadata.get_user_by_email(email="idonotexist@random.com")
+            self.metadata.get_reference_by_email(email="idonotexist@random.com")
         )
 
         # Non existing email returns, even if they have the same domain
         # To get this fixed, we had to update the `email` field in the
         # index as a `keyword` and search by `email.keyword` in ES.
         self.assertIsNone(
-            self.metadata.get_user_by_email(email="idonotexist@getcollate.io")
+            self.metadata.get_reference_by_email(email="idonotexist@getcollate.io")
         )
 
         # I can get User 1, who has the name equal to its email
         self.assertEqual(
             self.user_1.id,
-            self.metadata.get_user_by_email(email="random.user.es@getcollate.io").id,
+            self.metadata.get_reference_by_email(
+                email="random.user.es@getcollate.io"
+            ).id,
         )
 
         # I can get User 2, who has an email not matching the name
         self.assertEqual(
             self.user_2.id,
-            self.metadata.get_user_by_email(email="user2.1234@getcollate.io").id,
+            self.metadata.get_reference_by_email(email="user2.1234@getcollate.io").id,
+        )
+
+        # I can get the team by its mail
+        self.assertEqual(
+            self.team.id,
+            self.metadata.get_reference_by_email(email="ops.team@getcollate.io").id,
         )
 
     def test_es_search_from_name(self):
@@ -125,29 +153,35 @@ class OMetaUserTest(TestCase):
         We can fetch users by its name
         """
         # No email returns None
-        self.assertIsNone(self.metadata.get_user_by_name(name=None))
+        self.assertIsNone(self.metadata.get_reference_by_name(name=None))
 
         # Non existing email returns None
-        self.assertIsNone(self.metadata.get_user_by_name(name="idonotexist"))
+        self.assertIsNone(self.metadata.get_reference_by_name(name="idonotexist"))
 
         # We can get the user matching its name
         self.assertEqual(
             self.user_1.id,
-            self.metadata.get_user_by_name(name="random.user.es").id,
+            self.metadata.get_reference_by_name(name="random.user.es").id,
         )
 
         # Casing does not matter
         self.assertEqual(
             self.user_2.id,
-            self.metadata.get_user_by_name(name="levy").id,
+            self.metadata.get_reference_by_name(name="levy").id,
         )
 
         self.assertEqual(
             self.user_2.id,
-            self.metadata.get_user_by_name(name="Levy").id,
+            self.metadata.get_reference_by_name(name="Levy").id,
         )
 
         self.assertEqual(
             self.user_1.id,
-            self.metadata.get_user_by_name(name="Random User Es").id,
+            self.metadata.get_reference_by_name(name="Random User Es").id,
+        )
+
+        # I can get the team by its name
+        self.assertEqual(
+            self.team.id,
+            self.metadata.get_reference_by_name(name="OPS Team").id,
         )

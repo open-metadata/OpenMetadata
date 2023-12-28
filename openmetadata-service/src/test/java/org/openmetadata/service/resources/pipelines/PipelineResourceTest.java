@@ -246,6 +246,26 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         getPipelineByName(created.getFullyQualifiedName(), "owner,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
     assertEquals(USER1_REF.getName(), storedTask.getOwner().getName());
+
+    // The owner can also be a team and we can overwrite it
+    task =
+        new Task()
+            .withName("task")
+            .withDescription("description")
+            .withSourceUrl("http://localhost:0")
+            .withOwner(TEAM11_REF);
+    create.setTasks(List.of(task));
+
+    created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    actualTask = created.getTasks().get(0);
+
+    assertEquals(TEAM11_REF.getName(), actualTask.getOwner().getName());
+
+    // We can GET the task retrieving the owner info
+    storedPipeline =
+        getPipelineByName(created.getFullyQualifiedName(), "owner,tasks", ADMIN_AUTH_HEADERS);
+    storedTask = storedPipeline.getTasks().get(0);
+    assertEquals(TEAM11_REF.getName(), storedTask.getOwner().getName());
   }
 
   @Test
