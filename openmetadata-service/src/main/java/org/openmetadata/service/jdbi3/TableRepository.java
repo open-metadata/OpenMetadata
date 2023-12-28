@@ -166,13 +166,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setInheritedFields(Table table, Fields fields) {
+  public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
         Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
     inheritOwner(table, fields, schema);
     inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
-    return table.withRetentionPeriod(
+    table.withRetentionPeriod(
         table.getRetentionPeriod() == null
             ? schema.getRetentionPeriod()
             : table.getRetentionPeriod());

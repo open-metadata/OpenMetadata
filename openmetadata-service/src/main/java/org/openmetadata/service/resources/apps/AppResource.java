@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,33 +121,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       for (CreateApp createApp : createAppsReq) {
-        try {
-          AppMarketPlaceDefinition definition =
-              repository
-                  .getMarketPlace()
-                  .getByName(
-                      null,
-                      createApp.getName(),
-                      new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+        AppMarketPlaceDefinition definition =
+            repository
+                .getMarketPlace()
+                .getByName(
+                    null,
+                    createApp.getName(),
+                    new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
-          App app = repository.findByNameOrNull(createApp.getName(), ALL);
-          if (app == null) {
-            app =
-                getApplication(definition, createApp, "admin")
-                    .withFullyQualifiedName(createApp.getName());
-            repository.initializeEntity(app);
-          }
+        App app = repository.findByNameOrNull(createApp.getName(), ALL);
+        if (app == null) {
+          app =
+              getApplication(definition, createApp, "admin")
+                  .withFullyQualifiedName(createApp.getName());
+          repository.initializeEntity(app);
+        }
 
-          // Schedule
-          if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
-          }
-
-        } catch (Exception ex) {
-          LOG.error("Failed in App Initialization, AppName : {}", createApp.getName(), ex);
+        // Schedule
+        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
-    } catch (Exception ex) {
+    } catch (SchedulerException | IOException ex) {
       LOG.error("Failed in Create App Requests", ex);
     }
   }

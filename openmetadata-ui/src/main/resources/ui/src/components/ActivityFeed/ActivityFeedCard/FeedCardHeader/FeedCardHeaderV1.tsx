@@ -15,10 +15,8 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
-import { getUserPath } from '../../../../constants/constants';
 import {
   formatDateTime,
   getRelativeTime,
@@ -31,8 +29,8 @@ import {
   getEntityType,
 } from '../../../../utils/FeedUtils';
 import { getEntityLink } from '../../../../utils/TableUtils';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v1.style.less';
-import FeedCardHeaderName from './FeedCardHeaderName';
 
 interface FeedCardHeaderV1Props {
   about?: string;
@@ -50,15 +48,11 @@ const FeedCardHeaderV1 = ({
   isEntityFeed = false,
 }: FeedCardHeaderV1Props) => {
   const { t } = useTranslation();
-  const history = useHistory();
+
   const entityType = getEntityType(entityLink) ?? '';
   const entityFQN = getEntityFQN(entityLink) ?? '';
   const entityField = getEntityField(entityLink) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
-
-  const onTitleClickHandler = (name: string) => {
-    history.push(getUserPath(name));
-  };
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
@@ -85,22 +79,20 @@ const FeedCardHeaderV1 = ({
 
   return (
     <div className={classNames('feed-header', className)}>
-      <UserPopOverCard className="m-l-sm" userName={createdBy} />
-      <span className="feed-header-content">
-        <FeedCardHeaderName
-          createdBy={createdBy}
-          onTitleClickHandler={onTitleClickHandler}
-        />
-        {getFeedLinkElement}
+      <UserPopOverCard
+        showUserName
+        className="thread-author"
+        userName={createdBy}
+      />
+      {getFeedLinkElement}
 
-        {timeStamp && (
-          <Tooltip title={formatDateTime(timeStamp)}>
-            <span className="feed-header-timestamp" data-testid="timestamp">
-              {getRelativeTime(timeStamp)}
-            </span>
-          </Tooltip>
-        )}
-      </span>
+      {timeStamp && (
+        <Tooltip title={formatDateTime(timeStamp)}>
+          <span className="feed-header-timestamp" data-testid="timestamp">
+            {getRelativeTime(timeStamp)}
+          </span>
+        </Tooltip>
+      )}
     </div>
   );
 };
