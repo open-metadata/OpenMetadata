@@ -47,6 +47,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.clickhouse.utils import Enum
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     XLets,
     get_xlets_from_dag,
@@ -64,10 +65,18 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
+class AirflowTaskStatus(Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    QUEUED = "queued"
+    REMOVED = "removed"
+
+
 STATUS_MAP = {
-    "success": StatusType.Successful.value,
-    "failed": StatusType.Failed.value,
-    "queued": StatusType.Pending.value,
+    AirflowTaskStatus.SUCCESS: StatusType.Successful.value,
+    AirflowTaskStatus.FAILED: StatusType.Failed.value,
+    AirflowTaskStatus.QUEUED: StatusType.Pending.value,
 }
 
 
@@ -172,12 +181,15 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.end_date,
                     TaskInstance.run_id,
                 )
-                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id,  TaskInstance.state != "removed")
+                .filter(
+                    TaskInstance.dag_id == dag_id,
+                    TaskInstance.run_id == run_id,
+                    # updating old runs flag deleted tasks as `removed`
+                    TaskInstance.state != AirflowTaskStatus.REMOVED,
+                )
                 .all()
             )
-        except Exception as exc:  # pylint: disable=broad-except
-            # Using a broad Exception here as the backend can come in many flavours (pymysql, pyodbc...)
-            # And we don't want to force all imports
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Tried to get TaskInstances with run_id. It might not be available in older Airflow versions - {exc}."
