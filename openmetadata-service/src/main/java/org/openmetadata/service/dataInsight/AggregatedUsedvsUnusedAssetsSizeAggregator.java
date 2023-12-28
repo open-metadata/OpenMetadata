@@ -24,21 +24,17 @@ public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S>
       Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
       S totalUnused = getAggregations(bucket, "totalUnused");
       S totalUsed = getAggregations(bucket, "totalUsed");
-      Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
-      Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
-      Double total = used + unused;
-      double usedPercentage = 0.0;
-      double unusedPercentage = 0.0;
-      if (total != 0.0) {
-        usedPercentage = used / total;
-        unusedPercentage = unused / total;
-      }
+      Optional<Double> used = getValue(totalUsed);
+      Optional<Double> unused = getValue(totalUnused);
+      Optional<Double> total = used.flatMap(u -> unused.map(uu -> u + uu));
+      Double usedPercentage = used.flatMap(u -> total.map(t -> u / t)).orElse(null);
+      Double unusedPercentage = unused.flatMap(uu -> total.map(t -> uu / t)).orElse(null);
       data.add(
           new AggregatedUsedVsUnusedAssetsSize()
               .withTimestamp(timestamp)
-              .withUnused(unused)
+              .withUnused(unused.orElse(null))
               .withUnusedPercentage(unusedPercentage)
-              .withUsed(used)
+              .withUsed(used.orElse(null))
               .withUsedPercentage(usedPercentage));
     }
     return data;

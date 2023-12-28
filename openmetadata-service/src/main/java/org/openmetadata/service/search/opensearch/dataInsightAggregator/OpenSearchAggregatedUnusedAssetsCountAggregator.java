@@ -36,6 +36,6 @@ public class OpenSearchAggregatedUnusedAssetsCountAggregator
 
   @Override
   protected Optional<Double> getValue(Sum aggregations) {
-    return aggregations != null ? aggregations.getValue() : null;
+    return Optional.ofNullable(aggregations != null ? aggregations.getValue() : null);
   }
 }

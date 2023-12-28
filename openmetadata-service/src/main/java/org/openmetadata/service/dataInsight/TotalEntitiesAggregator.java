@@ -27,13 +27,14 @@ public abstract class TotalEntitiesAggregator<A, B, M, S>
       for (B entityTypeBucket : getBuckets(entityTypeBuckets)) {
         String entityType = getKeyAsString(entityTypeBucket);
         S sumEntityCount = getSumAggregations(entityTypeBucket, ENTITY_COUNT);
+        Optional<Double> entityCountOptional = getValue(sumEntityCount);
 
         data.add(
             new TotalEntitiesByType()
                 .withTimestamp(timestamp)
                 .withEntityType(entityType)
-                .withEntityCount(getValue(sumEntityCount)));
-        entityCount.add(getValue(sumEntityCount));
+                .withEntityCount(entityCountOptional.orElse(null)));
+        entityCount.add(entityCountOptional.orElse(0.0));
       }
     }
 

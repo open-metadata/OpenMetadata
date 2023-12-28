@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
+import javax.swing.text.html.Option;
+
 public abstract class MostActiveUsersAggregator<A, B, M, S, X>
     implements DataInsightAggregatorInterface {
   private final A aggregations;
@@ -29,15 +31,22 @@ public abstract class MostActiveUsersAggregator<A, B, M, S, X>
         // we'll assign the first team in the list if user belongs to multiple teams
         team = getKeyAsString(getBuckets(teamBucket).get(0));
       }
+      Optional<Long> lastSessionOptional = getMaxValue(lastSession);
+      Optional<Double> sumPageViewsOptional = getSumValue(sumPageViews);
+      Optional<Double> sumSessionDurationOptional = getSumValue(sumSessionDuration);
+      Optional<Double> sumSessionOptional = getSumValue(sumSession);
+      Double avgSessionDuration = sumSessionDurationOptional.flatMap(s -> sumSessionOptional.map(ss -> s / ss)).orElse(null);
+
+
       data.add(
           new MostActiveUsers()
               .withUserName(userName)
-              .withLastSession(getMaxValue(lastSession))
-              .withPageViews(getSumValue(sumPageViews))
-              .withSessionDuration(getSumValue(sumSessionDuration))
-              .withSessions(getSumValue(sumSession))
+              .withLastSession(lastSessionOptional.orElse(null))
+              .withPageViews(sumPageViewsOptional.orElse(null))
+              .withSessionDuration(sumSessionDurationOptional.orElse(null))
+              .withSessions(sumSessionOptional.orElse(null))
               .withTeam(team)
-              .withAvgSessionDuration(getSumValue(sumSessionDuration) / getSumValue(sumSession)));
+              .withAvgSessionDuration(avgSessionDuration));
     }
 
     return data;

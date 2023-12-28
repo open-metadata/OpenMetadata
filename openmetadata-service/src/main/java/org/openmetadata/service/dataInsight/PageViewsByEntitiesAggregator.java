@@ -25,12 +25,13 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
       for (B entityTypeBucket : getBuckets(entityTypeBuckets)) {
         String entityType = getKeyAsString(entityTypeBucket);
         S sumPageViews = getSumAggregations(entityTypeBucket, "pageViews");
+        Optional<Double> pageViews = getValue(sumPageViews);
 
         data.add(
             new PageViewsByEntities()
                 .withEntityType(entityType)
                 .withTimestamp(timestamp)
-                .withPageViews(getValue(sumPageViews)));
+                .withPageViews(pageViews.orElse(null)));
       }
     }
     return data;

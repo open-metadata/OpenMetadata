@@ -26,6 +26,7 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
       String owner = getFirstValueFromBucketOrNull(ownerBucket);
       String entityType = getFirstValueFromBucketOrNull(entityTypeBucket);
       String entityHref = getFirstValueFromBucketOrNull(entityHrefBucket);
+      Optional<Double> pageViews = getValue(sumPageViews);
 
       data.add(
           new MostViewedEntities()
@@ -33,7 +34,7 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
               .withOwner(owner)
               .withEntityType(entityType)
               .withEntityHref(entityHref)
-              .withPageViews(getValue(sumPageViews)));
+              .withPageViews(pageViews.orElse(null)));
     }
 
     return data;

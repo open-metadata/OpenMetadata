@@ -16,7 +16,7 @@ public class ElasticSearchTotalEntitiesByTierAggregator
 
   @Override
   protected Optional<Double> getValue(Sum key) {
-    return key != null ? key.getValue() : null;
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override

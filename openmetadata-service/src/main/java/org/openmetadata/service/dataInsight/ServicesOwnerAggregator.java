@@ -26,14 +26,17 @@ public abstract class ServicesOwnerAggregator<A, B, M, S>
         String serviceName = getKeyAsString(serviceBucket);
         S sumHasOwner = getSumAggregations(serviceBucket, HAS_OWNER_FRACTION);
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
+        Optional<Double> entityCount = getValue(sumEntityCount);
+        Optional<Double> hasOwner = getValue(sumHasOwner);
+        Double hasOwnerFraction = hasOwner.flatMap(hof -> entityCount.map(ec -> hof / ec)).orElse(null);
 
         data.add(
             new PercentageOfServicesWithOwner()
                 .withTimestamp(timestamp)
                 .withServiceName(serviceName)
-                .withEntityCount(getValue(sumEntityCount))
-                .withHasOwner(getValue(sumHasOwner))
-                .withHasOwnerFraction(getValue(sumHasOwner) / getValue(sumEntityCount)));
+                .withEntityCount(entityCount.orElse(null))
+                .withHasOwner(hasOwner.orElse(null))
+                .withHasOwnerFraction(hasOwnerFraction));
       }
     }
     return data;
