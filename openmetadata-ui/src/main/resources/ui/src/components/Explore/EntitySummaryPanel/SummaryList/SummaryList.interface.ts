@@ -21,7 +21,10 @@ import {
   TableConstraint,
 } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { HighlightedTagLabel } from '../../../../utils/EntitySummaryPanelUtils';
+
+export interface HighlightedTagLabel extends TagLabel {
+  isHighlighted: boolean;
+}
 
 export interface BasicEntityInfo {
   algorithm?: string;

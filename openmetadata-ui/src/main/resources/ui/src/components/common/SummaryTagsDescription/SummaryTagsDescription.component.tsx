@@ -14,16 +14,15 @@ import { Col, Divider, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
-import { TagLabel } from '../../../generated/type/tagLabel';
-import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
+import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
-  tags,
+  tags = [],
   entityDetail,
 }: {
-  tags: Array<TagLabel | HighlightedTagLabel>;
+  tags: BasicEntityInfo['tags'];
   entityDetail: EntityUnion;
 }) => {
   const { t } = useTranslation();

@@ -17,7 +17,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
-import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import {
+  BasicEntityInfo,
+  HighlightedTagLabel,
+} from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
@@ -37,14 +40,10 @@ export interface EntityNameProps {
   displayName?: string;
 }
 
-export interface HighlightedTagLabel extends TagLabel {
-  isHighlighted: boolean;
-}
-
 export type SummaryListItem = Column | Field | Chart | Task | MlFeature;
 
 export interface ListItemHighlights {
-  highlightedTags?: Array<TagLabel | HighlightedTagLabel>;
+  highlightedTags?: BasicEntityInfo['tags'];
   highlightedTitle?: string;
   highlightedDescription?: string;
 }
@@ -58,8 +57,8 @@ export interface ListItemHighlights {
 */
 export const getTitle = (
   listItem: SummaryListItem,
-  highlightedTitle?: string
-) => {
+  highlightedTitle?: ListItemHighlights['highlightedTitle']
+): JSX.Element | JSX.Element[] => {
   const title = highlightedTitle
     ? stringToHTML(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
@@ -93,7 +92,7 @@ export const getTitle = (
 export const getSummaryListItemType = (
   entityType: SummaryEntityType,
   listItem: SummaryListItem
-) => {
+): BasicEntityInfo['type'] => {
   switch (entityType) {
     case SummaryEntityType.COLUMN:
     case SummaryEntityType.FIELD:
@@ -119,27 +118,28 @@ export const getSummaryListItemType = (
 */
 export const getSortedTagsWithHighlight = ({
   sortTagsBasedOnGivenTagFQNs,
-  tags,
+  tags = [],
 }: {
   sortTagsBasedOnGivenTagFQNs: string[];
   tags?: TagLabel[];
-}): (TagLabel | HighlightedTagLabel)[] => {
-  const ColumnDataTags: {
-    tagForSort: HighlightedTagLabel[];
-    remainingTags: TagLabel[];
-  } = { tagForSort: [], remainingTags: [] };
+}): ListItemHighlights['highlightedTags'] => {
+  const { sortedTags, remainingTags } = tags.reduce(
+    (acc, tag) => {
+      if (sortTagsBasedOnGivenTagFQNs.includes(tag.tagFQN)) {
+        acc.sortedTags.push({ ...tag, isHighlighted: true });
+      } else {
+        acc.remainingTags.push(tag);
+      }
 
-  tags?.reduce((acc, tag) => {
-    if (sortTagsBasedOnGivenTagFQNs.includes(tag.tagFQN)) {
-      acc.tagForSort.push({ ...tag, isHighlighted: true });
-    } else {
-      acc.remainingTags.push(tag);
+      return acc;
+    },
+    {
+      sortedTags: [] as HighlightedTagLabel[],
+      remainingTags: [] as TagLabel[],
     }
+  );
 
-    return acc;
-  }, ColumnDataTags);
-
-  return [...ColumnDataTags.tagForSort, ...ColumnDataTags.remainingTags];
+  return [...sortedTags, ...remainingTags];
 };
 
 /* 
@@ -195,7 +195,7 @@ export const getHighlightOfListItem = (
   tagHighlights: string[],
   listHighlights: string[],
   listHighlightsMap: { [key: string]: number }
-) => {
+): ListItemHighlights => {
   let highlightedTags;
   let highlightedTitle;
   let highlightedDescription;
