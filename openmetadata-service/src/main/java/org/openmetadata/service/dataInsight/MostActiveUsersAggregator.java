@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
-import javax.swing.text.html.Option;
-
 public abstract class MostActiveUsersAggregator<A, B, M, S, X>
     implements DataInsightAggregatorInterface {
   private final A aggregations;
@@ -35,8 +33,10 @@ public abstract class MostActiveUsersAggregator<A, B, M, S, X>
       Optional<Double> sumPageViewsOptional = getSumValue(sumPageViews);
       Optional<Double> sumSessionDurationOptional = getSumValue(sumSessionDuration);
       Optional<Double> sumSessionOptional = getSumValue(sumSession);
-      Double avgSessionDuration = sumSessionDurationOptional.flatMap(s -> sumSessionOptional.map(ss -> s / ss)).orElse(null);
-
+      Double avgSessionDuration =
+          sumSessionDurationOptional
+              .flatMap(s -> sumSessionOptional.map(ss -> s / ss))
+              .orElse(null);
 
       data.add(
           new MostActiveUsers()

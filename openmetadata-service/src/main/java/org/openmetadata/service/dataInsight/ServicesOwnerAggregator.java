@@ -28,7 +28,8 @@ public abstract class ServicesOwnerAggregator<A, B, M, S>
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
         Optional<Double> entityCount = getValue(sumEntityCount);
         Optional<Double> hasOwner = getValue(sumHasOwner);
-        Double hasOwnerFraction = hasOwner.flatMap(hof -> entityCount.map(ec -> hof / ec)).orElse(null);
+        Double hasOwnerFraction =
+            hasOwner.flatMap(hof -> entityCount.map(ec -> hof / ec)).orElse(null);
 
         data.add(
             new PercentageOfServicesWithOwner()

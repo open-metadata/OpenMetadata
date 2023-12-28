@@ -29,7 +29,8 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S>
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
         Optional<Double> entityCount = getValue(sumEntityCount);
         Optional<Double> completedDescription = getValue(sumCompletedDescriptions);
-        Double completedDescriptionFraction = completedDescription.flatMap(cd -> entityCount.map(ec -> cd / ec)).orElse(null);
+        Double completedDescriptionFraction =
+            completedDescription.flatMap(cd -> entityCount.map(ec -> cd / ec)).orElse(null);
 
         data.add(
             new PercentageOfEntitiesWithDescriptionByType()

@@ -28,7 +28,8 @@ public abstract class EntitiesOwnerAggregator<A, B, M, S>
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
         Optional<Double> entityCount = getValue(sumEntityCount);
         Optional<Double> hasOwner = getValue(sumHasOwner);
-        Double hasOwnerFraction = hasOwner.flatMap(ho -> entityCount.map(ec -> ho / ec)).orElse(null);
+        Double hasOwnerFraction =
+            hasOwner.flatMap(ho -> entityCount.map(ec -> ho / ec)).orElse(null);
 
         data.add(
             new PercentageOfEntitiesWithOwnerByType()

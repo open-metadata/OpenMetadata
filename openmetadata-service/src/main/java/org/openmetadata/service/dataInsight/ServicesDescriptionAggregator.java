@@ -29,7 +29,8 @@ public abstract class ServicesDescriptionAggregator<A, B, M, S>
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
         Optional<Double> completedDescription = getValue(sumCompletedDescriptions);
         Optional<Double> entityCount = getValue(sumEntityCount);
-        Double completedDescriptionFraction = completedDescription.flatMap(cdf -> entityCount.map(ec -> cdf / ec)).orElse(null);
+        Double completedDescriptionFraction =
+            completedDescription.flatMap(cdf -> entityCount.map(ec -> cdf / ec)).orElse(null);
 
         data.add(
             new PercentageOfServicesWithDescription()
