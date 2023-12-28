@@ -145,6 +145,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       const result = await getListTestSuites({
         ...params,
         fields: 'owner,summary',
+        includeEmptyTestSuites: false,
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
             ? TestSuiteType.executable

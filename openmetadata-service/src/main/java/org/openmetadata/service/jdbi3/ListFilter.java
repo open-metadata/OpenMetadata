@@ -58,6 +58,7 @@ public class ListFilter {
     condition = addCondition(condition, getTestCaseCondition());
     condition = addCondition(condition, getTestSuiteTypeCondition());
     condition = addCondition(condition, getTestSuiteFQNCondition());
+    condition = addCondition(condition, getEmptyTestSuiteCondition());
     condition = addCondition(condition, getDomainCondition());
     condition = addCondition(condition, getEntityFQNHashCondition());
     condition = addCondition(condition, getTestCaseResolutionStatusType());
@@ -225,6 +226,20 @@ public class ListFilter {
       default:
         return "";
     }
+  }
+
+  private String getEmptyTestSuiteCondition() {
+    String includeEmptyTestSuites = getQueryParam("includeEmptyTestSuites");
+    if (includeEmptyTestSuites == null || Boolean.parseBoolean(includeEmptyTestSuites)) {
+      // if we want to include empty test suites, then we don't need to add a condition
+      return "";
+    }
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "!JSON_CONTAINS(json, JSON_ARRAY() , '$.testCaseResultSummary')";
+    }
+
+    return "jsonb_array_length(json#>'{testCaseResultSummary}') != 0";
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {

@@ -356,6 +356,10 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     testSuiteResultList.getData().forEach(ts -> assertEquals(false, ts.getExecutable()));
+
+    queryParams.put("includeEmptyTestSuites", "false");
+    testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(0, testSuiteResultList.getData().size());
   }
 
   @Test

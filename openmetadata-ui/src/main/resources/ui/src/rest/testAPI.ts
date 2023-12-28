@@ -34,6 +34,7 @@ export enum TestSuiteType {
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
+  includeEmptyTestSuites?: boolean;
 };
 
 export type ListTestCaseParams = ListParams & {
