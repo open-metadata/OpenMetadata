@@ -15,6 +15,7 @@ import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Column } from '../generated/entity/data/table';
 import {
   getFormattedEntityData,
+  getHighlightOfListItem,
   getMapOfListHighlights,
   getSortedTagsWithHighlight,
   getSummaryListItemType,
@@ -25,6 +26,7 @@ import {
   mockEntityDataWithNestingResponse,
   mockEntityDataWithoutNesting,
   mockEntityDataWithoutNestingResponse,
+  mockGetHighlightOfListItemResponse,
   mockGetMapOfListHighlightsResponse,
   mockGetSummaryListItemTypeResponse,
   mockHighlights,
@@ -32,8 +34,8 @@ import {
   mockLinkBasedSummaryTitleResponse,
   mockListItemNameHighlight,
   mockTagFQNsForHighlight,
+  mockTagsSortAndHighlightResponse,
   mockTextBasedSummaryTitleResponse,
-  TagsSortAndHighlightResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
 
 jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
@@ -92,7 +94,7 @@ describe('EntitySummaryPanelUtils tests', () => {
         tags: mockEntityDataWithNesting[2].tags,
       });
 
-      expect(sortedTags).toEqual(TagsSortAndHighlightResponse);
+      expect(sortedTags).toEqual(mockTagsSortAndHighlightResponse);
     });
   });
 
@@ -136,6 +138,34 @@ describe('EntitySummaryPanelUtils tests', () => {
       const result = getMapOfListHighlights(mockHighlights);
 
       expect(result).toEqual(mockGetMapOfListHighlightsResponse);
+    });
+  });
+
+  describe('getHighlightOfListItem', () => {
+    it('getHighlightOfListItem should return highlights of listItem undefined, if listHighlights and tagHighlights not passed in params', () => {
+      const result = getHighlightOfListItem(
+        mockEntityDataWithNesting[0],
+        [],
+        [],
+        {}
+      );
+
+      expect(result).toEqual({
+        highlightedTags: undefined,
+        highlightedTitle: undefined,
+        highlightedDescription: undefined,
+      });
+    });
+
+    it('getHighlightOfListItem should return highlights of listItem if listHighlights and tagHighlights get in params', () => {
+      const result = getHighlightOfListItem(
+        mockEntityDataWithNesting[1],
+        mockTagFQNsForHighlight,
+        mockGetMapOfListHighlightsResponse.listHighlights,
+        mockGetMapOfListHighlightsResponse.listHighlightsMap
+      );
+
+      expect(result).toEqual(mockGetHighlightOfListItemResponse);
     });
   });
 });

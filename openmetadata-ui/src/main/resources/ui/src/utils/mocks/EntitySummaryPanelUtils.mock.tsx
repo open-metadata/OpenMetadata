@@ -54,7 +54,7 @@ export const mockLinkBasedSummaryTitleResponse = (
 
 export const mockGetSummaryListItemTypeResponse = 'PrestoOperator';
 
-export const TagsSortAndHighlightResponse = [
+export const mockTagsSortAndHighlightResponse = [
   {
     tagFQN: 'PersonalData.SpecialCategory',
     description:
@@ -79,23 +79,27 @@ export const mockTagFQNsForHighlight = ['PersonalData.SpecialCategory'];
 export const mockListItemNameHighlight =
   '<span className="text-highlighter">title2</span>';
 
+const mockListItemDescriptionHighlight =
+  'some description of <span className="text-highlighter">title2</span>';
+
 export const mockHighlights = {
   'columns.name': [mockListItemNameHighlight],
-  'columns.description': [
-    'some description of <span className="text-highlighter">title2</span>',
-  ],
+  'columns.description': [mockListItemDescriptionHighlight],
   'tag.name': mockTagFQNsForHighlight,
 };
 
 export const mockGetMapOfListHighlightsResponse = {
-  listHighlights: [
-    '<span className="text-highlighter">title2</span>',
-    'some description of <span className="text-highlighter">title2</span>',
-  ],
+  listHighlights: [mockListItemNameHighlight, mockListItemDescriptionHighlight],
   listHighlightsMap: {
     title2: 0,
     'some description of title2': 1,
   },
+};
+
+export const mockGetHighlightOfListItemResponse = {
+  highlightedTags: undefined,
+  highlightedTitle: mockListItemNameHighlight,
+  highlightedDescription: mockListItemDescriptionHighlight,
 };
 
 export const mockEntityDataWithoutNesting: Task[] = [
@@ -240,8 +244,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
     name: 'title2',
     title: mockTextBasedSummaryTitleResponse,
     type: DataType.Varchar,
-    description:
-      'some description of <span className="text-highlighter">title2</span>',
+    description: mockListItemDescriptionHighlight,
     tags: [],
     tableConstraints: undefined,
     columnConstraint: undefined,
@@ -257,7 +260,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
     type: DataType.Numeric,
     description:
       'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-    tags: TagsSortAndHighlightResponse,
+    tags: mockTagsSortAndHighlightResponse,
     tableConstraints: undefined,
     columnConstraint: undefined,
     children: [],
