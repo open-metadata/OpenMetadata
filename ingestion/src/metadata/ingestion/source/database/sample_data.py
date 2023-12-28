@@ -1054,7 +1054,9 @@ class SampleDataSource(
         for pipeline in self.pipelines["pipelines"]:
             owner = None
             if pipeline.get("owner"):
-                return self.metadata.get_reference_by_email(email=pipeline.get("owner"))
+                owner = self.metadata.get_reference_by_email(
+                    email=pipeline.get("owner")
+                )
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
