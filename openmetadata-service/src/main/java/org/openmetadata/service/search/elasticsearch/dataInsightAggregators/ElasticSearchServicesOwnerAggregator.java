@@ -15,7 +15,7 @@ public class ElasticSearchServicesOwnerAggregator
 
   @Override
   protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+    return key != null ? key.getValue() : null;
   }
 
   @Override
