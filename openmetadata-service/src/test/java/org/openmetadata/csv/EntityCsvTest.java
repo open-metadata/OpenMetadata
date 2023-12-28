@@ -10,6 +10,7 @@ import static org.openmetadata.csv.EntityCsv.ENTITY_UPDATED;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -152,13 +153,14 @@ public class EntityCsvTest {
     }
 
     @Override
-    protected EntityInterface toEntity(CSVPrinter resultsPrinter, CSVRecord record) {
-      return new Table(); // Return a random entity to mark successfully processing a record
+    protected void createEntity(CSVPrinter resultsPrinter, Iterator<CSVRecord> records)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(resultsPrinter, records);
+      Table entity = new Table();
+      createEntity(resultsPrinter, csvRecord, entity);
     }
 
     @Override
-    protected List<String> toRecord(EntityInterface entity) {
-      return null;
-    }
+    protected void addRecord(CsvFile csvFile, EntityInterface entity) {}
   }
 }
