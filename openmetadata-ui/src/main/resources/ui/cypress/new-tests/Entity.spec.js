@@ -55,15 +55,15 @@ entities.forEach((entity) => {
     });
 
     it(`Assign domain`, () => {
-      entity.assignDomain(entity.domainDetails1.displayName);
+      entity.assignDomain();
     });
 
     it(`Update domain`, () => {
-      entity.updateDomain(entity.domainDetails2.displayName);
+      entity.updateDomain();
     });
 
     it(`Remove domain`, () => {
-      entity.removeDomain(entity.domainDetails2.displayName);
+      entity.removeDomain();
     });
 
     it(`Assign user Owner`, () => {

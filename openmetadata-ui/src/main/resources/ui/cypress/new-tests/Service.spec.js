@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../common/common';
 import DashboardServiceClass from './base/DashboardServiceClass';
 import DatabaseServiceClass from './base/DatabaseServiceClass';
 import MessagingServiceClass from './base/MessagingServiceClass';
@@ -31,23 +30,6 @@ const entities = [
   // TODO: add tests for metadata service tests
   //   new MetadataServiceClass(),
 ];
-const domainDetails1 = {
-  name: `cypress-domain-${uuid()}`,
-  displayName: 'Cypress Domain',
-  description: 'Cypress domain description',
-  domainType: 'Aggregate',
-  experts: [],
-  style: {},
-};
-
-const domainDetails2 = {
-  name: `cypress-domain-${uuid()}`,
-  displayName: 'Cypress Domain 2',
-  description: 'Cypress domain description',
-  domainType: 'Aggregate',
-  experts: [],
-  style: {},
-};
 
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
@@ -74,15 +56,15 @@ entities.forEach((entity) => {
     });
 
     it(`Assign domain`, () => {
-      entity.assignDomain(domainDetails1.displayName);
+      entity.assignDomain();
     });
 
     it(`Update domain`, () => {
-      entity.updateDomain(domainDetails2.displayName);
+      entity.updateDomain();
     });
 
     it(`Remove domain`, () => {
-      entity.removeDomain(domainDetails2.displayName);
+      entity.removeDomain();
     });
 
     it(`Assign user Owner`, () => {

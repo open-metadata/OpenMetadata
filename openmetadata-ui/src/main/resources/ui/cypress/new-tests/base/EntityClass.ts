@@ -364,16 +364,16 @@ class EntityClass {
 
   // Domain
 
-  assignDomain(domainName: string) {
-    addDomainToEntity(domainName);
+  assignDomain() {
+    addDomainToEntity(this.domainDetails1.displayName);
   }
 
-  updateDomain(domainName: string) {
-    addDomainToEntity(domainName);
+  updateDomain() {
+    addDomainToEntity(this.domainDetails2.displayName);
   }
 
-  removeDomain(domainName: string) {
-    removeDomainFromEntity(domainName);
+  removeDomain() {
+    removeDomainFromEntity(this.domainDetails2.displayName);
   }
 
   // Owner
