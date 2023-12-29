@@ -189,13 +189,9 @@ class SampleDataSource(
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        import faker  # pylint: disable=import-outside-toplevel
 
         super().__init__()
 
-        self.fake = faker.Faker(["en-US", "zh_CN", "ja_JP", "th_TH"])
-        self.database_service_json = {}
-        self.dashboard_service_json = {}
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata = metadata
@@ -578,7 +574,6 @@ class SampleDataSource(
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
-        yield from self.generate_sample_data()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1590,80 +1585,3 @@ class SampleDataSource(
 
     def test_connection(self) -> None:
         """Custom sources don't support testing connections"""
-
-    def generate_sample_data(self):
-        """
-        Generate sample data for dashboard and database service,
-        with lineage between them, having long names, special characters and description
-        """
-        for _ in range(2):
-            name = self.generate_name()
-            text = self.generate_text()
-
-            self.database_service_json["name"] = name
-            self.database_service_json["description"] = text
-
-            db = self.create_database_request(name, text)
-            yield db
-
-            for _ in range(2):
-                schema = self.create_database_schema_request(name, text, db)
-                yield schema
-
-                for table in self.tables["tables"]:
-                    table_request = self.create_table_request(name, text, schema, table)
-                    yield table_request
-
-            self.dashboard_service_json["name"] = name
-            self.dashboard_service_json["description"] = text
-
-            for data_model in self.data_models["datamodels"]:
-                data_model_request = self.create_dashboard_data_model_request(
-                    name, text, data_model
-                )
-                yield data_model_request
-
-    def generate_name(self):
-        return f"Sample-@!3_(%t3st@)%_^{self.fake.name()}"
-
-    def generate_text(self):
-        return f"Sample-@!3_(%m@)%_^{self.fake.text()}"
-
-    def create_database_request(self, name, text):
-        db = CreateDatabaseRequest(
-            name=name,
-            description=text,
-            service=self.database_service.fullyQualifiedName.__root__,
-        )
-        return db
-
-    def create_database_schema_request(self, name, text, db):
-        schema = CreateDatabaseSchemaRequest(
-            name=name,
-            description=text,
-            database=db.fullyQualifiedName,
-        )
-        return schema
-
-    def create_table_request(self, name, text, schema, table):
-        table_request = CreateTableRequest(
-            name=name,
-            description=text,
-            columns=table["columns"],
-            databaseSchema=schema.fullyQualifiedName,
-            tableConstraints=table.get("tableConstraints"),
-            tableType=table["tableType"],
-        )
-        return table_request
-
-    def create_dashboard_data_model_request(self, name, text, data_model):
-        data_model_request = CreateDashboardDataModelRequest(
-            name=name,
-            description=text,
-            columns=data_model["columns"],
-            dataModelType=data_model["dataModelType"],
-            sql=data_model["sql"],
-            serviceType=data_model["serviceType"],
-            service=self.dashboard_service.fullyQualifiedName,
-        )
-        return data_model_request
