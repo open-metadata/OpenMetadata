@@ -44,6 +44,9 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: BigQueryConnection) -> str:
@@ -107,9 +110,27 @@ def test_connection(
             return policy_tags
 
     def test_tags():
-        taxonomies = PolicyTagManagerClient().list_taxonomies(
-            parent=f"projects/{engine.url.host}/locations/{service_connection.taxonomyLocation}"
-        )
+        taxonomy_project_ids = []
+        if engine.url.host:
+            taxonomy_project_ids.append(engine.url.host)
+        if service_connection.taxonomyProjectId:
+            taxonomy_project_ids.extend(service_connection.taxonomyProjectId)
+        if not taxonomy_project_ids:
+            logger.info("'taxonomyProjectID' is not set, so skipping this test.")
+            return None
+
+        taxonomy_location = service_connection.taxonomyLocation
+        if not taxonomy_location:
+            logger.info("'taxonomyLocation' is not set, so skipping this test.")
+            return None
+
+        taxonomies = []
+        for project_id in taxonomy_project_ids:
+            taxonomies.extend(
+                PolicyTagManagerClient().list_taxonomies(
+                    parent=f"projects/{project_id}/locations/{taxonomy_location}"
+                )
+            )
         return get_tags(taxonomies)
 
     def test_connection_inner(engine):
