@@ -72,12 +72,14 @@ class AirflowTaskStatus(Enum):
     FAILED = "failed"
     QUEUED = "queued"
     REMOVED = "removed"
+    SKIPPED = "skipped"
 
 
 STATUS_MAP = {
     AirflowTaskStatus.SUCCESS.value: StatusType.Successful.value,
     AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
     AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
+    AirflowTaskStatus.SKIPPED.value: StatusType.Skipped.value,
 }
 
 

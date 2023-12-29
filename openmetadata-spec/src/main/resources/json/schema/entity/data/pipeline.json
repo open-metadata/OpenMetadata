@@ -19,7 +19,7 @@
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": ["Successful", "Failed", "Pending"],
+      "enum": ["Successful", "Failed", "Pending", "Skipped"],
       "javaEnums": [
         {
           "name": "Successful"
@@ -29,6 +29,9 @@
         },
         {
           "name": "Pending"
+        },
+        {
+          "name": "Skipped"
         }
       ]
     },
