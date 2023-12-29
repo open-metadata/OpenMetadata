@@ -47,6 +47,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
+from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 
@@ -151,11 +152,18 @@ class AirflowLineageRunner:
             for task in self.dag.tasks or []
         ]
 
-    def create_pipeline_entity(self, pipeline_service: PipelineService) -> Pipeline:
+    def create_or_update_pipeline_entity(self, pipeline_service: PipelineService) -> Pipeline:
         """
-        Create the Pipeline Entity
+        Create the Pipeline Entity if it does not exist, or PATCH it
+        if there have been changes.
         """
         self.dag.log.info("Creating or updating Pipeline Entity from DAG...")
+
+        pipeline: Pipeline = self.metadata.get_by_name(
+            entity=Pipeline,
+            fqn=fqn.build(self.metadata, Pipeline, service_name=self.service_name, pipeline_name=self.dag.dag_id)
+        )
+
         pipeline_request = CreatePipelineRequest(
             name=self.dag.dag_id,
             description=self.dag.description,
@@ -167,7 +175,10 @@ class AirflowLineageRunner:
             service=pipeline_service.fullyQualifiedName,
         )
 
-        return self.metadata.create_or_update(pipeline_request)
+        if pipeline is None:
+            return self.metadata.create_or_update(pipeline_request)
+
+        # TODO: FINISH
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
         """
@@ -368,7 +379,7 @@ class AirflowLineageRunner:
         """
         self.dag.log.info("Executing Airflow Lineage Runner...")
         pipeline_service = self.get_or_create_pipeline_service()
-        pipeline = self.create_pipeline_entity(pipeline_service)
+        pipeline = self.create_or_update_pipeline_entity(pipeline_service)
         self.add_all_pipeline_status(pipeline)
 
         self.dag.log.info(f"Processing XLet data {self.xlets}")
