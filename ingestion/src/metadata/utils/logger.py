@@ -28,6 +28,8 @@ from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -260,3 +262,14 @@ def _(_: TestCaseResults) -> Optional[str]:
 @get_log_name.register
 def _(record: TestCaseResultResponse) -> str:
     return record.testCase.fullyQualifiedName.__root__
+
+
+@get_log_name.register
+def _(record: OMetaPipelineStatus) -> str:
+    return f"Pipeline Status [{record.pipeline_fqn}]"
+
+
+@get_log_name.register
+def _(record: PatchRequest) -> str:
+    """Get the log of the new entity"""
+    return get_log_name(record.new_entity)

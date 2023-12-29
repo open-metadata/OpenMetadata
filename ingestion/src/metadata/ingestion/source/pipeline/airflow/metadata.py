@@ -14,6 +14,7 @@ Airflow source to extract metadata from OM UI
 import traceback
 from collections import Counter
 from datetime import datetime
+from enum import Enum
 from typing import Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
@@ -65,10 +66,18 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
+class AirflowTaskStatus(Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    QUEUED = "queued"
+    REMOVED = "removed"
+
+
 STATUS_MAP = {
-    "success": StatusType.Successful.value,
-    "failed": StatusType.Failed.value,
-    "queued": StatusType.Pending.value,
+    AirflowTaskStatus.SUCCESS.value: StatusType.Successful.value,
+    AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
+    AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
 }
 
 
@@ -173,12 +182,15 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.end_date,
                     TaskInstance.run_id,
                 )
-                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
+                .filter(
+                    TaskInstance.dag_id == dag_id,
+                    TaskInstance.run_id == run_id,
+                    # updating old runs flag deleted tasks as `removed`
+                    TaskInstance.state != AirflowTaskStatus.REMOVED,
+                )
                 .all()
             )
-        except Exception as exc:  # pylint: disable=broad-except
-            # Using a broad Exception here as the backend can come in many flavours (pymysql, pyodbc...)
-            # And we don't want to force all imports
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Tried to get TaskInstances with run_id. It might not be available in older Airflow versions - {exc}."

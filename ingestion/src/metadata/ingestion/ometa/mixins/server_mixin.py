@@ -60,10 +60,12 @@ class OMetaServerMixin:
         Validate Server & Client versions. They should match.
         Otherwise, raise VersionMismatchException
         """
-        logger.debug("Validating client and server versions")
-
         server_version = self.get_server_version()
         client_version = get_client_version()
+
+        logger.info(
+            f"OpenMetadata client running with Server version [{server_version}] and Client version [{client_version}]"
+        )
 
         # Server version will be 0.13.2, vs 0.13.2.X from the client.
         # If the server version is contained in the client version, then we're good to go

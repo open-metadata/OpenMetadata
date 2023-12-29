@@ -19,9 +19,6 @@ from pydantic import BaseModel
 
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
 class PatchRequest(BaseModel):
@@ -180,7 +177,6 @@ def build_patch(
             json.loads(destination.json(exclude_unset=True, exclude_none=True)),
         )
     if not patch:
-        logger.debug("Nothing to update when running the patch.")
         return None
 
     # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
