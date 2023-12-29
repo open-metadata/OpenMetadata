@@ -48,6 +48,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
 def get_connection_url(connection: BigQueryConnection) -> str:
     """
     Build the connection URL and set the project
