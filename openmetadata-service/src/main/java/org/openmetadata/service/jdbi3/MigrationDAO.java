@@ -74,7 +74,7 @@ public interface MigrationDAO {
               + "VALUES (:version, :migrationFileName, :checksum, to_jsonb(:metrics::text), current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
               + "migrationFileName = EXCLUDED.migrationFileName, "
-              + "metrics = :metrics,"
+              + "metrics = to_jsonb(:metrics::text),"
               + "checksum = EXCLUDED.checksum, "
               + "installed_on = EXCLUDED.installed_on",
       connectionType = POSTGRES)
