@@ -190,13 +190,9 @@ class SampleDataSource(
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        import faker  # pylint: disable=import-outside-toplevel
 
         super().__init__()
 
-        self.fake = faker.Faker(["en-US", "zh_CN", "ja_JP", "th_TH"])
-        self.database_service_json = {}
-        self.dashboard_service_json = {}
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata = metadata
