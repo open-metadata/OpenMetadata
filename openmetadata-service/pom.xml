@@ -485,6 +485,10 @@
       <version>1.9.3</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli</artifactId>
+    </dependency>
   </dependencies>
 
   <profiles>

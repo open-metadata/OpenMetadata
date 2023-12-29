@@ -861,6 +861,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             pipelineServiceClient.deployPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
           ingestionPipelineRepository.createOrUpdate(uriInfo, ingestionPipeline);
+        } else {
+          ingestionPipeline.setDeployed(false);
         }
         return Response.status(status.getCode()).entity(status).build();
       }

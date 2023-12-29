@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,40 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
+
+  private static final String ALL = "all";
+  private static final Set<String> ALL_ENTITIES =
+      Set.of(
+          "table",
+          "dashboard",
+          "topic",
+          "pipeline",
+          "searchIndex",
+          "user",
+          "team",
+          "glossaryTerm",
+          "mlmodel",
+          "tag",
+          "classification",
+          "query",
+          "container",
+          "database",
+          "databaseSchema",
+          "testCase",
+          "testSuite",
+          "chart",
+          "dashboardDataModel",
+          "databaseService",
+          "messagingService",
+          "dashboardService",
+          "pipelineService",
+          "mlmodelService",
+          "searchService",
+          "entityReportData",
+          "webAnalyticEntityViewReportData",
+          "webAnalyticUserActivityReportData",
+          "domain",
+          "storedProcedure");
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
@@ -67,12 +102,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
     super.init(app, dao, searchRepository);
-
     // request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats())
             .withFailure(new Failure());
+    if (request.getEntities().contains(ALL)) {
+      request.setEntities(ALL_ENTITIES);
+    }
     int totalRecords = getTotalRequestToProcess(request.getEntities(), collectionDAO);
     this.jobData = request;
     this.jobData.setStats(

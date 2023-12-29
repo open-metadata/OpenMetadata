@@ -297,7 +297,7 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity {} {}", clazz, entity);
+    LOG.debug("Registering entity {} {}", clazz, entity);
   }
 
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
@@ -309,7 +309,7 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity time series {} {}", clazz, entity);
+    LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
 
   public static void registerResourcePermissions(
