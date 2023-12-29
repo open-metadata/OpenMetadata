@@ -70,14 +70,12 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public StoredProcedure setInheritedFields(
-      StoredProcedure storedProcedure, EntityUtil.Fields fields) {
+  public void setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     DatabaseSchema schema =
         Entity.getEntity(
             DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owner,domain", ALL);
     inheritOwner(storedProcedure, fields, schema);
     inheritDomain(storedProcedure, fields, schema);
-    return storedProcedure;
   }
 
   @Override

@@ -405,7 +405,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           UUID id) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    ResourceContext resourceContext = getResourceContextById(id);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 

@@ -31,7 +31,6 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
-import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,

@@ -13,17 +13,18 @@
 
 package org.openmetadata.service.util;
 
+import static io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle.prometheusRegistry;
+
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class MicrometerBundleSingleton {
   private static final MicrometerBundle instance = new MicrometerBundle();
-  public static Timer webAnalyticEvents;
   // We'll use this registry to add monitoring around Ingestion Pipelines
-  public static final PrometheusMeterRegistry prometheusMeterRegistry =
-      MicrometerBundle.prometheusRegistry;
+  public static final PrometheusMeterRegistry prometheusMeterRegistry = prometheusRegistry;
+  private static Timer webAnalyticEvents;
 
   private MicrometerBundleSingleton() {}
 
@@ -31,11 +32,16 @@ public class MicrometerBundleSingleton {
     return instance;
   }
 
-  public static Timer latencyTimer(EventMonitorConfiguration configuration) {
-    return Timer.builder("latency_requests")
-        .description("Request latency in seconds.")
-        .publishPercentiles(configuration.getLatency())
-        .publishPercentileHistogram()
-        .register(prometheusMeterRegistry);
+  public static void setWebAnalyticsEvents(OpenMetadataApplicationConfig config) {
+    webAnalyticEvents =
+        Timer.builder("latency_requests")
+            .description("Request latency in seconds.")
+            .publishPercentiles(config.getEventMonitorConfiguration().getLatency())
+            .publishPercentileHistogram()
+            .register(prometheusMeterRegistry);
+  }
+
+  public static Timer getWebAnalyticEvents() {
+    return webAnalyticEvents;
   }
 }

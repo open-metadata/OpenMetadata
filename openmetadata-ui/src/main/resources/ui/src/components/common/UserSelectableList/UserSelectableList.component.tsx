@@ -27,6 +27,7 @@ import { searchData } from '../../../rest/miscAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -38,9 +39,11 @@ export const UserSelectableList = ({
   children,
   popoverProps,
   multiSelect = true,
+  filterCurrentUser = false,
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -60,6 +63,13 @@ export const UserSelectableList = ({
           EntityType.USER
         );
 
+        if (filterCurrentUser) {
+          const user = data.find((user) => user.id === currentUser?.id);
+          if (user) {
+            data.splice(data.indexOf(user), 1);
+          }
+        }
+
         return { data, paging: { total: res.data.hits.total.value } };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
@@ -75,6 +85,12 @@ export const UserSelectableList = ({
           data,
           EntityType.USER
         );
+        if (filterCurrentUser) {
+          const user = filterData.find((user) => user.id === currentUser?.id);
+          if (user) {
+            filterData.splice(filterData.indexOf(user), 1);
+          }
+        }
 
         return { data: filterData, paging };
       } catch (error) {

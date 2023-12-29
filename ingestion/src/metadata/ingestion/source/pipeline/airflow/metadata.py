@@ -12,7 +12,9 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
+from collections import Counter
 from datetime import datetime
+from enum import Enum
 from typing import Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
@@ -33,13 +35,16 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -61,10 +66,20 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
+class AirflowTaskStatus(Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    QUEUED = "queued"
+    REMOVED = "removed"
+    SKIPPED = "skipped"
+
+
 STATUS_MAP = {
-    "success": StatusType.Successful.value,
-    "failed": StatusType.Failed.value,
-    "queued": StatusType.Pending.value,
+    AirflowTaskStatus.SUCCESS.value: StatusType.Successful.value,
+    AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
+    AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
+    AirflowTaskStatus.SKIPPED.value: StatusType.Skipped.value,
 }
 
 
@@ -95,7 +110,7 @@ class AirflowSource(PipelineServiceSource):
         self._session = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(cls, config_dict, metadata: OpenMetadata) -> "AirflowSource":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirflowConnection):
@@ -169,12 +184,15 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.end_date,
                     TaskInstance.run_id,
                 )
-                .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
+                .filter(
+                    TaskInstance.dag_id == dag_id,
+                    TaskInstance.run_id == run_id,
+                    # updating old runs flag deleted tasks as `removed`
+                    TaskInstance.state != AirflowTaskStatus.REMOVED,
+                )
                 .all()
             )
-        except Exception as exc:  # pylint: disable=broad-except
-            # Using a broad Exception here as the backend can come in many flavours (pymysql, pyodbc...)
-            # And we don't want to force all imports
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Tried to get TaskInstances with run_id. It might not be available in older Airflow versions - {exc}."
@@ -247,7 +265,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=f"{pipeline_details.dag_id} Pipeline Status",
                     error=f"Wild error trying to extract status from DAG {pipeline_details.dag_id} - {exc}.",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -280,7 +298,7 @@ class AirflowSource(PipelineServiceSource):
                     start_date=data.get("start_date", None),
                     tasks=data.get("tasks", []),
                     schedule_interval=get_schedule_interval(data),
-                    owners=self.fetch_owners(data),
+                    owner=self.fetch_dag_owners(data),
                 )
 
                 yield dag
@@ -293,12 +311,29 @@ class AirflowSource(PipelineServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
 
-    def fetch_owners(self, data) -> Optional[str]:
+    def fetch_dag_owners(self, data) -> Optional[str]:
+        """
+        In Airflow, ownership is defined as:
+        - `default_args`: Applied to all tasks and available on the DAG payload
+        - `owners`: Applied at the tasks. In Airflow's source code, DAG ownership is then a
+          list joined with the owners of all the tasks.
+
+        We will pick the owner from the tasks that appears in most tasks.
+        """
         try:
-            if self.source_config.includeOwners and data.get("default_args"):
-                return data.get("default_args", [])["__var"].get("email", [])
-        except TypeError:
-            pass
+            if self.source_config.includeOwners:
+                task_owners = [
+                    task.get("owner")
+                    for task in data.get("tasks", [])
+                    if task.get("owner") is not None
+                ]
+                if task_owners:
+                    most_common_owner, _ = Counter(task_owners).most_common(1)[0]
+                    return most_common_owner
+        except Exception as exc:
+            self.status.warning(
+                data.get("dag_id"), f"Could not extract owner information due to {exc}"
+            )
         return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
@@ -307,8 +342,7 @@ class AirflowSource(PipelineServiceSource):
         """
         return pipeline_details.dag_id
 
-    @staticmethod
-    def get_tasks_from_dag(dag: AirflowDagDetails, host_port: str) -> List[Task]:
+    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: AirflowDagDetails
@@ -329,28 +363,26 @@ class AirflowSource(PipelineServiceSource):
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
+                owner=self.get_owner(task.owner),
             )
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
-    def get_user_details(self, email) -> Optional[EntityReference]:
-        user = self.metadata.get_user_by_email(email=email)
-        if user:
-            return EntityReference(id=user.id.__root__, type="user")
-        return None
+    def get_owner(self, owner) -> Optional[EntityReference]:
+        """
+        Fetching users by name via ES to keep things as fast as possible.
 
-    def get_owner(self, owners) -> Optional[EntityReference]:
+        We use the `owner` field since it's the onw used by Airflow to showcase
+        the info in its UI. In other connectors we might use the mail (e.g., in Looker),
+        but we use name here to be consistent with Airflow itself.
+
+        If data is not indexed, we can live without this information
+        until the next run.
+        """
         try:
-            if isinstance(owners, str) and owners:
-                return self.get_user_details(email=owners)
-
-            if isinstance(owners, List) and owners:
-                for owner in owners or []:
-                    return self.get_user_details(email=owner)
-
-            logger.debug(f"No user found with email [{owners}] in OMD")
+            return self.metadata.get_reference_by_name(name=owner)
         except Exception as exc:
-            logger.warning(f"Error while getting details of user {owners} - {exc}")
+            logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
 
     def yield_pipeline(
@@ -377,7 +409,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_details, self.service_connection.hostPort
                 ),
                 service=self.context.pipeline_service,
-                owner=self.get_owner(pipeline_details.owners),
+                owner=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
             yield Either(right=pipeline_request)
@@ -394,7 +426,7 @@ class AirflowSource(PipelineServiceSource):
                         f"Error building DAG information from {pipeline_details}. There might be Airflow version"
                         f" incompatibilities - {err}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except ValidationError as err:
@@ -403,7 +435,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
                     error=f"Error building pydantic model for {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -413,7 +445,7 @@ class AirflowSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.dag_id,
                     error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

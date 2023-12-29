@@ -28,6 +28,7 @@ import { RetentionPeriodProps } from './RetentionPeriod.interface';
 const RetentionPeriod = ({
   retentionPeriod,
   onUpdate,
+  permissions,
 }: RetentionPeriodProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -60,14 +61,16 @@ const RetentionPeriod = ({
           value={retentionPeriod ?? NO_DATA_PLACEHOLDER}
         />
 
-        <Button
-          className="flex-center p-0"
-          data-testid="edit-retention-period-button"
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-          size="small"
-          type="text"
-          onClick={() => setIsEdit(true)}
-        />
+        {permissions?.EditAll && (
+          <Button
+            className="flex-center p-0"
+            data-testid="edit-retention-period-button"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+            onClick={() => setIsEdit(true)}
+          />
+        )}
       </Space>
 
       <Modal

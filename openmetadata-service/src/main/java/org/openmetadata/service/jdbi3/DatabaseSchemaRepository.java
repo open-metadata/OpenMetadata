@@ -13,20 +13,37 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.TABLE;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -89,7 +106,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   private List<EntityReference> getTables(DatabaseSchema schema) {
     return schema == null
         ? Collections.emptyList()
-        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
+        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, TABLE);
   }
 
   public void setFields(DatabaseSchema schema, Fields fields) {
@@ -122,7 +139,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) {
+  public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
         Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
     inheritOwner(schema, fields, database);
@@ -131,7 +148,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         schema.getRetentionPeriod() == null
             ? database.getRetentionPeriod()
             : schema.getRetentionPeriod());
-    return schema;
   }
 
   @Override
@@ -158,6 +174,23 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
         .withServiceType(database.getServiceType());
+  }
+
+  @Override
+  public String exportToCsv(String name, String user) throws IOException {
+    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", name);
+    List<Table> tables = repository.listAll(repository.getFields("owner,tags,domain"), filter);
+    tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return new DatabaseSchemaCsv(schema, user).exportCsv(tables);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
+      throws IOException {
+    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
+    return new DatabaseSchemaCsv(schema, user).importCsv(csv, dryRun);
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
@@ -215,5 +248,65 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
+  }
+
+  public static class DatabaseSchemaCsv extends EntityCsv<Table> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE_SCHEMA);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final DatabaseSchema schema;
+
+    DatabaseSchemaCsv(DatabaseSchema schema, String user) {
+      super(TABLE, DOCUMENTATION.getHeaders(), user);
+      this.schema = schema;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
+      Table table;
+      try {
+        table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        importFailure(printer, entityNotFound(0, TABLE, tableFqn), csvRecord);
+        processRecord = false;
+        return;
+      }
+
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // Field 1,2,3,6,7 - database schema name, displayName, description
+      table
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwner(getOwner(printer, csvRecord, 3))
+          .withTags(getTagLabels(printer, csvRecord, 4))
+          .withRetentionPeriod(csvRecord.get(5))
+          .withSourceUrl(csvRecord.get(6))
+          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+
+      if (processRecord) {
+        createEntity(printer, csvRecord, table);
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Table entity) {
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwner(recordList, entity.getOwner());
+      addTagLabels(recordList, entity.getTags());
+      addField(recordList, entity.getRetentionPeriod());
+      addField(recordList, entity.getSourceUrl());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addRecord(csvFile, recordList);
+    }
   }
 }

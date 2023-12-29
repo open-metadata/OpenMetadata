@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,19 +69,19 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("charts")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
-      if (!entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
-        // Only description field can be updated
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
+      if (entityLink.getArrayFieldValue() != null) {
+        return new ChartDescriptionAndTagTaskWorkflow(threadContext);
       }
-      return new ChartDescriptionTaskWorkflow(threadContext);
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
     }
     return super.getTaskWorkflow(threadContext);
   }
 
-  static class ChartDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    ChartDescriptionTaskWorkflow(ThreadContext threadContext) {
+  static class ChartDescriptionAndTagTaskWorkflow extends DescriptionTaskWorkflow {
+    ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
+      EntityLink entityLink = threadContext.getAbout();
       Dashboard dashboard =
           Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
       String chartName = threadContext.getAbout().getArrayFieldName();
@@ -93,6 +94,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                       new IllegalArgumentException(
                           CatalogExceptionMessage.invalidFieldName("chart", chartName)));
       Chart chart = Entity.getEntity(chartReference, "", ALL);
+      if (entityLink.getArrayFieldValue().equals(FIELD_DESCRIPTION)) {
+        threadContext.setAbout(
+            new EntityLink(
+                Entity.CHART, chart.getFullyQualifiedName(), FIELD_DESCRIPTION, null, null));
+      } else if (entityLink.getArrayFieldValue().equals(FIELD_TAGS)) {
+        threadContext.setAbout(
+            new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), FIELD_TAGS, null, null));
+      }
       threadContext.setAboutEntity(chart);
     }
   }
@@ -136,19 +145,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setServiceType(service.getServiceType());
   }
 
-  public void setService(Dashboard dashboard, EntityReference service) {
-    if (service != null && dashboard != null) {
-      // TODO remove this
-      addRelationship(
-          service.getId(),
-          dashboard.getId(),
-          service.getType(),
-          Entity.DASHBOARD,
-          Relationship.CONTAINS);
-      dashboard.setService(service);
-    }
-  }
-
   @Override
   public void prepare(Dashboard dashboard, boolean update) {
     populateService(dashboard);
@@ -171,26 +167,22 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void storeRelationships(Dashboard dashboard) {
-    setService(dashboard, dashboard.getService());
+    addServiceRelationship(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart
-    if (dashboard.getCharts() != null) {
-      for (EntityReference chart : dashboard.getCharts()) {
-        addRelationship(
-            dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
+    for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+      addRelationship(
+          dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
     }
 
     // Add relationship from dashboard to data models
-    if (dashboard.getDataModels() != null) {
-      for (EntityReference dataModel : dashboard.getDataModels()) {
-        addRelationship(
-            dashboard.getId(),
-            dataModel.getId(),
-            Entity.DASHBOARD,
-            Entity.DASHBOARD_DATA_MODEL,
-            Relationship.HAS);
-      }
+    for (EntityReference dataModel : listOrEmpty(dashboard.getDataModels())) {
+      addRelationship(
+          dashboard.getId(),
+          dataModel.getId(),
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Relationship.HAS);
     }
   }
 

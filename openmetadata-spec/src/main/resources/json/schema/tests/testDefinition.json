@@ -155,6 +155,11 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "supportsRowLevelPassedFailed": {
+      "description": "When `true` indicates the test case supports row level passed/failed.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "description", "testPlatforms"],

@@ -1177,8 +1177,8 @@
   "message": {
     "access-block-time-message": "Access will be blocked for milliseconds after max failed login attapmts performed.",
     "access-to-collaborate": "Allow open access for anyone to join the team, view data, and collaborate.",
-    "action-has-been-done-but-deploy-successfully": "has been {{action}} and deployed successfully",
-    "action-has-been-done-but-failed-to-deploy": "has been {{action}}, but failed to deploy",
+    "action-has-been-done-but-deploy-successfully": " has been {{action}} and deployed successfully",
+    "action-has-been-done-but-failed-to-deploy": " has been {{action}}, but failed to deploy",
     "active-users": "Display the number of active users.",
     "add-data-asset-domain": "Start by adding a service or data asset to the {{domain}}.",
     "add-kpi-message": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets. Review your data assets based on Description, Ownership, and Tier. Define your target metrics in absolute or percentage to track your progress. Finally, set a start and end date to achieve your data goals.",
@@ -1226,6 +1226,7 @@
     "assigned-you-a-new-task-lowercase": "a new task has been assigned to you",
     "assigning-team-entity-description": "Add a {{entity}} to {{name}}. This {{entity}} will be inherited by all the Users in the Team {{name}} as well as all the Teams under {{name}}",
     "at-least-one-policy": "Enter at least one policy",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "AuthProvider is not Basic",
     "bot-email-confirmation": "{{email}} for {{botName}} bot",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",

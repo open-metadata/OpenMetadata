@@ -144,6 +144,7 @@ def test_case_column_value_length_to_be_between():
             TestCaseParameterValue(name="minLength", value="1"),
             TestCaseParameterValue(name="maxLength", value="10"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -159,6 +160,7 @@ def test_case_column_value_length_to_be_between_col_space():
             TestCaseParameterValue(name="minLength", value="1"),
             TestCaseParameterValue(name="maxLength", value="10"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -173,6 +175,7 @@ def test_case_column_value_length_to_be_between_no_min():
         parameterValues=[
             TestCaseParameterValue(name="maxLength", value="10"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -318,6 +321,7 @@ def test_case_column_value_in_set():
         parameterValues=[
             TestCaseParameterValue(name="allowedValues", value="['John']"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -361,6 +365,7 @@ def test_case_column_values_not_in_set():
         parameterValues=[
             TestCaseParameterValue(name="forbiddenValues", value="['John']"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -391,6 +396,7 @@ def test_case_column_values_to_be_between():
             TestCaseParameterValue(name="minValue", value="29"),
             TestCaseParameterValue(name="maxValue", value="33"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -402,6 +408,7 @@ def test_case_column_values_to_be_not_null():
         entityLink=ENTITY_LINK_NICKNAME,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -413,6 +420,7 @@ def test_case_column_values_to_be_unique():
         entityLink=ENTITY_LINK_NICKNAME,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -427,6 +435,7 @@ def test_case_column_values_to_match_regex():
         parameterValues=[
             TestCaseParameterValue(name="regex", value="J.*"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -441,6 +450,7 @@ def test_case_column_values_to_not_match_regex():
         parameterValues=[
             TestCaseParameterValue(name="forbiddenRegex", value="X%"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
@@ -680,6 +690,7 @@ def test_case_column_values_to_be_between_date():
             TestCaseParameterValue(name="minValue", value="1625127852000"),
             TestCaseParameterValue(name="maxValue", value="1625127852000"),
         ],
+        computePassedFailedRowCount=True,
     )  # type: ignore
 
 
