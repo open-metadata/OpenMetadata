@@ -68,17 +68,28 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
-    def _base_sample_query(self, label=None):
+    def _base_sample_query(self, column: Optional[Column], label=None):
+        """Base query for sampling
+
+        Args:
+            column (Optional[Column]): if computing a column metric only sample for the column
+            label (_type_, optional):
+
+        Returns:
+        """
+        # only sample the column if we are computing a column metric to limit the amount of data scaned
+        entity = self.table if column is None else column
         if label is not None:
-            return self.client.query(self.table, label)
-        return self.client.query(self.table)
+            return self.client.query(entity, label)
+        return self.client.query(entity)
 
     @partition_filter_handler(build_sample=True)
-    def get_sample_query(self) -> Query:
+    def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
                 self._base_sample_query(
+                    column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .suffix_with(
@@ -94,6 +105,7 @@ class SQASampler(SamplerInterface):
 
         table_query = self.client.query(self.table)
         session_query = self._base_sample_query(
+            column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
         )
         return (
@@ -102,7 +114,7 @@ class SQASampler(SamplerInterface):
             .cte(f"{self.table.__tablename__}_rnd")
         )
 
-    def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def random_sample(self, ccolumn=None) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -117,7 +129,7 @@ class SQASampler(SamplerInterface):
             return self.table
 
         # Add new RandomNumFn column
-        sampled = self.get_sample_query()
+        sampled = self.get_sample_query(column=ccolumn)
 
         # Assign as an alias
         return aliased(self.table, sampled)

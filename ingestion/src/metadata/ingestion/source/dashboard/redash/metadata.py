@@ -109,11 +109,9 @@ class RedashSource(DashboardServiceSource):
     def get_owner_details(self, dashboard_details) -> Optional[EntityReference]:
         """Get owner from mail"""
         if dashboard_details.get("user") and dashboard_details["user"].get("email"):
-            user = self.metadata.get_user_by_email(
+            return self.metadata.get_reference_by_email(
                 dashboard_details["user"].get("email")
             )
-            if user:
-                return EntityReference(id=user.id.__root__, type="user")
         return None
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:
