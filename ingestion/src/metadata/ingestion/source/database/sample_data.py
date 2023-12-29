@@ -190,9 +190,7 @@ class SampleDataSource(
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-
         super().__init__()
-
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata = metadata

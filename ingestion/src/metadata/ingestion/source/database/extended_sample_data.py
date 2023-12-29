@@ -23,8 +23,11 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
@@ -33,6 +36,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
@@ -132,6 +138,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
             entity=DashboardService,
             config=WorkflowSource(**self.dashboard_service_json),
         )
+        self.db_name = None
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -178,6 +185,15 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
                 for table in self.tables["tables"]:
                     table_request = self.create_table_request(name, text, schema, table)
                     yield Either(right=table_request)
+                    table_entity_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.database_service.name.__root__,
+                        database_name=db.name.__root__,
+                        schema_name=schema.name.__root__,
+                        table_name=table_request.name.__root__,
+                    )
+                    self.store_table_fqn.append(table_entity_fqn)
 
             self.dashboard_service_json["name"] = name
             self.dashboard_service_json["description"] = text
@@ -187,6 +203,37 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
                     name, text, data_model
                 )
                 yield Either(right=data_model_request)
+                data_model_entity_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.dashboard_service.name.__root__,
+                    data_model_name=table_request.name.__root__,
+                )
+                self.store_data_model_fqn.append(data_model_entity_fqn)
+
+            for table_fqn in self.store_table_fqn:
+                from_table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                for dashboard_datamodel_fqn in self.store_data_model_fqn:
+                    to_datamodel = self.metadata.get_by_name(
+                        entity=DashboardDataModel, fqn=dashboard_datamodel_fqn
+                    )
+
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_table.id.__root__, type="table"
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_datamodel.id.__root__,
+                                    type="dashboardDataModel",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage
+                                ),
+                            )
+                        )
+                    )
 
     def generate_name(self):
         return f"Sample-@!3_(%t3st@)%_^{self.fake.name()}"
