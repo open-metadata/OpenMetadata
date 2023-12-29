@@ -189,16 +189,11 @@ class SampleDataSource(
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-
         super().__init__()
-
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata = metadata
         self.list_policies = []
-        self.store_table_fqn = []
-        self.store_data_model_fqn = []
-        self.store_dashboard_fqn = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
             "sampleDataFolder"
@@ -803,6 +798,7 @@ class SampleDataSource(
 
         # Create table and stored procedure lineage
         for lineage_entities in self.stored_procedures["lineage"]:
+
             from_table = self.metadata.get_by_name(
                 entity=Table, fqn=lineage_entities["from_table_fqn"]
             )
