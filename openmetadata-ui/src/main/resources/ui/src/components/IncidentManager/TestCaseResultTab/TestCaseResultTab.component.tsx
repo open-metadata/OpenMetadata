@@ -23,6 +23,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TestCaseParameterValue } from '../../../generated/tests/testCase';
 import { updateTestCaseById } from '../../../rest/testAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -52,25 +53,25 @@ const TestCaseResultTab = ({
     );
   }, [permissions]);
 
-  const parameterValuesWithoutSqlExpression = useMemo(
-    () =>
-      testCaseData?.parameterValues && testCaseData.parameterValues.length > 0
-        ? testCaseData.parameterValues.filter(
-            (param) => param.name !== 'sqlExpression'
-          )
-        : undefined,
-    [testCaseData?.parameterValues]
-  );
+  const { withSqlParams, withoutSqlParams } = useMemo(() => {
+    const params = testCaseData?.parameterValues ?? [];
 
-  const parameterValuesWithSqlExpression = useMemo(
-    () =>
-      testCaseData?.parameterValues && testCaseData.parameterValues.length > 0
-        ? testCaseData.parameterValues.filter(
-            (param) => param.name === 'sqlExpression'
-          )
-        : undefined,
-    [testCaseData?.parameterValues]
-  );
+    return params.reduce(
+      (result, param) => {
+        if (param.name === 'sqlExpression') {
+          result.withSqlParams.push(param);
+        } else {
+          result.withoutSqlParams.push(param);
+        }
+
+        return result;
+      },
+      { withSqlParams: [], withoutSqlParams: [] } as {
+        withSqlParams: TestCaseParameterValue[];
+        withoutSqlParams: TestCaseParameterValue[];
+      }
+    );
+  }, [testCaseData?.parameterValues]);
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
@@ -110,7 +111,10 @@ const TestCaseResultTab = ({
   );
 
   return (
-    <Row className="p-lg test-case-result-tab" gutter={[0, 20]}>
+    <Row
+      className="p-lg test-case-result-tab"
+      data-testid="test-case-result-tab-container"
+      gutter={[0, 20]}>
       <Col span={24}>
         <DescriptionV1
           description={testCaseData?.description}
@@ -124,7 +128,7 @@ const TestCaseResultTab = ({
         />
       </Col>
 
-      <Col span={24}>
+      <Col data-testid="parameter-container" span={24}>
         <Space direction="vertical" size="small">
           <Space align="center" size="middle">
             <Typography.Text className="right-panel-label">
@@ -133,25 +137,24 @@ const TestCaseResultTab = ({
             {hasEditPermission && (
               <Icon
                 component={EditIcon}
-                data-testid="edit-description-icon"
+                data-testid="edit-parameter-icon"
                 style={{ color: DE_ACTIVE_COLOR }}
                 onClick={() => setIsParameterEdit(true)}
               />
             )}
           </Space>
 
-          {!isEmpty(parameterValuesWithoutSqlExpression) &&
-          !isUndefined(parameterValuesWithoutSqlExpression) ? (
+          {!isEmpty(withoutSqlParams) && !isUndefined(withoutSqlParams) ? (
             <Space
               className="parameter-value-container parameter-value"
               size={6}>
-              {parameterValuesWithoutSqlExpression.map((param, index) => (
+              {withoutSqlParams.map((param, index) => (
                 <Space key={param.name} size={4}>
                   <Typography.Text className="text-grey-muted">
                     {`${param.name}:`}
                   </Typography.Text>
                   <Typography.Text>{param.value}</Typography.Text>
-                  {parameterValuesWithoutSqlExpression.length - 1 !== index && (
+                  {withoutSqlParams.length - 1 !== index && (
                     <Divider type="vertical" />
                   )}
                 </Space>
@@ -165,11 +168,12 @@ const TestCaseResultTab = ({
         </Space>
       </Col>
 
-      {!isUndefined(parameterValuesWithSqlExpression) ? (
+      {!isUndefined(withSqlParams) ? (
         <Col>
-          {parameterValuesWithSqlExpression.map((param) => (
+          {withSqlParams.map((param) => (
             <Row
               className="sql-expression-container"
+              data-testid="sql-expression-container"
               gutter={[8, 8]}
               key={param.name}>
               <Col span={24}>
