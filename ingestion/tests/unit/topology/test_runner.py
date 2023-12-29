@@ -33,13 +33,15 @@ from metadata.utils.source_hash import generate_source_hash
 class MockSchema(BaseModel):
     sourceHash: Optional[str] = None
     name: str
-    fullyQualifiedName: str
+    # Keeping it None to reuse the same class for Create and Entity
+    fullyQualifiedName: Optional[str] = None
 
 
 class MockTable(BaseModel):
     sourceHash: Optional[str] = None
     name: str
-    fullyQualifiedName: str
+    # Keeping it None to reuse the same class for Create and Entity
+    fullyQualifiedName: Optional[str] = None
     columns: List[str]
 
 
@@ -105,7 +107,7 @@ class TopologyRunnerTest(TestCase):
         """Check it works with generic models"""
 
         mock_table = MockTable(name="name", columns=["a", "b", "c"])
-        real_fingerprint = "2e57e562b69868fbf507a8b6a9f9c211"
+        real_fingerprint = "b26507e2abea036be183507e4794b223"
 
         self.assertEqual(real_fingerprint, generate_source_hash(mock_table))
 
@@ -126,29 +128,29 @@ class TopologyRunnerTest(TestCase):
             ],
             [
                 MockSchema(
-                    name="schema1", sourceHash="22764b824b44191f7dc4e184a0a256d5"
+                    name="schema1", sourceHash="da1c4385f20477a716b0423317016e43"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="c238b14e87fe6d54e35dbca4a97e1e83",
+                    sourceHash="42373213656fb27d2f0aeb0abf81b5b2",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="acd38ff1a662adc0c88225f2666ff423",
+                    sourceHash="c7d6b4802530b8ca54a48c76af56b7b4",
                     columns=["c1", "c2"],
                 ),
                 MockSchema(
-                    name="schema2", sourceHash="a06dedd8c8e1d96ea7a520c1c48189a6"
+                    name="schema2", sourceHash="31db3d644ba1bd6024c149dd3e88abe9"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="c238b14e87fe6d54e35dbca4a97e1e83",
+                    sourceHash="42373213656fb27d2f0aeb0abf81b5b2",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="acd38ff1a662adc0c88225f2666ff423",
+                    sourceHash="c7d6b4802530b8ca54a48c76af56b7b4",
                     columns=["c1", "c2"],
                 ),
                 "hello",
