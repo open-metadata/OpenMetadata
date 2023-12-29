@@ -54,10 +54,7 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
-from metadata.utils.source_hash_utils import (
-    SOURCE_HASH_EXCLUDE_FIELDS,
-    generate_source_hash,
-)
+from metadata.utils.source_hash import generate_source_hash
 
 
 class SimpleEdge(BaseModel):
@@ -190,8 +187,7 @@ class AirflowLineageRunner:
         )
 
         create_entity_request_hash = generate_source_hash(
-            create_request=pipeline_request,
-            exclude_fields=SOURCE_HASH_EXCLUDE_FIELDS,
+            create_request=pipeline_request
         )
         pipeline_request.sourceHash = create_entity_request_hash
 
