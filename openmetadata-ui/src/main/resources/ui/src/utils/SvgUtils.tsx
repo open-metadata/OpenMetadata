@@ -172,6 +172,7 @@ import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconShowPassword from '../assets/svg/show-password.svg';
+import IconSkippedBadge from '../assets/svg/skipped-badge.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconSuccessBadge from '../assets/svg/success-badge.svg';
@@ -338,6 +339,7 @@ export const Icons = {
   SUCCESS_BADGE: 'success-badge',
   FAIL_BADGE: 'fail-badge',
   PENDING_BADGE: 'pending-badge',
+  SKIPPED_BADGE: 'skipped-badge',
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
@@ -954,6 +956,11 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.PENDING_BADGE:
       IconComponent = IconPendingBadge;
+
+      break;
+
+    case Icons.SKIPPED_BADGE:
+      IconComponent = IconSkippedBadge;
 
       break;
     case Icons.BOT_PROFILE:

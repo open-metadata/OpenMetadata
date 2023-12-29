@@ -47,6 +47,7 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
         : ''}
       {status === StatusType.Failed ? MenuOptions[StatusType.Failed] : ''}
       {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
+      {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
     </p>
   </Space>
 );
