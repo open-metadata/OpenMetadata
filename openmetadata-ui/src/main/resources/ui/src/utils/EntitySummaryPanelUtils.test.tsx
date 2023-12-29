@@ -145,9 +145,9 @@ describe('EntitySummaryPanelUtils tests', () => {
     it('getHighlightOfListItem should return highlights of listItem undefined, if listHighlights and tagHighlights not passed in params', () => {
       const result = getHighlightOfListItem(
         mockEntityDataWithNesting[0],
-        [],
-        [],
-        {}
+        [] as string[],
+        [] as string[],
+        {} as { [key: string]: number }
       );
 
       expect(result).toEqual({
