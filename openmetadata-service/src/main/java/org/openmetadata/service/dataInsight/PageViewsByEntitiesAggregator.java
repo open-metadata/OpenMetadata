@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
 
 public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
@@ -24,18 +25,19 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
       for (B entityTypeBucket : getBuckets(entityTypeBuckets)) {
         String entityType = getKeyAsString(entityTypeBucket);
         S sumPageViews = getSumAggregations(entityTypeBucket, "pageViews");
+        Optional<Double> pageViews = getValue(sumPageViews);
 
         data.add(
             new PageViewsByEntities()
                 .withEntityType(entityType)
                 .withTimestamp(timestamp)
-                .withPageViews(getValue(sumPageViews)));
+                .withPageViews(pageViews.orElse(null)));
       }
     }
     return data;
   }
 
-  protected abstract Double getValue(S key);
+  protected abstract Optional<Double> getValue(S key);
 
   protected abstract S getSumAggregations(B bucket, String key);
 

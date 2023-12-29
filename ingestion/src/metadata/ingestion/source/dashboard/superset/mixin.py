@@ -97,10 +97,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
         if email:
-            user = self.metadata.get_user_by_email(email)
-            if user:
-                return EntityReference(id=user.id.__root__, type="user")
-
+            return self.metadata.get_reference_by_email(email)
         return None
 
     def get_owner_details(
