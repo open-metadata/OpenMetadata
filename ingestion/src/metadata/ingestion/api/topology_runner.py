@@ -15,7 +15,7 @@ generate the _run based on their topology.
 import traceback
 from collections import defaultdict
 from functools import singledispatchmethod
-from typing import Any, Generic, Iterable, List, TypeVar, Union
+from typing import Any, Generic, Iterable, List, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -43,7 +43,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.source_hash import SOURCE_HASH_EXCLUDE_FIELDS, generate_source_hash
+from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
 
@@ -194,7 +194,7 @@ class TopologyRunnerMixin(Generic[C]):
                     )
 
     def get_fqn_source_hash_dict(
-        self, parent_type: Entity, child_type: Entity, entity_fqn: str
+        self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str
     ) -> None:
         """
         Get all the entities and store them as fqn:sourceHash in a dict
@@ -311,7 +311,7 @@ class TopologyRunnerMixin(Generic[C]):
         entity_name = model_str(right.name)
         entity_fqn = self.fqn_from_context(stage=stage, entity_name=entity_name)
 
-        # we get entity from OM if we do not want to overwrite existing data in OM
+        # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
         if not stage.overwrite and not self._is_force_overwrite_enabled():
             entity = self.metadata.get_by_name(
@@ -321,7 +321,6 @@ class TopologyRunnerMixin(Generic[C]):
             )
         create_entity_request_hash = generate_source_hash(
             create_request=entity_request.right,
-            exclude_fields=SOURCE_HASH_EXCLUDE_FIELDS,
         )
 
         if hasattr(entity_request.right, "sourceHash"):
