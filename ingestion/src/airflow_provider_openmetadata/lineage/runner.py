@@ -45,11 +45,19 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
+from metadata.utils.source_hash_utils import (
+    SOURCE_HASH_EXCLUDE_FIELDS,
+    generate_source_hash,
+)
 
 
 class SimpleEdge(BaseModel):
@@ -152,16 +160,22 @@ class AirflowLineageRunner:
             for task in self.dag.tasks or []
         ]
 
-    def create_or_update_pipeline_entity(self, pipeline_service: PipelineService) -> Pipeline:
+    def create_or_update_pipeline_entity(
+        self, pipeline_service: PipelineService
+    ) -> Pipeline:
         """
         Create the Pipeline Entity if it does not exist, or PATCH it
         if there have been changes.
         """
-        self.dag.log.info("Creating or updating Pipeline Entity from DAG...")
-
         pipeline: Pipeline = self.metadata.get_by_name(
             entity=Pipeline,
-            fqn=fqn.build(self.metadata, Pipeline, service_name=self.service_name, pipeline_name=self.dag.dag_id)
+            fqn=fqn.build(
+                self.metadata,
+                Pipeline,
+                service_name=self.service_name,
+                pipeline_name=self.dag.dag_id,
+            ),
+            fields=["*"],
         )
 
         pipeline_request = CreatePipelineRequest(
@@ -175,10 +189,28 @@ class AirflowLineageRunner:
             service=pipeline_service.fullyQualifiedName,
         )
 
+        create_entity_request_hash = generate_source_hash(
+            create_request=pipeline_request,
+            exclude_fields=SOURCE_HASH_EXCLUDE_FIELDS,
+        )
+        pipeline_request.sourceHash = create_entity_request_hash
+
         if pipeline is None:
+            self.dag.log.info("Creating Pipeline Entity from DAG...")
             return self.metadata.create_or_update(pipeline_request)
 
-        # TODO: FINISH
+        if create_entity_request_hash != pipeline.sourceHash:
+            self.dag.log.info("Updating Pipeline Entity from DAG...")
+            return self.metadata.patch(
+                entity=Pipeline,
+                source=pipeline,
+                destination=pipeline.copy(update=pipeline_request.__dict__),
+                allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+                restrict_update_fields=RESTRICT_UPDATE_LIST,
+            )
+
+        self.dag.log.info("DAG has not changed since last run")
+        return pipeline
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
         """
