@@ -117,12 +117,12 @@ def test_connection(
             taxonomy_project_ids.extend(service_connection.taxonomyProjectId)
         if not taxonomy_project_ids:
             logger.info("'taxonomyProjectID' is not set, so skipping this test.")
-            return
+            return None
 
         taxonomy_location = service_connection.taxonomyLocation
         if not taxonomy_location:
             logger.info("'taxonomyLocation' is not set, so skipping this test.")
-            return
+            return None
 
         taxonomies = []
         for project_id in taxonomy_project_ids:
