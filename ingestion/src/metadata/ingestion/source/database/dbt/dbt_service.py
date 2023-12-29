@@ -82,7 +82,7 @@ class DbtServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_dbt_tags",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DataModelLink,

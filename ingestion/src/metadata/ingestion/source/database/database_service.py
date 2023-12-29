@@ -133,7 +133,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_database_schema_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DatabaseSchema,
@@ -155,7 +155,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_table_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=Table,
@@ -185,7 +185,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="stored_procedures",
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
-                cache_all=True,
+                store_all_in_context=True,
                 use_cache=True,
             ),
         ],
@@ -518,6 +518,11 @@ class DatabaseServiceSource(
         """
         Use the current inspector to mark tables as deleted
         """
+        if not self.context.__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the table deletion."
+            )
+
         if self.source_config.markDeletedTables:
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"

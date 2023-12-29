@@ -14,7 +14,7 @@ Defines the topology for ingesting sources
 
 from typing import Any, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel, Extra, create_model
+from pydantic import BaseModel, Extra, Field, create_model
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -30,26 +30,50 @@ class NodeStage(BaseModel, Generic[T]):
     class Config:
         extra = Extra.forbid
 
-    type_: Type[T]  # Entity type
-    processor: str  # has the producer results as an argument. Here is where filters happen
-    context: Optional[
-        str
-    ] = None  # context key storing stage state, if needed. This requires us to ACK the ingestion
-    nullable: bool = False  # The yielded value can be null
-    must_return: bool = False  # The sink MUST return a value back after ack. Useful to validate services are correct.
-    cache_all: bool = (
-        False  # If we need to cache all values being yielded in the context
+    # Required fields to define the yielded entity type and the function processing it
+    type_: Type[T] = Field(
+        ..., description="Entity Type. E.g., DatabaseService, Database or Table"
     )
-    clear_cache: bool = False  # If we need to clean cache values in the context for each produced element
-    overwrite: bool = True  # If we want to overwrite existing data from OM
-    consumer: Optional[
-        List[str]
-    ] = None  # keys in the source context to fetch state from the parent's context
-    cache_entities: bool = (
-        False  # Cache all the entities which have use_cache set as True
+    processor: str = Field(
+        ...,
+        description="Has the producer results as an argument. Here is where filters happen. It will yield an Entity.",
     )
-    use_cache: bool = (
-        False  # enable this to get the entity from cached state in the context
+
+    # Topology behavior
+    nullable: bool = Field(False, description="Flags if the yielded value can be null")
+    must_return: bool = Field(
+        False,
+        description="The sink MUST return a value back after ack. Useful to validate if services are correct.",
+    )
+    overwrite: bool = Field(
+        True,
+        description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
+    )
+    consumer: Optional[List[str]] = Field(
+        None,
+        description="Stage dependency from parent nodes. Used to build the FQN of the processed Entity.",
+    )
+
+    # Context-related flags
+    context: Optional[str] = Field(
+        None, description="Context key storing stage state, if needed"
+    )
+    store_all_in_context: bool = Field(
+        False, description="If we need to store all values being yielded in the context"
+    )
+    clear_context: bool = Field(
+        False,
+        description="If we need to clean the values in the context for each produced element",
+    )
+
+    # Used to compute the fingerprint
+    cache_entities: bool = Field(
+        False,
+        description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
+    )
+    use_cache: bool = Field(
+        False,
+        description="Enable this to get the entity from cached state in the context",
     )
 
 
@@ -64,18 +88,21 @@ class TopologyNode(BaseModel):
     class Config:
         extra = Extra.forbid
 
-    # method name in the source to use to generate the data to process
-    # does not accept input parameters
-    producer: str
-
-    # list of functions to execute - in order - for each element produced by the producer
-    # each stage accepts the producer results as an argument
-    stages: List[NodeStage]
-
-    children: Optional[List[str]] = None  # nodes to call execute next
-    post_process: Optional[
-        List[str]
-    ] = None  # Method to be run after the node has been fully processed
+    producer: str = Field(
+        ...,
+        description="Method name in the source called to generate the data. Does not accept input parameters",
+    )
+    stages: List[NodeStage] = Field(
+        ...,
+        description=(
+            "List of functions to execute - in order - for each element produced by the producer. "
+            "Each stage accepts the producer results as an argument"
+        ),
+    )
+    children: Optional[List[str]] = Field(None, description="Nodes to execute next")
+    post_process: Optional[List[str]] = Field(
+        None, description="Method to be run after the node has been fully processed"
+    )
 
 
 class ServiceTopology(BaseModel):
@@ -138,7 +165,7 @@ def get_ctx_default(stage: NodeStage) -> Optional[List[Any]]:
     :param stage: Node Stage
     :return: None or []
     """
-    return [] if stage.cache_all else None
+    return [] if stage.store_all_in_context else None
 
 
 def create_source_context(topology: ServiceTopology) -> TopologyContext:

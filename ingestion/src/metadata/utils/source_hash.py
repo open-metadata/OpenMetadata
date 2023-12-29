@@ -23,10 +23,19 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 }
 
 
-def generate_source_hash(create_request: C, exclude_fields: Optional[Dict]) -> str:
+def generate_source_hash(
+    create_request: C, exclude_fields: Optional[Dict] = None
+) -> str:
     """
     Given a create_request model convert it to json string and generate a hash value
     """
+
+    # We always want to exclude the sourceHash when generating the fingerprint
+    exclude_fields = (
+        SOURCE_HASH_EXCLUDE_FIELDS.update(exclude_fields)
+        if exclude_fields
+        else SOURCE_HASH_EXCLUDE_FIELDS
+    )
 
     create_request_json = create_request.json(exclude=exclude_fields)
 
