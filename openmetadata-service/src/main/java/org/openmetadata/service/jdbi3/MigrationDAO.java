@@ -71,7 +71,7 @@ public interface MigrationDAO {
   @ConnectionAwareSqlUpdate(
       value =
           "INSERT INTO server_change_log (version, migrationFileName, checksum, metrics, installed_on)"
-              + "VALUES (:version, :migrationFileName, :checksum, :metrics, current_timestamp) "
+              + "VALUES (:version, :migrationFileName, :checksum, to_jsonb(:metrics::text), current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
               + "migrationFileName = EXCLUDED.migrationFileName, "
               + "metrics = :metrics,"
