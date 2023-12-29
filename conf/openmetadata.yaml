@@ -261,7 +261,7 @@ pipelineServiceClientConfiguration:
   # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
   className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
   apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://host.docker.internal:8585/api}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
