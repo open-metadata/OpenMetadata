@@ -51,6 +51,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
@@ -131,14 +132,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             error = f"Failed to ingest {log} due to api request failure: {err}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -154,7 +155,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         error = f"Failed to ingest {type(entity_request).__name__}"
         return Either(
             left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stack_trace=None
+                name=type(entity_request).__name__, error=error, stackTrace=None
             )
         )
 
@@ -171,6 +172,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             restrict_update_fields=RESTRICT_UPDATE_LIST,
         )
         return Either(right=entity)
+
+    @_run_dispatch.register
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
+        """
+        Create or update the custom properties
+        """
+        custom_property = self.metadata.create_or_update_custom_property(record)
+        return Either(right=custom_property)
 
     @_run_dispatch.register
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:
@@ -191,7 +200,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             left=StackTraceError(
                 name="Data Model",
                 error="Sink did not receive a table. We cannot ingest the data model.",
-                stack_trace=None,
+                stackTrace=None,
             )
         )
 

@@ -4,18 +4,20 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.service.dataInsight.EntitiesOwnerAggregator;
 
 public class ElasticSearchEntitiesOwnerAggregator
-    extends EntitiesOwnerAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends EntitiesOwnerAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchEntitiesOwnerAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+  protected Optional<Double> getValue(Sum key) {
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override
@@ -24,7 +26,8 @@ public class ElasticSearchEntitiesOwnerAggregator
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityBuckets(MultiBucketsAggregation.Bucket timestampBucket) {
+  protected MultiBucketsAggregation getEntityBuckets(
+      MultiBucketsAggregation.Bucket timestampBucket) {
     return timestampBucket.getAggregations().get(ENTITY_TYPE);
   }
 
@@ -34,7 +37,8 @@ public class ElasticSearchEntitiesOwnerAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation multiBucketsAggregation) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation multiBucketsAggregation) {
     return multiBucketsAggregation.getBuckets();
   }
 

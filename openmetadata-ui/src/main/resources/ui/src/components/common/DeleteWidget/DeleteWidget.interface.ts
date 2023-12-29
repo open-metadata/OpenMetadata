@@ -36,6 +36,8 @@ export interface DeleteWidgetModalProps {
   successMessage?: string;
   deleteOptions?: DeleteOption[];
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  onDelete?: (data: DeleteWidgetFormFields) => void;
+  isDeleting?: boolean;
 }
 
 export interface DeleteSectionProps {

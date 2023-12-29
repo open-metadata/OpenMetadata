@@ -57,21 +57,28 @@ public class TableIndex implements ColumnIndex {
       doc.put("columnNames", columnsWithChildrenName);
     }
     parseTableSuggest(suggest);
-    serviceSuggest.add(SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
-    databaseSuggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
-    schemaSuggest.add(SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
+    databaseSuggest.add(
+        SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    schemaSuggest.add(
+        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    doc.put(
+        "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
     doc.put(
         "fqnParts",
         getFQNParts(
-            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            table.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
@@ -91,12 +98,15 @@ public class TableIndex implements ColumnIndex {
     suggest.add(SearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(table.getName()).weight(10).build());
     suggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
     // Table FQN has 4 parts
-    String[] fqnPartsWithoutService = table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
+    String[] fqnPartsWithoutService =
+        table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
     if (fqnPartsWithoutService.length == 2) {
       suggest.add(SearchSuggest.builder().input(fqnPartsWithoutService[1]).weight(5).build());
-      String[] fqnPartsWithoutDB = fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
+      String[] fqnPartsWithoutDB =
+          fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
       if (fqnPartsWithoutDB.length == 2) {
         suggest.add(SearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
       }
@@ -109,6 +119,7 @@ public class TableIndex implements ColumnIndex {
     fields.put("columns.name", 2.0f);
     fields.put("columns.name.ngram", 1.0f);
     fields.put("columns.displayName", 1.0f);
+    fields.put("columns.description", 1.0f);
     fields.put("columns.children.name", 2.0f);
     return fields;
   }

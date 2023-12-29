@@ -52,11 +52,14 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
-    container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
+    container.setParent(
+        fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     container.setSourceHash(fields.contains("sourceHash") ? container.getSourceHash() : null);
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
-          fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
+          fields.contains(FIELD_TAGS),
+          container.getFullyQualifiedName(),
+          container.getDataModel().getColumns());
     }
   }
 
@@ -66,7 +69,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
-  private void populateDataModelColumnTags(boolean setTags, String fqnPrefix, List<Column> columns) {
+  private void populateDataModelColumnTags(
+      boolean setTags, String fqnPrefix, List<Column> columns) {
     populateEntityFieldTags(entityType, columns, fqnPrefix, setTags);
   }
 
@@ -80,10 +84,12 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFullyQualifiedName(Container container) {
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
-          FullyQualifiedName.add(container.getParent().getFullyQualifiedName(), container.getName()));
+          FullyQualifiedName.add(
+              container.getParent().getFullyQualifiedName(), container.getName()));
     } else {
       container.setFullyQualifiedName(
-          FullyQualifiedName.add(container.getService().getFullyQualifiedName(), container.getName()));
+          FullyQualifiedName.add(
+              container.getService().getFullyQualifiedName(), container.getName()));
     }
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
@@ -103,8 +109,10 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void prepare(Container container, boolean update) {
-    // the storage service is not fully filled in terms of props - go to the db and get it in full and re-set it
-    StorageService storageService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
+    // the storage service is not fully filled in terms of props - go to the db and get it in full
+    // and re-set it
+    StorageService storageService =
+        Entity.getEntity(container.getService(), "", Include.NON_DELETED);
     container.setService(storageService.getEntityReference());
     container.setServiceType(storageService.getServiceType());
 
@@ -147,13 +155,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void storeRelationships(Container container) {
     // store each relationship separately in the entity_relationship table
-    EntityReference service = container.getService();
-    addRelationship(service.getId(), container.getId(), service.getType(), CONTAINER, Relationship.CONTAINS);
+    addServiceRelationship(container, container.getService());
 
     // parent container if exists
     EntityReference parentReference = container.getParent();
     if (parentReference != null) {
-      addRelationship(parentReference.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS);
+      addRelationship(
+          parentReference.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS);
     }
   }
 
@@ -220,7 +228,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
     }
@@ -238,7 +247,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     DataModelTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
     }
@@ -280,7 +290,8 @@ public class ContainerRepository extends EntityRepository<Container> {
           false,
           EntityUtil.objectMatch,
           false);
-      recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
+      recordChange(
+          "size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

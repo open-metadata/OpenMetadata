@@ -63,14 +63,14 @@ that decouples how OpenMetadata communicates with the Orchestrator, as different
 calls and data to be sent.
 
 - You can find the `PipelineServiceClient` abstraction [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/util/PipelineServiceClient.java),
-- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/airflow/AirflowRESTClient.java).
+- And the `AirflowRESTClient` implementation [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/airflow/AirflowRESTClient.java).
 
 The clients that implement the abstractions from the `PipelineServiceClient` are merely a translation layer between the
 information received in the shape of an `IngestionPipeline` Entity, and the specific requirements of each Orchestrator.
 
 After creating a new workflow from the UI or when editing it, there are two calls happening:
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
-- `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
+- `/deploy` HTTP call to the `IngestionPipelineResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
 {% image
   src="/images/v1.0/features/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"
@@ -284,7 +284,7 @@ pipelineServiceClient.deployPipeline(ingestionPipeline);
 ```
 
 Then, the actual deployment logic is handled by the class implementing the Pipeline Service Client. For this example,
-it will be the [AirflowRESTClient](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/airflow/AirflowRESTClient.java).
+it will be the [AirflowRESTClient](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/airflow/AirflowRESTClient.java).
 
 First, let's see what it is needed to instantiate the Airflow REST Client:
 

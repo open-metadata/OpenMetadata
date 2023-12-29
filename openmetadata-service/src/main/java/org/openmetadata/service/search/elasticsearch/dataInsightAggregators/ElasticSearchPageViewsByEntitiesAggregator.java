@@ -4,18 +4,20 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.service.dataInsight.PageViewsByEntitiesAggregator;
 
 public class ElasticSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends PageViewsByEntitiesAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+  protected Optional<Double> getValue(Sum key) {
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override
@@ -34,7 +36,8 @@ public class ElasticSearchPageViewsByEntitiesAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation multiBucketsAggregation) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation multiBucketsAggregation) {
     return multiBucketsAggregation.getBuckets();
   }
 

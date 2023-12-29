@@ -22,6 +22,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -38,7 +39,10 @@ import org.openmetadata.service.util.JsonUtils;
 public class SettingsCache {
   private static volatile boolean initialized = false;
   protected static final LoadingCache<String, Settings> CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
+      CacheBuilder.newBuilder()
+          .maximumSize(1000)
+          .expireAfterWrite(3, TimeUnit.MINUTES)
+          .build(new SettingsLoader());
   protected static SystemRepository systemRepository;
 
   private SettingsCache() {
@@ -60,12 +64,14 @@ public class SettingsCache {
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
       SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
-      Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
+      Settings setting =
+          new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
     }
 
     // Initialise Logo Setting
-    Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
+    Settings storedCustomLogoConf =
+        systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
     if (storedCustomLogoConf == null) {
       // Only in case a config doesn't exist in DB we insert it
       Settings setting =
@@ -121,21 +127,22 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) {
+    public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
       switch (SettingsType.fromValue(settingsName)) {
-        case EMAIL_CONFIGURATION:
+        case EMAIL_CONFIGURATION -> {
           fetchedSettings = systemRepository.getEmailConfigInternal();
           LOG.info("Loaded Email Setting");
-          break;
-        case SLACK_APP_CONFIGURATION:
+        }
+        case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
-          break;
-        default:
+        }
+        default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+        }
       }
       return fetchedSettings;
     }

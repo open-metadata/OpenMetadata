@@ -24,7 +24,10 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
@@ -105,7 +108,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 left=StackTraceError(
                     name=dashboard_details.id or "Dashboard",
                     error=f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -123,19 +126,30 @@ class SupersetAPISource(SupersetSourceMixin):
     ) -> Iterable[Either[CreateChartRequest]]:
         """Method to fetch charts linked to dashboard"""
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if not chart_json:
-                logger.warning(f"chart details for id: {chart_id} not found, skipped")
-                continue
-            chart = CreateChartRequest(
-                name=chart_json.id,
-                displayName=chart_json.slice_name,
-                description=chart_json.description,
-                chartType=get_standard_chart_type(chart_json.viz_type),
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                service=self.context.dashboard_service,
-            )
-            yield Either(right=chart)
+            try:
+                chart_json = self.all_charts.get(chart_id)
+                if not chart_json:
+                    logger.warning(
+                        f"chart details for id: {chart_id} not found, skipped"
+                    )
+                    continue
+                chart = CreateChartRequest(
+                    name=chart_json.id,
+                    displayName=chart_json.slice_name,
+                    description=chart_json.description,
+                    chartType=get_standard_chart_type(chart_json.viz_type),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
+                    service=self.context.dashboard_service,
+                )
+                yield Either(right=chart)
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name=chart_json.id,
+                        error=f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def _get_datasource_fqn(
         self, datasource_id: str, db_service_entity: DatabaseService
@@ -166,7 +180,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         service_name=db_service_entity.name.__root__,
                     )
                 return dataset_fqn
-        except KeyError as err:
+        except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
@@ -182,7 +196,7 @@ class SupersetAPISource(SupersetSourceMixin):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 try:
                     chart_json = self.all_charts.get(chart_id)
-                    if not chart_json:
+                    if not chart_json or not chart_json.datasource_id:
                         logger.warning(
                             f"chart details for id: {chart_id} not found, skipped"
                         )
@@ -212,6 +226,6 @@ class SupersetAPISource(SupersetSourceMixin):
                         left=StackTraceError(
                             name=f"{dashboard_details.id} DataModel",
                             error=f"Error yielding Data Model [{dashboard_details.id}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )

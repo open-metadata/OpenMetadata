@@ -27,11 +27,14 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -106,11 +109,9 @@ class RedashSource(DashboardServiceSource):
     def get_owner_details(self, dashboard_details) -> Optional[EntityReference]:
         """Get owner from mail"""
         if dashboard_details.get("user") and dashboard_details["user"].get("email"):
-            user = self.metadata.get_user_by_email(
+            return self.metadata.get_reference_by_email(
                 dashboard_details["user"].get("email")
             )
-            if user:
-                return EntityReference(id=user.id.__root__, type="user")
         return None
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:
@@ -168,7 +169,7 @@ class RedashSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Dashboard",
                     error=f"Error to yield dashboard for {dashboard_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -229,7 +230,7 @@ class RedashSource(DashboardServiceSource):
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {exc}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -272,6 +273,6 @@ class RedashSource(DashboardServiceSource):
                             "Error to yield dashboard chart for widget_id: "
                             f"{widgets['id']} and {dashboard_details}: {exc}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )

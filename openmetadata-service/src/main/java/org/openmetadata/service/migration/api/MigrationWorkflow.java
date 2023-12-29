@@ -7,13 +7,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.json.JSONObject;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -28,6 +29,8 @@ public class MigrationWorkflow {
   private final Jdbi jdbi;
 
   private final boolean forceMigrations;
+
+  private Optional<String> currentMaxMigrationVersion;
 
   public MigrationWorkflow(
       Jdbi jdbi,
@@ -62,7 +65,9 @@ public class MigrationWorkflow {
   }
 
   public List<MigrationFile> getMigrationFiles(
-      String nativeSQLScriptRootPath, ConnectionType connectionType, String extensionSQLScriptRootPath) {
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath) {
     List<MigrationFile> availableOMNativeMigrations =
         getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
 
@@ -81,27 +86,29 @@ public class MigrationWorkflow {
        - Extension: 1.1.0-extension, 1.2.0-extension
      The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
     */
-    return Stream.concat(availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+    return Stream.concat(
+            availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
         .sorted()
-        .collect(Collectors.toList());
+        .toList();
   }
 
   public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
         .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
         .sorted()
-        .collect(Collectors.toList());
+        .toList();
   }
 
-  private List<MigrationProcess> filterAndGetMigrationsToRun(List<MigrationFile> availableMigrations) {
+  private List<MigrationProcess> filterAndGetMigrationsToRun(
+      List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
-    Optional<String> previousMaxMigration = migrationDAO.getMaxServerMigrationVersion();
+    currentMaxMigrationVersion = migrationDAO.getMaxServerMigrationVersion();
     List<MigrationFile> applyMigrations;
-    if (previousMaxMigration.isPresent() && !forceMigrations) {
+    if (currentMaxMigrationVersion.isPresent() && !forceMigrations) {
       applyMigrations =
           availableMigrations.stream()
-              .filter(migration -> migration.biggerThan(previousMaxMigration.get()))
-              .collect(Collectors.toList());
+              .filter(migration -> migration.biggerThan(currentMaxMigrationVersion.get()))
+              .toList();
     } else {
       applyMigrations = availableMigrations;
     }
@@ -111,7 +118,8 @@ public class MigrationWorkflow {
         file.parseSQLFiles();
         String clazzName = file.getMigrationProcessClassName();
         MigrationProcess process =
-            (MigrationProcess) Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+            (MigrationProcess)
+                Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
         processes.add(process);
       }
     } catch (Exception e) {
@@ -120,14 +128,16 @@ public class MigrationWorkflow {
     return processes;
   }
 
-  @SuppressWarnings("unused")
-  private void initializeMigrationWorkflow() {}
-
   public void runMigrationWorkflows() {
     try (Handle transactionHandler = jdbi.open()) {
       LOG.info("[MigrationWorkflow] WorkFlow Started");
       MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
-      context.computeInitialContext();
+      if (currentMaxMigrationVersion.isPresent()) {
+        LOG.debug("Current Max version {}", currentMaxMigrationVersion.get());
+        context.computeInitialContext(currentMaxMigrationVersion.get());
+      } else {
+        context.computeInitialContext("1.1.0");
+      }
       try {
         for (MigrationProcess process : migrations) {
           // Initialise Migration Steps
@@ -171,7 +181,7 @@ public class MigrationWorkflow {
               process.getVersion(),
               process.getDatabaseConnectionType(),
               process.getMigrationsPath());
-          updateMigrationStepInDB(process);
+          updateMigrationStepInDB(process, context);
         }
 
       } catch (Exception e) {
@@ -185,16 +195,14 @@ public class MigrationWorkflow {
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
   }
 
-  public void closeMigrationWorkflow() {
-    // 1. Write to DB table the version we upgraded to
-    // should be the current server version
-
-    // 2. Commit Transaction on completion
+  public void updateMigrationStepInDB(
+      MigrationProcess step, MigrationWorkflowContext workflowContext) {
+    MigrationContext context = workflowContext.getMigrationContext().get(step.getVersion());
+    JSONObject metrics = new JSONObject(context.getResults());
+    migrationDAO.upsertServerMigration(
+        step.getVersion(),
+        step.getMigrationsPath(),
+        UUID.randomUUID().toString(),
+        metrics.toString());
   }
-
-  public void updateMigrationStepInDB(MigrationProcess step) {
-    migrationDAO.upsertServerMigration(step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
-  }
-
-  public void migrateSearchIndexes() {}
 }

@@ -22,7 +22,8 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `DatalakeConnection` object. */
 public class TrinoConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, jwtAuth.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, jwtAuth.class);
 
   public TrinoConnectionClassConverter() {
     super(TrinoConnection.class);
@@ -32,7 +33,8 @@ public class TrinoConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     TrinoConnection trinoConnection = (TrinoConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(trinoConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(trinoConnection::setAuthType);
+    tryToConvert(trinoConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(trinoConnection::setAuthType);
 
     return trinoConnection;
   }

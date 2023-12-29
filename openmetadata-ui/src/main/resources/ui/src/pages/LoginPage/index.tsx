@@ -14,7 +14,6 @@
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -36,13 +35,8 @@ const SigninPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const {
-    isAuthDisabled,
-    authConfig,
-    onLoginHandler,
-    onLogoutHandler,
-    isAuthenticated,
-  } = useAuthContext();
+  const { authConfig, onLoginHandler, onLogoutHandler, isAuthenticated } =
+    useAuthContext();
 
   const { t } = useTranslation();
 
@@ -61,10 +55,6 @@ const SigninPage = () => {
   }, [authConfig]);
 
   const { handleLogin, loginError } = useBasicAuth();
-
-  const isAlreadyLoggedIn = useMemo(() => {
-    return isAuthDisabled || isAuthenticated;
-  }, [isAuthDisabled, isAuthenticated]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -160,7 +150,7 @@ const SigninPage = () => {
   // If user is neither logged in or nor security is disabled
   // invoke logout handler to clean-up any slug storage
   useEffect(() => {
-    if (!isAlreadyLoggedIn && isTokenExpired()) {
+    if (!isAuthenticated && isTokenExpired()) {
       onLogoutHandler();
     }
   }, []);
@@ -168,12 +158,12 @@ const SigninPage = () => {
   useEffect(() => {
     // If the user is already logged in or if security is disabled
     // redirect the user to the home page.
-    if (isAlreadyLoggedIn) {
+    if (isAuthenticated) {
       history.push(ROUTES.HOME);
     }
-  }, [isAlreadyLoggedIn]);
+  }, [isAuthenticated]);
 
-  if (isAlreadyLoggedIn) {
+  if (isAuthenticated) {
     return <Loader />;
   }
 
@@ -326,4 +316,4 @@ const SigninPage = () => {
   );
 };
 
-export default observer(SigninPage);
+export default SigninPage;

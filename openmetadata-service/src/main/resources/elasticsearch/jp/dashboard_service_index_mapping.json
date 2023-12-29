@@ -171,6 +171,15 @@
           "fullyQualifiedName": {
             "type": "text"
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
           "description": {
             "type": "text"
           },

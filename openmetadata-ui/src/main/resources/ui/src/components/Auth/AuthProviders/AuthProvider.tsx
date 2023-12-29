@@ -24,7 +24,6 @@ import {
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isNumber } from 'lodash';
-import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, {
   ComponentType,
@@ -39,8 +38,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { NO_AUTH } from '../../../constants/auth.constants';
 import {
   ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
@@ -71,11 +68,11 @@ import localState from '../../../utils/LocalStorageUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import Loader from '../../Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
@@ -89,9 +86,11 @@ import {
   AuthenticatorRef,
   IAuthContext,
   OidcUser,
+  UserProfile,
 } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
+
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
@@ -118,13 +117,14 @@ export const AuthProvider = ({
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
   const [currentUser, setCurrentUser] = useState<User>();
+  const { urlPathName } = useApplicationConfigContext();
 
   const oidcUserToken = localState.getOidcToken();
-
+  const [newUserProfile, setNewUserProfile] = useState<UserProfile>();
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
-  const [isAuthDisabled, setIsAuthDisabled] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [authConfig, setAuthConfig] =
     useState<AuthenticationConfigurationWithScope>();
@@ -156,7 +156,6 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogout();
 
     // reset the user details on logout
-    AppState.updateUserDetails({} as User);
     setCurrentUser({} as User);
 
     // remove analytics session on logout
@@ -166,7 +165,7 @@ export const AuthProvider = ({
     localState.removeRefreshToken();
 
     setLoading(false);
-  }, [timeoutId, AppState]);
+  }, [timeoutId]);
 
   const onRenewIdTokenHandler = () => {
     return authenticatorRef.current?.renewIdToken();
@@ -185,17 +184,18 @@ export const AuthProvider = ({
   /**
    * Stores redirect URL for successful login
    */
-  function storeRedirectPath() {
-    cookieStorage.setItem(REDIRECT_PATHNAME, AppState.getUrlPathname(), {
-      expires: getUrlPathnameExpiry(),
-      path: '/',
-    });
-  }
+  const storeRedirectPath = useCallback(
+    (path?: string) => {
+      cookieStorage.setItem(REDIRECT_PATHNAME, path ?? urlPathName, {
+        expires: getUrlPathnameExpiry(),
+        path: '/',
+      });
+    },
+    [urlPathName]
+  );
 
   const resetUserDetails = (forceLogout = false) => {
-    AppState.updateUserDetails({} as User);
     setCurrentUser({} as User);
-    AppState.updateUserPermissions([]);
     localState.removeOidcToken();
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
@@ -213,7 +213,6 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           setCurrentUser(res);
-          AppState.updateUserDetails(res);
         } else {
           resetUserDetails();
         }
@@ -243,14 +242,12 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           setCurrentUser({ ...existingData, ...res });
-          AppState.updateUserDetails({ ...existingData, ...res });
         } else {
           throw t('server.unexpected-response');
         }
       })
       .catch((error: AxiosError) => {
         setCurrentUser(existingData);
-        AppState.updateUserDetails(existingData);
         showErrorToast(
           error,
           t('server.entity-updating-error', {
@@ -374,7 +371,6 @@ export const AuthProvider = ({
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
-            AppState.updateUserDetails(res);
           }
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -383,10 +379,8 @@ export const AuthProvider = ({
       })
       .catch((err) => {
         if (err && err.response && err.response.status === 404) {
-          AppState.updateNewUser(user.profile);
+          setNewUserProfile(user.profile);
           setCurrentUser({} as User);
-          AppState.updateUserDetails({} as User);
-          AppState.updateUserPermissions([]);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {
@@ -435,9 +429,9 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:${escapeESReservedCharacters(
+        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
           activeDomain
-        )})`;
+        )}")`;
         queryParams.q = queryParams.q ?? '';
         queryParams.q += isEmpty(queryParams.q)
           ? domainStatement
@@ -511,21 +505,18 @@ export const AuthProvider = ({
         fetchAuthenticationConfig(),
         fetchAuthorizerConfig(),
       ]);
-      const isSecureMode =
-        !isNil(authConfig) && authConfig.provider !== NO_AUTH;
-      if (isSecureMode) {
-        const provider = authConfig?.provider;
+      if (!isNil(authConfig)) {
+        const provider = authConfig.provider;
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
-          initializeAxiosInterceptors();
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
           if (!oidcUserToken) {
             if (isProtectedRoute(location.pathname)) {
-              storeRedirectPath();
+              storeRedirectPath(location.pathname);
             }
             setLoading(false);
           } else {
@@ -542,8 +533,7 @@ export const AuthProvider = ({
         }
       } else {
         setLoading(false);
-        setIsAuthDisabled(true);
-        fetchAllUsers();
+        showErrorToast(t('message.auth-configuration-missing'));
       }
     } catch (error) {
       setLoading(false);
@@ -653,7 +643,7 @@ export const AuthProvider = ({
         );
       }
       default: {
-        return isAuthDisabled ? children : null;
+        return null;
       }
     }
   };
@@ -661,52 +651,23 @@ export const AuthProvider = ({
   useEffect(() => {
     fetchAuthConfig();
     startTokenExpiryTimer();
+    initializeAxiosInterceptors();
 
     return cleanup;
   }, []);
 
-  useEffect(() => {
-    AppState.updateAuthState(isAuthDisabled);
-  }, [isAuthDisabled]);
-
-  useEffect(() => {
-    return history.listen((location) => {
-      if (!isAuthDisabled && !AppState.userDetails) {
-        if (
-          (location.pathname === ROUTES.SIGNUP && isEmpty(AppState.newUser)) ||
-          (!location.pathname.includes(ROUTES.CALLBACK) &&
-            location.pathname !== ROUTES.SAML_CALLBACK &&
-            location.pathname !== ROUTES.HOME &&
-            location.pathname !== ROUTES.SIGNUP &&
-            location.pathname !== ROUTES.REGISTER &&
-            location.pathname !== ROUTES.SIGNIN)
-        ) {
-          getLoggedInUserDetails();
-        }
-      }
-    });
-  }, [history]);
-
-  useEffect(() => {
-    if (isProtectedRoute(location.pathname)) {
-      AppState.updateUrlPathname(location.pathname);
-    }
-  }, [location.pathname]);
-
   const isLoading =
-    !isAuthDisabled &&
-    (!authConfig ||
-      (authConfig.provider === AuthProviderEnum.Azure && !msalInstance));
+    !authConfig ||
+    (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  const authContext = {
+  const authContext: IAuthContext = {
     currentUser: currentUser,
     isAuthenticated: isUserAuthenticated,
     setIsAuthenticated: setIsUserAuthenticated,
-    isAuthDisabled,
-    setIsAuthDisabled,
+    newUser: newUserProfile,
+    updateNewUser: setNewUserProfile,
     authConfig,
     authorizerConfig,
-    setAuthConfig,
     isSigningIn,
     setIsSigningIn,
     onLoginHandler,
@@ -729,4 +690,4 @@ export const AuthProvider = ({
 
 export const useAuthContext = () => useContext(AuthContext);
 
-export default observer(AuthProvider);
+export default AuthProvider;

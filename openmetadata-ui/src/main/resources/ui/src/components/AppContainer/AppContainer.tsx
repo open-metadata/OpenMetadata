@@ -16,19 +16,21 @@ import Sider from 'antd/lib/layout/Sider';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import AppState from '../../AppState';
 import Appbar from '../../components/AppBar/Appbar';
 import AuthenticatedAppRouter from '../../components/AppRouter/AuthenticatedAppRouter';
 import LeftSidebar from '../../components/MyData/LeftSidebar/LeftSidebar.component';
 import { ROUTES } from '../../constants/constants';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import './app-container.less';
 
 const AppContainer = () => {
+  const { currentUser } = useAuthContext();
+
   return (
     <Switch>
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
+        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
 
       <Layout className="app-container">

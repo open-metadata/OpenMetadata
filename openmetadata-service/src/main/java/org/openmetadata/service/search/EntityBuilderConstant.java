@@ -7,6 +7,8 @@ public class EntityBuilderConstant {
   public static final String FIELD_TAGS = "tags";
   public static final String UNIFIED = "unified";
   public static final String ES_MESSAGE_SCHEMA_FIELD = "messageSchema.schemaFields.name";
+  public static final String ES_MESSAGE_SCHEMA_FIELD_KEYWORD =
+      "messageSchema.schemaFields.name.keyword";
   public static final String ES_TAG_FQN_FIELD = "tags.tagFQN";
 
   public static final String COLUMNS_NAME_KEYWORD = "columns.name.keyword";

@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
@@ -390,6 +391,19 @@ class TopologyRunnerMixin(Generic[C]):
     @yield_and_update_context.register
     def _(
         self,
+        right: OMetaCustomProperties,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Custom Property implementation for the context information"""
+        yield entity_request
+
+        # We'll keep the tag fqn in the context and use if required
+        self.update_context(stage=stage, context=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
         right: CreateStoredProcedureRequest,
         stage: NodeStage,
         entity_request: Either[C],
@@ -426,7 +440,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Either use the received request or the acknowledged Entity
         entity = entity_request.right if entity_request else None
 
-        if not stage.nullable and entity is None:
+        if not stage.nullable and entity is None and entity_request.left is None:
             raise ValueError("Value unexpectedly None")
 
         if entity_request is not None:

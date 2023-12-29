@@ -56,9 +56,9 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 /**
- * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
- * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
- * record.
+ * EntityCsv provides export and import capabilities for an entity. Each entity must implement the
+ * abstract methods to provide entity specific processing functionality to export an entity to a CSV
+ * record, and import an entity from a CSV record.
  */
 @Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {
@@ -71,6 +71,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String ENTITY_UPDATED = "Entity updated";
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
+  private final List<String> expectedHeaders;
   private final CsvImportResult importResult = new CsvImportResult();
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
@@ -79,6 +80,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {
     this.entityType = entityType;
     this.csvHeaders = csvHeaders;
+    this.expectedHeaders = CsvUtil.getHeaders(csvHeaders);
     this.importedBy = importedBy;
   }
 
@@ -98,16 +100,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     // First record is CSV header - Validate headers
-    List<String> expectedHeaders = CsvUtil.getHeaders(csvHeaders);
-    if (!validateHeaders(expectedHeaders, records.next())) {
+    if (!validateHeaders(records.next())) {
       return importResult;
     }
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
     // Validate and load each record
     while (records.hasNext()) {
-      CSVRecord csvRecord = records.next();
-      processRecord(resultsPrinter, expectedHeaders, csvRecord);
+      processRecord(resultsPrinter, records);
     }
 
     // Finally, create the entities parsed from the record
@@ -117,15 +117,20 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Implement this method to a CSV record and turn it into an entity */
-  protected abstract T toEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord) throws IOException;
+  protected abstract void createEntity(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
+      throws IOException;
+
+  public final String exportCsv(T entity) throws IOException {
+    CsvFile csvFile = new CsvFile().withHeaders(csvHeaders);
+    addRecord(csvFile, entity);
+    return CsvUtil.formatCsv(csvFile);
+  }
 
   public final String exportCsv(List<T> entities) throws IOException {
     CsvFile csvFile = new CsvFile().withHeaders(csvHeaders);
-    List<List<String>> records = new ArrayList<>();
     for (T entity : entities) {
-      records.add(toRecord(entity));
+      addRecord(csvFile, entity);
     }
-    csvFile.withRecords(records);
     return CsvUtil.formatCsv(csvFile);
   }
 
@@ -134,34 +139,57 @@ public abstract class EntityCsv<T extends EntityInterface> {
     String path = String.format(".*json/data/%s/%sCsvDocumentation.json$", entityType, entityType);
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
-      String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+      String json =
+          CommonUtil.getResourceAsStream(
+              EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
       return JsonUtils.readValue(json, CsvDocumentation.class);
     } catch (IOException e) {
-      LOG.error("FATAL - Failed to load CSV documentation for entity {} from the path {}", entityType, path);
+      LOG.error(
+          "FATAL - Failed to load CSV documentation for entity {} from the path {}",
+          entityType,
+          path);
     }
     return null;
   }
 
   /** Implement this method to export an entity into a list of fields to create a CSV record */
-  protected abstract List<String> toRecord(T entity);
+  protected abstract void addRecord(CsvFile csvFile, T entity);
+
+  /** Implement this method to export an entity into a list of fields to create a CSV record */
+  public final void addRecord(CsvFile csvFile, List<String> recordList) {
+    List<List<String>> list = csvFile.getRecords();
+    list.add(recordList);
+    csvFile.withRecords(list);
+  }
 
   /** Owner field is in entityType;entityName format */
-  public EntityReference getOwner(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
-    String owner = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(owner)) {
+  public EntityReference getOwner(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
       return null;
     }
 
-    List<String> list = CsvUtil.fieldToStrings(owner);
+    String ownerField = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(ownerField)) {
+      return null;
+    }
+
+    List<String> list = CsvUtil.fieldToStrings(ownerField);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), csvRecord);
       return null;
     }
-    return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+    EntityReference owner =
+        getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+    return owner == null || Boolean.TRUE.equals(owner.getInherited()) ? null : owner;
   }
 
   /** Owner field is in entityName format */
-  public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+  public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
     String owner = csvRecord.get(fieldNumber);
     if (nullOrEmpty(owner)) {
       return null;
@@ -169,7 +197,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, owner);
   }
 
-  protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+  protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
     String field = csvRecord.get(fieldNumber);
     if (nullOrEmpty(field)) {
       return null;
@@ -186,13 +215,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final EntityReference getEntityReference(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
     String fqn = csvRecord.get(fieldNumber);
     return getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
   }
 
   protected EntityInterface getEntityByName(String entityType, String fqn) {
-    EntityInterface entity = entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
+    EntityInterface entity =
+        entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
       entity = entityRepository.findByNameOrNull(fqn, Include.NON_DELETED);
@@ -201,13 +235,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final EntityReference getEntityReference(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) throws IOException {
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn)
+      throws IOException {
     if (nullOrEmpty(fqn)) {
       return null;
     }
     EntityInterface entity = getEntityByName(entityType, fqn);
     if (entity == null) {
-      importFailure(printer, entityNotFound(fieldNumber, fqn), csvRecord);
+      importFailure(printer, entityNotFound(fieldNumber, entityType, fqn), csvRecord);
       processRecord = false;
       return null;
     }
@@ -215,54 +250,44 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
-    String fqns = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
-    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    List<EntityReference> refs = new ArrayList<>();
-    for (String fqn : fqnList) {
-      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
-      if (!processRecord) {
-        return null;
-      }
-      if (ref != null) {
-        refs.add(ref);
-      }
-    }
-    return refs.isEmpty() ? null : refs;
-  }
-
-  protected final List<EntityReference> getUserOrTeamEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
-    String fqns = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(fqns)) {
-      return null;
-    }
-    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    List<EntityReference> refs = new ArrayList<>();
-    for (String fqn : fqnList) {
-      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
-      if (!processRecord) {
-        return null;
-      }
-      if (ref != null) {
-        refs.add(ref);
-      }
-    }
-    return refs.isEmpty() ? null : refs;
-  }
-
-  protected final List<TagLabel> getTagLabels(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String fqns = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String fqn : fqnList) {
+      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
+      if (!processRecord) {
+        return null;
+      }
+      if (ref != null) {
+        refs.add(ref);
+      }
+    }
+    return refs.isEmpty() ? null : refs;
+  }
+
+  protected final List<TagLabel> getTagLabels(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    if (!processRecord) {
+      return null;
+    }
     List<EntityReference> refs = getEntityReferences(printer, csvRecord, fieldNumber, Entity.TAG);
     if (!processRecord || nullOrEmpty(refs)) {
       return null;
     }
     List<TagLabel> tagLabels = new ArrayList<>();
     for (EntityReference ref : refs) {
-      tagLabels.add(new TagLabel().withSource(TagSource.CLASSIFICATION).withTagFQN(ref.getFullyQualifiedName()));
+      tagLabels.add(
+          new TagLabel()
+              .withSource(TagSource.CLASSIFICATION)
+              .withTagFQN(ref.getFullyQualifiedName()));
     }
     return tagLabels;
   }
@@ -275,7 +300,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   // Create a CSVPrinter to capture the import results
   private CSVPrinter getResultsCsv(List<CsvHeader> csvHeaders, StringWriter writer) {
-    CSVFormat format = Builder.create(CSVFormat.DEFAULT).setHeader(getResultHeaders(csvHeaders)).build();
+    CSVFormat format =
+        Builder.create(CSVFormat.DEFAULT).setHeader(getResultHeaders(csvHeaders)).build();
     try {
       return new CSVPrinter(writer, format);
     } catch (IOException e) {
@@ -294,7 +320,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return null;
   }
 
-  private boolean validateHeaders(List<String> expectedHeaders, CSVRecord csvRecord) {
+  private boolean validateHeaders(CSVRecord csvRecord) {
     importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
     if (expectedHeaders.equals(csvRecord.toList())) {
       return true;
@@ -304,13 +330,20 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return false;
   }
 
-  private void processRecord(CSVPrinter resultsPrinter, List<String> expectedHeader, CSVRecord csvRecord)
+  private void processRecord(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
       throws IOException {
     processRecord = true;
+    createEntity(resultsPrinter, csvRecords); // Convert record into entity for
+  }
+
+  public final CSVRecord getNextRecord(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
+      throws IOException {
+    CSVRecord csvRecord = csvRecords.next();
     // Every row must have total fields corresponding to the number of headers
     if (csvHeaders.size() != csvRecord.size()) {
-      importFailure(resultsPrinter, invalidFieldCount(expectedHeader.size(), csvRecord.size()), csvRecord);
-      return;
+      importFailure(
+          resultsPrinter, invalidFieldCount(expectedHeaders.size(), csvRecord.size()), csvRecord);
+      return null;
     }
 
     // Check if required values are present
@@ -325,19 +358,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (!errors.isEmpty()) {
       importFailure(resultsPrinter, String.join(FIELD_SEPARATOR, errors), csvRecord);
-      return;
+      return null;
     }
-
-    // Finally, convert record into entity for importing
-    T entity = toEntity(resultsPrinter, csvRecord);
-    if (entity != null) {
-      // Finally, create entities
-      createEntity(resultsPrinter, csvRecord, entity);
-    }
+    return csvRecord;
   }
 
   @Transaction
-  private void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity) throws IOException {
+  protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
+      throws IOException {
     entity.setId(UUID.randomUUID());
     entity.setUpdatedBy(importedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
@@ -364,7 +392,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
           repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
               ? Response.Status.CREATED
               : Response.Status.OK;
-      // Track the dryRun created entities, as they may be referred by other entities being created during import
+      // Track the dryRun created entities, as they may be referred by other entities being created
+      // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
     }
 
@@ -380,7 +409,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public static String invalidHeader(String expected, String actual) {
-    return String.format("#%s: Headers [%s] doesn't match [%s]", CsvErrorType.INVALID_HEADER, actual, expected);
+    return String.format(
+        "#%s: Headers [%s] doesn't match [%s]", CsvErrorType.INVALID_HEADER, actual, expected);
   }
 
   public static String invalidFieldCount(int expectedFieldCount, int actualFieldCount) {
@@ -397,8 +427,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
-  public static String entityNotFound(int field, String fqn) {
-    String error = String.format("Entity %s not found", fqn);
+  public static String entityNotFound(int field, String entityType, String fqn) {
+    String error = String.format("Entity %s of type %s not found", fqn, entityType);
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
@@ -417,7 +447,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     importResult.withAbortReason(error);
   }
 
-  private void importSuccess(CSVPrinter printer, CSVRecord inputRecord, String successDetails) throws IOException {
+  private void importSuccess(CSVPrinter printer, CSVRecord inputRecord, String successDetails)
+      throws IOException {
     List<String> recordList = listOf(IMPORT_STATUS_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);
@@ -425,7 +456,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
   }
 
-  protected void importFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord) throws IOException {
+  protected void importFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord)
+      throws IOException {
     List<String> recordList = listOf(IMPORT_STATUS_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);

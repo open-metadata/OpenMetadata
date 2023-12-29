@@ -20,6 +20,9 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -32,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
@@ -91,7 +94,7 @@ class SimpleSink(Sink):
     def _run(self, element: int) -> Either:
         if element == 2:
             return Either(
-                left=StackTraceError(name="bum", error="kaboom", stack_trace="trace")
+                left=StackTraceError(name="bum", error="kaboom", stackTrace="trace")
             )
 
         return Either(right=element)
@@ -163,14 +166,12 @@ class TestBaseWorkflow(TestCase):
     @pytest.mark.order(2)
     def test_workflow_status(self):
         # Everything is processed properly in the Source
-        self.assertEquals(
-            self.workflow.source.status.records, ["0", "1", "2", "3", "4"]
-        )
-        self.assertEquals(len(self.workflow.source.status.failures), 0)
+        self.assertEqual(self.workflow.source.status.records, ["0", "1", "2", "3", "4"])
+        self.assertEqual(len(self.workflow.source.status.failures), 0)
 
         # We catch one error in the Sink
-        self.assertEquals(len(self.workflow.steps[0].status.records), 4)
-        self.assertEquals(len(self.workflow.steps[0].status.failures), 1)
+        self.assertEqual(len(self.workflow.steps[0].status.records), 4)
+        self.assertEqual(len(self.workflow.steps[0].status.failures), 1)
 
     @pytest.mark.order(3)
     def test_workflow_raise_status(self):

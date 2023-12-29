@@ -36,7 +36,8 @@ public class SocketAddressFilter implements Filter {
   private final boolean enableSecureSocketConnection;
 
   public SocketAddressFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConf) {
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConf) {
     enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
     if (enableSecureSocketConnection) {
       jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
@@ -51,7 +52,8 @@ public class SocketAddressFilter implements Filter {
   public void destroy() {}
 
   @Override
-  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException {
+  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+      throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
       Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
@@ -75,7 +77,9 @@ public class SocketAddressFilter implements Filter {
       chain.doFilter(requestWrapper, response);
     } catch (Exception ex) {
       LOG.error("[SAFilter] Failed in filtering request: {}", ex.getMessage());
-      response.getWriter().println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
+      response
+          .getWriter()
+          .println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
     }
   }
 

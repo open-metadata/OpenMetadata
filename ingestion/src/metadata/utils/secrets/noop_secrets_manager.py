@@ -18,12 +18,13 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 from metadata.utils.secrets.secrets_manager import SecretsManager
 
 
-class NoopSecretsManager(SecretsManager):
+class DBSecretsManager(SecretsManager):
     """
-    LocalSecretsManager is used when there is not a secrets' manager configured.
+    Will return the string as received. The client does not need to pick
+    it up from any external resource.
     """
 
-    provider: str = SecretsManagerProvider.noop.name
+    provider: str = SecretsManagerProvider.db.name
 
     def get_string_value(self, secret_id: str) -> str:
         return secret_id

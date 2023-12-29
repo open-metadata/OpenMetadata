@@ -44,6 +44,7 @@ import { Column, Table } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { TagLabel } from '../generated/type/tagLabel';
+import { SearchSourceAlias } from '../interface/search.interface';
 import {
   EntityData,
   Option,
@@ -71,7 +72,7 @@ import {
   defaultFields as DashboardFields,
   fetchCharts,
 } from './DashboardDetailsUtils';
-import { DatabaseFields } from './DatabaseDetails.utils';
+import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
@@ -196,6 +197,7 @@ export const fetchOptions = (
         label: hit._source.name ?? hit._source.displayName,
         value: hit._id,
         type: hit._source.entityType,
+        name: hit._source.name,
       }));
 
       setOptions(suggestOptions);
@@ -324,7 +326,7 @@ export const getBreadCrumbList = (
         : '',
       imgSrc: (entityData as Table).serviceType
         ? serviceUtilClassBase.getServiceTypeLogo(
-            (entityData as Table).serviceType as string
+            entityData as SearchSourceAlias
           )
         : undefined,
     };

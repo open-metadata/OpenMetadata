@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.*;
@@ -46,12 +45,14 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public void setFullyQualifiedName(Query query) {
-    query.setFullyQualifiedName(FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
+    query.setFullyQualifiedName(
+        FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
   }
 
   @Override
   public void setFields(Query entity, EntityUtil.Fields fields) {
-    entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
+    entity.setQueryUsedIn(
+        fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
   }
 
@@ -102,15 +103,15 @@ public class QueryRepository extends EntityRepository<Query> {
     // Store Query Users Relation
     if (queryEntity.getUsers() != null) {
       for (EntityReference entityRef : queryEntity.getUsers()) {
-        addRelationship(entityRef.getId(), queryEntity.getId(), USER, Entity.QUERY, Relationship.USES);
+        addRelationship(
+            entityRef.getId(), queryEntity.getId(), USER, Entity.QUERY, Relationship.USES);
       }
     }
 
     // Store Query Used in Relation
     storeQueryUsedIn(queryEntity.getId(), queryEntity.getQueryUsedIn(), null);
     // The service contains the query
-    addRelationship(
-        queryEntity.getService().getId(), queryEntity.getId(), DATABASE_SERVICE, Entity.QUERY, Relationship.CONTAINS);
+    addServiceRelationship(queryEntity, queryEntity.getService());
   }
 
   @Override
@@ -121,10 +122,12 @@ public class QueryRepository extends EntityRepository<Query> {
   private void storeQueryUsedIn(
       UUID queryId, List<EntityReference> addQueryUsedIn, List<EntityReference> deleteQueryUsedIn) {
     for (EntityReference entityRef : listOrEmpty(addQueryUsedIn)) {
-      addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
+      addRelationship(
+          entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
     }
     for (EntityReference entityRef : listOrEmpty(deleteQueryUsedIn)) {
-      deleteRelationship(entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
+      deleteRelationship(
+          entityRef.getId(), entityRef.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
     }
   }
 
@@ -136,14 +139,17 @@ public class QueryRepository extends EntityRepository<Query> {
     for (String userFqn : userFqnList) {
       User user = Entity.getEntityByName(USER, userFqn, "", Include.NON_DELETED);
       EntityReference entityRef = user.getEntityReference();
-      addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.USES);
+      addRelationship(
+          entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.USES);
     }
     // Populate Fields
     setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USERS_FIELD));
     Entity.withHref(uriInfo, query.getUsers());
     ChangeEvent changeEvent =
-        getQueryChangeEvent(updatedBy, QUERY_USERS_FIELD, oldValue, query.getUsers(), withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+        getQueryChangeEvent(
+            updatedBy, QUERY_USERS_FIELD, oldValue, query.getUsers(), withHref(uriInfo, query));
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> addQueryUsedBy(
@@ -153,9 +159,14 @@ public class QueryRepository extends EntityRepository<Query> {
     query.getUsedBy().addAll(userList);
     ChangeEvent changeEvent =
         getQueryChangeEvent(
-            updatedBy, QUERY_USERS_FIELD, oldQuery.getUsedBy(), query.getUsers(), withHref(uriInfo, query));
+            updatedBy,
+            QUERY_USERS_FIELD,
+            oldQuery.getUsedBy(),
+            query.getUsers(),
+            withHref(uriInfo, query));
     update(uriInfo, oldQuery, query);
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> addQueryUsage(
@@ -165,14 +176,25 @@ public class QueryRepository extends EntityRepository<Query> {
     // Create Relationships
     entityIds.forEach(
         entityRef ->
-            addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN));
+            addRelationship(
+                entityRef.getId(),
+                queryId,
+                entityRef.getType(),
+                Entity.QUERY,
+                Relationship.MENTIONED_IN));
 
     // Populate Fields
     setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
-        getQueryChangeEvent(updatedBy, QUERY_USED_IN_FIELD, oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+        getQueryChangeEvent(
+            updatedBy,
+            QUERY_USED_IN_FIELD,
+            oldValue,
+            query.getQueryUsedIn(),
+            withHref(uriInfo, query));
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> removeQueryUsedIn(
@@ -181,21 +203,30 @@ public class QueryRepository extends EntityRepository<Query> {
     List<EntityReference> oldValue = query.getQueryUsedIn();
 
     for (EntityReference ref : entityIds) {
-      deleteRelationship(ref.getId(), ref.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
+      deleteRelationship(
+          ref.getId(), ref.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
     }
 
     // Populate Fields
     setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
-        getQueryChangeEvent(updatedBy, QUERY_USED_IN_FIELD, oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+        getQueryChangeEvent(
+            updatedBy,
+            QUERY_USED_IN_FIELD,
+            oldValue,
+            query.getQueryUsedIn(),
+            withHref(uriInfo, query));
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private ChangeEvent getQueryChangeEvent(
       String updatedBy, String fieldUpdated, Object oldValue, Object newValue, Query updatedQuery) {
-    FieldChange fieldChange = new FieldChange().withName(fieldUpdated).withNewValue(newValue).withOldValue(oldValue);
-    ChangeDescription change = new ChangeDescription().withPreviousVersion(updatedQuery.getVersion());
+    FieldChange fieldChange =
+        new FieldChange().withName(fieldUpdated).withNewValue(newValue).withOldValue(oldValue);
+    ChangeDescription change =
+        new ChangeDescription().withPreviousVersion(updatedQuery.getVersion());
     change.getFieldsUpdated().add(fieldChange);
     return new ChangeEvent()
         .withEntity(updatedQuery)
@@ -219,7 +250,13 @@ public class QueryRepository extends EntityRepository<Query> {
     @Override
     public void entitySpecificUpdate() {
       updateFromRelationships(
-          "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
+          "users",
+          USER,
+          original.getUsers(),
+          updated.getUsers(),
+          Relationship.USES,
+          Entity.QUERY,
+          original.getId());
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
@@ -230,7 +267,8 @@ public class QueryRepository extends EntityRepository<Query> {
           deleted,
           EntityUtil.entityReferenceMatch);
       // Store processed Lineage
-      recordChange("processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
+      recordChange(
+          "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       // Store Query Used in Relation
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);

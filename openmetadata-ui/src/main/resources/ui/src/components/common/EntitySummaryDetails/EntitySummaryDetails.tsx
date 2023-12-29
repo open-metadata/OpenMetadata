@@ -36,6 +36,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
@@ -74,6 +75,7 @@ const EntitySummaryDetails = ({
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const displayVal = data.placeholderText || data.value;
 
   const ownerDropdown = allowTeamOwner ? (
@@ -93,7 +95,7 @@ const EntitySummaryDetails = ({
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
     useMemo(() => {
-      const userDetails = getTeamsUser(data);
+      const userDetails = currentUser ? getTeamsUser(data, currentUser) : {};
 
       return {
         isEntityCard: data?.isEntityCard,
@@ -118,9 +120,7 @@ const EntitySummaryDetails = ({
                   <>
                     <ProfilePicture
                       displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
                       name={userDetails.ownerName ?? ''}
-                      type="circle"
                       width="24"
                     />
                     <span data-testid="owner-link">
@@ -140,9 +140,7 @@ const EntitySummaryDetails = ({
                 ) : (
                   <ProfilePicture
                     displayName={displayVal}
-                    id=""
                     name={data.profileName ?? ''}
-                    type="circle"
                     width={data.avatarWidth ?? '24'}
                   />
                 )}

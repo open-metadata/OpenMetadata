@@ -2,9 +2,11 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
-public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+public abstract class MostViewedEntitiesAggregator<A, B, M, S>
+    implements DataInsightAggregatorInterface {
   protected final A aggregations;
 
   protected MostViewedEntitiesAggregator(A aggregations) {
@@ -24,6 +26,7 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataIn
       String owner = getFirstValueFromBucketOrNull(ownerBucket);
       String entityType = getFirstValueFromBucketOrNull(entityTypeBucket);
       String entityHref = getFirstValueFromBucketOrNull(entityHrefBucket);
+      Optional<Double> pageViews = getValue(sumPageViews);
 
       data.add(
           new MostViewedEntities()
@@ -31,13 +34,13 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataIn
               .withOwner(owner)
               .withEntityType(entityType)
               .withEntityHref(entityHref)
-              .withPageViews(getValue(sumPageViews)));
+              .withPageViews(pageViews.orElse(null)));
     }
 
     return data;
   }
 
-  protected abstract Double getValue(S sumPageViews);
+  protected abstract Optional<Double> getValue(S sumPageViews);
 
   protected abstract M getBucketAggregation(B bucket, String key);
 
