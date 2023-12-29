@@ -13,23 +13,38 @@
       "properties": {
         "threeDays": {
           "description": "Data Asset Count or Size for 3 days",
-          "type": "number"
+          "anyOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ]
         },
         "sevenDays": {
           "description": "Data Asset Count or Size for 7 days",
-          "type": "number"
+          "anyOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ]
         },
         "fourteenDays": {
           "description": "Data Asset Count or Size for 14 days",
-          "type": "number"
+          "anyOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ]
         },
         "thirtyDays": {
           "description": "Data Asset Count or Size for 30 days",
-          "type": "number"
+          "anyOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ]
         },
         "sixtyDays": {
           "description": "Data Asset Count or Size for 60 days",
-          "type": "number"
+          "anyOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ]
         }
       },
       "additionalProperties": false
