@@ -46,7 +46,7 @@ class NodeStage(BaseModel, Generic[T]):
         description="The sink MUST return a value back after ack. Useful to validate if services are correct.",
     )
     overwrite: bool = Field(
-        False,
+        True,
         description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
     )
     consumer: Optional[List[str]] = Field(

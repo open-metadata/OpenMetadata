@@ -317,7 +317,7 @@ class TopologyRunnerMixin(Generic[C]):
             entity = self.metadata.get_by_name(
                 entity=stage.type_,
                 fqn=entity_fqn,
-                fields=["*"],  # Get all the available data from the Entity
+                fields=["*"],
             )
         create_entity_request_hash = generate_source_hash(
             create_request=entity_request.right,
@@ -327,7 +327,7 @@ class TopologyRunnerMixin(Generic[C]):
         if hasattr(entity_request.right, "sourceHash"):
             entity_request.right.sourceHash = create_entity_request_hash
 
-        skip_processing_entity = False
+        same_fingerprint = False
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)
@@ -338,7 +338,7 @@ class TopologyRunnerMixin(Generic[C]):
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
-                        fields=["*"],  # Get all the available data from the Entity
+                        fields=["*"],
                     )
 
                     # we return the entity for a patch update
@@ -352,9 +352,9 @@ class TopologyRunnerMixin(Generic[C]):
                     logger.debug(
                         f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
                     )
-                    skip_processing_entity = True
+                    same_fingerprint = True
 
-        if not skip_processing_entity:
+        if not same_fingerprint:
             # We store the generated source hash and yield the request
 
             yield entity_request
