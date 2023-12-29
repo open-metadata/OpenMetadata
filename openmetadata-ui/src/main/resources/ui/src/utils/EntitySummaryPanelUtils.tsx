@@ -116,13 +116,10 @@ export const getSummaryListItemType = (
 
     @return array of tags highlighted and sorted if tagFQN present in sortTagsBasedOnGivenTagFQNs
 */
-export const getSortedTagsWithHighlight = ({
-  sortTagsBasedOnGivenTagFQNs,
-  tags = [],
-}: {
-  sortTagsBasedOnGivenTagFQNs: string[];
-  tags?: TagLabel[];
-}): ListItemHighlights['highlightedTags'] => {
+export const getSortedTagsWithHighlight = (
+  tags: TagLabel[] = [],
+  sortTagsBasedOnGivenTagFQNs: string[] = []
+): ListItemHighlights['highlightedTags'] => {
   const { sortedTags, remainingTags } = tags.reduce(
     (acc, tag) => {
       if (sortTagsBasedOnGivenTagFQNs.includes(tag.tagFQN)) {
@@ -168,8 +165,8 @@ export const getMapOfListHighlights = (
     listHighlights.push(...get(highlights, highlightKey, []));
   });
 
-  // using hashmap methodology to reduce the search time complexity of listHighlights
-  // for applying highlight from O(n) to O(1)
+  // using hashmap methodology to reduce the search time complexity from O(n) to O(1)
+  // to get highlight from the listHighlights array for applying highlight
   const listHighlightsMap: { [key: string]: number } = {};
 
   listHighlights?.reduce((acc, colHighlight, index) => {
@@ -206,10 +203,7 @@ export const getHighlightOfListItem = (
   );
 
   if (shouldSortListItemTags) {
-    highlightedTags = getSortedTagsWithHighlight({
-      sortTagsBasedOnGivenTagFQNs: tagHighlights,
-      tags: listItem.tags,
-    });
+    highlightedTags = getSortedTagsWithHighlight(listItem.tags, tagHighlights);
   }
 
   // highlightedListItemNameIndex will be undefined if listItem.name is not present in highlights

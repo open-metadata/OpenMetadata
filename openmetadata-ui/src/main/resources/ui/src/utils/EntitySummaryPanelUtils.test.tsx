@@ -89,10 +89,10 @@ describe('EntitySummaryPanelUtils tests', () => {
 
   describe('getSortedTagsWithHighlight', () => {
     it('getSortedTagsWithHighlight should return the sorted and highlighted tags data based on given tagFQN array', () => {
-      const sortedTags = getSortedTagsWithHighlight({
-        sortTagsBasedOnGivenTagFQNs: mockTagFQNsForHighlight,
-        tags: mockEntityDataWithNesting[2].tags,
-      });
+      const sortedTags = getSortedTagsWithHighlight(
+        mockEntityDataWithNesting[2].tags,
+        mockTagFQNsForHighlight
+      );
 
       expect(sortedTags).toEqual(mockTagsSortAndHighlightResponse);
     });
