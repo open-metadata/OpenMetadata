@@ -168,7 +168,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
         Generate sample data for dashboard and database service,
         with lineage between them, having long names, special characters and description
         """
-        for _ in range(2):
+        for _ in range(5):
             name = self.generate_name()
             text = self.generate_text()
 
@@ -179,6 +179,8 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
             yield Either(right=db)
 
             for _ in range(2):
+                name = self.generate_name()
+                text = self.generate_text()
                 schema = self.create_database_schema_request(name, text, db)
                 yield Either(right=schema)
 
@@ -199,6 +201,8 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
             self.dashboard_service_json["description"] = text
 
             for data_model in self.data_models["datamodels"]:
+                name = self.generate_name()
+                text = self.generate_text()
                 data_model_request = self.create_dashboard_data_model_request(
                     name, text, data_model
                 )
@@ -207,7 +211,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
                     self.metadata,
                     entity_type=DashboardDataModel,
                     service_name=self.dashboard_service.name.__root__,
-                    data_model_name=table_request.name.__root__,
+                    data_model_name=data_model_request  .name.__root__,
                 )
                 self.store_data_model_fqn.append(data_model_entity_fqn)
 
