@@ -436,6 +436,7 @@ const IncidentManagerPage = () => {
             <Select
               allowClear
               className="w-min-10"
+              data-testid="status-select"
               placeholder={t('label.status')}
               onChange={(value) =>
                 setFilters((pre) => ({

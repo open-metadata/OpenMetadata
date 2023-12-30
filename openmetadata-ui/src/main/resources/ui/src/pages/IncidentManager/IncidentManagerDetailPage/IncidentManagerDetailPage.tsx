@@ -66,13 +66,13 @@ const IncidentManagerDetailPage = () => {
   const { permissions } = usePermissionProvider();
   const { hasEditPermission, hasViewPermission } = useMemo(() => {
     return {
-      hasEditPermission: checkPermission(
-        Operation.EditAll,
+      hasViewPermission: checkPermission(
+        Operation.ViewAll,
         ResourceEntity.TEST_CASE,
         permissions
       ),
-      hasViewPermission: checkPermission(
-        Operation.ViewAll,
+      hasEditPermission: checkPermission(
+        Operation.EditAll,
         ResourceEntity.TEST_CASE,
         permissions
       ),
@@ -194,7 +194,9 @@ const IncidentManagerDetailPage = () => {
 
   return (
     <PageLayoutV1 pageTitle="Incident Manager Detail Page">
-      <Row gutter={[0, 12]}>
+      <Row
+        data-testid="incident-manager-details-page-container"
+        gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
         </Col>
@@ -224,6 +226,7 @@ const IncidentManagerDetailPage = () => {
 
                   <Link
                     className="font-medium"
+                    data-testid="table-name"
                     to={getTableTabPath(tableFqn, EntityTabs.PROFILER)}>
                     {getNameFromFQN(tableFqn)}
                   </Link>
@@ -236,7 +239,7 @@ const IncidentManagerDetailPage = () => {
               <span className="text-grey-muted">{`${t(
                 'label.test-type'
               )}: `}</span>
-              <span className="font-medium">
+              <span className="font-medium" data-testid="test-definition-name">
                 {getEntityName(testCaseData?.data?.testDefinition)}
               </span>
             </Typography.Text>
