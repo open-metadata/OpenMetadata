@@ -441,7 +441,6 @@ class S3Source(StorageServiceSource):
             logger.warning(
                 f"No metadata file found at s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
             )
-            pass
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
