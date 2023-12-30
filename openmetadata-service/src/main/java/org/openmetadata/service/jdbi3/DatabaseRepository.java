@@ -21,7 +21,6 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -229,8 +228,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
-    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
-        throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
       DatabaseSchema schema;

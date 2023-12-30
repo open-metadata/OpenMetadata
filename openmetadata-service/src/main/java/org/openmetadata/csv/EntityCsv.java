@@ -25,7 +25,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,8 +64,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String FIELD_ERROR_MSG = "#%s: Field %d error - %s";
   public static final String IMPORT_STATUS_HEADER = "status";
   public static final String IMPORT_STATUS_DETAILS = "details";
-  public static final String IMPORT_STATUS_SUCCESS = "success";
-  public static final String IMPORT_STATUS_FAILED = "failure";
+  public static final String IMPORT_SUCCESS = "success";
+  public static final String IMPORT_FAILED = "failure";
+  public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
   private final String entityType;
@@ -76,6 +76,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   private final String importedBy;
+  protected int recordIndex = 0;
 
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {
     this.entityType = entityType;
@@ -94,19 +95,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     // Parse CSV
-    Iterator<CSVRecord> records = parse(csv);
+    List<CSVRecord> records = parse(csv);
     if (records == null) {
       return importResult; // Error during parsing
     }
 
     // First record is CSV header - Validate headers
-    if (!validateHeaders(records.next())) {
+    if (!validateHeaders(records.get(recordIndex++))) {
       return importResult;
     }
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
     // Validate and load each record
-    while (records.hasNext()) {
+    while (recordIndex < records.size()) {
       processRecord(resultsPrinter, records);
     }
 
@@ -117,7 +118,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Implement this method to a CSV record and turn it into an entity */
-  protected abstract void createEntity(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
+  protected abstract void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
       throws IOException;
 
   public final String exportCsv(T entity) throws IOException {
@@ -310,10 +311,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return null;
   }
 
-  private Iterator<CSVRecord> parse(String csv) {
+  private List<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
     try {
-      return CSVFormat.DEFAULT.parse(in).iterator();
+      return CSVFormat.DEFAULT.parse(in).stream().toList();
     } catch (IOException e) {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
@@ -330,15 +331,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return false;
   }
 
-  private void processRecord(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
+  private void processRecord(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
       throws IOException {
     processRecord = true;
     createEntity(resultsPrinter, csvRecords); // Convert record into entity for
   }
 
-  public final CSVRecord getNextRecord(CSVPrinter resultsPrinter, Iterator<CSVRecord> csvRecords)
+  public final CSVRecord getNextRecord(
+      CSVPrinter resultsPrinter, List<CsvHeader> csvHeaders, List<CSVRecord> csvRecords)
       throws IOException {
-    CSVRecord csvRecord = csvRecords.next();
+    CSVRecord csvRecord = csvRecords.get(recordIndex++);
     // Every row must have total fields corresponding to the number of headers
     if (csvHeaders.size() != csvRecord.size()) {
       importFailure(
@@ -361,6 +363,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return null;
     }
     return csvRecord;
+  }
+
+  public final CSVRecord getNextRecord(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
+      throws IOException {
+    return getNextRecord(resultsPrinter, csvHeaders, csvRecords);
   }
 
   @Transaction
@@ -432,6 +439,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
+  public static String columnNotFound(int field, String columnFqn) {
+    String error = String.format("Column %s not found", columnFqn);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
   public static String invalidOwner(int field) {
     String error = "Owner should be of format user;userName or team;teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
@@ -442,14 +454,28 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
+  public static List<CsvHeader> resetRequiredColumns(
+      List<CsvHeader> headers, final List<String> columnNames) {
+    if (nullOrEmpty(columnNames)) {
+      return headers;
+    }
+    headers.forEach(
+        header -> {
+          if (columnNames.contains(header.getName())) {
+            header.withRequired(false);
+          }
+        });
+    return headers;
+  }
+
   private void documentFailure(String error) {
     importResult.withStatus(ApiStatus.ABORTED);
     importResult.withAbortReason(error);
   }
 
-  private void importSuccess(CSVPrinter printer, CSVRecord inputRecord, String successDetails)
+  protected void importSuccess(CSVPrinter printer, CSVRecord inputRecord, String successDetails)
       throws IOException {
-    List<String> recordList = listOf(IMPORT_STATUS_SUCCESS, successDetails);
+    List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
@@ -458,7 +484,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   protected void importFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord)
       throws IOException {
-    List<String> recordList = listOf(IMPORT_STATUS_FAILED, failedReason);
+    List<String> recordList = listOf(IMPORT_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
@@ -475,4 +501,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     importResult.setStatus(status);
   }
+
+  public record ImportResult(String result, CSVRecord record, String details) {}
 }

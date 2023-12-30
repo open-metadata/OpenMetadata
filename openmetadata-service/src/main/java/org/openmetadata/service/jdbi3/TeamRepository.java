@@ -46,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -624,8 +623,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
-        throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 7 - name, displayName, description, teamType, isJoinable
       Team team =

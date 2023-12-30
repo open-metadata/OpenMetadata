@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -417,8 +416,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
-        throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
       User user =

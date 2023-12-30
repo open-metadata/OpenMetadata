@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -166,8 +165,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     @Override
-    protected void createEntity(CSVPrinter printer, Iterator<CSVRecord> csvRecords)
-        throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
 

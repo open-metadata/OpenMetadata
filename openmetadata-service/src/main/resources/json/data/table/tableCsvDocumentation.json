@@ -1,0 +1,112 @@
+{
+  "summary": "Table CSV file is used for importing and exporting table metadata from and to an **existing** table.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the table being updated.",
+      "examples": [
+        "`users`, `customers`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the table.",
+      "examples": [
+        "`fact_session`, `dim_user`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the table in Markdown format.",
+      "examples": [
+        "`Customer Schema` that contains all the tables related to customer entity."
+      ]
+    },
+    {
+      "name": "owner",
+      "required": false,
+      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
+      "examples": [
+        "`team;marketing`",
+        "`user;john`"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the table separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    },
+    {
+      "name": "retentionPeriod",
+      "required": false,
+      "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
+      "examples": [
+        "`P23DT23H`"
+      ]
+    },
+    {
+      "name": "sourceUrl",
+      "required": false,
+      "description": "Source URL for the table.",
+      "examples": [
+        "http://domain.com/system/customer_schema"
+      ]
+    },
+    {
+      "name": "domain",
+      "required": false,
+      "description": "Domain to which the table belongs to.",
+      "examples": [
+        "Marketing", "Sales"
+      ]
+    },
+    {
+      "name": "column.fullyQualifiedName",
+      "required": true,
+      "description": "Fully qualified name of the column.",
+      "examples": [
+        "user_id", "address.zipcode"
+      ]
+    },
+    {
+      "name": "column.displayName",
+      "required": false,
+      "description": "Display name of the column.",
+      "examples": [
+        "USER ID", "ZIP Code"
+      ]
+    },
+    {
+      "name": "column.description",
+      "required": false,
+      "description": "Description for the column in Markdown format.",
+      "examples": [
+        "`user_id` column is the primary key and contains unique user ID."
+      ]
+    },
+    {
+      "name": "column.dataTypeDisplay",
+      "required": false,
+      "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
+      "examples": [
+        "array<int>", "map<int, string>"
+      ]
+    },
+    {
+      "name": "column.tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the column separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    }
+  ]
+}
