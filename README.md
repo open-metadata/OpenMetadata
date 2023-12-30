@@ -29,10 +29,9 @@ Contents:
 - [Roadmap](https://docs.open-metadata.org/releases/roadmap)
 - [Documentation and Support](#documentation-and-support)
 - [Contributors](#contributors)
-- [License](#license)
 
 OpenMetadata Consists of Four Main Components:
-- **Metadata Schemas**: These are the core definitions and vocabulary for metadata, based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
+- **Metadata Schemas**: These are the core definitions and vocabulary for metadata based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
 - **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
 - **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
 - **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
@@ -79,17 +78,12 @@ Get up and running in a few minutes. See the OpenMetadata documentation for [ins
 
 ## Documentation and Support
 
-Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
+We're here to help and make OpenMetadata even better! Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features. Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us if you want to chat, need help, or discuss new feature requirements.
 
-Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us, want to chat, need help, or want to discuss about a new feature requirement.
-
-Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
-
-We're here to help and make OpenMetadata even better!
 
 ## Contributors
 
-We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started and let us know how we can help.
+We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started, and let us know how we can help.
 
 Don't want to miss anything? Give the project a ⭐ 🚀 
 
