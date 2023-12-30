@@ -70,7 +70,7 @@ const TestCaseIncidentManagerStatus = ({
           {hasEditPermission && (
             <Icon
               component={EditIcon}
-              data-testid="edit-description-icon"
+              data-testid="edit-resolution-icon"
               style={{ color: DE_ACTIVE_COLOR }}
               onClick={onEditSeverity}
             />
