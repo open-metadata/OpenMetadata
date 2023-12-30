@@ -56,6 +56,7 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
+    AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
