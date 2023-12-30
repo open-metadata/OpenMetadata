@@ -29,7 +29,6 @@ import './task-tab-incident-manager-header.style.less';
 const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
   const { t } = useTranslation();
   const { testCaseResolutionStatus } = useActivityFeedProvider();
-
   const testCaseResolutionStepper = useMemo(
     () =>
       testCaseResolutionStatus.map((status) => {
@@ -45,10 +44,11 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
 
         const resolvedDetail =
           TestCaseResolutionStatusTypes.Resolved ===
-          status.testCaseResolutionStatusType ? (
+            status.testCaseResolutionStatusType &&
+          status.testCaseResolutionStatusDetails?.resolvedBy ? (
             <Typography.Text className="text-grey-muted text-xss">
               {`By ${getEntityName(
-                status.testCaseResolutionStatusDetails?.resolvedBy
+                status.testCaseResolutionStatusDetails.resolvedBy
               )} on `}
             </Typography.Text>
           ) : null;
@@ -85,12 +85,13 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
     TestCaseResolutionStatusTypes.Resolved;
 
   return (
-    <Row gutter={[8, 16]}>
+    <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
       <Col span={24}>
         <div className="task-resolution-steps-container">
           <Steps
             className="task-resolution-steps w-full"
             current={testCaseResolutionStatus.length}
+            data-testid="task-resolution-steps"
             items={testCaseResolutionStepper}
             labelPlacement="vertical"
             size="small"
@@ -124,7 +125,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
             <Severity severity={latestTestCaseResolutionStatus?.severity} />
           </div>
           {isResolved && (
-            <div className="gap-2 flex-center">
+            <div className="gap-2 flex-center" data-testid="failure-reason">
               <Typography.Text className="text-grey-muted">
                 {`${t('label.failure-reason')}: `}
               </Typography.Text>
