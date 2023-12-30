@@ -177,19 +177,19 @@ class S3Source(StorageServiceSource):
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
     ) -> Iterable[Either[CreateContainerRequest]]:
-        yield Either(
-            right=CreateContainerRequest(
-                name=container_details.name,
-                prefix=container_details.prefix,
-                numberOfObjects=container_details.number_of_objects,
-                size=container_details.size,
-                dataModel=container_details.data_model,
-                service=self.context.objectstore_service,
-                parent=container_details.parent,
-                sourceUrl=container_details.sourceUrl,
-                fileFormats=container_details.file_formats,
-            )
+        container_request = CreateContainerRequest(
+            name=container_details.name,
+            prefix=container_details.prefix,
+            numberOfObjects=container_details.number_of_objects,
+            size=container_details.size,
+            dataModel=container_details.data_model,
+            service=self.context.objectstore_service,
+            parent=container_details.parent,
+            sourceUrl=container_details.sourceUrl,
+            fileFormats=container_details.file_formats,
         )
+        yield Either(right=container_request)
+        self.register_record(container_request=container_request)
 
     def _generate_container_details(
         self,
@@ -427,7 +427,7 @@ class S3Source(StorageServiceSource):
         """
         try:
             logger.info(
-                f"Found metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
+                f"Looking for metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
             )
             response_object = self.s3_reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
@@ -438,7 +438,9 @@ class S3Source(StorageServiceSource):
             metadata_config = StorageContainerConfig.parse_obj(content)
             return metadata_config
         except ReadException:
-            pass
+            logger.warning(
+                f"No metadata file found at s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
