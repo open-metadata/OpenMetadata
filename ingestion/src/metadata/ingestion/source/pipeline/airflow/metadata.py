@@ -177,7 +177,7 @@ class AirflowSource(PipelineServiceSource):
         sources we support.
         """
         task_instance_list = None
-        serialized_tasks_ids = set([task.task_id for task in serialized_tasks])
+        serialized_tasks_ids = {task.task_id for task in serialized_tasks}
 
         try:
             task_instance_list = (
