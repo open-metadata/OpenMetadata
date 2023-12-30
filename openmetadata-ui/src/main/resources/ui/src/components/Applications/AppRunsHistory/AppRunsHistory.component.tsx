@@ -59,12 +59,7 @@ import {
 
 const AppRunsHistory = forwardRef(
   (
-    {
-      appData,
-      maxRecords,
-      showPagination = true,
-      runsData,
-    }: AppRunsHistoryProps,
+    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
     ref
   ) => {
     const { t } = useTranslation();
@@ -276,13 +271,8 @@ const AppRunsHistory = forwardRef(
     }));
 
     useEffect(() => {
-      if (runsData) {
-        setAppRunsHistoryData(runsData);
-        setIsLoading(false);
-      } else {
-        fetchAppHistory();
-      }
-    }, [fqn, pageSize, runsData]);
+      fetchAppHistory();
+    }, [fqn, pageSize]);
 
     return (
       <Row gutter={[16, 16]}>
