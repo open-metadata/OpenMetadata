@@ -12,23 +12,30 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
-import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import {
+  DATABASE_SERVICE,
+  STORED_PROCEDURE_DETAILS,
+} from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
 
-class TableClass extends EntityClass {
-  tableName: string;
+class StoreProcedureClass extends EntityClass {
+  storeProcedureName: string;
 
   constructor() {
-    const tableName = `cypress-table-${Date.now()}`;
-    super(tableName, DATABASE_SERVICE.entity, EntityType.Table);
+    const storeProcedureName = `cypress-store-procedure-${Date.now()}`;
+    super(
+      storeProcedureName,
+      STORED_PROCEDURE_DETAILS,
+      EntityType.StoreProcedure
+    );
 
-    this.tableName = tableName;
-    this.name = 'Table';
+    this.storeProcedureName = storeProcedureName;
+    this.name = 'Store Procedure';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
-      term: this.tableName,
+      term: this.storeProcedureName,
       serviceName: DATABASE_SERVICE.service.name,
       entity: this.endPoint,
       dataTestId: null,
@@ -48,10 +55,14 @@ class TableClass extends EntityClass {
       createEntityTableViaREST({
         token,
         ...DATABASE_SERVICE,
-        tables: [{ ...DATABASE_SERVICE.entity, name: this.tableName }],
+        storeProcedure: {
+          ...STORED_PROCEDURE_DETAILS,
+          name: this.storeProcedureName,
+        },
+        tables: [],
       });
     });
   }
 }
 
-export default TableClass;
+export default StoreProcedureClass;

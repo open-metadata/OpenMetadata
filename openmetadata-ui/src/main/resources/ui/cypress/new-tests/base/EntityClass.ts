@@ -55,6 +55,7 @@ import { uuid } from '../../constants/constants';
 
 export enum EntityType {
   Table = 'tables',
+  StoreProcedure = 'storedProcedures',
   Topic = 'topics',
   Dashboard = 'dashboards',
   Pipeline = 'pipelines',
@@ -71,11 +72,15 @@ export enum EntityType {
   PipelineService = 'services/pipelineServices',
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
-  Database = 'database',
+  Database = 'databases',
+  DatabaseSchema = 'databaseSchemas',
 }
 
 export const CustomPropertyTypeList = [
+  EntityType.Database,
+  EntityType.DatabaseSchema,
   EntityType.Table,
+  EntityType.StoreProcedure,
   EntityType.Topic,
   EntityType.Dashboard,
   EntityType.Pipeline,
@@ -207,6 +212,10 @@ class EntityClass {
         property: this.markdownPropertyDetails,
       },
     };
+  }
+
+  public getName() {
+    return this.name;
   }
 
   async setToken() {

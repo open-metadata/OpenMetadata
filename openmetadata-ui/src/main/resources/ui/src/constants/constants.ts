@@ -781,10 +781,10 @@ export const ENTITY_PATH = {
   tags: 'tag',
   glossaries: 'glossary',
   searchIndexes: 'searchIndex',
-  storedProcedure: 'storedProcedure',
+  storedProcedures: 'storedProcedure',
   glossaryTerm: 'glossaryTerm',
-  database: 'database',
-  databaseSchema: 'databaseSchema',
+  databases: 'database',
+  databaseSchemas: 'databaseSchema',
 };
 
 export const VALIDATION_MESSAGES = {

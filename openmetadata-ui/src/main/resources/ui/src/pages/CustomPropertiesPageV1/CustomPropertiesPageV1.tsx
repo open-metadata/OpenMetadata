@@ -152,16 +152,16 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.searchIndexes:
         return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.storedProcedure:
+      case ENTITY_PATH.storedProcedures:
         return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.glossaryTerm:
         return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.database:
+      case ENTITY_PATH.databases:
         return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.databaseSchema:
+      case ENTITY_PATH.databaseSchemas:
         return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
 
       default:

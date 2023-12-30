@@ -10,32 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
 import { SERVICE_TYPE } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
 
-class DatabaseServiceClass extends EntityClass {
-  databaseName: string;
+class DatabaseSchemaClass extends EntityClass {
+  databaseSchemaName: string;
 
   constructor() {
-    const databaseName = `cypress-database-service-${Date.now()}`;
-    super(databaseName, DATABASE_SERVICE.entity, EntityType.DatabaseService);
+    const databaseSchemaName = `cypress-database-schema-${Date.now()}`;
+    super(
+      databaseSchemaName,
+      DATABASE_SERVICE.schema,
+      EntityType.DatabaseSchema
+    );
 
-    this.databaseName = databaseName;
-    this.name = 'Database Service';
+    this.databaseSchemaName = databaseSchemaName;
+    this.name = 'Database Schema';
   }
 
   visitEntity() {
+    interceptURL(
+      'GET',
+      `/api/v1/databases/name/*${DATABASE_SERVICE.database.name}?*`,
+      'fetchDatabase'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas/name/*${this.databaseSchemaName}?*`,
+      'fetchDatabaseSchema'
+    );
     visitServiceDetailsPage(
       {
-        name: this.databaseName,
+        name: DATABASE_SERVICE.service.name,
         type: SERVICE_TYPE.Database,
       },
       false
     );
+
+    cy.get(`[data-testid="${DATABASE_SERVICE.database.name}"]`).click();
+    verifyResponseStatusCode('@fetchDatabase', 200);
+
+    cy.get(`[data-testid="${this.databaseSchemaName}"]`).click();
+    verifyResponseStatusCode('@fetchDatabaseSchema', 200);
   }
 
   // Creation
@@ -47,23 +67,16 @@ class DatabaseServiceClass extends EntityClass {
       const token = Object.values(data)[0].oidcIdToken as string;
 
       createEntityTableViaREST({
+        token,
         ...DATABASE_SERVICE,
-        service: { ...DATABASE_SERVICE.service, name: this.databaseName },
-        database: { ...DATABASE_SERVICE.database, service: this.databaseName },
+        tables: [],
         schema: {
           ...DATABASE_SERVICE.schema,
-          database: `${this.databaseName}.${DATABASE_SERVICE.database.name}`,
+          name: this.databaseSchemaName,
         },
-        tables: [
-          {
-            ...DATABASE_SERVICE.entity,
-            databaseSchema: `${this.databaseName}.${DATABASE_SERVICE.database.name}.${DATABASE_SERVICE.schema.name}`,
-          },
-        ],
-        token,
       });
     });
   }
 }
 
-export default DatabaseServiceClass;
+export default DatabaseSchemaClass;

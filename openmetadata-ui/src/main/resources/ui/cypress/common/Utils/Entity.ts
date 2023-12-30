@@ -18,6 +18,92 @@ import {
   verifyResponseStatusCode,
 } from '../common';
 
+/**
+ * create full hierarchy of database service (service > database > schema > tables)
+ */
+export const createEntityTableViaREST = ({
+  service,
+  database,
+  schema,
+  tables,
+  storeProcedure,
+  token,
+}: {
+  service: Cypress.RequestBody;
+  database: Cypress.RequestBody;
+  schema?: Cypress.RequestBody;
+  tables: Cypress.RequestBody[];
+  storeProcedure?: Cypress.RequestBody;
+  token: Cypress.Storable;
+}) => {
+  const createdEntityIds = {
+    databaseId: undefined,
+    databaseSchemaId: undefined,
+  };
+
+  // Create service
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/services/databaseServices`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: service,
+  }).then((response) => {
+    expect(response.status).to.eq(201);
+  });
+
+  // Create Database
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/databases`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: database,
+  }).then((response) => {
+    expect(response.status).to.eq(201);
+
+    createdEntityIds.databaseId = response.body.id;
+  });
+
+  // Create Database Schema
+  schema &&
+    cy
+      .request({
+        method: 'POST',
+        url: `/api/v1/databaseSchemas`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: schema,
+      })
+      .then((response) => {
+        expect(response.status).to.eq(201);
+
+        createdEntityIds.databaseSchemaId = response.body.id;
+      });
+
+  storeProcedure &&
+    cy
+      .request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: storeProcedure,
+      })
+      .then((response) => {
+        expect(response.status).to.eq(201);
+      });
+
+  tables.forEach((body) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/tables`,
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+    });
+  });
+
+  return createdEntityIds;
+};
+
 export const createEntityViaREST = ({
   body,
   endPoint,

@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 
-import { CustomPropertyType } from '../common/Utils/CustomProperty';
-import ContainerClass from './base/ContainerClass';
-import DashboardClass from './base/DashboardClass';
-import MlModelClass from './base/MlModelClass';
-import PipelineClass from './base/PipelineClass';
-import SearchIndexClass from './base/SearchIndexClass';
-import TableClass from './base/TableClass';
-import TopicClass from './base/TopicClass';
+import DashboardServiceClass from './base/DashboardServiceClass';
+import DatabaseServiceClass from './base/DatabaseServiceClass';
+import MessagingServiceClass from './base/MessagingServiceClass';
+import MlModelServiceClass from './base/MlModelServiceClass';
+import PipelineServiceClass from './base/PipelineServiceClass';
+import SearchServiceClass from './base/SearchServiceClass';
+import StorageServiceClass from './base/StorageServiceClass';
 
 const entities = [
-  new TableClass(),
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-];
+  new DatabaseServiceClass(),
+  new MessagingServiceClass(),
+  new DashboardServiceClass(),
+  new PipelineServiceClass(),
+  new MlModelServiceClass(),
+  new StorageServiceClass(),
+  new SearchServiceClass(),
+  // TODO: add tests for metadata service tests
+  //   new MetadataServiceClass(),
+] as const;
+
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
 
@@ -36,7 +38,7 @@ const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
 entities.forEach((entity) => {
-  describe(`${entity.name} page`, () => {
+  describe(`${entity.getName()} page`, () => {
     before(() => {
       cy.login();
 
@@ -45,7 +47,6 @@ entities.forEach((entity) => {
 
     after(() => {
       cy.login();
-
       entity.cleanup();
     });
 
@@ -148,22 +149,6 @@ entities.forEach((entity) => {
 
     it(`Remove inactive annoucement`, () => {
       entity.removeInactiveAnnouncement();
-    });
-
-    Object.values(CustomPropertyType).forEach((type) => {
-      it(`Set ${type} Custom Property `, () => {
-        entity.setCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].value
-        );
-      });
-
-      it(`Update ${type} Custom Property`, () => {
-        entity.updateCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].newValue
-        );
-      });
     });
 
     it(`Soft delete`, () => {

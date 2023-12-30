@@ -280,13 +280,13 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: i18next.t('label.database'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.database',
+          key: 'customAttributes.databases',
           icon: <DatabaseIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.database-schema'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.databaseSchema',
+          key: 'customAttributes.databaseSchemas',
           icon: <SchemaIcon className="side-panel-icons" />,
         },
         {
@@ -298,7 +298,7 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: i18next.t('label.stored-procedure-plural'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.storedProcedure',
+          key: 'customAttributes.storedProcedures',
           icon: <StoredProcedureIcon className="side-panel-icons" />,
         },
         {

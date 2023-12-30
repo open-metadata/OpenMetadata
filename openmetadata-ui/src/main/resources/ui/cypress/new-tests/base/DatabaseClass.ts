@@ -10,31 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import { SERVICE_TYPE } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
 
-class TableClass extends EntityClass {
-  tableName: string;
+class DatabaseClass extends EntityClass {
+  databaseName: string;
 
   constructor() {
-    const tableName = `cypress-table-${Date.now()}`;
-    super(tableName, DATABASE_SERVICE.entity, EntityType.Table);
+    const databaseName = `cypress-database-${Date.now()}`;
+    super(databaseName, DATABASE_SERVICE.database, EntityType.Database);
 
-    this.tableName = tableName;
-    this.name = 'Table';
+    this.databaseName = databaseName;
+    this.name = 'Database';
   }
 
   visitEntity() {
-    visitEntityDetailsPage({
-      term: this.tableName,
-      serviceName: DATABASE_SERVICE.service.name,
-      entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
-    });
+    interceptURL(
+      'GET',
+      `/api/v1/databases/name/*${this.databaseName}?**`,
+      'fetchDatabase'
+    );
+    visitServiceDetailsPage(
+      {
+        name: DATABASE_SERVICE.service.name,
+        type: SERVICE_TYPE.Database,
+      },
+      false
+    );
+
+    cy.get(`[data-testid="${this.databaseName}"]`).click();
+    verifyResponseStatusCode('@fetchDatabase', 200);
   }
 
   // Creation
@@ -48,10 +57,12 @@ class TableClass extends EntityClass {
       createEntityTableViaREST({
         token,
         ...DATABASE_SERVICE,
-        tables: [{ ...DATABASE_SERVICE.entity, name: this.tableName }],
+        database: { ...DATABASE_SERVICE.database, name: this.databaseName },
+        tables: [],
+        schema: undefined,
       });
     });
   }
 }
 
-export default TableClass;
+export default DatabaseClass;
