@@ -634,9 +634,7 @@ class LookerSource(DashboardServiceSource):
         try:
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
-                user = self.metadata.get_user_by_email(dashboard_owner.email)
-                if user:
-                    return EntityReference(id=user.id.__root__, type="user")
+                return self.metadata.get_reference_by_email(dashboard_owner.email)
 
         except Exception as err:
             logger.debug(traceback.format_exc())

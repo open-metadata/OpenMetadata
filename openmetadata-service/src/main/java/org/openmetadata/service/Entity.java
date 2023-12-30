@@ -139,6 +139,7 @@ public final class Entity {
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
+  public static final String TASK = "task";
   public static final String CHART = "chart";
   public static final String APPLICATION = "app";
   public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
@@ -296,7 +297,7 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity {} {}", clazz, entity);
+    LOG.debug("Registering entity {} {}", clazz, entity);
   }
 
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
@@ -308,7 +309,7 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity time series {} {}", clazz, entity);
+    LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
 
   public static void registerResourcePermissions(

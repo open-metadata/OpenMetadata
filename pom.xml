@@ -106,7 +106,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.30</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.14</elasticsearch.version>
+    <elasticsearch.version>7.17.16</elasticsearch.version>
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.19</openapiswagger.version>
@@ -150,6 +150,7 @@
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
+    <picocli.version>4.7.5</picocli.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -479,6 +480,11 @@
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
         <version>2.1.0</version>
+      </dependency>
+      <dependency>
+        <groupId>info.picocli</groupId>
+        <artifactId>picocli</artifactId>
+        <version>${picocli.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->

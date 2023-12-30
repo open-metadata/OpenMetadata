@@ -178,10 +178,6 @@ jest.mock('../../rest/databaseAPI', () => ({
     ),
 }));
 
-jest.mock('../../AppState', () => ({
-  inPageSearchText: '',
-}));
-
 const mockParams = {
   fqn: 'sample_data.ecommerce_db.shopify',
   tab: 'table',

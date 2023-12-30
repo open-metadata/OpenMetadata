@@ -413,6 +413,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 partition_details=self.partition_details,
                 profile_sample_query=self.profile_query,
             )
+            return thread_local.runner
+        thread_local.runner._sample = sample  # pylint: disable=protected-access
         return thread_local.runner
 
     def compute_metrics_in_thread(
@@ -431,7 +433,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 session,
                 metric_func.table,
             )
-            sample = sampler.random_sample()
+            sample = sampler.random_sample(metric_func.column)
             runner = self._create_thread_safe_runner(
                 session,
                 metric_func.table,
@@ -565,7 +567,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         sampler = self._get_sampler(table=kwargs.get("table"))
-        sample = sampler.random_sample()
+        sample = sampler.random_sample(column)
         try:
             return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:
