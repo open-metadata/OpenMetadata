@@ -25,7 +25,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,

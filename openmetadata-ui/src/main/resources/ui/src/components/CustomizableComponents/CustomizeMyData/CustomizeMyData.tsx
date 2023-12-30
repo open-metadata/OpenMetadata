@@ -17,8 +17,7 @@ import { isEmpty, isNil, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import gridBgImg from '../../../assets/img/grid-bg-img.png';
 import {
   GlobalSettingOptions,
@@ -30,7 +29,6 @@ import { Document } from '../../../generated/entity/docStore/document';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
-import { useAuth } from '../../../hooks/authHooks';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -71,7 +69,6 @@ function CustomizeMyData({
   const { currentUser } = useAuthContext();
   const history = useHistory();
   const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
-  const location = useLocation();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
       initialPageData.data?.page?.layout ??
@@ -86,7 +83,6 @@ function CustomizeMyData({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-  const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -275,14 +271,8 @@ function CustomizeMyData({
   }, []);
 
   useEffect(() => {
-    if (
-      ((isAuthDisabled && AppState.users.length) ||
-        !isEmpty(AppState.userDetails)) &&
-      isNil(followedData)
-    ) {
-      fetchMyData();
-    }
-  }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+    fetchMyData();
+  }, []);
 
   return (
     <ActivityFeedProvider>

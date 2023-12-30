@@ -327,29 +327,33 @@ def get_pk_constraint(
     This function overrides to get pk constraint
     """
     pkeys = []
-    tc = ischema.constraints
-    c = ischema.key_constraints.alias("C")
+    tc_ = ischema.constraints
+    c_key_constaint = ischema.key_constraints.alias("C")
 
     # Primary key constraints
-    s = (
-        sql.select(c.c.column_name, tc.c.constraint_type, c.c.constraint_name)
+    query_ = (
+        sql.select(
+            c_key_constaint.c.column_name,
+            tc_.c.constraint_type,
+            c_key_constaint.c.constraint_name,
+        )
         .where(
             sql.and_(
-                tc.c.constraint_name == c.c.constraint_name,
-                tc.c.table_schema == c.c.table_schema,
-                c.c.table_name == tablename,
-                c.c.table_schema == owner,
+                tc_.c.constraint_name == c_key_constaint.c.constraint_name,
+                tc_.c.table_schema == c_key_constaint.c.table_schema,
+                c_key_constaint.c.table_name == tablename,
+                c_key_constaint.c.table_schema == owner,
             ),
         )
-        .order_by(tc.c.constraint_name, c.c.ordinal_position)
+        .order_by(tc_.c.constraint_name, c_key_constaint.c.ordinal_position)
     )
-    cursor = connection.execution_options(future_result=True).execute(s)
+    cursor = connection.execution_options(future_result=True).execute(query_)
     constraint_name = None
     for row in cursor.mappings():
-        if "PRIMARY" in row[tc.c.constraint_type.name]:
+        if "PRIMARY" in row[tc_.c.constraint_type.name]:
             pkeys.append(row["COLUMN_NAME"])
             if constraint_name is None:
-                constraint_name = row[c.c.constraint_name.name]
+                constraint_name = row[c_key_constaint.c.constraint_name.name]
     return {"constrained_columns": pkeys, "name": constraint_name}
 
 
@@ -366,7 +370,7 @@ def get_foreign_keys(
     """
     This function overrides to get foreign key constraint
     """
-    s = (
+    query_ = (
         text(MSSQL_GET_FOREIGN_KEY)
         .bindparams(
             sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
@@ -399,7 +403,7 @@ def get_foreign_keys(
 
     fkeys = util.defaultdict(fkey_rec)
 
-    for r in connection.execute(s).fetchall():
+    for row_ in connection.execute(query_).fetchall():
         (
             _,  # constraint schema
             rfknm,
@@ -414,7 +418,7 @@ def get_foreign_keys(
             _,  # match rule
             fkuprule,
             fkdelrule,
-        ) = r
+        ) = row_
 
         rec = fkeys[rfknm]
         rec["name"] = rfknm
@@ -449,7 +453,7 @@ def get_table_names(
     self, connection, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument
     tables = ischema.tables
-    s = (
+    query_ = (
         sql.select(tables.c.table_name)
         .where(
             sql.and_(
@@ -459,7 +463,7 @@ def get_table_names(
         )
         .order_by(tables.c.table_name)
     )
-    table_names = [r[0] for r in connection.execute(s)]
+    table_names = [r[0] for r in connection.execute(query_)]
     return table_names
 
 
@@ -469,7 +473,7 @@ def get_view_names(
     self, connection, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument
     tables = ischema.tables
-    s = (
+    query_ = (
         sql.select(tables.c.table_name)
         .where(
             sql.and_(
@@ -479,5 +483,5 @@ def get_view_names(
         )
         .order_by(tables.c.table_name)
     )
-    view_names = [r[0] for r in connection.execute(s)]
+    view_names = [r[0] for r in connection.execute(query_)]
     return view_names

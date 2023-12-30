@@ -18,6 +18,7 @@ export interface UserTags {
   bordered?: boolean;
   size?: UserTagSize;
   className?: string;
+  isTeam?: boolean;
 }
 
 export enum UserTagSize {
