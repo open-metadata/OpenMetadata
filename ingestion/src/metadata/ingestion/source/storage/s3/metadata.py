@@ -178,15 +178,15 @@ class S3Source(StorageServiceSource):
         self, container_details: S3ContainerDetails
     ) -> Iterable[Either[CreateContainerRequest]]:
         container_request = CreateContainerRequest(
-                name=container_details.name,
-                prefix=container_details.prefix,
-                numberOfObjects=container_details.number_of_objects,
-                size=container_details.size,
-                dataModel=container_details.data_model,
-                service=self.context.objectstore_service,
-                parent=container_details.parent,
-                sourceUrl=container_details.sourceUrl,
-                fileFormats=container_details.file_formats,
+            name=container_details.name,
+            prefix=container_details.prefix,
+            numberOfObjects=container_details.number_of_objects,
+            size=container_details.size,
+            dataModel=container_details.data_model,
+            service=self.context.objectstore_service,
+            parent=container_details.parent,
+            sourceUrl=container_details.sourceUrl,
+            fileFormats=container_details.file_formats,
         )
         yield Either(right=container_request)
         self.register_record(container_request=container_request)

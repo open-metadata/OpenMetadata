@@ -14,7 +14,6 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
-from metadata.utils import fqn
 from pandas import DataFrame
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
@@ -53,6 +52,7 @@ from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
+from metadata.utils import fqn
 from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.storage_metadata_config import (
@@ -171,15 +171,19 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
-        
+
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """
         Mark the container record as scanned and update
         the storage_source_state
         """
-        parent_container = self.metadata.get_by_id(
-            entity=Container, entity_id=container_request.parent.id
-        ).fullyQualifiedName.__root__ if container_request.parent else None
+        parent_container = (
+            self.metadata.get_by_id(
+                entity=Container, entity_id=container_request.parent.id
+            ).fullyQualifiedName.__root__
+            if container_request.parent
+            else None
+        )
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
@@ -193,7 +197,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
-    
+
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""
         if self.source_config.markDeletedContainers:

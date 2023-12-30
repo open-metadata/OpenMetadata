@@ -21,7 +21,6 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from metadata.generated.schema.entity.data.container import Container
 from pydantic import BaseModel, Field
 
 from metadata.antlr.split_listener import FqnSplitListener
@@ -29,6 +28,7 @@ from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
@@ -297,8 +297,10 @@ def _(
         raise FQNBuildingException(
             f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
         )
-    return _build(parent_container, container_name, quote=False) if parent_container else (
-        _build(service_name, container_name)
+    return (
+        _build(parent_container, container_name, quote=False)
+        if parent_container
+        else (_build(service_name, container_name))
     )
 
 
