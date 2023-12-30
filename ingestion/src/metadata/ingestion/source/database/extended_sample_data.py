@@ -211,7 +211,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
                     self.metadata,
                     entity_type=DashboardDataModel,
                     service_name=self.dashboard_service.name.__root__,
-                    data_model_name=data_model_request  .name.__root__,
+                    data_model_name=data_model_request.name.__root__,
                 )
                 self.store_data_model_fqn.append(data_model_entity_fqn)
 
