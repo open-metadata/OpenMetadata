@@ -99,7 +99,8 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
     'testSuite'
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
-  cy.get('[data-testid="app-bar-item-data-quality"]').click();
+  cy.get('[data-testid="data-quality"]').click();
+  cy.get('[data-testid="app-bar-item-data-contract"]').click();
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
   clickOnTestSuite(testSuiteName);
@@ -320,10 +321,120 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Test case updated successfully.')
       .should('be.visible');
 
-    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
-      .should('be.visible')
-      .click();
+    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`).click();
     cy.contains('columnName: test').scrollIntoView().should('exist');
+  });
+
+  it("Acknowledge table test case's failure", () => {
+    goToProfilerTab();
+
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
+      .find('.last-run-box.failed')
+      .should('be.visible');
+    cy.get('.ant-table-row-level-0').should('contain', 'New');
+    cy.get(`[data-testid="update-status-${NEW_TABLE_TEST_CASE.name}"]`).click();
+    cy.get('[data-testid="test-case-resolution-status-type"]').click();
+    cy.get('[title="Ack"]').click();
+    interceptURL(
+      'POST',
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+      'updateTestCaseIncidentStatus'
+    );
+    cy.get('#update-status-button').click();
+    verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+    cy.get('.ant-table-row-level-0').should('contain', 'Ack');
+  });
+
+  it('Assign incident to user', () => {
+    cy.get("[data-testid='data-quality'").click();
+    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
+      'be.visible'
+    );
+    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}-status"]`)
+      .find(`[data-testid="edit-resolution-icon"]`)
+      .click();
+    cy.get(`[data-testid="test-case-resolution-status-type"]`).click();
+    cy.get(`[title="Assigned"]`).click();
+    cy.get('#testCaseResolutionStatusDetails_assignee').should('be.visible');
+    interceptURL(
+      'GET',
+      '/api/v1/search/suggest?q=Aaron%20Johnson&index=user_search_index',
+      'searchAssignee'
+    );
+    cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
+    verifyResponseStatusCode('@searchAssignee', 200);
+    cy.get('[data-testid="assignee-option-Aaron Johnson"]').click();
+    interceptURL(
+      'POST',
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+      'updateTestCaseIncidentStatus'
+    );
+    cy.get('#update-status-button').click();
+    verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+    cy.get(
+      `[data-testid="${NEW_TABLE_TEST_CASE.name}-status"] [data-testid="badge-container"]`
+    ).should('contain', 'Assigned');
+  });
+
+  it('Re-assign incident to user', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testCases/name/*?fields=*',
+      'getTestCase'
+    );
+    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+    cy.get("[data-testid='data-quality'").click();
+    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
+    verifyResponseStatusCode('@getTestCase', 200);
+    cy.get('[data-testid="issue"]').click();
+    verifyResponseStatusCode('@getTaskFeed', 200);
+    cy.get('[data-testid="reject-task"]').scrollIntoView().click();
+    interceptURL(
+      'GET',
+      '/api/v1/search/suggest?q=admin&index=*user_search_index*',
+      'searchAssignee'
+    );
+    cy.get('[data-testid="select-assignee"]').click().type('admin');
+    verifyResponseStatusCode('@searchAssignee', 200);
+    cy.get('[data-testid="assignee-option-admin"]').click();
+    interceptURL('PUT', '/api/v1/feed/tasks/*/close', 'closeTask');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@closeTask', 200);
+    cy.clickOnLogo();
+    cy.get('[id*="tab-tasks"]').click();
+    cy.get('[data-testid="task-feed-card"]')
+      .contains(NEW_TABLE_TEST_CASE.name)
+      .scrollIntoView()
+      .should('be.visible');
+  });
+
+  it('Resolve incident', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testCases/name/*?fields=*',
+      'getTestCase'
+    );
+    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+    cy.get("[data-testid='data-quality'").click();
+    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
+    verifyResponseStatusCode('@getTestCase', 200);
+    cy.get('[data-testid="issue"]').click();
+    verifyResponseStatusCode('@getTaskFeed', 200);
+    cy.get('[data-testid="approve-task"]').scrollIntoView().click();
+    cy.get('#testCaseFailureReason').click();
+    cy.get('[title="Missing Data"]').click();
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .click()
+      .type('test');
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@resolveTask', 200);
   });
 
   it('Delete table test case', () => {
@@ -551,7 +662,8 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'getTestCase'
     );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
+    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-contract"]').click();
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="add-test-suite-btn"]').click();
@@ -790,7 +902,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
+    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="app-bar-item-data-contract"]').click();
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);
     interceptURL(

@@ -62,7 +62,9 @@ const TestCaseIncidentManagerStatus = ({
           `${formatDate(data.updatedAt)}
                 ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
         }>
-        <Space align="center">
+        <Space
+          align="center"
+          data-testid={`${data.testCaseReference?.name}-status`}>
           <AppBadge
             className={classNames('resolution', statusType.toLocaleLowerCase())}
             label={statusType}

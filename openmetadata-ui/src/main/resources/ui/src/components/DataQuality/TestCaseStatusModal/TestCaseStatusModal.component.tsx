@@ -141,6 +141,7 @@ export const TestCaseStatusModal = ({
       cancelText={t('label.cancel')}
       closable={false}
       okButtonProps={{
+        id: 'update-status-button',
         form: 'update-status-form',
         htmlType: 'submit',
         loading: isLoading,
@@ -169,6 +170,7 @@ export const TestCaseStatusModal = ({
             },
           ]}>
           <Select
+            data-testid="test-case-resolution-status-type"
             options={statusOptions}
             placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
@@ -192,6 +194,7 @@ export const TestCaseStatusModal = ({
                 },
               ]}>
               <Select
+                data-testid="test-case-failure-reason"
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.reason'),
                 })}>

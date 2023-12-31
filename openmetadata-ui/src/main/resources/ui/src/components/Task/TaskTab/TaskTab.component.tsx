@@ -690,6 +690,7 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okText={t('label.submit')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
           width={768}
@@ -813,6 +814,7 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okText={t('label.submit')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${
             taskDetails?.id
