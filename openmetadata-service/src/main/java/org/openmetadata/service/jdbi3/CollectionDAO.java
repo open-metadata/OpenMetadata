@@ -1552,19 +1552,18 @@ public interface CollectionDAO {
       return false;
     }
 
-    @SqlQuery(
-        "SELECT json FROM event_subscription_extension where id = :id AND extension = :extension")
+    @SqlQuery("SELECT json FROM change_event_consumers where id = :id AND extension = :extension")
     String getSubscriberOffset(@Bind("id") String id, @Bind("extension") String extension);
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO event_subscription_extension(id, extension, jsonSchema, json) "
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
                 + "VALUES (:id, :extension, :jsonSchema, :json)"
                 + "ON DUPLICATE KEY UPDATE json = :json, jsonSchema = :jsonSchema",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO event_subscription_extension(id, extension, jsonSchema, json) "
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
                 + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
                 + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
         connectionType = POSTGRES)

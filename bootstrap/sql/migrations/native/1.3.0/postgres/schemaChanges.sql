@@ -67,7 +67,7 @@ TRUNCATE automations_workflow;
 ALTER TABLE change_event ADD COLUMN offset SERIAL PRIMARY KEY;
 
 -- Add new table for event subscription extensions
-CREATE TABLE IF NOT EXISTS event_subscription_extension (
+CREATE TABLE IF NOT EXISTS change_event_consumers (
     id VARCHAR(36) NOT NULL,
     extension VARCHAR(256) NOT NULL,
     jsonSchema VARCHAR(256) NOT NULL,
@@ -78,4 +78,4 @@ CREATE TABLE IF NOT EXISTS event_subscription_extension (
 
 DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
 
-ALTER TABLE event_subscription_extension ADD COLUMN offset SERIAL;
+ALTER TABLE change_event_consumers ADD COLUMN offset SERIAL;

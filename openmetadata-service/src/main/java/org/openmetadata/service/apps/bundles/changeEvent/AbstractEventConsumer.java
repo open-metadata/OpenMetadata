@@ -120,7 +120,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
         if (event.getChangeDescription() != null) {
           filteredEvents.add(event);
         } else {
-          LOG.info(
+          LOG.debug(
               "Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}",
               event);
         }
