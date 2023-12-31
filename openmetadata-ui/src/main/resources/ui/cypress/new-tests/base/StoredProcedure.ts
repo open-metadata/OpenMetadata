@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { visitEntityDetailsPage } from '../../common/common';
-import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import {
+  createEntityTableViaREST,
+  deleteEntityViaREST,
+} from '../../common/Utils/Entity';
 import {
   DATABASE_SERVICE,
   STORED_PROCEDURE_DETAILS,
@@ -60,6 +63,19 @@ class StoreProcedureClass extends EntityClass {
           name: this.storeProcedureName,
         },
         tables: [],
+      });
+    });
+  }
+
+  // Cleanup
+  override cleanup() {
+    super.cleanup();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken as string;
+      deleteEntityViaREST({
+        token,
+        endPoint: EntityType.DatabaseService,
+        entityName: DATABASE_SERVICE.service.name,
       });
     });
   }

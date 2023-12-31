@@ -12,7 +12,10 @@
  */
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
-import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import {
+  createEntityTableViaREST,
+  deleteEntityViaREST,
+} from '../../common/Utils/Entity';
 import { SERVICE_TYPE } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
@@ -60,6 +63,19 @@ class DatabaseClass extends EntityClass {
         database: { ...DATABASE_SERVICE.database, name: this.databaseName },
         tables: [],
         schema: undefined,
+      });
+    });
+  }
+
+  // Cleanup
+  override cleanup() {
+    super.cleanup();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken as string;
+      deleteEntityViaREST({
+        token,
+        endPoint: EntityType.DatabaseService,
+        entityName: DATABASE_SERVICE.service.name,
       });
     });
   }

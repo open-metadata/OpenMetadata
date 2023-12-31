@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { visitEntityDetailsPage } from '../../common/common';
-import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import {
+  createEntityTableViaREST,
+  deleteEntityViaREST,
+} from '../../common/Utils/Entity';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
 
@@ -49,6 +52,19 @@ class TableClass extends EntityClass {
         token,
         ...DATABASE_SERVICE,
         tables: [{ ...DATABASE_SERVICE.entity, name: this.tableName }],
+      });
+    });
+  }
+
+  // Cleanup
+  override cleanup() {
+    super.cleanup();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken as string;
+      deleteEntityViaREST({
+        token,
+        endPoint: EntityType.DatabaseService,
+        entityName: DATABASE_SERVICE.service.name,
       });
     });
   }
