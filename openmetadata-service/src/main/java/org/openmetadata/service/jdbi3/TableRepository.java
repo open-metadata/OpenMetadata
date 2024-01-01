@@ -14,7 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -23,10 +27,13 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
+import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -39,10 +46,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -68,6 +78,10 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -166,13 +180,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setInheritedFields(Table table, Fields fields) {
+  public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
         Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
     inheritOwner(table, fields, schema);
     inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
-    return table.withRetentionPeriod(
+    table.withRetentionPeriod(
         table.getRetentionPeriod() == null
             ? schema.getRetentionPeriod()
             : table.getRetentionPeriod());
@@ -723,6 +737,21 @@ public class TableRepository extends EntityRepository<Table> {
     return super.getTaskWorkflow(threadContext);
   }
 
+  @Override
+  public String exportToCsv(String name, String user) throws IOException {
+    // Validate table
+    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    return new TableCsv(table, user).exportCsv(listOf(table));
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
+      throws IOException {
+    // Validate table
+    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    return new TableCsv(table, user).importCsv(csv, dryRun);
+  }
+
   static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
     private final Column column;
 
@@ -987,7 +1016,7 @@ public class TableRepository extends EntityRepository<Table> {
                 rethrowFunction(
                     er ->
                         Triple.of(
-                            FullyQualifiedName.getColumnName(er.getLeft()),
+                            getColumnName(er.getLeft()),
                             er.getMiddle(),
                             JsonUtils.readObjects(er.getRight(), DailyCount.class))))
             .toList();
@@ -1083,6 +1112,140 @@ public class TableRepository extends EntityRepository<Table> {
           added,
           deleted,
           EntityUtil.tableConstraintMatch);
+    }
+  }
+
+  public static class TableCsv extends EntityCsv<Table> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    public static final List<CsvHeader> COLUMN_HEADERS =
+        resetRequiredColumns(DOCUMENTATION.getHeaders(), listOf("name"));
+
+    private final Table table;
+
+    TableCsv(Table table, String user) {
+      super(TABLE, HEADERS, user);
+      this.table = table;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // column.fullyQualifiedName, column.displayName, column.description, column.dataTypeDisplay,
+      // column.tags
+      if (processRecord) {
+        table
+            .withName(csvRecord.get(0))
+            .withDisplayName(csvRecord.get(1))
+            .withDescription(csvRecord.get(2))
+            .withOwner(getOwner(printer, csvRecord, 3))
+            .withTags(getTagLabels(printer, csvRecord, 4))
+            .withRetentionPeriod(csvRecord.get(5))
+            .withSourceUrl(csvRecord.get(6))
+            .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+        ImportResult importResult = updateColumn(printer, csvRecord);
+        if (importResult.result().equals(IMPORT_FAILED)) {
+          importFailure(printer, importResult.details(), csvRecord);
+        }
+      }
+      List<ImportResult> importResults = new ArrayList<>();
+      updateColumns(printer, csvRecords, importResults);
+      if (processRecord) {
+        createEntity(printer, csvRecord, table);
+      }
+      for (ImportResult importResult : importResults) {
+        if (importResult.result().equals(IMPORT_SUCCESS)) {
+          importSuccess(printer, importResult.record(), importResult.details());
+        } else {
+          importFailure(printer, importResult.details(), importResult.record());
+        }
+      }
+    }
+
+    public void updateColumns(
+        CSVPrinter printer, List<CSVRecord> csvRecords, List<ImportResult> results)
+        throws IOException {
+      while (recordIndex < csvRecords.size() && csvRecords.get(0) != null) { // Column records
+        CSVRecord csvRecord = getNextRecord(printer, COLUMN_HEADERS, csvRecords);
+        results.add(updateColumn(printer, csvRecord));
+      }
+    }
+
+    public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+      if (!processRecord) {
+        return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
+      }
+      String columnFqn = csvRecord.get(8);
+      Column column = findColumn(table.getColumns(), columnFqn);
+      if (column == null) {
+        processRecord = false;
+        return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(8, columnFqn));
+      }
+      column.withDisplayName(csvRecord.get(9));
+      column.withDescription(csvRecord.get(10));
+      column.withDataTypeDisplay(csvRecord.get(11));
+      column.withTags(getTagLabels(printer, csvRecord, 12));
+      return new ImportResult(IMPORT_SUCCESS, csvRecord, ENTITY_UPDATED);
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Table entity) {
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // column.fullyQualifiedName, column.displayName, column.description, column.dataTypeDisplay,
+      // column.tags
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwner(recordList, entity.getOwner());
+      addTagLabels(recordList, entity.getTags());
+      addField(recordList, entity.getRetentionPeriod());
+      addField(recordList, entity.getSourceUrl());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addRecord(csvFile, recordList, table.getColumns().get(0), false);
+
+      for (int i = 1; i < entity.getColumns().size(); i++) {
+        addRecord(csvFile, new ArrayList<>(), table.getColumns().get(1), true);
+      }
+    }
+
+    private void addRecord(
+        CsvFile csvFile, List<String> recordList, Column column, boolean emptyTableDetails) {
+      if (emptyTableDetails) {
+        for (int i = 0; i < 8; i++) {
+          addField(recordList, (String) null); // Add empty fields for table information
+        }
+      }
+      addField(
+          recordList,
+          getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName()));
+      addField(recordList, column.getDisplayName());
+      addField(recordList, column.getDescription());
+      addField(recordList, column.getDataTypeDisplay());
+      addTagLabels(recordList, column.getTags());
+      addRecord(csvFile, recordList);
+      listOrEmpty(column.getChildren())
+          .forEach(c -> addRecord(csvFile, new ArrayList<>(), c, true));
+    }
+
+    private Column findColumn(List<Column> columns, String columnFqn) {
+      for (Column c : listOrEmpty(columns)) {
+        String tableFqn = table.getFullyQualifiedName();
+        Column column =
+            getLocalColumnName(tableFqn, c.getFullyQualifiedName()).equals(columnFqn)
+                ? c
+                : findColumn(c.getChildren(), columnFqn);
+
+        if (column != null) {
+          return column;
+        }
+      }
+      return null;
     }
   }
 }

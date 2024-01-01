@@ -127,12 +127,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTerm setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
+  public void setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
     EntityInterface parent = getParentEntity(glossaryTerm, "owner,domain,reviewers");
     inheritOwner(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
-    return glossaryTerm;
   }
 
   private Integer getUsageCount(GlossaryTerm term) {

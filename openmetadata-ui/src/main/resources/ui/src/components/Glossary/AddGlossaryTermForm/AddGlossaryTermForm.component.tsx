@@ -31,6 +31,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -326,6 +327,7 @@ const AddGlossaryTermForm = ({
     type: FieldTypes.USER_MULTI_SELECT,
     props: {
       hasPermission: true,
+      filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },
       children: (
         <Button
@@ -432,7 +434,8 @@ const AddGlossaryTermForm = ({
           {owner && (
             <div className="m-y-sm" data-testid="owner-container">
               <UserTag
-                id={owner.id}
+                id={owner.name ?? owner.id}
+                isTeam={owner.type === UserTeam.Team}
                 name={getEntityName(owner)}
                 size={UserTagSize.small}
               />
@@ -445,7 +448,7 @@ const AddGlossaryTermForm = ({
             <Space wrap data-testid="reviewers-container" size={[8, 8]}>
               {reviewersList.map((d) => (
                 <UserTag
-                  id={d.id}
+                  id={d.name ?? d.id}
                   key={d.id}
                   name={getEntityName(d)}
                   size={UserTagSize.small}

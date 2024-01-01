@@ -173,34 +173,64 @@ def bigquery_table_construct(runner: QueryRunner, **kwargs):
     Args:
         runner (QueryRunner): query runner object
     """
+    conn_config = kwargs.get("conn_config")
+    conn_config = cast(BigQueryConnection, conn_config)
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
+        project_id = conn_config.credentials.gcpConfig.projectId.__root__
     except AttributeError:
         raise AttributeError(ERROR_MSG)
 
-    conn_config = kwargs.get("conn_config")
-    conn_config = cast(BigQueryConnection, conn_config)
-
-    table_storage = _build_table(
-        "TABLE_STORAGE", f"region-{conn_config.usageLocation}.INFORMATION_SCHEMA"
-    )
     col_names, col_count = _get_col_names_and_count(runner.table)
-    columns = [
-        Column("total_rows").label("rowCount"),
-        Column("total_logical_bytes").label("sizeInBytes"),
-        Column("creation_time").label("createDateTime"),
-        col_names,
-        col_count,
-    ]
 
-    where_clause = [
-        Column("table_schema") == schema_name,
-        Column("table_name") == table_name,
-    ]
+    def table_storage():
+        """Fall back method if retrieving table metadata from`__TABLES__` fails"""
+        table_storage = _build_table(
+            "TABLE_STORAGE", f"region-{conn_config.usageLocation}.INFORMATION_SCHEMA"
+        )
 
-    query = _build_query(columns, table_storage, where_clause)
+        columns = [
+            Column("total_rows").label("rowCount"),
+            Column("total_logical_bytes").label("sizeInBytes"),
+            Column("creation_time").label("createDateTime"),
+            col_names,
+            col_count,
+        ]
 
-    return runner._session.execute(query).first()
+        where_clause = [
+            Column("project_id") == project_id,
+            Column("table_schema") == schema_name,
+            Column("table_name") == table_name,
+        ]
+
+        query = _build_query(columns, table_storage, where_clause)
+
+        return runner._session.execute(query).first()
+
+    def tables():
+        """retrieve table metadata from `__TABLES__`"""
+        table_meta = _build_table("__TABLES__", f"{project_id}.{schema_name}")
+        columns = [
+            Column("row_count").label("rowCount"),
+            Column("size_bytes").label("sizeInBytes"),
+            Column("creation_time").label("createDateTime"),
+            col_names,
+            col_count,
+        ]
+        where_clause = [
+            Column("project_id") == project_id,
+            Column("dataset_id") == schema_name,
+            Column("table_id") == table_name,
+        ]
+
+        query = _build_query(columns, table_meta, where_clause)
+        return runner._session.execute(query).first()
+
+    try:
+        return tables()
+    except Exception as exc:
+        logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")
+        return table_storage()
 
 
 def clickhouse_table_construct(runner: QueryRunner, **kwargs):
