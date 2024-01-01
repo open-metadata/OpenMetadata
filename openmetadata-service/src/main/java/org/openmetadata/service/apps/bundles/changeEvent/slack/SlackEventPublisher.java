@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.util.JsonUtils;
@@ -73,10 +74,11 @@ public class SlackEventPublisher extends AbstractEventConsumer {
         postWebhookMessage(this, actionTarget, slackMessage);
       }
     } catch (Exception e) {
-      LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
-      throw new EventPublisherException(
-          String.format("Failed to publish event %s to slack due to %s ", event, e.getMessage()),
-          event);
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              SLACK_WEBHOOK, event, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message, event);
     }
   }
 

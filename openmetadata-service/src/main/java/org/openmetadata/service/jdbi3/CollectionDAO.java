@@ -1572,6 +1572,21 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, (:json :: jsonb)) "
+                + "DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void upsertFailedEvent(
+        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {

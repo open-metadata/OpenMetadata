@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
@@ -267,19 +266,5 @@ public final class AlertUtil {
       return null;
     }
     return tClass.cast(value);
-  }
-
-  public static <T> T getOrDefaultFromQtzJobMap(
-      JobDataMap dataMap, String key, Class<T> tClass, UnaryOperator<String> defaultSupplier) {
-    if (dataMap.containsKey(key)) {
-      return tClass.cast(dataMap.get(key));
-    } else {
-      return tClass.cast(defaultSupplier.apply(key));
-    }
-  }
-
-  public static JobDataMap putValueInQtzJobMap(JobDataMap dataMap, String key, Object obj) {
-    dataMap.put(key, obj);
-    return dataMap;
   }
 }

@@ -18,14 +18,19 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AW
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvent;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.BiPredicate;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
+import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -43,6 +48,8 @@ import org.quartz.PersistJobDataAfterExecution;
 @DisallowConcurrentExecution
 @PersistJobDataAfterExecution
 public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Job {
+  public static final BiPredicate<FailedEvent, FailedEvent> eventMatch =
+      (f1, f2) -> f1.getChangeEvent().equals(f2.getChangeEvent());
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   private static final String OFFSET_EXTENSION = "eventSubscription.Offset";
@@ -87,14 +94,49 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
         "Failed in for Publisher : {} , Change Event : {} ",
         eventSubscription.getName(),
         ex.getChangeEvent());
-    // Failed Event to be stored in Database
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            FAILED_EVENT_EXTENSION,
-            "failedChangeEvent",
-            JsonUtils.pojoToJson(ex.getChangeEvent()));
+
+    FailedEvent failedEvent =
+        new FailedEvent()
+            .withChangeEvent(ex.getChangeEvent())
+            .withReason(ex.getMessage())
+            .withRetriesLeft(eventSubscription.getRetries())
+            .withTimestamp(System.currentTimeMillis());
+
+    // Check in Qtz Map
+    Set<FailedEvent> failedEventsList =
+        JsonUtils.convertValue(
+            jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION), new TypeReference<>() {});
+    if (failedEventsList == null) {
+      failedEventsList = new HashSet<>();
+    }
+
+    // Test If the Failing Event is present in the List
+    boolean removeChangeEvent =
+        failedEventsList.removeIf(
+            (failedEvent1) -> {
+              boolean matched = eventMatch.test(failedEvent1, failedEvent);
+              if (matched) {
+                failedEvent.withRetriesLeft(failedEvent1.getRetriesLeft() - 1);
+              }
+              return matched;
+            });
+
+    // Check if the event was removed
+    if (removeChangeEvent) {
+      if (failedEvent.getRetriesLeft() == 0) {
+        // If the Retries are exhausted, then remove the Event from the List to DLQ
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .upsertFailedEvent(
+                eventSubscription.getId().toString(),
+                FAILED_EVENT_EXTENSION,
+                JsonUtils.pojoToJson(failedEvent.withRetriesLeft(0)));
+      } else {
+        failedEvent.withRetriesLeft(failedEvent.getRetriesLeft() - 1);
+      }
+    }
+    failedEventsList.add(failedEvent);
+    jobDetail.getJobDataMap().put(FAILED_EVENT_EXTENSION, failedEventsList);
   }
 
   private int loadInitialOffset() {
@@ -245,10 +287,25 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
 
     // Poll Events from Change Event Table
     List<ChangeEvent> batch = pollEvents(offset, 100);
+    int batchSize = batch.size();
+
+    // Retry Failed Events
+    Set<FailedEvent> failedEventsList =
+        (HashSet<FailedEvent>) jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION);
+    if (failedEventsList != null) {
+      List<ChangeEvent> failedChangeEvents =
+          failedEventsList.stream()
+              .filter(failedEvent -> failedEvent.getRetriesLeft() > 0)
+              .map(FailedEvent::getChangeEvent)
+              .toList();
+      batch.addAll(failedChangeEvents);
+    }
+
+    // Publish Events
     publishEvents(batch);
 
     // Commit the Offset
-    offset += batch.size();
+    offset += batchSize;
     commit(jobExecutionContext);
   }
 
