@@ -15,7 +15,6 @@ import { RightOutlined, SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
 import React, {
   FC,
   memo,
@@ -37,15 +36,14 @@ import {
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-} from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSelectedValuesFromQuickFilter } from '../../../utils/Explore.utils';
+import {
+  getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
+} from '../../../utils/Explore.utils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
@@ -170,30 +168,7 @@ const CustomControls: FC<ControlProps> = ({
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must: QueryFieldInterface[] = [];
-    data.forEach((filter) => {
-      if (!isEmpty(filter.value)) {
-        const should: QueryFieldValueInterface[] = [];
-        if (filter.value) {
-          filter.value.forEach((filterValue) => {
-            const term: Record<string, string> = {};
-            term[filter.key] = filterValue.key;
-            should.push({ term });
-          });
-        }
-
-        must.push({
-          bool: { should },
-        });
-      }
-    });
-
-    const quickFilterQuery = isEmpty(must)
-      ? undefined
-      : {
-          query: { bool: { must } },
-        };
-
+    const quickFilterQuery = getQuickFilterQuery(data);
     onQueryFilterUpdate(JSON.stringify(quickFilterQuery));
   };
 

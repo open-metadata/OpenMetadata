@@ -49,7 +49,7 @@ import {
   ColumnLineage,
   EntityReference,
 } from '../../generated/type/entityLineage';
-import { getLineageDataByFQN } from '../../rest/lineageAPI';
+import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   createEdges,
@@ -131,7 +131,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
-  // const [entityFqn, setEntityFqn] = useState('');
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
@@ -801,6 +800,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [selectedEdge, entityLineage]
   );
 
+  const onEdgeDescriptionUpdate = useCallback(
+    async (updatedEdgeDetails: AddLineage) => {
+      try {
+        await updateLineageEdge(updatedEdgeDetails);
+        // Refresh Edge
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [edges, entityLineage, selectedEdge]
+  );
+
   const onColumnEdgeRemove = useCallback(() => {
     setShowDeleteModal(true);
   }, []);
@@ -943,6 +954,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               setIsDrawerOpen(false);
               setSelectedEdge(undefined);
             }}
+            onEdgeDescriptionUpdate={onEdgeDescriptionUpdate}
           />
         ) : (
           <EntityInfoDrawer

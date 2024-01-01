@@ -239,7 +239,7 @@ export const getNewLineageConnectionDetails = (
   selectedPipeline: EntityReference | undefined
 ) => {
   const { fromEntity, toEntity, sqlQuery, columns } =
-    selectedEdgeValue?.data.edge;
+    selectedEdgeValue?.data.edge ?? {};
   const updatedLineageDetails: LineageDetails = {
     sqlQuery: sqlQuery ?? '',
     columnsLineage: columns ?? [],
@@ -782,7 +782,7 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     columns = [],
     description = '',
     pipeline,
-    source = '',
+    source,
   } = edge.data?.edge || {};
 
   return {

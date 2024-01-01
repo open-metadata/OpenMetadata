@@ -22,6 +22,7 @@ import DescriptionV1 from '../../../components/common/EntityDescription/Descript
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
@@ -121,18 +122,19 @@ const EdgeInfoDrawer = ({
     async (updatedHTML: string) => {
       if (edgeDescription !== updatedHTML && edgeEntity) {
         const lineageDetails = {
-          ...edgeEntity.lineageDetails,
+          ...getLineageDetailsObject(edgeEntity),
           description: updatedHTML,
         };
+
         const updatedEdgeDetails = {
           edge: {
             fromEntity: {
-              id: edgeEntity.fromEntity,
-              type: edge.data.sourceType,
+              id: edgeEntity.fromEntity.id,
+              type: edgeEntity.fromEntity.type,
             },
             toEntity: {
-              id: edgeEntity.toEntity,
-              type: edge.data.sourceType,
+              id: edgeEntity.toEntity.id,
+              type: edgeEntity.toEntity.type,
             },
             lineageDetails,
           },
