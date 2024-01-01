@@ -79,7 +79,7 @@
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.16.0</jackson.version>
     <dropwizard.version>2.1.11</dropwizard.version>
-    <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
+    <dropwizard-jdbi3.version>2.1.10</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
