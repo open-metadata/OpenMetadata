@@ -291,7 +291,8 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
 
     // Retry Failed Events
     Set<FailedEvent> failedEventsList =
-        (HashSet<FailedEvent>) jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION);
+        JsonUtils.convertValue(
+            jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION), new TypeReference<>() {});
     if (failedEventsList != null) {
       List<ChangeEvent> failedChangeEvents =
           failedEventsList.stream()
