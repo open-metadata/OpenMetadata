@@ -28,7 +28,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -54,11 +53,11 @@ public class GenericPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(List<ChangeEvent> changeEvents) throws EventPublisherException {
+  public void sendAlert(ChangeEvent event) {
     long attemptTime = System.currentTimeMillis();
     try {
       // Post Message to default
-      String json = JsonUtils.pojoToJson(changeEvents);
+      String json = JsonUtils.pojoToJson(event);
       if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
@@ -69,13 +68,11 @@ public class GenericPublisher extends AbstractEventConsumer {
       }
 
       // Post to Generic Webhook with Actions
-      for (ChangeEvent event : changeEvents) {
-        String eventJson = JsonUtils.pojoToJson(event);
-        List<Invocation.Builder> targets =
-            getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, event);
-        for (Invocation.Builder actionTarget : targets) {
-          postWebhookMessage(this, actionTarget, eventJson);
-        }
+      String eventJson = JsonUtils.pojoToJson(event);
+      List<Invocation.Builder> targets =
+          getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, event);
+      for (Invocation.Builder actionTarget : targets) {
+        postWebhookMessage(this, actionTarget, eventJson);
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
@@ -83,6 +80,7 @@ public class GenericPublisher extends AbstractEventConsumer {
         LOG.warn(
             "Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
         setErrorStatus(attemptTime, 400, "UnknownHostException");
+
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);
       }

@@ -16,18 +16,20 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.ACTIVE;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
+import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.errors.RetriableException;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.DisallowConcurrentExecution;
@@ -35,13 +37,17 @@ import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.PersistJobDataAfterExecution;
 
 @Slf4j
 @DisallowConcurrentExecution
+@PersistJobDataAfterExecution
 public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Job {
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   private static final String OFFSET_EXTENSION = "eventSubscription.Offset";
+  private static final String METRICS_EXTENSION = "eventSubscription.metrics";
+  private static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
   protected static final int BACKOFF_NORMAL = 0;
   protected static final int BACKOFF_3_SECONDS = 3 * 1000;
   protected static final int BACKOFF_30_SECONDS = 30 * 1000;
@@ -51,6 +57,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
 
   @Getter protected int currentBackoffTime = BACKOFF_NORMAL;
   private int offset = -1;
+  private AlertMetrics alertMetrics;
 
   @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
@@ -63,101 +70,132 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
     this.offset = loadInitialOffset();
+    this.alertMetrics = loadInitialMetrics();
     this.doInit(context);
   }
 
   protected abstract void doInit(JobExecutionContext context);
 
-  protected void sendAlert(List<ChangeEvent> list) {
+  protected void sendAlert(ChangeEvent event) throws EventPublisherException {
     /* This method needs to be over-ridden by specific Publisher for sending Alert */
 
   }
 
   @Override
-  public void handleFailedEvents(List<ChangeEvent> failedEvents) {}
-
-  @Override
-  public void handleException(Exception e) {}
-
-  private int loadInitialOffset() {
-    int eventSubscriptionOffset;
-    String json =
-        Entity.getCollectionDAO()
-            .eventSubscriptionDAO()
-            .getSubscriberOffset(eventSubscription.getId().toString(), OFFSET_EXTENSION);
-    if (json != null) {
-      EventSubscriptionOffset offsetFromDb =
-          JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      eventSubscriptionOffset = offsetFromDb.getOffset();
-    } else {
-      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
-    }
-    // Update the Job Data Map with the latest offset
-    return eventSubscriptionOffset;
-  }
-
-  @Override
-  public boolean publishEvents(List<ChangeEvent> events) throws InterruptedException {
-    // Publish to the given Alert Actions
-    // Evaluate Alert Trigger Config
-
-    // Filter the Change Events based on Alert Trigger Config
-    List<ChangeEvent> filteredEvents = new ArrayList<>();
-    for (ChangeEvent event : events) {
-      boolean triggerChangeEvent =
-          AlertUtil.shouldTriggerAlert(
-              event.getEntityType(), eventSubscription.getFilteringRules());
-
-      // Evaluate ChangeEvent Alert Filtering
-      if (eventSubscription.getFilteringRules() != null
-          && !AlertUtil.evaluateAlertConditions(
-              event, eventSubscription.getFilteringRules().getRules())) {
-        triggerChangeEvent = false;
-      }
-
-      if (triggerChangeEvent) {
-        // Ignore the event since change description is null
-        if (event.getChangeDescription() != null) {
-          filteredEvents.add(event);
-        } else {
-          LOG.debug(
-              "Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}",
-              event);
-        }
-      }
-    }
-
-    try {
-      sendAlert(filteredEvents);
-      return true;
-    } catch (RetriableException ex) {
-      setNextBackOff();
-      LOG.error(
-          "Failed to publish event in batch {} due to {}, will try again in {} ms",
-          filteredEvents,
-          ex,
-          currentBackoffTime);
-      Thread.sleep(currentBackoffTime);
-    } catch (Exception e) {
-      LOG.error("[AbstractAlertPublisher] error {}", e.getMessage(), e);
-    }
-    return false;
-  }
-
-  @Override
-  public void commitOffset(JobExecutionContext jobExecutionContext, int offset) {
-    EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset().withOffset(offset).withTimestamp(System.currentTimeMillis());
+  public void handleFailedEvent(EventPublisherException ex) {
+    LOG.debug(
+        "Failed in for Publisher : {} , Change Event : {} ",
+        eventSubscription.getName(),
+        ex.getChangeEvent());
+    // Failed Event to be stored in Database
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
-        .upsertSubscriberOffset(
+        .upsertSubscriberExtension(
+            eventSubscription.getId().toString(),
+            FAILED_EVENT_EXTENSION,
+            "failedChangeEvent",
+            JsonUtils.pojoToJson(ex.getChangeEvent()));
+  }
+
+  private int loadInitialOffset() {
+    EventSubscriptionOffset jobStoredOffset =
+        (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+    // If the Job Data Map has the latest offset, use it
+    if (jobStoredOffset != null) {
+      return jobStoredOffset.getOffset();
+    } else {
+      int eventSubscriptionOffset;
+      String json =
+          Entity.getCollectionDAO()
+              .eventSubscriptionDAO()
+              .getSubscriberExtension(eventSubscription.getId().toString(), OFFSET_EXTENSION);
+      if (json != null) {
+        EventSubscriptionOffset offsetFromDb =
+            JsonUtils.readValue(json, EventSubscriptionOffset.class);
+        eventSubscriptionOffset = offsetFromDb.getOffset();
+      } else {
+        eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
+      }
+      // Update the Job Data Map with the latest offset
+      return eventSubscriptionOffset;
+    }
+  }
+
+  private AlertMetrics loadInitialMetrics() {
+    AlertMetrics metrics = (AlertMetrics) jobDetail.getJobDataMap().get(METRICS_EXTENSION);
+    if (metrics != null) {
+      return metrics;
+    } else {
+      String json =
+          Entity.getCollectionDAO()
+              .eventSubscriptionDAO()
+              .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
+      if (json != null) {
+        return JsonUtils.readValue(json, AlertMetrics.class);
+      }
+      // Update the Job Data Map with the latest offset
+      return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
+    }
+  }
+
+  @Override
+  public void publishEvents(List<ChangeEvent> events) {
+    // If no events return
+    if (events.isEmpty()) {
+      return;
+    }
+
+    // Filter the Change Events based on Alert Trigger Config
+    List<ChangeEvent> filteredEvents =
+        getFilteredEvent(events, eventSubscription.getFilteringRules());
+
+    for (ChangeEvent event : filteredEvents) {
+      try {
+        sendAlert(event);
+      } catch (EventPublisherException e) {
+        handleFailedEvent(e);
+      }
+    }
+  }
+
+  @Override
+  public void commit(JobExecutionContext jobExecutionContext) {
+    long currentTime = System.currentTimeMillis();
+    EventSubscriptionOffset eventSubscriptionOffset =
+        new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
+
+    // Upsert Offset to Database
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSubscriberExtension(
             eventSubscription.getId().toString(),
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
 
     // Update the Job Data Map with the latest offset
-    jobExecutionContext.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, offset);
+    jobExecutionContext
+        .getJobDetail()
+        .getJobDataMap()
+        .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
+
+    // Upsert Metrics to Database
+    AlertMetrics metrics =
+        new AlertMetrics()
+            .withTotalEvents(alertMetrics.getTotalEvents())
+            .withFailedEvents(alertMetrics.getFailedEvents())
+            .withSuccessEvents(alertMetrics.getSuccessEvents())
+            .withTimestamp(currentTime);
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSubscriberExtension(
+            eventSubscription.getId().toString(),
+            METRICS_EXTENSION,
+            "alertMetrics",
+            JsonUtils.pojoToJson(metrics));
+
+    // Update the Job Data Map with latest Metrics
+    jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
   }
 
   public synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason) {
@@ -205,26 +243,13 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
 
-    try {
-      List<ChangeEvent> batch = pollEvents(offset, 100);
-      if (!batch.isEmpty()) {
-        boolean success = publishEvents(batch);
-        if (success) {
-          offset += batch.size();
-        } else {
-          handleFailedEvents(batch);
-        }
-      }
-    } catch (InterruptedException e) {
-      LOG.error("Interrupted while polling events", e);
-      Thread.currentThread().interrupt();
-    } catch (Exception e) {
-      handleException(e);
-    } finally {
-      LOG.debug(
-          "Committing offset for eventSubscription {}  {}", eventSubscription.getName(), offset);
-      commitOffset(jobExecutionContext, offset);
-    }
+    // Poll Events from Change Event Table
+    List<ChangeEvent> batch = pollEvents(offset, 100);
+    publishEvents(batch);
+
+    // Commit the Offset
+    offset += batch.size();
+    commit(jobExecutionContext);
   }
 
   public void setNextBackOff() {

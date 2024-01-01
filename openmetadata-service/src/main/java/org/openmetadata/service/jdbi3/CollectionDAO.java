@@ -1553,7 +1553,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery("SELECT json FROM change_event_consumers where id = :id AND extension = :extension")
-    String getSubscriberOffset(@Bind("id") String id, @Bind("extension") String extension);
+    String getSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -1567,7 +1567,7 @@ public interface CollectionDAO {
                 + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
                 + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
         connectionType = POSTGRES)
-    void upsertSubscriberOffset(
+    void upsertSubscriberExtension(
         @Bind("id") String id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,

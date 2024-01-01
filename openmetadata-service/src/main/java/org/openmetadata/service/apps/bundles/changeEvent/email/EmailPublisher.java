@@ -18,7 +18,6 @@ import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.g
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -53,22 +52,20 @@ public class EmailPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(List<ChangeEvent> changeEvents) {
-    for (ChangeEvent event : changeEvents) {
-      try {
-        Set<String> receivers = buildReceiversList(event);
-        EmailMessage emailMessage = emailDecorator.buildMessage(event);
-        for (String email : receivers) {
-          EmailUtil.sendChangeEventMail(email, emailMessage);
-        }
-        setSuccessStatus(System.currentTimeMillis());
-      } catch (Exception e) {
-        setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-        String message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
-        LOG.error(message);
-        throw new EventPublisherException(message);
+  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+    try {
+      Set<String> receivers = buildReceiversList(event);
+      EmailMessage emailMessage = emailDecorator.buildMessage(event);
+      for (String email : receivers) {
+        EmailUtil.sendChangeEventMail(email, emailMessage);
       }
+      setSuccessStatus(System.currentTimeMillis());
+    } catch (Exception e) {
+      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message, event);
     }
   }
 

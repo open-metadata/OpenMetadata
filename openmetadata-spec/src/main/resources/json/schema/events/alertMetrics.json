@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertMetrics.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertMetrics",
+  "description": "Event Subscription Offset",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertMetrics",
+  "properties": {
+    "totalEvents": {
+      "description": "Total number of events.",
+      "type": "integer"
+    },
+    "successEvents": {
+      "description": "Number of events that were successfully processed.",
+      "type": "integer"
+    },
+    "failedEvents": {
+      "description": "Number of events that failed to be processed.",
+      "type": "integer"
+    },
+    "timestamp": {
+      "description": "Update time of the job status.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

@@ -18,11 +18,13 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +50,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublish
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.quartz.JobDataMap;
 import org.springframework.expression.Expression;
 
 @Slf4j
@@ -229,5 +232,54 @@ public final class AlertUtil {
         .withLastFailedReason(reason)
         .withNextAttempt(nextAttempt)
         .withTimestamp(timeStamp);
+  }
+
+  public static List<ChangeEvent> getFilteredEvent(
+      List<ChangeEvent> events, FilteringRules filteringRules) {
+    List<ChangeEvent> filteredEvents = new ArrayList<>();
+    for (ChangeEvent event : events) {
+      boolean triggerChangeEvent =
+          AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
+
+      // Evaluate ChangeEvent Alert Filtering
+      if (filteringRules != null
+          && !AlertUtil.evaluateAlertConditions(event, filteringRules.getRules())) {
+        triggerChangeEvent = false;
+      }
+
+      if (triggerChangeEvent) {
+        // Ignore the event since change description is null
+        if (event.getChangeDescription() != null) {
+          filteredEvents.add(event);
+        } else {
+          LOG.debug(
+              "Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}",
+              event);
+        }
+      }
+    }
+    return filteredEvents;
+  }
+
+  public static <T> T getValueFromQtzJobMap(JobDataMap dataMap, String key, Class<T> tClass) {
+    Object value = dataMap.get(key);
+    if (value == null) {
+      return null;
+    }
+    return tClass.cast(value);
+  }
+
+  public static <T> T getOrDefaultFromQtzJobMap(
+      JobDataMap dataMap, String key, Class<T> tClass, UnaryOperator<String> defaultSupplier) {
+    if (dataMap.containsKey(key)) {
+      return tClass.cast(dataMap.get(key));
+    } else {
+      return tClass.cast(defaultSupplier.apply(key));
+    }
+  }
+
+  public static JobDataMap putValueInQtzJobMap(JobDataMap dataMap, String key, Object obj) {
+    dataMap.put(key, obj);
+    return dataMap;
   }
 }

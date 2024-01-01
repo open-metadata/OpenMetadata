@@ -79,3 +79,10 @@ CREATE TABLE IF NOT EXISTS change_event_consumers (
 DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
 
 ALTER TABLE change_event_consumers ADD COLUMN offset SERIAL;
+
+CREATE TABLE IF NOT EXISTS consumers_dlq (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    json jsonb NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
+);

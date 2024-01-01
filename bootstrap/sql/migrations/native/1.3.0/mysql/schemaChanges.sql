@@ -64,3 +64,9 @@ DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
 
 ALTER TABLE change_event_consumers ADD COLUMN offset INT AUTO_INCREMENT;
 
+CREATE TABLE IF NOT EXISTS consumers_dlq (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
+);

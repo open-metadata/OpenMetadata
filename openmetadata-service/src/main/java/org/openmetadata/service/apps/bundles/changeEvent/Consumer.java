@@ -15,16 +15,15 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 
 import io.dropwizard.lifecycle.Managed;
 import java.util.List;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.quartz.JobExecutionContext;
 
 public interface Consumer<T> extends Managed {
   List<T> pollEvents(long offset, long batchSize);
 
-  boolean publishEvents(List<T> events) throws InterruptedException;
+  void publishEvents(List<T> events);
 
-  void handleFailedEvents(List<T> failedEvents);
+  void handleFailedEvent(EventPublisherException e);
 
-  void handleException(Exception e);
-
-  void commitOffset(JobExecutionContext jobExecutionContext, int offset);
+  void commit(JobExecutionContext jobExecutionContext);
 }

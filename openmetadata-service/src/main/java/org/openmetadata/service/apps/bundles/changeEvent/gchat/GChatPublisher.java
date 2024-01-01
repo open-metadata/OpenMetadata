@@ -63,26 +63,24 @@ public class GChatPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(List<ChangeEvent> changeEvents) {
-    for (ChangeEvent event : changeEvents) {
-      try {
-        GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
-        List<Invocation.Builder> targets =
-            getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
-        if (target != null) {
-          targets.add(target);
-        }
-        for (Invocation.Builder actionTarget : targets) {
-          postWebhookMessage(this, actionTarget, gchatMessage);
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        String message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(
-                G_CHAT_WEBHOOK, event, e.getMessage());
-        LOG.error(message);
-        throw new EventPublisherException(message);
+  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+    try {
+      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
+      List<Invocation.Builder> targets =
+          getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
+      if (target != null) {
+        targets.add(target);
       }
+      for (Invocation.Builder actionTarget : targets) {
+        postWebhookMessage(this, actionTarget, gchatMessage);
+      }
+    } catch (Exception e) {
+      Thread.currentThread().interrupt();
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              G_CHAT_WEBHOOK, event, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message, event);
     }
   }
 

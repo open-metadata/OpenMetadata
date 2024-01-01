@@ -214,8 +214,7 @@ public class SubscriptionUtil {
   }
 
   public static void postWebhookMessage(
-      AbstractEventConsumer publisher, Invocation.Builder target, Object message)
-      throws InterruptedException {
+      AbstractEventConsumer publisher, Invocation.Builder target, Object message) {
     long attemptTime = System.currentTimeMillis();
     Response response =
         target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
@@ -233,7 +232,6 @@ public class SubscriptionUtil {
       publisher.setNextBackOff();
       publisher.setAwaitingRetry(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-      Thread.sleep(publisher.getCurrentBackoffTime());
     } else if (response.getStatus() == 200) {
       publisher.setSuccessStatus(System.currentTimeMillis());
     }

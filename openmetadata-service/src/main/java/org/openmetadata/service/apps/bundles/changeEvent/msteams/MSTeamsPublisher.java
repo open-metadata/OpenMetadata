@@ -63,26 +63,24 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(List<ChangeEvent> changeEvents) {
-    for (ChangeEvent event : changeEvents) {
-      try {
-        TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets =
-            getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
-        if (target != null) {
-          targets.add(target);
-        }
-        for (Invocation.Builder actionTarget : targets) {
-          postWebhookMessage(this, actionTarget, teamsMessage);
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        String message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(
-                MS_TEAMS_WEBHOOK, event, e.getMessage());
-        LOG.error(message);
-        throw new EventPublisherException(message);
+  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+    try {
+      TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
+      List<Invocation.Builder> targets =
+          getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
+      if (target != null) {
+        targets.add(target);
       }
+      for (Invocation.Builder actionTarget : targets) {
+        postWebhookMessage(this, actionTarget, teamsMessage);
+      }
+    } catch (Exception e) {
+      Thread.currentThread().interrupt();
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              MS_TEAMS_WEBHOOK, event, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message, event);
     }
   }
 
