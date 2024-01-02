@@ -30,6 +30,7 @@ import org.openmetadata.service.events.subscription.AlertUtil;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleScheduleBuilder;
@@ -180,10 +181,10 @@ public class EventSubscriptionScheduler {
         == CreateEventSubscription.AlertType.CHANGE_EVENT) {
       AbstractEventConsumer publisher = alertJobMap.remove(deletedEntity.getId());
       if (publisher != null) {
-        alertsScheduler.deleteJob(publisher.getJobDetail().getKey());
+        alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
         alertsScheduler.unscheduleJob(
             new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
-        LOG.info("Alert publisher deleted for {}", publisher.getEventSubscription().getName());
+        LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
       }
     } else {
       throw new IllegalArgumentException(INVALID_ALERT);
