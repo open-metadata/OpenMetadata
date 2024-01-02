@@ -27,6 +27,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -48,6 +49,7 @@ import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -78,7 +80,6 @@ const SchemaTable = ({
   joins,
   isReadOnly = false,
   onThreadLinkSelect,
-  entityFqn,
   tableConstraints,
   tablePartitioned,
 }: SchemaTableProps) => {
@@ -89,6 +90,8 @@ const SchemaTable = ({
   const [tablePermissions, setTablePermissions] =
     useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
+  const decodedEntityFqn = getDecodedFqn(entityFqn);
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -113,13 +116,16 @@ const SchemaTable = ({
       );
     }
   };
+
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
+
   useEffect(() => {
     fetchResourcePermission(entityFqn);
   }, [entityFqn]);
+
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
   };
@@ -224,7 +230,7 @@ const SchemaTable = ({
             fqn: record.fullyQualifiedName ?? '',
             field: record.description,
           }}
-          entityFqn={entityFqn}
+          entityFqn={decodedEntityFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
@@ -397,7 +403,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -422,7 +428,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -440,7 +446,7 @@ const SchemaTable = ({
       },
     ],
     [
-      entityFqn,
+      decodedEntityFqn,
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
