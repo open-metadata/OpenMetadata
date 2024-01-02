@@ -42,8 +42,8 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import './execution.less';
-import Searchbar from '../common/searchbar/Searchbar';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
 
