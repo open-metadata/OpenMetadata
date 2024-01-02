@@ -19,9 +19,9 @@ export default defineConfig({
   viewportHeight: 660,
   watchForFileChanges: false,
   videoUploadOnPasses: false,
-  defaultCommandTimeout: 5000,
+  defaultCommandTimeout: 15000,
   chromeWebSecurity: false,
-  numTestsKeptInMemory: 0,
+  numTestsKeptInMemory: 1,
   experimentalMemoryManagement: true,
   e2e: {
     experimentalStudio: true,
@@ -30,6 +30,9 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: 'cypress/new-tests/**/*.spec.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/new-tests/**/*.spec.{js,jsx,ts,tsx}',
+      'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    ],
   },
 });

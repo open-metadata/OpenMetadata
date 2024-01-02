@@ -114,7 +114,19 @@ Cypress.Commands.add('storeSession', (username, password) => {
 
     // Don't want to show any popup in the tests
     cy.setCookie(`STAR_OMD_USER_admin`, 'true');
-    cy.setCookie('VERSION_1_2_3', 'true');
+
+    // Get version and set cookie to hide version banner
+    cy.request({
+      method: 'GET',
+      url: `api/v1/system/version`,
+    }).then((res) => {
+      const version = res.body.version;
+      const versionCookie = `VERSION_${version
+        .split('-')[0]
+        .replaceAll('.', '_')}`;
+
+      cy.setCookie(versionCookie, 'true');
+    });
   });
 });
 
