@@ -1111,6 +1111,7 @@ export const searchInColumns = <T extends Column | SearchIndexField>(
     const searchLowerCase = lowerCase(searchText);
     const isContainData =
       lowerCase(column.name).includes(searchLowerCase) ||
+      lowerCase(column.displayName).includes(searchLowerCase) ||
       lowerCase(column.description).includes(searchLowerCase) ||
       lowerCase(getDataTypeString(column.dataType)).includes(searchLowerCase);
 

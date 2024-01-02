@@ -46,6 +46,7 @@ import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
+import { getEntityName, searchInColumns } from '../../../utils/EntityUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -124,7 +125,7 @@ const ColumnProfileTable = () => {
         key: 'name',
         width: 250,
         fixed: 'left',
-        render: (name: string, record) => {
+        render: (_, record) => {
           return (
             <Button
               className="break-word p-0"
@@ -132,7 +133,7 @@ const ColumnProfileTable = () => {
               onClick={() =>
                 updateActiveColumnFqn(record.fullyQualifiedName || '')
               }>
-              {name}
+              {getEntityName(record)}
             </Button>
           );
         },
@@ -345,7 +346,8 @@ const ColumnProfileTable = () => {
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     if (searchText) {
-      setData(columns.filter((col) => col.name?.includes(searchText)));
+      const searchCols = searchInColumns(columns, searchText);
+      setData(searchCols);
     } else {
       setData(columns);
     }
