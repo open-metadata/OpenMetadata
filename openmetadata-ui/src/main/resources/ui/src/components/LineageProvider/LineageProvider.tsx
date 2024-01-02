@@ -800,11 +800,51 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [selectedEdge, entityLineage]
   );
 
-  const onEdgeDescriptionUpdate = useCallback(
+  const onEdgeDetailsUpdate = useCallback(
     async (updatedEdgeDetails: AddLineage) => {
+      const { description, sqlQuery } =
+        updatedEdgeDetails.edge.lineageDetails ?? {};
+
       try {
         await updateLineageEdge(updatedEdgeDetails);
-        // Refresh Edge
+        const updatedEdges = (entityLineage.edges ?? []).map((edge) => {
+          if (
+            edge.fromEntity.id === updatedEdgeDetails.edge.fromEntity.id &&
+            edge.toEntity.id === updatedEdgeDetails.edge.toEntity.id
+          ) {
+            return {
+              ...edge,
+              description,
+              sqlQuery,
+            };
+          }
+
+          return edge;
+        });
+        setEntityLineage((prev) => {
+          return {
+            ...prev,
+            edges: updatedEdges,
+          };
+        });
+
+        const edgesObj = edges.map((edge) => {
+          if (selectedEdge && edge.id === selectedEdge.id) {
+            return {
+              ...selectedEdge,
+              data: {
+                edge: {
+                  ...selectedEdge.data.edge,
+                  description,
+                  sqlQuery,
+                },
+              },
+            };
+          }
+
+          return edge;
+        });
+        setEdges(edgesObj);
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -954,7 +994,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               setIsDrawerOpen(false);
               setSelectedEdge(undefined);
             }}
-            onEdgeDescriptionUpdate={onEdgeDescriptionUpdate}
+            onEdgeDetailsUpdate={onEdgeDetailsUpdate}
           />
         ) : (
           <EntityInfoDrawer

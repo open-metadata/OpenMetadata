@@ -173,7 +173,7 @@ describe('Test EntityLineageUtils utility', () => {
       columnsLineage: [],
       description: '',
       pipeline: undefined,
-      source: '',
+      source: undefined,
     });
   });
 

@@ -242,7 +242,7 @@ const CustomControls: FC<ControlProps> = ({
                 selectedKeys: selectedFilter,
               }}
               trigger={['click']}>
-              <Button ghost type="primary">
+              <Button ghost className="expand-btn" type="primary">
                 {t('label.advanced')}
                 <RightOutlined />
               </Button>
