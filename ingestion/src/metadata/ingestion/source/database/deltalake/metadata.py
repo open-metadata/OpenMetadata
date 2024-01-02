@@ -34,13 +34,16 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -201,7 +204,7 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema
-        for table in self.spark.catalog.listTables(schema_name):
+        for table in self.spark.catalog.listTables(dbName=schema_name):
             try:
                 table_name = table.name
                 table_fqn = fqn.build(
@@ -289,7 +292,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

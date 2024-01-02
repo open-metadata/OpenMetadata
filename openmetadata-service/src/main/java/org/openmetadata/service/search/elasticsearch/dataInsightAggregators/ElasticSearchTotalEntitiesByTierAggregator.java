@@ -4,17 +4,19 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.service.dataInsight.TotalEntitiesByTierAggregator;
 
 public class ElasticSearchTotalEntitiesByTierAggregator
-    extends TotalEntitiesByTierAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends TotalEntitiesByTierAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
   public ElasticSearchTotalEntitiesByTierAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+  protected Optional<Double> getValue(Sum key) {
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override
@@ -33,7 +35,8 @@ public class ElasticSearchTotalEntitiesByTierAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

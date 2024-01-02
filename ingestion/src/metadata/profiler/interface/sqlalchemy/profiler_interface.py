@@ -104,10 +104,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
+        self.create_session()
+
+    def create_session(self):
         self.session_factory = self._session_factory()
         self.session = self.session_factory()
-        self.set_session_tag(self.session)
-        self.set_catalog(self.session)
 
     @property
     def table(self):
@@ -412,6 +413,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 partition_details=self.partition_details,
                 profile_sample_query=self.profile_query,
             )
+            return thread_local.runner
+        thread_local.runner._sample = sample  # pylint: disable=protected-access
         return thread_local.runner
 
     def compute_metrics_in_thread(
@@ -430,12 +433,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 session,
                 metric_func.table,
             )
-            sample = sampler.random_sample()
+            sample = sampler.random_sample(metric_func.column)
             runner = self._create_thread_safe_runner(
                 session,
                 metric_func.table,
                 sample,
             )
+            row = None
 
             try:
                 row = self._get_metric_fn[metric_func.metric_type.value](
@@ -452,7 +456,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 )
                 logger.error(error)
                 self.status.failed_profiler(error, traceback.format_exc())
-                row = None
 
             if metric_func.column is not None:
                 column = metric_func.column.name
@@ -564,7 +567,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         sampler = self._get_sampler(table=kwargs.get("table"))
-        sample = sampler.random_sample()
+        sample = sampler.random_sample(column)
         try:
             return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:

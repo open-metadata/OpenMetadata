@@ -117,7 +117,7 @@ caption="Most Viewed Data Assets"
 
 ### Page Views by Data Assets
 
-It helps to understand the total number of page views by asset type. This allows you to understand which asset familly drives the most interest in your organization
+It helps to understand the total number of page views by asset type. This allows you to understand which asset family drives the most interest in your organization
 
 {% image
 src="/images/v1.3/how-to-guides/insights/pvda.png"

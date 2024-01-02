@@ -78,7 +78,7 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.16.0</jackson.version>
-    <dropwizard.version>2.1.9</dropwizard.version>
+    <dropwizard.version>2.1.11</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
@@ -106,7 +106,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.30</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.14</elasticsearch.version>
+    <elasticsearch.version>7.17.16</elasticsearch.version>
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.19</openapiswagger.version>
@@ -149,6 +149,8 @@
     <snakeyaml.version>2.2</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
+    <spotless.version>2.41.1</spotless.version>
+    <picocli.version>4.7.5</picocli.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -479,6 +481,11 @@
         <artifactId>resilience4j-retry</artifactId>
         <version>2.1.0</version>
       </dependency>
+      <dependency>
+        <groupId>info.picocli</groupId>
+        <artifactId>picocli</artifactId>
+        <version>${picocli.version}</version>
+      </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
       <dependency>
@@ -715,26 +722,29 @@
           <version>${maven-dependency-plugin.version}</version>
         </plugin>
         <plugin>
-          <groupId>com.theoryinpractise</groupId>
-          <artifactId>googleformatter-maven-plugin</artifactId>
-          <version>1.7.5</version>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless.version}</version>
+          <configuration>
+            <java>
+              <includes>
+                <include>src/main/java/**/*.java</include>
+                <include>src/test/java/**/*.java</include>
+              </includes>
+              <googleJavaFormat>
+                <style>GOOGLE</style>
+                <reflowLongStrings>false</reflowLongStrings>
+                <formatJavadoc>false</formatJavadoc>
+                <groupArtifact>com.google.googlejavaformat:google-java-format</groupArtifact>
+              </googleJavaFormat>
+              <removeUnusedImports/>
+            </java>
+          </configuration>
           <executions>
             <execution>
-              <id>reformat-sources</id>
-              <configuration>
-                <includeStale>false</includeStale>
-                <style>GOOGLE</style>
-                <formatMain>true</formatMain>
-                <formatTest>true</formatTest>
-                <filterModified>false</filterModified>
-                <skip>false</skip>
-                <fixImports>true</fixImports>
-                <maxLineLength>120</maxLineLength>
-              </configuration>
               <goals>
-                <goal>format</goal>
+                <goal>check</goal>
               </goals>
-              <phase>process-sources</phase>
             </execution>
           </executions>
         </plugin>

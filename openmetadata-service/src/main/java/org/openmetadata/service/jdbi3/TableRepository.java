@@ -14,7 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -23,10 +27,13 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
+import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -39,10 +46,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -68,6 +78,10 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -132,14 +146,20 @@ public class TableRepository extends EntityRepository<Table> {
     if (fields.contains(COLUMN_FIELD)) {
       // We'll get column tags only if we are getting the column fields
       populateEntityFieldTags(
-          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+          entityType,
+          table.getColumns(),
+          table.getFullyQualifiedName(),
+          fields.contains(FIELD_TAGS));
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setSourceHash(fields.contains("sourceHash") ? table.getSourceHash() : null);
     table.setTableProfilerConfig(
-        fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
+        fields.contains(TABLE_PROFILER_CONFIG)
+            ? getTableProfilerConfig(table)
+            : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
-    table.setCustomMetrics(fields.contains(CUSTOM_METRICS) ? getCustomMetrics(table, null) : table.getCustomMetrics());
+    table.setCustomMetrics(
+        fields.contains(CUSTOM_METRICS) ? getCustomMetrics(table, null) : table.getCustomMetrics());
     if ((fields.contains(COLUMN_FIELD)) && (fields.contains(CUSTOM_METRICS))) {
       for (Column column : table.getColumns()) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
@@ -149,28 +169,36 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void clearFields(Table table, Fields fields) {
-    table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+    table.setTableConstraints(
+        fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfilerConfig(fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
+    table.setTableProfilerConfig(
+        fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
   }
 
   @Override
-  public Table setInheritedFields(Table table, Fields fields) {
-    DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
+  public void setInheritedFields(Table table, Fields fields) {
+    DatabaseSchema schema =
+        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
     inheritOwner(table, fields, schema);
     inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
-    return table.withRetentionPeriod(
-        table.getRetentionPeriod() == null ? schema.getRetentionPeriod() : table.getRetentionPeriod());
+    table.withRetentionPeriod(
+        table.getRetentionPeriod() == null
+            ? schema.getRetentionPeriod()
+            : table.getRetentionPeriod());
   }
 
   private void setDefaultFields(Table table) {
     EntityReference schemaRef = getContainer(table.getId(), DATABASE_SCHEMA);
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
-    table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
+    table
+        .withDatabaseSchema(schemaRef)
+        .withDatabase(schema.getDatabase())
+        .withService(schema.getService());
   }
 
   @Override
@@ -208,12 +236,17 @@ public class TableRepository extends EntityRepository<Table> {
 
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
-      String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), join.getColumnName());
-      addJoinedWith(joins.getStartDate(), columnFQN, FIELD_RELATION_COLUMN_TYPE, join.getJoinedWith());
+      String columnFQN =
+          FullyQualifiedName.add(table.getFullyQualifiedName(), join.getColumnName());
+      addJoinedWith(
+          joins.getStartDate(), columnFQN, FIELD_RELATION_COLUMN_TYPE, join.getJoinedWith());
     }
 
     addJoinedWith(
-        joins.getStartDate(), table.getFullyQualifiedName(), FIELD_RELATION_TABLE_TYPE, joins.getDirectTableJoins());
+        joins.getStartDate(),
+        table.getFullyQualifiedName(),
+        FIELD_RELATION_TABLE_TYPE,
+        joins.getDirectTableJoins());
 
     return table.withJoins(getJoins(table));
   }
@@ -232,7 +265,8 @@ public class TableRepository extends EntityRepository<Table> {
       if (row.size() != tableData.getColumns().size()) {
         throw new IllegalArgumentException(
             String.format(
-                "Number of columns is %d but row has %d sample values", tableData.getColumns().size(), row.size()));
+                "Number of columns is %d but row has %d sample values",
+                tableData.getColumns().size(), row.size()));
       }
     }
 
@@ -248,7 +282,9 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = find(tableId, NON_DELETED);
     TableData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
             TableData.class);
     table.setSampleData(sampleData);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
@@ -274,16 +310,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   public TableProfilerConfig getTableProfilerConfig(Table table) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_PROFILER_CONFIG_EXTENSION),
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(table.getId(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
   }
 
   public TestSuite getTestSuite(Table table) {
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
-        daoCollection.relationshipDAO().findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal());
     Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
         entityRelationshipRecords.stream()
-            .filter(entityRelationshipRecord -> entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
+            .filter(
+                entityRelationshipRecord ->
+                    entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
             .findFirst();
     return testSuiteRelationshipRecord
         .<TestSuite>map(
@@ -309,15 +351,20 @@ public class TableRepository extends EntityRepository<Table> {
         validateColumn(table, columnProfilerConfig.getColumnName());
       }
     }
-    if (tableProfilerConfig.getProfileSampleType() != null && tableProfilerConfig.getProfileSample() != null) {
+    if (tableProfilerConfig.getProfileSampleType() != null
+        && tableProfilerConfig.getProfileSample() != null) {
       EntityUtil.validateProfileSample(
-          tableProfilerConfig.getProfileSampleType().toString(), tableProfilerConfig.getProfileSample());
+          tableProfilerConfig.getProfileSampleType().toString(),
+          tableProfilerConfig.getProfileSample());
     }
 
     daoCollection
         .entityExtensionDAO()
         .insert(
-            tableId, TABLE_PROFILER_CONFIG_EXTENSION, TABLE_PROFILER_CONFIG, JsonUtils.pojoToJson(tableProfilerConfig));
+            tableId,
+            TABLE_PROFILER_CONFIG_EXTENSION,
+            TABLE_PROFILER_CONFIG,
+            JsonUtils.pojoToJson(tableProfilerConfig));
     clearFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
@@ -331,7 +378,8 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  private Column getColumnNameForProfiler(List<Column> columnList, ColumnProfile columnProfile, String parentName) {
+  private Column getColumnNameForProfiler(
+      List<Column> columnList, ColumnProfile columnProfile, String parentName) {
     for (Column col : columnList) {
       String columnName;
       if (parentName != null) {
@@ -432,7 +480,8 @@ public class TableRepository extends EntityRepository<Table> {
                 .listBetweenTimestampsByOrder(
                     fqn, TABLE_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
             TableProfile.class);
-    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
+    return new ResultList<>(
+        tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
   public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) {
@@ -442,9 +491,14 @@ public class TableRepository extends EntityRepository<Table> {
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .listBetweenTimestampsByOrder(
-                    fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+                    fqn,
+                    TABLE_COLUMN_PROFILE_EXTENSION,
+                    startTs,
+                    endTs,
+                    EntityTimeSeriesDAO.OrderBy.DESC),
             ColumnProfile.class);
-    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+    return new ResultList<>(
+        columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
@@ -454,9 +508,14 @@ public class TableRepository extends EntityRepository<Table> {
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .listBetweenTimestampsByOrder(
-                    fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
+                    fqn,
+                    SYSTEM_PROFILE_EXTENSION,
+                    startTs,
+                    endTs,
+                    EntityTimeSeriesDAO.OrderBy.DESC),
             SystemProfile.class);
-    return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
+    return new ResultList<>(
+        systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
   private void setColumnProfile(List<Column> columnList) {
@@ -465,7 +524,8 @@ public class TableRepository extends EntityRepository<Table> {
           JsonUtils.readValue(
               daoCollection
                   .profilerDataTimeSeriesDao()
-                  .getLatestExtension(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+                  .getLatestExtension(
+                      column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
               ColumnProfile.class);
       column.setProfile(columnProfile);
       if (column.getChildren() != null) {
@@ -500,7 +560,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     String customMetricName = customMetric.getName();
     String customMetricColumnName = customMetric.getColumnName();
-    String extensionType = customMetricColumnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    String extensionType =
+        customMetricColumnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     String extension = CUSTOM_METRICS_EXTENSION + extensionType + "." + customMetricName;
 
     // Validate the column name exists in the table
@@ -542,7 +603,8 @@ public class TableRepository extends EntityRepository<Table> {
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
       if (table.getDataModel() != null
-          && (table.getDataModel().getRawSql() != null && !table.getDataModel().getRawSql().isBlank())) {
+          && (table.getDataModel().getRawSql() != null
+              && !table.getDataModel().getRawSql().isBlank())) {
         dataModel.setRawSql(table.getDataModel().getRawSql());
       }
     }
@@ -612,7 +674,12 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
-    addRelationship(table.getDatabaseSchema().getId(), table.getId(), DATABASE_SCHEMA, TABLE, Relationship.CONTAINS);
+    addRelationship(
+        table.getDatabaseSchema().getId(),
+        table.getId(),
+        DATABASE_SCHEMA,
+        TABLE,
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -670,14 +737,32 @@ public class TableRepository extends EntityRepository<Table> {
     return super.getTaskWorkflow(threadContext);
   }
 
+  @Override
+  public String exportToCsv(String name, String user) throws IOException {
+    // Validate table
+    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    return new TableCsv(table, user).exportCsv(listOf(table));
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
+      throws IOException {
+    // Validate table
+    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    return new TableCsv(table, user).importCsv(csv, dryRun);
+  }
+
   static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
     private final Column column;
 
     ColumnDescriptionWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      Table table = Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), COLUMN_FIELD, ALL);
+      Table table =
+          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), COLUMN_FIELD, ALL);
       threadContext.setAboutEntity(table);
-      column = getColumn((Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+      column =
+          getColumn(
+              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -692,9 +777,12 @@ public class TableRepository extends EntityRepository<Table> {
 
     ColumnTagWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      Table table = Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+      Table table =
+          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
       threadContext.setAboutEntity(table);
-      column = getColumn((Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+      column =
+          getColumn(
+              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -718,7 +806,8 @@ public class TableRepository extends EntityRepository<Table> {
       column = getChildColumn(column.getChildren(), childrenName);
     }
     if (column == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldName("column", columnName));
     }
     return column;
   }
@@ -754,7 +843,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
-    boolean validColumn = table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
@@ -767,7 +857,8 @@ public class TableRepository extends EntityRepository<Table> {
       Table joinedWithTable = findByName(tableFQN, NON_DELETED);
 
       // Validate column
-      ColumnUtil.validateColumnFQN(joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());
+      ColumnUtil.validateColumnFQN(
+          joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());
     }
   }
 
@@ -813,9 +904,11 @@ public class TableRepository extends EntityRepository<Table> {
               .map(rethrowFunction(j -> JsonUtils.readObjects(j, DailyCount.class)))
               .orElse(List.of());
 
-      DailyCount receivedDailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
+      DailyCount receivedDailyCount =
+          new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
 
-      List<DailyCount> newDailyCounts = aggregateAndFilterDailyCounts(currentDailyCounts, receivedDailyCount);
+      List<DailyCount> newDailyCounts =
+          aggregateAndFilterDailyCounts(currentDailyCounts, receivedDailyCount);
 
       daoCollection
           .fieldRelationshipDAO()
@@ -841,7 +934,8 @@ public class TableRepository extends EntityRepository<Table> {
   private List<DailyCount> aggregateAndFilterDailyCounts(
       List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
     Map<String, List<DailyCount>> joinCountByDay =
-        Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
+        Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount))
+            .collect(groupingBy(DailyCount::getDate));
 
     return joinCountByDay.entrySet().stream()
         .map(
@@ -854,11 +948,14 @@ public class TableRepository extends EntityRepository<Table> {
                         e.getValue().stream()
                             .findFirst()
                             .orElseThrow(
-                                () -> new IllegalStateException("Collector.groupingBy created an empty grouping"))
+                                () ->
+                                    new IllegalStateException(
+                                        "Collector.groupingBy created an empty grouping"))
                             .getCount());
             })
         .filter(inLast30Days())
-        .sorted(ignoringComparator((dc1, dc2) -> RestUtil.compareDates(dc1.getDate(), dc2.getDate())))
+        .sorted(
+            ignoringComparator((dc1, dc2) -> RestUtil.compareDates(dc1.getDate(), dc2.getDate())))
         .collect(Collectors.toList());
   }
 
@@ -875,14 +972,20 @@ public class TableRepository extends EntityRepository<Table> {
   private List<JoinedWith> getDirectTableJoins(Table table) {
     // Pair<toTableFQN, List<DailyCount>>
     List<Pair<String, List<DailyCount>>> entityRelations =
-        daoCollection.fieldRelationshipDAO()
+        daoCollection
+            .fieldRelationshipDAO()
             .listBidirectional(
                 table.getFullyQualifiedName(),
                 FIELD_RELATION_TABLE_TYPE,
                 FIELD_RELATION_TABLE_TYPE,
                 Relationship.JOINED_WITH.ordinal())
             .stream()
-            .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .map(
+                rethrowFunction(
+                    er ->
+                        Pair.of(
+                            er.getMiddle(),
+                            JsonUtils.readObjects(er.getRight(), DailyCount.class))))
             .toList();
 
     return entityRelations.stream()
@@ -890,14 +993,19 @@ public class TableRepository extends EntityRepository<Table> {
             er ->
                 new JoinedWith()
                     .withFullyQualifiedName(er.getLeft())
-                    .withJoinCount(er.getRight().stream().filter(inLast30Days()).mapToInt(DailyCount::getCount).sum()))
+                    .withJoinCount(
+                        er.getRight().stream()
+                            .filter(inLast30Days())
+                            .mapToInt(DailyCount::getCount)
+                            .sum()))
         .collect(Collectors.toList());
   }
 
   private List<ColumnJoin> getColumnJoins(Table table) {
     // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
     List<Triple<String, String, List<DailyCount>>> entityRelations =
-        daoCollection.fieldRelationshipDAO()
+        daoCollection
+            .fieldRelationshipDAO()
             .listBidirectionalByPrefix(
                 table.getFullyQualifiedName(),
                 FIELD_RELATION_COLUMN_TYPE,
@@ -908,15 +1016,12 @@ public class TableRepository extends EntityRepository<Table> {
                 rethrowFunction(
                     er ->
                         Triple.of(
-                            FullyQualifiedName.getColumnName(er.getLeft()),
+                            getColumnName(er.getLeft()),
                             er.getMiddle(),
                             JsonUtils.readObjects(er.getRight(), DailyCount.class))))
             .toList();
 
-    return entityRelations.stream()
-        .collect(groupingBy(Triple::getLeft))
-        .entrySet()
-        .stream()
+    return entityRelations.stream().collect(groupingBy(Triple::getLeft)).entrySet().stream()
         .map(
             e ->
                 new ColumnJoin()
@@ -942,17 +1047,19 @@ public class TableRepository extends EntityRepository<Table> {
 
   private CustomMetric getCustomMetric(Table table, String extension) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId(), extension), CustomMetric.class);
+        daoCollection.entityExtensionDAO().getExtension(table.getId(), extension),
+        CustomMetric.class);
   }
 
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     extension = CUSTOM_METRICS_EXTENSION + extension;
 
-    List<ExtensionRecord> extensionRecords = daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
+    List<ExtensionRecord> extensionRecords =
+        daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
     List<CustomMetric> customMetrics = new ArrayList<>();
     for (ExtensionRecord extensionRecord : extensionRecords) {
-      customMetrics.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), CustomMetric.class));
+      customMetrics.add(JsonUtils.readValue(extensionRecord.extensionJson(), CustomMetric.class));
     }
 
     if (columnName != null) {
@@ -979,7 +1086,8 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
-      updateColumns(COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      updateColumns(
+          COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
@@ -998,7 +1106,146 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
-          "tableConstraints", origConstraints, updatedConstraints, added, deleted, EntityUtil.tableConstraintMatch);
+          "tableConstraints",
+          origConstraints,
+          updatedConstraints,
+          added,
+          deleted,
+          EntityUtil.tableConstraintMatch);
+    }
+  }
+
+  public static class TableCsv extends EntityCsv<Table> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    public static final List<CsvHeader> COLUMN_HEADERS =
+        resetRequiredColumns(DOCUMENTATION.getHeaders(), listOf("name"));
+
+    private final Table table;
+
+    TableCsv(Table table, String user) {
+      super(TABLE, HEADERS, user);
+      this.table = table;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // column.fullyQualifiedName, column.displayName, column.description, column.dataTypeDisplay,
+      // column.tags
+      if (processRecord) {
+        table
+            .withName(csvRecord.get(0))
+            .withDisplayName(csvRecord.get(1))
+            .withDescription(csvRecord.get(2))
+            .withOwner(getOwner(printer, csvRecord, 3))
+            .withTags(getTagLabels(printer, csvRecord, 4))
+            .withRetentionPeriod(csvRecord.get(5))
+            .withSourceUrl(csvRecord.get(6))
+            .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+        ImportResult importResult = updateColumn(printer, csvRecord);
+        if (importResult.result().equals(IMPORT_FAILED)) {
+          importFailure(printer, importResult.details(), csvRecord);
+        }
+      }
+      List<ImportResult> importResults = new ArrayList<>();
+      updateColumns(printer, csvRecords, importResults);
+      if (processRecord) {
+        createEntity(printer, csvRecord, table);
+      }
+      for (ImportResult importResult : importResults) {
+        if (importResult.result().equals(IMPORT_SUCCESS)) {
+          importSuccess(printer, importResult.record(), importResult.details());
+        } else {
+          importFailure(printer, importResult.details(), importResult.record());
+        }
+      }
+    }
+
+    public void updateColumns(
+        CSVPrinter printer, List<CSVRecord> csvRecords, List<ImportResult> results)
+        throws IOException {
+      while (recordIndex < csvRecords.size() && csvRecords.get(0) != null) { // Column records
+        CSVRecord csvRecord = getNextRecord(printer, COLUMN_HEADERS, csvRecords);
+        results.add(updateColumn(printer, csvRecord));
+      }
+    }
+
+    public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+      if (!processRecord) {
+        return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
+      }
+      String columnFqn = csvRecord.get(8);
+      Column column = findColumn(table.getColumns(), columnFqn);
+      if (column == null) {
+        processRecord = false;
+        return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(8, columnFqn));
+      }
+      column.withDisplayName(csvRecord.get(9));
+      column.withDescription(csvRecord.get(10));
+      column.withDataTypeDisplay(csvRecord.get(11));
+      column.withTags(getTagLabels(printer, csvRecord, 12));
+      return new ImportResult(IMPORT_SUCCESS, csvRecord, ENTITY_UPDATED);
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Table entity) {
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // column.fullyQualifiedName, column.displayName, column.description, column.dataTypeDisplay,
+      // column.tags
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwner(recordList, entity.getOwner());
+      addTagLabels(recordList, entity.getTags());
+      addField(recordList, entity.getRetentionPeriod());
+      addField(recordList, entity.getSourceUrl());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addRecord(csvFile, recordList, table.getColumns().get(0), false);
+
+      for (int i = 1; i < entity.getColumns().size(); i++) {
+        addRecord(csvFile, new ArrayList<>(), table.getColumns().get(1), true);
+      }
+    }
+
+    private void addRecord(
+        CsvFile csvFile, List<String> recordList, Column column, boolean emptyTableDetails) {
+      if (emptyTableDetails) {
+        for (int i = 0; i < 8; i++) {
+          addField(recordList, (String) null); // Add empty fields for table information
+        }
+      }
+      addField(
+          recordList,
+          getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName()));
+      addField(recordList, column.getDisplayName());
+      addField(recordList, column.getDescription());
+      addField(recordList, column.getDataTypeDisplay());
+      addTagLabels(recordList, column.getTags());
+      addRecord(csvFile, recordList);
+      listOrEmpty(column.getChildren())
+          .forEach(c -> addRecord(csvFile, new ArrayList<>(), c, true));
+    }
+
+    private Column findColumn(List<Column> columns, String columnFqn) {
+      for (Column c : listOrEmpty(columns)) {
+        String tableFqn = table.getFullyQualifiedName();
+        Column column =
+            getLocalColumnName(tableFqn, c.getFullyQualifiedName()).equals(columnFqn)
+                ? c
+                : findColumn(c.getChildren(), columnFqn);
+
+        if (column != null) {
+          return column;
+        }
+      }
+      return null;
     }
   }
 }

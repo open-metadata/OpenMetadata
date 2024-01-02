@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 
 import java.util.Locale;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
@@ -22,7 +23,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
-      SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig, long waitTimeBetweenCalls) {
+      SecretsManagerProvider secretsManagerProvider,
+      SecretsConfig secretsConfig,
+      long waitTimeBetweenCalls) {
     super(secretsManagerProvider, secretsConfig);
     waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }
@@ -73,7 +76,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       try {
         Thread.sleep(waitTimeBetweenStoreCalls);
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        Thread.currentThread().interrupt();
+        throw new UnhandledServerException("Exception encountered", e);
       }
     }
   }

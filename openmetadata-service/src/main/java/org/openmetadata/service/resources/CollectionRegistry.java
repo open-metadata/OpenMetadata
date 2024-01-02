@@ -42,7 +42,7 @@ import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.util.ClassUtil;
+import org.openmetadata.service.util.ReflectionUtil;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
@@ -58,7 +58,8 @@ public final class CollectionRegistry {
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
 
   /** Map of class name to list of functions exposed for writing conditions */
-  private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
+  private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap =
+      new ConcurrentHashMap<>();
 
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
@@ -115,7 +116,8 @@ public final class CollectionRegistry {
   private void loadConditionFunctions() {
     try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
-        List<Method> methods = ClassUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
+        List<Method> methods =
+            ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
         for (Method method : methods) {
           Function annotation = method.getAnnotation(Function.class);
           List<org.openmetadata.schema.type.Function> functionList =
@@ -130,7 +132,10 @@ public final class CollectionRegistry {
                   .withParameterInputType(annotation.paramInputType());
           functionList.add(function);
           functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-          LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
+          LOG.info(
+              "Initialized for {} function {}\n",
+              method.getDeclaringClass().getSimpleName(),
+              function);
         }
       }
     }
@@ -153,7 +158,8 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource =
+            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -175,15 +181,14 @@ public final class CollectionRegistry {
     int order = 0;
     CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
-      if (a instanceof Path) {
+      if (a instanceof Path path) {
         // Use @Path annotation to compile href
-        collectionInfo.withHref(URI.create(((Path) a).value()));
-      } else if (a instanceof Api) {
+        collectionInfo.withHref(URI.create(path.value()));
+      } else if (a instanceof Api api) {
         // Use @Api annotation to get documentation about the collection
-        collectionInfo.withDocumentation(((Api) a).value());
-      } else if (a instanceof Collection) {
+        collectionInfo.withDocumentation(api.value());
+      } else if (a instanceof Collection collection) {
         // Use @Collection annotation to get initialization information for the class
-        Collection collection = (Collection) a;
         collectionInfo.withName(collection.name());
         order = collection.order();
       }
@@ -214,7 +219,10 @@ public final class CollectionRegistry {
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
-      throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+      throws ClassNotFoundException,
+          NoSuchMethodException,
+          IllegalAccessException,
+          InvocationTargetException,
           InstantiationException {
 
     Object resource = null;
@@ -230,7 +238,9 @@ public final class CollectionRegistry {
                 .newInstance(authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
         try {
-          resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
+          resource =
+              clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
+                  .newInstance(jdbi, authorizer);
         } catch (NoSuchMethodException exe) {
           resource = Class.forName(resourceClass).getConstructor().newInstance();
         }
@@ -241,7 +251,8 @@ public final class CollectionRegistry {
 
     // Call initialize method, if it exists
     try {
-      Method initializeMethod = resource.getClass().getMethod("initialize", OpenMetadataApplicationConfig.class);
+      Method initializeMethod =
+          resource.getClass().getMethod("initialize", OpenMetadataApplicationConfig.class);
       initializeMethod.invoke(resource, config);
     } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called

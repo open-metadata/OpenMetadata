@@ -2,7 +2,6 @@ package org.openmetadata.service.migration.context;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,7 @@ public class MigrationContext {
   public MigrationContext(String version, List<MigrationOps> migrationOps, Handle handle) {
     this.version = version;
     this.migrationOps =
-        Stream.concat(migrationOps.stream(), CommonMigrationOps.getCommonOps().stream()).collect(Collectors.toList());
+        Stream.concat(migrationOps.stream(), CommonMigrationOps.getCommonOps().stream()).toList();
     this.handle = handle;
   }
 

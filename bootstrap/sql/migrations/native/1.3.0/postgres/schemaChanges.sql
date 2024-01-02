@@ -39,6 +39,16 @@ SET json = jsonb_set(
 )
 where name = 'DataInsightsApplication';
 
+-- Remove mssql connection from airflow db
+UPDATE pipeline_service_entity pse
+SET json = jsonb_set(
+    json,
+    '{connection, config}',
+    json->'connection'->'config' #- '{connection}'
+)
+WHERE serviceType = 'Airflow'
+AND json #>> '{connection,config,connection,type}' = 'Mssql';
+
 -- Rename NOOP Secret Manager to DB
 update metadata_service_entity
 set json = jsonb_set(
@@ -49,3 +59,6 @@ set json = jsonb_set(
 )
 where name = 'OpenMetadata'
   and json #>> '{connection,config,secretsManagerProvider}' = 'noop';
+
+-- Clean old test connections
+TRUNCATE automations_workflow;

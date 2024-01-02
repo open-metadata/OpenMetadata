@@ -28,13 +28,14 @@ public final class PipelineServiceClientFactory {
 
   @Getter private static PipelineServiceClient pipelineServiceClient;
 
-  public static PipelineServiceClient createPipelineServiceClient(PipelineServiceClientConfiguration config) {
+  public static PipelineServiceClient createPipelineServiceClient(
+      PipelineServiceClientConfiguration config) {
     if (pipelineServiceClient != null) {
       return pipelineServiceClient;
     }
 
     String pipelineServiceClientClass = config.getClassName();
-    LOG.info("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
+    LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
     try {
       pipelineServiceClient =
@@ -50,7 +51,8 @@ public final class PipelineServiceClientFactory {
         | IllegalAccessException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e.getMessage()));
+              "Error trying to load PipelineServiceClient %s: %s",
+              pipelineServiceClientClass, e.getMessage()));
     }
   }
 }

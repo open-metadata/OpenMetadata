@@ -30,7 +30,7 @@ Configure and schedule DomoDashboard metadata and profiler workflows from the Op
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-**Note:** For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+**Note:** For metadata ingestion, kindly make sure add atleast `dashboard` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 ### Python Requirements

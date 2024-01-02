@@ -43,7 +43,7 @@ Security requirements for your **production** environment:
 {% image src="/images/v1.3/deployment/security/keycloak/3-add-client.png" alt="add-client" /%}
 
 ### Step 4: Edit settings of the client
-- Change "Acess Type" value from "public" to "confidential".
+- Change "Access Type" value from "public" to "confidential".
 - Change "implicit flow" and "service accounts" to enabled.
 
 {% image src="/images/v1.3/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client" /%}

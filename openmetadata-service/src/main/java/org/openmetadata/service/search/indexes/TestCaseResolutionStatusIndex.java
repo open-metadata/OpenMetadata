@@ -15,8 +15,7 @@ public class TestCaseResolutionStatusIndex implements SearchIndex {
 
   @Override
   public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(testCaseResolutionStatus);
-    return doc;
+    return JsonUtils.getMap(testCaseResolutionStatus);
   }
 
   public static Map<String, Float> getFields() {

@@ -11,9 +11,14 @@
 """
 Pydantic definition for storing entities for patching 
 """
+import json
+from typing import Dict, List, Optional
+
+import jsonpatch
 from pydantic import BaseModel
 
-from metadata.ingestion.api.models import Entity
+from metadata.ingestion.api.models import Entity, T
+from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 
 
 class PatchRequest(BaseModel):
@@ -122,3 +127,94 @@ ALLOWED_COMMON_PATCH_FIELDS = {
 }
 
 RESTRICT_UPDATE_LIST = ["description", "tags"]
+
+
+def build_patch(
+    source: T,
+    destination: T,
+    allowed_fields: Optional[Dict] = None,
+    restrict_update_fields: Optional[List] = None,
+) -> Optional[jsonpatch.JsonPatch]:
+    """
+    Given an Entity type and Source entity and Destination entity,
+    generate a JSON Patch and apply it.
+
+    Args
+        source: Source payload which is current state of the source in OpenMetadata
+        destination: payload with changes applied to the source.
+        allowed_fields: List of field names to filter from source and destination models
+        restrict_update_fields: List of field names which will only support add operation
+
+    Returns
+        Updated Entity
+    """
+
+    # remove change descriptions from entities
+    source = _remove_change_description(source)
+    destination = _remove_change_description(destination)
+
+    # Get the difference between source and destination
+    if allowed_fields:
+        patch = jsonpatch.make_patch(
+            json.loads(
+                source.json(
+                    exclude_unset=True,
+                    exclude_none=True,
+                    include=allowed_fields,
+                )
+            ),
+            json.loads(
+                destination.json(
+                    exclude_unset=True,
+                    exclude_none=True,
+                    include=allowed_fields,
+                )
+            ),
+        )
+    else:
+        patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
+            json.loads(source.json(exclude_unset=True, exclude_none=True)),
+            json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+        )
+    if not patch:
+        return None
+
+    # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
+    # we will remove the other operations for replace, remove from here
+    if restrict_update_fields:
+        patch.patch = [
+            patch_ops
+            for patch_ops in patch.patch
+            if _determine_restricted_operation(
+                patch_ops=patch_ops,
+                restrict_update_fields=restrict_update_fields,
+            )
+        ]
+
+    return patch
+
+
+def _determine_restricted_operation(
+    patch_ops: Dict, restrict_update_fields: Optional[List] = None
+) -> bool:
+    """
+    Only retain add operation for restrict_update_fields fields
+    """
+    path = patch_ops.get("path")
+    op = patch_ops.get("op")
+    for field in restrict_update_fields or []:
+        if field in path and op != PatchOperation.ADD.value:
+            return False
+    return True
+
+
+def _remove_change_description(entity: T) -> T:
+    """
+    Remove change description if applies.
+    We never want to patch that, and we won't have that information
+    from the source. It's fully handled in the server.
+    """
+    if getattr(entity, "changeDescription"):
+        entity.changeDescription = None
+
+    return entity
