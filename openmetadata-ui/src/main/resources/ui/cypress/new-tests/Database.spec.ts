@@ -14,7 +14,7 @@
 import { CustomPropertyType } from '../common/Utils/CustomProperty';
 import DatabaseClass from './base/DatabaseClass';
 import DatabaseSchemaClass from './base/DatabaseSchemaClass';
-import StoreProcedureClass from './base/StoredProcedure';
+import StoreProcedureClass from './base/StoredProcedureClass';
 import TableClass from './base/TableClass';
 
 const entities = [

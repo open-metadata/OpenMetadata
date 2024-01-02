@@ -10,34 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { deleteEntityViaREST } from '../../common/Utils/Entity';
 import {
-  DASHBOARD_SERVICE,
+  createEntityViaREST,
+  deleteEntityViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
+import {
+  DASHBOARD_DATA_MODEL_DETAILS,
   DASHBOARD_SERVICE_DETAILS,
 } from '../../constants/EntityConstant';
 import EntityClass, { EntityType } from './EntityClass';
 
-class DashboardClass extends EntityClass {
-  dashboardName: string;
+class DashboardDataModelClass extends EntityClass {
+  dashboardDataModelName: string;
 
   constructor() {
-    const dashboardName = `cypress-dashboard-${Date.now()}`;
-    super(dashboardName, DASHBOARD_SERVICE.entity, EntityType.Dashboard);
+    const dashboardDataModelName = `cypress-dashboard-data-model-${Date.now()}`;
+    super(
+      dashboardDataModelName,
+      DASHBOARD_DATA_MODEL_DETAILS,
+      EntityType.DataModel
+    );
 
-    this.dashboardName = dashboardName;
-    this.name = 'Dashboard';
+    this.dashboardDataModelName = dashboardDataModelName;
+    this.name = 'Dashboard Data Model';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
-      term: this.dashboardName,
-      serviceName: DASHBOARD_SERVICE.service.name,
+      term: this.dashboardDataModelName,
+      serviceName: DASHBOARD_SERVICE_DETAILS.name,
       entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
     });
   }
 
@@ -49,10 +52,20 @@ class DashboardClass extends EntityClass {
     cy.getAllLocalStorage().then((data) => {
       const token = Object.values(data)[0].oidcIdToken as string;
 
-      createSingleLevelEntity({
+      createEntityViaREST({
         token,
-        ...DASHBOARD_SERVICE,
-        entity: [{ ...DASHBOARD_SERVICE.entity, name: this.dashboardName }],
+        body: DASHBOARD_SERVICE_DETAILS,
+        endPoint: EntityType.DashboardService,
+      });
+
+      createEntityViaREST({
+        token,
+        body: {
+          ...DASHBOARD_DATA_MODEL_DETAILS,
+          name: this.dashboardDataModelName,
+          displayName: this.dashboardDataModelName,
+        },
+        endPoint: EntityType.DataModel,
       });
     });
   }
@@ -71,4 +84,4 @@ class DashboardClass extends EntityClass {
   }
 }
 
-export default DashboardClass;
+export default DashboardDataModelClass;

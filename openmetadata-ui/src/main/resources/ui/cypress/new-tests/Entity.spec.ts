@@ -14,6 +14,7 @@
 import { CustomPropertyType } from '../common/Utils/CustomProperty';
 import ContainerClass from './base/ContainerClass';
 import DashboardClass from './base/DashboardClass';
+import DashboardDataModelClass from './base/DataModelClass';
 import MlModelClass from './base/MlModelClass';
 import PipelineClass from './base/PipelineClass';
 import SearchIndexClass from './base/SearchIndexClass';
@@ -28,6 +29,7 @@ const entities = [
   new MlModelClass(),
   new ContainerClass(),
   new SearchIndexClass(),
+  new DashboardDataModelClass(),
 ] as const;
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';

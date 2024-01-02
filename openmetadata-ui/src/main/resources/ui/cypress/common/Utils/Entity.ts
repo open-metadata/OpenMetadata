@@ -18,6 +18,64 @@ import {
   verifyResponseStatusCode,
 } from '../common';
 
+const EXPLORE_PAGE_TABS: Record<
+  Exclude<
+    EntityType,
+    | EntityType.DashboardService
+    | EntityType.DatabaseService
+    | EntityType.MessagingService
+    | EntityType.SearchService
+    | EntityType.MlModelService
+    | EntityType.StorageService
+    | EntityType.PipelineService
+    | EntityType.Database
+    | EntityType.DatabaseSchema
+    | EntityType.GlossaryTerm
+  >,
+  string
+> = {
+  [EntityType.Dashboard]: 'Dashboard',
+  [EntityType.DataModel]: 'dashboard data models',
+  [EntityType.Pipeline]: 'Pipeline',
+  [EntityType.Topic]: 'Topic',
+  [EntityType.MlModel]: 'ML Model',
+  [EntityType.Container]: 'Container',
+  [EntityType.SeachIndex]: 'Search Index',
+  [EntityType.Table]: 'Table',
+  [EntityType.StoreProcedure]: 'Store Procedure',
+  [EntityType.Glossary]: 'Glossary',
+  [EntityType.Domain]: 'Domain',
+};
+
+export const SEARCH_INDEX: Record<
+  Exclude<
+    EntityType,
+    | EntityType.DashboardService
+    | EntityType.DatabaseService
+    | EntityType.MessagingService
+    | EntityType.SearchService
+    | EntityType.MlModelService
+    | EntityType.StorageService
+    | EntityType.PipelineService
+    | EntityType.Database
+    | EntityType.DatabaseSchema
+    | EntityType.GlossaryTerm
+  >,
+  string
+> = {
+  [EntityType.Dashboard]: 'dashboard_search_index',
+  [EntityType.DataModel]: 'dashboard_data_model_search_index',
+  [EntityType.Pipeline]: 'pipeline_search_index',
+  [EntityType.Topic]: 'topic_search_index',
+  [EntityType.MlModel]: 'mlmodel_search_index',
+  [EntityType.Container]: 'container_search_index',
+  [EntityType.SeachIndex]: 'search_entity_search_index',
+  [EntityType.Table]: 'table_search_index',
+  [EntityType.StoreProcedure]: 'store_procedure_search_index',
+  [EntityType.Glossary]: 'glossary_search_index',
+  [EntityType.Domain]: 'domain_search_index',
+};
+
 /**
  * create full hierarchy of database service (service > database > schema > tables)
  */
@@ -140,6 +198,102 @@ export const deleteEntityViaREST = ({
     headers: { Authorization: `Bearer ${token}` },
   }).then((response) => {
     expect(response.status).to.eq(200);
+  });
+};
+
+export const visitEntityDetailsPage = ({
+  term,
+  serviceName,
+  entity,
+  dataTestId,
+  entityType,
+  entityFqn,
+}: {
+  term: string;
+  serviceName: string;
+  entity: EntityType;
+  dataTestId?: string;
+  entityType?: EntityType;
+  entityFqn?: string;
+}) => {
+  if (entity === EntityType.DataModel) {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'getEntityDetails'
+    );
+  } else {
+    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  }
+
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=**&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
+    'explorePageTabSearch'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=**&from=*&size=*&index=all`,
+    'explorePageSearch'
+  );
+  const id = dataTestId ?? `${serviceName}-${term}`;
+
+  if (entityType) {
+    cy.get('[data-testid="global-search-selector"]').click();
+    cy.get(`[data-testid="global-search-select-option-${entityType}"]`).click();
+  }
+
+  // searching term in search box
+  cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="searchBox"]').type(entityFqn ?? term);
+  cy.wait('@explorePageSearch').then(() => {
+    cy.get('body').then(($body) => {
+      // checking if requested term is available in search suggestion
+      if (
+        $body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length
+      ) {
+        // if term is available in search suggestion, redirecting to entity details page
+        cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
+          .first()
+          .click();
+      } else {
+        // if term is not available in search suggestion,
+        // hitting enter to search box so it will redirect to explore page
+        cy.get('body').click(1, 1);
+        cy.get('[data-testid="searchBox"]').type('{enter}');
+        verifyResponseStatusCode('@explorePageSearch', 200);
+
+        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
+
+        cy.get(`[data-testid="${tabName}-tab"]`).click();
+
+        verifyResponseStatusCode('@explorePageTabSearch', 200);
+
+        verifyResponseStatusCode('@explorePageSearch', 200);
+        if ([EntityType.Dashboard, EntityType.DataModel].includes(entity)) {
+          cy.get('[data-testid="search-dropdown-Service"]').click();
+          cy.get(
+            '[data-testid="drop-down-menu"] [data-testid="search-input"]'
+          ).type(serviceName);
+          verifyResponseStatusCode('@explorePageSearch', 200);
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
+          ).click();
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
+          ).click();
+          cy.get('[data-testid="entity-link"]').contains(term).eq(0).click();
+        } else {
+          cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+            .scrollIntoView()
+            .click();
+        }
+      }
+    });
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.get('body').click(1, 1);
+    cy.get('[data-testid="searchBox"]').clear();
   });
 };
 

@@ -74,6 +74,7 @@ export enum EntityType {
   SearchService = 'services/searchServices',
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
+  DataModel = 'dashboard/datamodels',
 }
 
 export const CustomPropertyTypeList = [
