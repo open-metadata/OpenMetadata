@@ -28,7 +28,7 @@ import {
 } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -172,12 +172,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         key: 'name',
         width: 200,
         render: (_, record) => getEntityName(record),
-        sorter: (col1, col2) => {
-          const name1 = getEntityName(col1);
-          const name2 = getEntityName(col2);
-
-          return name1.localeCompare(name2);
-        },
+        sorter: columnSorter,
       },
       {
         title: t('label.value'),
