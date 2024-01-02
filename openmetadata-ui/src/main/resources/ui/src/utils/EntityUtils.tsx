@@ -1790,7 +1790,10 @@ export const highlightEntityNameAndDescription = (
   };
 };
 
-export const columnSorter = (col1, col2) => {
+export const columnSorter = (
+  col1: { name: string; displayName?: string },
+  col2: { name: string; displayName?: string }
+) => {
   const name1 = getEntityName(col1);
   const name2 = getEntityName(col2);
 
