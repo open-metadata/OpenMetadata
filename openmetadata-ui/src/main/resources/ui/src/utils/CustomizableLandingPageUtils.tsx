@@ -12,7 +12,14 @@
  */
 
 import i18next from 'i18next';
-import { capitalize, isEmpty, isUndefined, max, uniqueId } from 'lodash';
+import {
+  capitalize,
+  isEmpty,
+  isUndefined,
+  max,
+  uniqBy,
+  uniqueId,
+} from 'lodash';
 import React from 'react';
 import { Layout } from 'react-grid-layout';
 import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
@@ -250,3 +257,14 @@ export const getLayoutWithEmptyWidgetPlaceholder = (
     isDraggable: false,
   },
 ];
+
+// Function to filter out empty widget placeholders and only keep knowledge panels
+export const getUniqueFilteredLayout = (layout: WidgetConfig[]) =>
+  uniqBy(
+    layout.filter(
+      (widget) =>
+        widget.i.startsWith('KnowledgePanel') &&
+        !widget.i.endsWith('.EmptyWidgetPlaceholder')
+    ),
+    'i'
+  );

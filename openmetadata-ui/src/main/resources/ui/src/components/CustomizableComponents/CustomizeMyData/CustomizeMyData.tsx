@@ -13,7 +13,7 @@
 
 import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, uniqBy } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import {
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
+  getUniqueFilteredLayout,
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
@@ -207,14 +208,7 @@ function CustomizeMyData({
       ...initialPageData,
       data: {
         page: {
-          layout: uniqBy(
-            layout.filter(
-              (widget) =>
-                widget.i.startsWith('KnowledgePanel') &&
-                !widget.i.endsWith('.EmptyWidgetPlaceholder')
-            ),
-            'i'
-          ),
+          layout: getUniqueFilteredLayout(layout),
         },
       },
     });
@@ -230,13 +224,18 @@ function CustomizeMyData({
   }, []);
 
   const handleReset = useCallback(() => {
-    const newMainPanelLayout = customizePageClassBase.defaultLayout;
+    // Get default layout with the empty widget added at the end
+    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
+      customizePageClassBase.defaultLayout,
+      2,
+      4
+    );
     setLayout(newMainPanelLayout);
     handlePageDataChange({
       ...initialPageData,
       data: {
         page: {
-          layout: uniqBy(newMainPanelLayout, 'i'),
+          layout: getUniqueFilteredLayout(newMainPanelLayout),
         },
       },
     });
