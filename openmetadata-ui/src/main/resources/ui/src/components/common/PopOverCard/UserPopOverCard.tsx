@@ -262,7 +262,7 @@ const UserPopOverCard: FC<Props> = ({
             },
             className
           )}
-          data-testid={userName}
+          data-testid={displayName}
           to={
             type === UserTeam.Team
               ? getTeamAndUserDetailsPath(userName)
