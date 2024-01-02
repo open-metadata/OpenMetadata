@@ -52,7 +52,8 @@ def get_connection(connection: TableauConnection) -> TableauClient:
     get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
     try:
         return TableauClient(
-            config=tableau_server_config,
+            tableau_server_config=tableau_server_config,
+            config=connection,
             env=connection.env,
             ssl_verify=get_verify_ssl(connection.sslConfig),
             pagination_limit=connection.paginationLimit,
@@ -77,6 +78,8 @@ def test_connection(
 
     test_fn = {
         "ServerInfo": client.server_info,
+        "ValidateApiVersion": client.test_api_version,
+        "ValidateSiteUrl": client.test_site_url,
         "GetWorkbooks": partial(
             extract_pages,
             query_func=client.query_workbooks_for_site,
