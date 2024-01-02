@@ -55,7 +55,7 @@ interface ExecutionProps {
 const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState(PIPELINE_EXECUTION_TABS.LIST_VIEW);
-  const [searchValue, setSearchValue] = useState<string>(undefined);
+  const [searchValue, setSearchValue] = useState<string>('');
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
