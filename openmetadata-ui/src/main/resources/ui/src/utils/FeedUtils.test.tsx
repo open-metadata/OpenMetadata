@@ -1,10 +1,3 @@
-import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-  suggestions,
-} from './FeedUtils';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +10,14 @@ import {
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import {
+  getEntityField,
+  getEntityFQN,
+  getEntityType,
+  suggestions,
+} from './FeedUtils';
+
 jest.mock('../rest/miscAPI', () => ({
   getSearchedUsers: jest.fn().mockResolvedValue({
     data: {
