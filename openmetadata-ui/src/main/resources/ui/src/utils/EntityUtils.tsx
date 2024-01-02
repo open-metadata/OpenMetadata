@@ -1790,3 +1790,13 @@ export const highlightEntityNameAndDescription = (
     description: entityDescription,
   };
 };
+
+export const columnSorter = (
+  col1: { name: string; displayName?: string },
+  col2: { name: string; displayName?: string }
+) => {
+  const name1 = getEntityName(col1);
+  const name2 = getEntityName(col2);
+
+  return name1.localeCompare(name2);
+};
