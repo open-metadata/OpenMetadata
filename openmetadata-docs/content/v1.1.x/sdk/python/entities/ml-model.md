@@ -143,4 +143,4 @@ In this doc, we have seen the role that OpenMetadata serves from a Machine Learn
 
 We have shown how to use the Python API to enrich the models' metadata and add the lineage information with its related Entities and how the versioning will respond to changes.
 
-For further information on the properties, do not hesitate to review the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/mlmodel.json) and for examples and usages with the Python API, you can take a look at our [integration tests](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/tests/integration/ometa/test_ometa_model_api.py).
+For further information on the properties, do not hesitate to review the [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/mlmodel.json) and for examples and usages with the Python API, you can take a look at our [integration tests](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/tests/integration/ometa/test_ometa_mlmodel_api.py).

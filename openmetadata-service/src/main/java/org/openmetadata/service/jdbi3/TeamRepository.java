@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
+import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -226,7 +227,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setInheritedFields(Team team, Fields fields) {
+  public void setInheritedFields(Team team, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
@@ -237,7 +238,6 @@ public class TeamRepository extends EntityRepository<Team> {
         inheritDomain(team, fields, parent);
       }
     }
-    return team;
   }
 
   @Override
@@ -623,44 +623,29 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    protected Team toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 7 - name, displayName, description, teamType, isJoinable
-      Team importedTeam =
+      Team team =
           new Team()
               .withName(csvRecord.get(0))
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
               .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withIsJoinable(getBoolean(printer, csvRecord, 6));
+              .withOwner(getOwnerAsUser(printer, csvRecord, 5))
+              .withIsJoinable(getBoolean(printer, csvRecord, 6))
+              .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
+              .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
 
       // Field 5 - parent teams
-      getParents(printer, csvRecord, importedTeam);
-      if (!processRecord) {
-        return null;
+      getParents(printer, csvRecord, team);
+      if (processRecord) {
+        createEntity(printer, csvRecord, team);
       }
-
-      // Field 6 - Owner
-      importedTeam.setOwner(getOwnerAsUser(printer, csvRecord, 5));
-      if (!processRecord) {
-        return null;
-      }
-
-      // Field 8 - defaultRoles
-      importedTeam.setDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
-      if (!processRecord) {
-        return null;
-      }
-
-      // Field 9 - policies
-      importedTeam.setPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
-      if (!processRecord) {
-        return null;
-      }
-      return importedTeam;
     }
 
     @Override
-    protected List<String> toRecord(Team entity) {
+    protected void addRecord(CsvFile csvFile, Team entity) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
@@ -671,11 +656,14 @@ public class TeamRepository extends EntityRepository<Team> {
       addField(recordList, entity.getIsJoinable());
       addEntityReferences(recordList, entity.getDefaultRoles());
       addEntityReferences(recordList, entity.getPolicies());
-      return recordList;
+      addRecord(csvFile, recordList);
     }
 
     private void getParents(CSVPrinter printer, CSVRecord csvRecord, Team importedTeam)
         throws IOException {
+      if (!processRecord) {
+        return;
+      }
       List<EntityReference> parentRefs = getEntityReferences(printer, csvRecord, 4, Entity.TEAM);
 
       // Validate team being created is under the hierarchy of the team for which CSV is being

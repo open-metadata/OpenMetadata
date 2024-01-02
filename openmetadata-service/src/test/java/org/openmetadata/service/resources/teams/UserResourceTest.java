@@ -181,7 +181,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Test
   @Override
-  public void post_entity_as_non_admin_401(TestInfo test) {
+  public void post_entity_as_non_admin_401(TestInfo testIgnored) {
     // Override the method as a User can create a User entity for himself
     // during first time login without being an admin
   }
@@ -1096,7 +1096,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader, getFailedRecord(record, "[name must match \"\"(?U)^[\\w\\-.]+$\"\"]")
+      resultsHeader, getFailedRecord(record, "[name must match \"(?U)^[\\w\\-.]+$\"]")
     };
     assertRows(result, expectedRows);
 
@@ -1108,7 +1108,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(6, Entity.TEAM, "invalidTeam"))
         };
     assertRows(result, expectedRows);
 
@@ -1119,7 +1120,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(7, Entity.ROLE, "invalidRole"))
         };
     assertRows(result, expectedRows);
   }

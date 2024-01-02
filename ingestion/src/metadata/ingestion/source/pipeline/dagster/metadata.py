@@ -26,10 +26,13 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -141,7 +144,7 @@ class DagsterSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.name,
                     error=f"Error to yield pipeline for {pipeline_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -197,7 +200,7 @@ class DagsterSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=run.runId,
                     error=f"Error to yield run status for {run}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -227,7 +230,7 @@ class DagsterSource(PipelineServiceSource):
                     left=StackTraceError(
                         name=f"{pipeline_details.name} Pipeline Status",
                         error=f"Error to yield pipeline status for {pipeline_details}: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

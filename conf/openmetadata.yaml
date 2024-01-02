@@ -91,7 +91,19 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: DEBUG
+    org.openmetadata.service.util.OpenMetadataSetup:
+      level: INFO
+      appenders:
+        - type: console
+          logFormat: "%msg%n"
+          timeZone: UTC
+        - type: file
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          currentLogFilename: ./logs/openmetadata-operations.log
+          archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
   appenders:
     - type: console
       threshold: TRACE

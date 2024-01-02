@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 1`] = `
+<div
+  className="d-inline-flex w-max-90"
+>
+  <Link
+    className="break-word"
+    data-testid="database-schema-name-link"
+    to="/databaseSchema/database.schema1"
+  >
+    schema1
+  </Link>
+</div>
+`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 2`] = `
+<RichTextEditorPreviewer
+  markdown="Schema 1 description"
+/>
+`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 3`] = `"John Doe"`;
+
+exports[`Database Util Database Util - schemaTableColumns should render the correct columns 4`] = `" 80th label.pctile-lowercase"`;

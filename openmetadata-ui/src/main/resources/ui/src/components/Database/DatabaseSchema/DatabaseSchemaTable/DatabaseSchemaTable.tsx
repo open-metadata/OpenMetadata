@@ -28,7 +28,7 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getDatabaseSchemas } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { schemaTableColumns } from '../../../../utils/DatabaseDetails.utils';
+import { schemaTableColumns } from '../../../../utils/Database/Database.util';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
