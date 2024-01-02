@@ -13,6 +13,7 @@
 
 import { Edge } from 'reactflow';
 import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
@@ -29,6 +30,7 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getUpdatedColumnsFromEdge,
   isColumnLineageTraced,
   isTracedEdge,
 } from './EntityLineageUtils';
@@ -379,5 +381,55 @@ describe('Test EntityLineageUtils utility', () => {
     await addLineageHandler(edge);
 
     expect(addLineage).toHaveBeenCalledWith(edge);
+  });
+
+  it('getUpdatedColumnsFromEdge should appropriate columns', () => {
+    const edgeToConnect = {
+      source: 'dim_customer',
+      sourceHandle: 'shopId',
+      target: 'dim_client',
+      targetHandle: 'shopId',
+    };
+    const currentEdge: EdgeDetails = {
+      fromEntity: {
+        id: 'source',
+        type: 'table',
+        fqn: 'sourceFqn',
+      },
+      toEntity: {
+        id: 'target',
+        type: 'table',
+        fqn: 'targetFqn',
+      },
+      columns: [],
+    };
+
+    const result = getUpdatedColumnsFromEdge(edgeToConnect, currentEdge);
+
+    expect(result).toEqual([
+      {
+        fromColumns: ['shopId'],
+        toColumn: 'shopId',
+      },
+    ]);
+
+    currentEdge.columns = [
+      {
+        fromColumns: ['customerId'],
+        toColumn: 'customerId',
+      },
+    ];
+    const result1 = getUpdatedColumnsFromEdge(edgeToConnect, currentEdge);
+
+    expect(result1).toEqual([
+      {
+        fromColumns: ['customerId'],
+        toColumn: 'customerId',
+      },
+      {
+        fromColumns: ['shopId'],
+        toColumn: 'shopId',
+      },
+    ]);
   });
 });

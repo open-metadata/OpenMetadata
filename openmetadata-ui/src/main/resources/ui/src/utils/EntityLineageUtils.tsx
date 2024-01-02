@@ -21,6 +21,7 @@ import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Connection,
   Edge,
   getConnectedEdges,
   getIncomers,
@@ -897,4 +898,37 @@ export const getConnectedNodesEdges = (
     edges: connectedEdges,
     nodeFqn: childNodeFqn,
   };
+};
+
+export const getUpdatedColumnsFromEdge = (
+  edgeToConnect: Edge | Connection,
+  currentEdge: EdgeDetails
+) => {
+  const { target, source, sourceHandle, targetHandle } = edgeToConnect;
+  const columnConnection = source !== sourceHandle && target !== targetHandle;
+
+  if (columnConnection) {
+    const updatedColumns: ColumnLineage[] =
+      currentEdge.columns?.map((lineage) => {
+        if (lineage.toColumn === targetHandle) {
+          return {
+            ...lineage,
+            fromColumns: [...(lineage.fromColumns ?? []), sourceHandle ?? ''],
+          };
+        }
+
+        return lineage;
+      }) ?? [];
+
+    if (!updatedColumns.find((lineage) => lineage.toColumn === targetHandle)) {
+      updatedColumns.push({
+        fromColumns: [sourceHandle ?? ''],
+        toColumn: targetHandle ?? '',
+      });
+    }
+
+    return updatedColumns;
+  }
+
+  return [];
 };

@@ -13,7 +13,7 @@
 export type ModalWithQueryEditorProps = {
   header: string;
   value: string;
-  onSave?: (text: string) => Promise<void>;
+  onSave?: (text: string) => void;
   onCancel?: () => void;
   visible: boolean;
 };

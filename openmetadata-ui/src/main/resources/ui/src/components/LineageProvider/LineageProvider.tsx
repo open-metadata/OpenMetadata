@@ -45,10 +45,7 @@ import {
   EntityLineageNodeType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
-import {
-  ColumnLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityLineage';
 import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
@@ -67,6 +64,7 @@ import {
   getModalBodyText,
   getNewLineageConnectionDetails,
   getUniqueFlowElements,
+  getUpdatedColumnsFromEdge,
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
@@ -579,40 +577,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           targetNode.data.node
         );
 
-        if (columnConnection) {
-          if (!isUndefined(currentEdge)) {
-            const updatedColumns: ColumnLineage[] =
-              currentEdge.columns?.map((lineage) => {
-                if (lineage.toColumn === targetHandle) {
-                  return {
-                    ...lineage,
-                    fromColumns: [
-                      ...(lineage.fromColumns ?? []),
-                      sourceHandle ?? '',
-                    ],
-                  };
-                }
-
-                return lineage;
-              }) ?? [];
-
-            if (
-              !updatedColumns.find(
-                (lineage) => lineage.toColumn === targetHandle
-              )
-            ) {
-              updatedColumns.push({
-                fromColumns: [sourceHandle ?? ''],
-                toColumn: targetHandle ?? '',
-              });
-            }
-
-            if (newEdgeWithoutFqn.edge.lineageDetails) {
-              newEdgeWithoutFqn.edge.lineageDetails.columnsLineage =
-                updatedColumns;
-            }
-            currentEdge.columns = updatedColumns; // update current edge with new columns
+        if (columnConnection && currentEdge) {
+          const updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
+          if (newEdgeWithoutFqn.edge.lineageDetails) {
+            newEdgeWithoutFqn.edge.lineageDetails.columnsLineage =
+              updatedColumns;
           }
+          currentEdge.columns = updatedColumns; // update current edge with new columns
         }
 
         addLineageHandler(newEdgeWithoutFqn)
@@ -764,12 +735,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             newEdges[edgeIndex] = existingEdge as EdgeDetails;
           }
 
-          const newData = {
+          return {
             ...pre,
             edges: newEdges,
           };
-
-          return newData;
         });
 
         setEdges((pre) =>
@@ -966,7 +935,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onDrawerClose,
     loadChildNodesHandler,
     fetchLineageData,
-
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,

@@ -106,11 +106,7 @@ const CustomControls: FC<ControlProps> = ({
     setFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          undefined // pass in state variable
-        ),
+        value: getSelectedValuesFromQuickFilter(item, dropdownItems),
       }))
     );
 
@@ -157,11 +153,10 @@ const CustomControls: FC<ControlProps> = ({
         const { position } = selectedNode;
         onNodeClick(selectedNode);
         // moving selected node in center
-        reactFlowInstance &&
-          reactFlowInstance.setCenter(position.x, position.y, {
-            duration: ZOOM_TRANSITION_DURATION,
-            zoom: zoomValue,
-          });
+        reactFlowInstance?.setCenter(position.x, position.y, {
+          duration: ZOOM_TRANSITION_DURATION,
+          zoom: zoomValue,
+        });
       }
     },
     [onNodeClick, reactFlowInstance]
