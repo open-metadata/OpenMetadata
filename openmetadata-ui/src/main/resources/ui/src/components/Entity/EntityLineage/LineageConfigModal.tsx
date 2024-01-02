@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal, Select } from 'antd';
+import { Form, Input, Modal } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineageConfig,
   LineageConfigModalProps,
 } from './EntityLineage.interface';
-
-const SELECT_OPTIONS = [1, 2, 3].map((value) => (
-  <Select.Option key={value} value={value}>
-    {value}
-  </Select.Option>
-));
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -54,8 +48,8 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   return (
     <Modal
       maskClosable={false}
-      open={visible}
       title={t('label.lineage-config')}
+      visible={visible}
       onCancel={onCancel}
       onOk={form.submit}>
       <Form
@@ -73,11 +67,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             },
           ]}
           tooltip={t('message.upstream-depth-tooltip')}>
-          <Select
+          <Input
             data-testid="field-upstream"
-            onChange={(value) => setUpstreamDepth(value as number)}>
-            {SELECT_OPTIONS}
-          </Select>
+            type="number"
+            value={upstreamDepth}
+            onChange={(e) => setUpstreamDepth(Number(e.target.value))}
+          />
         </Form.Item>
 
         <Form.Item
@@ -90,11 +85,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             },
           ]}
           tooltip={t('message.downstream-depth-tooltip')}>
-          <Select
+          <Input
             data-testid="field-downstream"
-            onChange={(value) => setDownstreamDepth(value as number)}>
-            {SELECT_OPTIONS}
-          </Select>
+            type="number"
+            value={downstreamDepth}
+            onChange={(e) => setDownstreamDepth(Number(e.target.value))}
+          />
         </Form.Item>
 
         <Form.Item
@@ -107,11 +103,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             },
           ]}
           tooltip={t('message.nodes-per-layer-tooltip')}>
-          <InputNumber
+          <Input
             className="w-full"
             data-testid="field-nodes-per-layer"
             min={5}
-            onChange={(value) => setNodesPerLayer(value as number)}
+            type="number"
+            onChange={(e) => setNodesPerLayer(Number(e.target.value))}
           />
         </Form.Item>
       </Form>
