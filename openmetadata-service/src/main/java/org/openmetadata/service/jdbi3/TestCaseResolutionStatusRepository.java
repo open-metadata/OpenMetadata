@@ -130,7 +130,7 @@ public class TestCaseResolutionStatusRepository
       if (recordEntity
           .getTestCaseResolutionStatusType()
           .equals(TestCaseResolutionStatusTypes.Assigned)) {
-        // We have an open task and we are passing an assigned status type
+        // We have an open task, and we are passing an assigned status type
         // (i.e. we are re-assigning). This scenario is when the test case resolution status is
         // being sent through the API (and not resolving an open task)
         // we'll get the associated thread with the latest test case failure
@@ -154,8 +154,7 @@ public class TestCaseResolutionStatusRepository
           .getTestCaseResolutionStatusType()
           .equals(TestCaseResolutionStatusTypes.Resolved)) {
         // We have an open task, and we are passing a resolved status type (i.e. we are marking it
-        // as
-        // resolved). This scenario is when the test case resolution status is being sent through
+        // as resolved). This scenario is when the test case resolution status is being sent through
         // the API (and not resolving an open task)
         Resolved resolved =
             JsonUtils.convertValue(

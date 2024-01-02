@@ -11,8 +11,8 @@ CREATE TABLE test_case_resolution_status_time_series (
   CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id,timestamp,entityFQNHash),
   INDEX (id),
   INDEX(testCaseResolutionStatusType),
-  INDEX(id, testCaseResolutionStatusType)
-
+  INDEX(id, testCaseResolutionStatusType),
+  INDEX(entityFQNHash)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- DataInsightsApplication should not allow configuration
