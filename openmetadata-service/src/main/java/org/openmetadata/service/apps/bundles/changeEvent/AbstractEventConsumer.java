@@ -194,7 +194,9 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     for (ChangeEvent event : filteredEvents) {
       try {
         sendAlert(event);
+        alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
       } catch (EventPublisherException e) {
+        alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
         handleFailedEvent(e);
       }
     }
@@ -303,6 +305,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     }
 
     // Publish Events
+    alertMetrics.withTotalEvents(batch.size());
     publishEvents(batch);
 
     // Commit the Offset
