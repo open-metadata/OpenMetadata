@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -73,29 +73,8 @@ function IngestionListTable({
     [paging, handlePageChange, onIngestionWorkflowsUpdate]
   );
 
-  const renderNameField = (text: string, record: IngestionPipeline) => {
-    return airflowEndpoint ? (
-      <Tooltip
-        title={
-          permissions.ViewAll || permissions.ViewBasic
-            ? t('label.view-entity', {
-                entity: t('label.dag'),
-              })
-            : t('message.no-permission-to-view')
-        }>
-        <Typography.Link
-          className="m-r-xs overflow-wrap-anywhere"
-          data-testid="ingestion-dag-link"
-          disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-          href={`${airflowEndpoint}/tree?dag_id=${text}`}
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    ) : (
-      getEntityName(record)
-    );
+  const renderNameField = (_: string, record: IngestionPipeline) => {
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {

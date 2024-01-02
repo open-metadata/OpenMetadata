@@ -12,6 +12,7 @@
 Test lineage parser to get inlets and outlets information
 """
 from datetime import datetime
+from typing import List
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -27,6 +28,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -50,6 +52,10 @@ from ..integration_base import int_admin_ometa
 SLEEP = "sleep 1"
 PIPELINE_SERVICE_NAME = "test-lineage-runner"
 DB_SERVICE_NAME = "test-service-lineage-runner"
+
+
+def get_captured_log_messages(log) -> List[str]:
+    return [record.getMessage() for record in log.records]
 
 
 class TestAirflowLineageRuner(TestCase):
@@ -191,15 +197,49 @@ class TestAirflowLineageRuner(TestCase):
                 only_keep_dag_lineage=True,
             )
 
-            runner.execute()
+            with self.assertLogs(level="INFO") as log:
+                runner.execute()
+                messages = get_captured_log_messages(log)
+                self.assertIn("Creating Pipeline Entity from DAG...", messages)
 
-        lineage_data = self.metadata.get_lineage_by_name(
-            entity=Table,
-            fqn=self.table_outlet.fullyQualifiedName.__root__,
-            up_depth=1,
-            down_depth=1,
-        )
+            lineage_data = self.metadata.get_lineage_by_name(
+                entity=Table,
+                fqn=self.table_outlet.fullyQualifiedName.__root__,
+                up_depth=1,
+                down_depth=1,
+            )
 
-        upstream_ids = [edge["fromEntity"] for edge in lineage_data["upstreamEdges"]]
-        self.assertIn(str(self.table_inlet1.id.__root__), upstream_ids)
-        self.assertIn(str(self.table_inlet2.id.__root__), upstream_ids)
+            upstream_ids = [
+                edge["fromEntity"] for edge in lineage_data["upstreamEdges"]
+            ]
+            self.assertIn(str(self.table_inlet1.id.__root__), upstream_ids)
+            self.assertIn(str(self.table_inlet2.id.__root__), upstream_ids)
+
+            # We can trigger again without any issues. Nothing will happen here
+            with self.assertLogs(level="INFO") as log:
+                runner.execute()
+                messages = get_captured_log_messages(log)
+                self.assertIn("DAG has not changed since last run", messages)
+
+            # We can add a task to trigger a PATCH request
+            dag.add_task(BashOperator(task_id="new_task", bash_command="date"))
+
+            new_runner = AirflowLineageRunner(
+                metadata=self.metadata,
+                service_name=PIPELINE_SERVICE_NAME,
+                dag=dag,
+                xlets=get_xlets_from_dag(dag),
+                only_keep_dag_lineage=True,
+            )
+
+            with self.assertLogs(level="INFO") as log:
+                new_runner.execute()
+                messages = get_captured_log_messages(log)
+                self.assertIn("Updating Pipeline Entity from DAG...", messages)
+
+            pipeline: Pipeline = self.metadata.get_by_name(
+                entity=Pipeline,
+                fqn=f"{PIPELINE_SERVICE_NAME}.test_runner",
+                fields=["tasks"],
+            )
+            self.assertEqual(len(pipeline.tasks), 3)

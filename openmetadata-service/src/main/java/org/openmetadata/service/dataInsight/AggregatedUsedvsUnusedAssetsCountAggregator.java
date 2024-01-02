@@ -3,7 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsCount;
 
 public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
@@ -23,21 +23,17 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
       Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
       S totalUnused = getAggregations(bucket, "totalUnused");
       S totalUsed = getAggregations(bucket, "totalUsed");
-      Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
-      Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
-      Double total = used + unused;
-      double usedPercentage = 0.0;
-      double unusedPercentage = 0.0;
-      if (total != 0.0) {
-        usedPercentage = used / total;
-        unusedPercentage = unused / total;
-      }
+      Optional<Double> used = getValue(totalUsed);
+      Optional<Double> unused = getValue(totalUnused);
+      Optional<Double> total = used.flatMap(u -> unused.map(uu -> u + uu));
+      Double usedPercentage = used.flatMap(u -> total.map(t -> u / t)).orElse(null);
+      Double unusedPercentage = unused.flatMap(uu -> total.map(t -> uu / t)).orElse(null);
       data.add(
           new AggregatedUsedVsUnusedAssetsCount()
               .withTimestamp(timestamp)
-              .withUnused(unused)
+              .withUnused(unused.orElse(null))
               .withUnusedPercentage(unusedPercentage)
-              .withUsed(used)
+              .withUsed(used.orElse(null))
               .withUsedPercentage(usedPercentage));
     }
     return data;
@@ -51,5 +47,5 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
 
   protected abstract S getAggregations(B bucket, String key);
 
-  protected abstract Double getValue(S aggregations);
+  protected abstract Optional<Double> getValue(S aggregations);
 }
