@@ -11,34 +11,33 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/tagLabel';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TopicSchemaFields from '../../components/TopicDetails/TopicSchema/TopicSchema';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
+import { TagSource } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-  getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
+import { getEncodedFqn, stringToHTML } from '../../utils/StringsUtils';
+import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({
@@ -53,6 +52,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
+  domain,
+  dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -61,10 +62,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const messageSchemaDiff = useMemo(
     () => getUpdatedMessageSchema(currentVersionData, changeDescription),
@@ -81,7 +89,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TOPIC,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -108,6 +116,20 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const schemaType = useMemo(() => {
+    const schemaTypeDiffText = getEntityVersionByField(
+      changeDescription,
+      'messageSchema.schemaType',
+      currentVersionData.displayName
+    );
+
+    return isEmpty(schemaTypeDiffText) ? undefined : (
+      <Tag data-testid="schema-type-diff">
+        {stringToHTML(schemaTypeDiffText)}
+      </Tag>
+    );
+  }, [changeDescription, currentVersionData]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -119,21 +141,20 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.TOPIC}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
                   <TopicSchemaFields
-                    defaultExpandAllRows
                     isReadOnly
-                    entityFieldThreads={[]}
+                    isVersionView
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
-                    showSchemaDisplayTypeSwitch={false}
+                    schemaTypePlaceholder={schemaType}
                     onThreadLinkSelect={noop}
                   />
                 </Col>
@@ -144,9 +165,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.TOPIC}
                     key={tagType}
                     permission={false}
@@ -167,26 +192,26 @@ const TopicVersion: FC<TopicVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.TOPIC}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
     ],
-    [description, messageSchemaDiff, currentVersionData, entityPermissions]
+    [
+      description,
+      messageSchemaDiff,
+      currentVersionData,
+      entityPermissions,
+      schemaType,
+      tags,
+    ]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -201,8 +226,11 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.TOPIC}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
@@ -220,7 +248,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={version}
         versionHandler={versionHandler}
         versionList={versionList}

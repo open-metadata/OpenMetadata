@@ -45,6 +45,12 @@ class TableauOwnersNotFound(Exception):
     """
 
 
+class TableauDataModelsException(Exception):
+    """
+    Raise when Data Source information is not retrieved from the Tableau Graphql Query
+    """
+
+
 class TableauClient:
     """
     Wrapper to TableauServerConnection
@@ -61,7 +67,7 @@ class TableauClient:
     ):
         # ssl_verify is typed as a `bool` in TableauServerConnection
         # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
-        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
+        # In requests (https://requests.readthedocs.io/en/latest/user/advanced.html?highlight=ssl#ssl-cert-verification)
         # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
         self._client = TableauServerConnection(
             config_json=config,
@@ -115,6 +121,21 @@ class TableauClient:
                 parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
             )
         ]
+
+    def test_get_datamodels(self):
+        """
+        Method to test the datamodels
+        """
+        data = self._query_datasources(entities_per_page=1, offset=0)
+        if data:
+            return data
+        raise TableauDataModelsException(
+            "Unable to fetch Data Sources from tableau\n"
+            "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
+            "For more information on enabling the Tableau Metadata APIs follow the link below\n"
+            "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+            "#enable-the-tableau-metadata-api-for-tableau-server\n"
+        )
 
     def _query_datasources(
         self, entities_per_page: int, offset: int

@@ -11,33 +11,39 @@
  *  limitations under the License.
  */
 
-import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
-import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import { EntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
-import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
-import AppRouter from 'components/router/AppRouter';
-import TourProvider from 'components/TourProvider/TourProvider';
-import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
-import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
-import { TOAST_OPTIONS } from 'constants/Toasts.constants';
-import React, { FunctionComponent } from 'react';
+import React, { FC, ReactNode } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import i18n from 'utils/i18next/LocalUtil';
+import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
+import AppRouter from './components/AppRouter/AppRouter';
+import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
+import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
+import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from './components/PermissionProvider/PermissionProvider';
+import TourProvider from './components/TourProvider/TourProvider';
+import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import WebSocketProvider from './components/WebSocketProvider/WebSocketProvider';
+import { TOAST_OPTIONS } from './constants/Toasts.constants';
+import { history } from './utils/HistoryUtils';
+import i18n from './utils/i18next/LocalUtil';
 
-const App: FunctionComponent = () => {
+interface AppProps {
+  routeElements?: ReactNode;
+}
+
+const App: FC<AppProps> = ({ routeElements }) => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router>
+        <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <ApplicationConfigProvider>
+              <ApplicationConfigProvider routeElements={routeElements}>
                 <AuthProvider childComponentType={AppRouter}>
                   <TourProvider>
                     <HelmetProvider>
@@ -45,9 +51,11 @@ const App: FunctionComponent = () => {
                         <PermissionProvider>
                           <WebSocketProvider>
                             <GlobalSearchProvider>
-                              <EntityExportModalProvider>
-                                <AppRouter />
-                              </EntityExportModalProvider>
+                              <DomainProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
+                              </DomainProvider>
                             </GlobalSearchProvider>
                           </WebSocketProvider>
                         </PermissionProvider>

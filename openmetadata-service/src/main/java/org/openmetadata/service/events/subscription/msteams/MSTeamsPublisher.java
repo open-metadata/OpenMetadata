@@ -18,7 +18,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
@@ -38,14 +37,15 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MSTeamsPublisher extends SubscriptionPublisher {
-  private final MessageDecorator<TeamsMessage> teamsMessageFormatter = new MSTeamsMessageDecorator();
+  private final MessageDecorator<TeamsMessage> teamsMessageFormatter =
+      new MSTeamsMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
   private final Client client;
   private final CollectionDAO daoCollection;
 
   public MSTeamsPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == MS_TEAMS_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
@@ -78,7 +78,7 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) throws JsonProcessingException {
+  public void sendAlert(EventResource.EventList list) {
     for (ChangeEvent event : list.getData()) {
       try {
         TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
@@ -90,8 +90,11 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, teamsMessage);
         }
-      } catch (Exception e) {
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS_WEBHOOK, event, e.getMessage());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(
+                MS_TEAMS_WEBHOOK, event, e.getMessage());
         LOG.error(message);
         throw new EventPublisherException(message);
       }

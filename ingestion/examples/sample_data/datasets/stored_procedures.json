@@ -1,0 +1,357 @@
+{
+      "storedProcedures": [
+          {
+              "name": "update_dim_address_table",
+              "description": "This stored procedure updates dim_address table",
+              "version": 0.1,
+              "updatedAt": 1638354087391,
+              "updatedBy": "anonymous",
+              "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+              "storedProcedureCode": {
+                "langauge": "SQL",
+                "code": "CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;"
+              },
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "tags": [],
+              "followers": [],
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              }
+          },
+          {
+              "name": "update_orders_table",
+              "description": "This stored procedure is written java script to update the orders table",
+              "version": 0.1,
+              "updatedAt": 1638354087391,
+              "updatedBy": "anonymous",
+              "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+              "storedProcedureCode": {
+                "langauge": "JavaScript",
+                "code": "create or replace procedure read_result_set()\n  returns float not null\n  language javascript\n  as     \n  $$  \n    var my_sql_command = \"select * from table1\";\n    var statement1 = snowflake.createStatement( {sqlText: my_sql_command} );\n    var result_set1 = statement1.execute();\n    // Loop through the results, processing one row at a time... \n    while (result_set1.next())  {\n       var column1 = result_set1.getColumnValue(1);\n       var column2 = result_set1.getColumnValue(2);\n       // Do something with the retrieved values...\n       }\n  return 0.0; // Replace with something more useful.\n  $$\n  ;"
+              },
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "tags": [],
+              "followers": [],
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              }
+          },
+          {
+            "name": "calculate_average",
+            "description": "Procedure to calculate average",
+            "version": 0.1,
+            "updatedAt": 1638354087391,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE calculate_average(numbers INT ARRAY) RETURNS FLOAT NOT NULL LANGUAGE SQL AS $$DECLARE sum_val INT = 0;count_val INT = 0;average_val FLOAT;BEGIN\n  FOR num IN ARRAY numbers DO sum_val := sum_val + num;\n  count_val := count_val + 1;\nEND FOR;\nIF count_val = 0 THEN\n  average_val := 0.0;\nELSE\n  average_val := sum_val / count_val;\nEND IF;\nRETURN average_val;\nEND;$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "insert_user_data",
+            "description": "Procedure to Insert User Data",
+            "version": 0.1,
+            "updatedAt": 1646500478000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE insert_user_data(user_name varchar, email varchar, age int) RETURNS int NOT NULL LANGUAGE SQL AS $$DECLARE user_id INT;BEGIN\n  INSERT INTO users\n              (\n                          NAME,\n                          email,\n                          age\n              )\n              VALUES\n              (\n                          user_name,\n                          email,\n                          age\n              )\n              returning id\n  INTO        user_id;\n\n  RETURN user_id;\nEND;$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "get_employee_details",
+            "description": "Procedure get employee details",
+            "version": 0.1,
+            "updatedAt": 1647253512000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE get_employee_details(employee_id int) RETURNS JSON NOT NULL LANGUAGE SQL AS $$DECLARE employee_record JSON;BEGIN\n  SELECT Row_to_json(e) INTO employee_record FROM employees e WHERE e.id = employee_id;\n  RETURN employee_record;\nEND;$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "delete_records",
+            "description": "Procedure delete the records",
+            "version": 0.1,
+            "updatedAt": 1648937554000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE delete_records(table_name VARCHAR, condition VARCHAR) RETURNS INT NOT NULL LANGUAGE SQL AS $$\nDECLARE\n  rows_deleted INT;\nBEGIN\n  EXECUTE 'DELETE FROM ' || table_name || ' WHERE ' || condition INTO rows_deleted;\n  RETURN rows_deleted;\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "calculate_interest",
+            "description": "Procedure to calculate interest",
+            "version": 0.1,
+            "updatedAt": 1650615609000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE calculate_interest(principal FLOAT, rate FLOAT, time_period INT) RETURNS FLOAT NOT NULL LANGUAGE SQL AS $$\nDECLARE interest FLOAT;\nBEGIN\n  interest := (principal * rate * time_period) / 100.0;\n  RETURN interest;\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "generate_random_password",
+            "description": "Procedure to generate random password",
+            "version": 0.1,
+            "updatedAt": 1651451037000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE generate_random_password(length INT) RETURNS VARCHAR NOT NULL LANGUAGE SQL AS $$DECLARE characters VARCHAR = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; random_password VARCHAR = '';BEGIN\n  FOR i IN 1..length\n  LOOP random_password := random_password || substr(characters, ceil(random() * length(characters)), 1);\n  END LOOP;\n  RETURN random_password;\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "update_product_price",
+            "description": "Procedure to update product price",
+            "version": 0.1,
+            "updatedAt": 1652586518000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE update_product_price(product_id INT, new_price DECIMAL) RETURNS VOID LANGUAGE SQL AS $$\nBEGIN\n  UPDATE products\n  SET price = new_price\n  WHERE id = product_id;\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "update_dim_address_clean_from_dim_address",
+            "description": "Procedure to update dim_address clean table",
+            "version": 0.1,
+            "updatedAt": 1654112579000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE UpdateDimAddressCleanFromDimAddress()\nLANGUAGE plpgsql\nAS $$\nBEGIN\nUPDATE dim_address_clean AS dc\nSET\n    street = da.street,\n    city = da.city,\n    state = da.state,\n    postal_code = da.postal_code\nFROM dim_address AS da\nWHERE dc.address_id = da.address_id;\n\nCOMMIT;\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "transform_and_load_data",
+            "description": "Procedure to clean the customers data before loading",
+            "version": 0.1,
+            "updatedAt": 1656043991000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE FUNCTION TransformAndLoadData() RETURNS VOID AS $$ BEGIN\n DELETE FROM dim_customer;\n INSERT INTO dim_customer (dim_customer_name, dim_customer_email)\n SELECT\n TRIM(raw_customer_name),\n LOWER(raw_customer_email)\n FROM raw_customer;\n COMMIT;\n END; $$ LANGUAGE plpgsql;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "update_fact_order_from_raw_order",
+            "description": "Procedure to update fact order from raw order table",
+            "version": 0.1,
+            "updatedAt": 1657845268000,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "storedProcedureCode": {
+              "langauge": "SQL",
+              "code": "CREATE OR REPLACE PROCEDURE UpdateFactOrderFromRawOrder()\nLANGUAGE plpgsql AS $$\nBEGIN\n    TRUNCATE fact_order;\n    INSERT INTO fact_order (Month, TotalQuantity)\n    SELECT DATE_TRUNC('month', OrderDate) AS Month, SUM(Quantity) AS TotalQuantity\n    FROM raw_order\n    GROUP BY DATE_TRUNC('month', OrderDate);\nEND;\n$$;"
+            },
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "followers": [],
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        }
+      ],
+      "lineage":[
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.raw_order",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.fact_order"
+        },
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.transform_and_load_data",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.dim_customer"
+        },
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.dim_address",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.update_dim_address_clean_from_dim_address",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.dim_address_clean"
+        }
+      ]
+}

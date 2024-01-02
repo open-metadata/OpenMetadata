@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import Icon from '@ant-design/icons';
+import { Popover, Space } from 'antd';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
+import { ReactComponent as IconFeedDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as IconReplyFeed } from '../../../assets/svg/ic-reply.svg';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Reaction from '../../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
 
@@ -57,13 +59,7 @@ const PopoverContent: FC<Props> = ({
   isAnnouncement,
   editAnnouncementPermission,
 }) => {
-  const { t } = useTranslation();
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
+  const { currentUser } = useAuthContext();
   const [visible, setVisible] = useState<boolean>(false);
 
   const hide = () => {
@@ -90,19 +86,18 @@ const PopoverContent: FC<Props> = ({
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    onConfirmation &&
-      onConfirmation({
-        state: true,
-        postId: postId,
-        threadId,
-        isThread: Boolean(isThread),
-      });
+    onConfirmation?.({
+      state: true,
+      postId: postId,
+      threadId,
+      isThread: Boolean(isThread),
+    });
     onPopoverHide();
   };
 
   const handleReply = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    onReply && onReply();
+    onReply?.();
     onPopoverHide();
 
     /**
@@ -160,11 +155,11 @@ const PopoverContent: FC<Props> = ({
 
   const handleEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    onEdit && onEdit();
+    onEdit?.();
   };
 
   return (
-    <Space>
+    <Space size={12}>
       <Popover
         destroyTooltipOnHide
         align={{ targetOffset: [0, -10] }}
@@ -176,63 +171,38 @@ const PopoverContent: FC<Props> = ({
         trigger="click"
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
-        <Button
-          className="p-0"
+        <Icon
+          component={IconReaction}
           data-testid="add-reactions"
-          size="small"
-          type="text"
-          onClick={(e) => e.stopPropagation()}>
-          <SVGIcons
-            alt="add-reaction"
-            icon={Icons.REACTION}
-            title={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
-            width="20px"
-          />
-        </Button>
+          style={{ fontSize: '16px' }}
+        />
       </Popover>
 
       {(onReply || isThread) && (
-        <Button
-          className="p-0"
+        <Icon
+          component={IconReplyFeed}
           data-testid="add-reply"
-          size="small"
-          type="text"
-          onClick={handleReply}>
-          <SVGIcons
-            alt="add-reply"
-            icon={Icons.ADD_REPLY}
-            title={t('label.reply')}
-            width="20px"
-          />
-        </Button>
+          style={{ fontSize: '16px' }}
+          onClick={handleReply}
+        />
       )}
 
       {editCheck && (
-        <Button
-          className="p-0 flex-center"
+        <Icon
+          component={IconEdit}
           data-testid="edit-message"
-          icon={<EditIcon width="18px" />}
-          size="small"
-          type="text"
+          style={{ fontSize: '16px' }}
           onClick={handleEdit}
         />
       )}
 
       {deleteButtonCheck ? (
-        <Button
-          className="p-0"
+        <Icon
+          component={IconFeedDelete}
           data-testid="delete-message"
-          type="text"
-          onClick={handleDelete}>
-          <SVGIcons
-            alt="delete-reply"
-            icon={Icons.FEED_DELETE}
-            title={t('label.delete')}
-            width="20px"
-          />
-        </Button>
+          style={{ fontSize: '16px' }}
+          onClick={handleDelete}
+        />
       ) : null}
     </Space>
   );

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>platform</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.2.0-SNAPSHOT</version>
+        <version>1.3.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -15,8 +15,8 @@
         <module>openmetadata-java-client</module>
     </modules>
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <profiles>

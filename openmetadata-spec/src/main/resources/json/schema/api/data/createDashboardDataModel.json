@@ -27,6 +27,13 @@
       },
       "default": null
     },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
     "owner": {
       "description": "Owner of this data model.",
       "$ref": "../../type/entityReference.json"
@@ -62,6 +69,16 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Dashboard Data Model belongs to.",
       "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["name", "service", "dataModelType", "columns"],

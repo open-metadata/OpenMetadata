@@ -14,18 +14,18 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from 'constants/profiler.constant';
-import { CSMode } from 'enums/codemirror.enum';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
 import {
   TestCaseParameterDefinition,
   TestDataType,
 } from '../../../generated/tests/testDefinition';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import '../../TableProfiler/tableProfiler.less';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
+import '../../TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
@@ -112,7 +112,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         case TestDataType.Float:
           Field = (
             <InputNumber
-              className="tw-w-full"
+              className="w-full"
               placeholder={`${t('message.enter-a-field', {
                 field: data.displayName,
               })}`}
@@ -143,22 +143,23 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 <Form.Item
                   key={data.name}
                   label={
-                    <span>
-                      <span className="tw-mr-3">{data.displayName}:</span>
+                    <>
+                      <span>{data.displayName}</span>
                       <Button
+                        className="m-x-sm"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
                         onClick={() => add()}
                       />
-                    </span>
+                    </>
                   }
                   name={data.name}
                   tooltip={data.description}>
                   {fields.map(({ key, name, ...restField }) => (
-                    <div className="d-flex tw-gap-2 tw-w-full" key={key}>
+                    <div className="d-flex w-full" key={key}>
                       <Form.Item
-                        className="tw-w-11/12 tw-mb-4"
+                        className="w-full"
                         {...restField}
                         name={[name, 'value']}
                         rules={[
@@ -176,13 +177,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         />
                       </Form.Item>
                       <Button
-                        icon={
-                          <SVGIcons
-                            alt="delete"
-                            className="tw-w-4"
-                            icon={Icons.DELETE}
-                          />
-                        }
+                        icon={<SVGIcons alt="delete" icon={Icons.DELETE} />}
                         type="text"
                         onClick={() => remove(name)}
                       />

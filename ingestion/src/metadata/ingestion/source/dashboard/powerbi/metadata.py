@@ -11,7 +11,6 @@
 """PowerBI source module"""
 
 import traceback
-import uuid
 from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -36,13 +35,19 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
+    Group,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
@@ -53,6 +58,7 @@ from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
+    filter_by_project,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -61,9 +67,7 @@ logger = ingestion_logger()
 
 
 class PowerbiSource(DashboardServiceSource):
-    """
-    PowerBi Source Class
-    """
+    """PowerBi Source Class"""
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
@@ -71,9 +75,9 @@ class PowerbiSource(DashboardServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.pagination_entity_per_page = min(
             100, self.service_connection.pagination_entity_per_page
         )
@@ -81,12 +85,32 @@ class PowerbiSource(DashboardServiceSource):
 
     def prepare(self):
         if self.service_connection.useAdminApis:
-            self.get_admin_workspace_data()
+            groups = self.get_admin_workspace_data()
         else:
-            self.get_org_workspace_data()
+            groups = self.get_org_workspace_data()
+        if groups:
+            self.workspace_data = self.get_filtered_workspaces(groups)
         return super().prepare()
 
-    def get_org_workspace_data(self):
+    def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
+        """
+        Method to get the workspaces filtered by project filter pattern
+        """
+        filtered_groups = []
+        for group in groups:
+            if filter_by_project(
+                self.source_config.projectFilterPattern,
+                group.name,
+            ):
+                self.status.filter(
+                    group.name,
+                    "Workspace Filtered Out",
+                )
+                continue
+            filtered_groups.append(group)
+        return filtered_groups
+
+    def get_org_workspace_data(self) -> Optional[List[Group]]:
         """
         fetch all the group workspace ids
         """
@@ -122,12 +146,13 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     or []
                 )
-        self.workspace_data = groups
+        return groups
 
-    def get_admin_workspace_data(self):
+    def get_admin_workspace_data(self) -> Optional[List[Group]]:
         """
         fetch all the workspace ids
         """
+        groups = []
         workspaces = self.client.fetch_all_workspaces()
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
@@ -156,7 +181,7 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.fetch_workspace_scan_result(
                         scan_id=workspace_scan.id
                     )
-                    self.workspace_data.extend(
+                    groups.extend(
                         [
                             active_workspace
                             for active_workspace in response.workspaces
@@ -167,21 +192,22 @@ class PowerbiSource(DashboardServiceSource):
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
         else:
-            logger.error("Unable to fetch any Powerbi workspaces")
+            logger.error("Unable to fetch any PowerBI workspaces")
+        return groups or None
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PowerBIConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PowerBIConnection):
             raise InvalidSourceException(
                 f"Expected PowerBIConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboard(self) -> Any:
         """
-        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for workspace in self.workspace_data:
             self.context.workspace = workspace
@@ -285,7 +311,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def yield_bulk_datamodel(
         self, dataset: Dataset
-    ) -> Iterable[CreateDashboardDataModelRequest]:
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
         Method to fetch DataModels in bulk
         """
@@ -294,23 +320,23 @@ class PowerbiSource(DashboardServiceSource):
                 name=dataset.id,
                 displayName=dataset.name,
                 description=dataset.description,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
-            yield data_model_request
-            self.status.scanned(f"Data Model Scanned: {data_model_request.displayName}")
+            yield Either(right=data_model_request)
+            self.register_record_datamodel(datamodel_requst=data_model_request)
+
         except Exception as exc:
-            error_msg = f"Error yielding Data Model [{dataset.name}]: {exc}"
-            self.status.failed(
-                name=dataset.name,
-                error=error_msg,
-                stack_trace=traceback.format_exc(),
+            yield Either(
+                left=StackTraceError(
+                    name=dataset.name,
+                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
-            logger.error(error_msg)
-            logger.debug(traceback.format_exc())
 
     def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
         """
@@ -326,7 +352,7 @@ class PowerbiSource(DashboardServiceSource):
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
-                    "name": str(uuid.uuid4()),
+                    "name": column.name,
                     "displayName": column.name,
                 }
                 if column.dataType and column.dataType == DataType.ARRAY.value:
@@ -338,19 +364,14 @@ class PowerbiSource(DashboardServiceSource):
         return columns
 
     def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
-        """
-        Args:
-            data_source: DataSource
-        Returns:
-            Columns details for Data Model
-        """
+        """Build columns from dataset"""
         datasource_columns = []
         for table in dataset.tables or []:
             try:
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": str(uuid.uuid4()),
+                    "name": table.name,
                     "displayName": table.name,
                     "description": table.description,
                 }
@@ -365,7 +386,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
@@ -377,19 +398,19 @@ class PowerbiSource(DashboardServiceSource):
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
-                    project=str(self.context.workspace.name),
+                    project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
                     charts=[
                         fqn.build(
                             self.metadata,
                             entity_type=Chart,
-                            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                            chart_name=chart.name.__root__,
+                            service_name=self.context.dashboard_service,
+                            chart_name=chart,
                         )
                         for chart in self.context.charts
                     ],
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
@@ -399,22 +420,25 @@ class PowerbiSource(DashboardServiceSource):
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
-                    project=str(self.context.workspace.name),
+                    project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error creating dashboard [{dashboard_details}]: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=f"Error creating dashboard [{dashboard_details}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def create_report_dashboard_lineage(
         self, dashboard_details: PowerBIDashboard
-    ) -> Iterable[CreateDashboardRequest]:
-        """
-        create lineage between report and dashboard
-        """
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """Create lineage between report and dashboard"""
         try:
             charts = dashboard_details.tiles
             dashboard_fqn = fqn.build(
@@ -446,12 +470,17 @@ class PowerbiSource(DashboardServiceSource):
                             to_entity=dashboard_entity, from_entity=report_entity
                         )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error to yield report and dashboard lineage details: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"Error to yield report and dashboard lineage details: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def create_datamodel_report_lineage(
         self, db_service_name: str, dashboard_details: PowerBIReport
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
         """
@@ -492,9 +521,15 @@ class PowerbiSource(DashboardServiceSource):
                         datamodel_entity=datamodel_entity,
                     )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield datamodel and report lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=f"{db_service_name} Report Lineage",
+                    error=(
+                        "Error to yield datamodel and report lineage details for DB "
+                        f"service name [{db_service_name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
             )
 
     def create_table_datamodel_lineage(
@@ -502,10 +537,8 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: str,
         tables: Optional[List[PowerBiTable]],
         datamodel_entity: Optional[DashboardDataModel],
-    ):
-        """
-        Method to create lineage between table and datamodels
-        """
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """Method to create lineage between table and datamodels"""
         for table in tables or []:
             try:
                 table_fqn = fqn.build(
@@ -526,16 +559,22 @@ class PowerbiSource(DashboardServiceSource):
                         to_entity=datamodel_entity, from_entity=table_entity
                     )
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield datamodel lineage details for DB service name [{db_service_name}]: {exc}"
+                yield Either(
+                    left=StackTraceError(
+                        name="DataModel Lineage",
+                        error=(
+                            "Error to yield datamodel lineage details for DB "
+                            f"service name [{db_service_name}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
                 )
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[PowerBIDashboard, PowerBIReport],
         db_service_name: str,
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
@@ -552,14 +591,17 @@ class PowerbiSource(DashboardServiceSource):
                 )
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name="Dashboard Lineage",
+                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
 
     def yield_dashboard_chart(
         self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
         Args:
             dashboard_details:
@@ -579,24 +621,27 @@ class PowerbiSource(DashboardServiceSource):
                             chart_display_name, "Chart Pattern not Allowed"
                         )
                         continue
-                    yield CreateChartRequest(
-                        name=chart.id,
-                        displayName=chart_display_name,
-                        chartType=ChartType.Other.value,
-                        sourceUrl=self._get_chart_url(
-                            report_id=chart.reportId,
-                            workspace_id=self.context.workspace.id,
-                            dashboard_id=dashboard_details.id,
-                        ),
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    yield Either(
+                        right=CreateChartRequest(
+                            name=chart.id,
+                            displayName=chart_display_name,
+                            chartType=ChartType.Other.value,
+                            sourceUrl=self._get_chart_url(
+                                report_id=chart.reportId,
+                                workspace_id=self.context.workspace.id,
+                                dashboard_id=dashboard_details.id,
+                            ),
+                            service=self.context.dashboard_service,
+                        )
                     )
-                    self.status.scanned(chart_display_name)
                 except Exception as exc:
-                    name = chart.title
-                    error = f"Error creating chart [{name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(name, error, traceback.format_exc())
+                    yield Either(
+                        left=StackTraceError(
+                            name=chart.title,
+                            error=f"Error creating chart [{chart.title}]: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
@@ -651,4 +696,17 @@ class PowerbiSource(DashboardServiceSource):
             )
             return next(iter(workspace_names), None)
 
+        return None
+
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection name of the dashboard
+        """
+        try:
+            return str(self.context.workspace.name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching project name for {dashboard_details.id}: {exc}"
+            )
         return None

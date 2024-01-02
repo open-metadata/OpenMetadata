@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +39,6 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.events.subscription.email.EmailPublisher;
 import org.openmetadata.service.events.subscription.gchat.GChatPublisher;
 import org.openmetadata.service.events.subscription.generic.GenericPublisher;
@@ -49,8 +47,8 @@ import org.openmetadata.service.events.subscription.slack.SlackEventPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.springframework.expression.Expression;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -59,29 +57,16 @@ public final class AlertUtil {
   public static SubscriptionPublisher getNotificationsPublisher(
       EventSubscription subscription, CollectionDAO daoCollection) {
     validateSubscriptionConfig(subscription);
-    SubscriptionPublisher publisher;
-    switch (subscription.getSubscriptionType()) {
-      case SLACK_WEBHOOK:
-        publisher = new SlackEventPublisher(subscription, daoCollection);
-        break;
-      case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsPublisher(subscription, daoCollection);
-        break;
-      case G_CHAT_WEBHOOK:
-        publisher = new GChatPublisher(subscription, daoCollection);
-        break;
-      case GENERIC_WEBHOOK:
-        publisher = new GenericPublisher(subscription, daoCollection);
-        break;
-      case EMAIL:
-        publisher = new EmailPublisher(subscription, daoCollection);
-        break;
-      case ACTIVITY_FEED:
-        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
-      default:
-        throw new IllegalArgumentException("Invalid Alert Action Specified.");
-    }
-    return publisher;
+    return switch (subscription.getSubscriptionType()) {
+      case SLACK_WEBHOOK -> new SlackEventPublisher(subscription, daoCollection);
+      case MS_TEAMS_WEBHOOK -> new MSTeamsPublisher(subscription, daoCollection);
+      case G_CHAT_WEBHOOK -> new GChatPublisher(subscription, daoCollection);
+      case GENERIC_WEBHOOK -> new GenericPublisher(subscription, daoCollection);
+      case EMAIL -> new EmailPublisher(subscription, daoCollection);
+      case ACTIVITY_FEED -> throw new IllegalArgumentException(
+          "Cannot create Activity Feed as Publisher.");
+      default -> throw new IllegalArgumentException("Invalid Alert Action Specified.");
+    };
   }
 
   public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
@@ -99,17 +84,18 @@ public final class AlertUtil {
     }
   }
 
-  public static <T> T validateExpression(String condition, Class<T> clz) {
+  public static <T> void validateExpression(String condition, Class<T> clz) {
     if (condition == null) {
-      return null;
+      return;
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
     try {
-      return expression.getValue(ruleEvaluator, clz);
+      expression.getValue(ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
-      String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      String message =
+          exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
       throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
     }
   }
@@ -120,33 +106,30 @@ public final class AlertUtil {
       SubscriptionFilterOperation type = SubscriptionFilterOperation.valueOf(func.getName());
       ParamAdditionalContext paramAdditionalContext = new ParamAdditionalContext();
       switch (type) {
-        case matchAnySource:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
-          break;
-        case matchUpdatedBy:
-        case matchAnyOwnerName:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
-          break;
-        case matchAnyEntityFqn:
-        case matchAnyEntityId:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
-          break;
-        case matchAnyEventType:
-          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
-          break;
-        case matchIngestionPipelineState:
+        case matchAnySource -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
+        case matchUpdatedBy, matchAnyOwnerName -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
+        case matchAnyEntityFqn, matchAnyEntityId -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
+        case matchAnyEventType -> {
+          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(eventTypes)));
+        }
+        case matchIngestionPipelineState -> {
           List<String> ingestionPipelineState =
-              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).collect(Collectors.toList());
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
-          break;
-        case matchTestResult:
+              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
+        }
+        case matchTestResult -> {
           List<String> testResultStatus =
-              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
-          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
-          break;
-        default:
-          LOG.error("Invalid Function name : {}", type);
+              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
+        }
+        default -> LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);
     }
@@ -157,9 +140,8 @@ public final class AlertUtil {
     Set<String> indexesToSearch = new HashSet<>();
     for (String entityType : entities) {
       try {
-        ElasticSearchIndexDefinition.ElasticSearchIndexType type =
-            ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
-        indexesToSearch.add(type.indexName);
+        IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+        indexesToSearch.add(indexMapping.getIndexName());
       } catch (RuntimeException ex) {
         LOG.error("Failing to get Index for EntityType");
       }
@@ -167,14 +149,14 @@ public final class AlertUtil {
     return indexesToSearch;
   }
 
-  public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
+  public static boolean evaluateAlertConditions(
+      ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
     if (!alertFilterRules.isEmpty()) {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
@@ -213,7 +195,8 @@ public final class AlertUtil {
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
-    FilteringRules filteringRules = ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules();
+    FilteringRules filteringRules =
+        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
     return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
         && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }

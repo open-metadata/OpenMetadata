@@ -12,10 +12,11 @@
  */
 
 import classNames from 'classnames';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { EntityField } from 'constants/Feeds.constants';
-import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
+import { lowerCase } from 'lodash';
 import React from 'react';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { EntityField } from '../../constants/Feeds.constants';
+import EntityTasks from '../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
 const TableTags = <T extends TableUnion>({
@@ -26,14 +27,15 @@ const TableTags = <T extends TableUnion>({
   entityFqn,
   isReadOnly,
   hasTagEditAccess,
-  entityFieldThreads,
   showInlineEditTagButton,
   onThreadLinkSelect,
   handleTagSelection,
   entityType,
 }: TableTagsComponentProps<T>) => {
   return (
-    <div className="hover-icon-group" data-testid={`${type}-tags-${index}`}>
+    <div
+      className="hover-icon-group"
+      data-testid={`${lowerCase(type)}-tags-${index}`}>
       <div
         className={classNames('d-flex justify-content flex-col items-start')}
         data-testid="tags-wrapper">
@@ -54,7 +56,6 @@ const TableTags = <T extends TableUnion>({
                   fqn: record.fullyQualifiedName ?? '',
                   field: record.tags ?? [],
                 }}
-                entityFieldThreads={entityFieldThreads}
                 entityFqn={entityFqn}
                 entityTaskType={EntityField.TAGS}
                 entityType={entityType}

@@ -13,21 +13,25 @@
 
 package org.openmetadata.service.jdbi3;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 
-public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
+@Slf4j
+public class DashboardServiceRepository
+    extends ServiceEntityRepository<DashboardService, DashboardConnection> {
 
-  public DashboardServiceRepository(CollectionDAO dao) {
+  public DashboardServiceRepository() {
     super(
         DashboardServiceResource.COLLECTION_PATH,
         Entity.DASHBOARD_SERVICE,
-        dao,
-        dao.dashboardServiceDAO(),
+        Entity.getCollectionDAO().dashboardServiceDAO(),
         DashboardConnection.class,
+        "",
         ServiceType.DASHBOARD);
+    supportsSearch = true;
   }
 }

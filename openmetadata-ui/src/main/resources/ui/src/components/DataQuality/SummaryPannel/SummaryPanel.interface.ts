@@ -1,4 +1,4 @@
-import { TestSummary } from 'generated/tests/testSuite';
+import { TestSummary } from '../../../generated/tests/testSuite';
 
 /*
  *  Copyright 2023 Collate.
@@ -13,5 +13,6 @@ import { TestSummary } from 'generated/tests/testSuite';
  *  limitations under the License.
  */
 export interface SummaryPanelProps {
-  testSummary?: TestSummary;
+  testSummary: TestSummary;
+  isLoading?: boolean;
 }

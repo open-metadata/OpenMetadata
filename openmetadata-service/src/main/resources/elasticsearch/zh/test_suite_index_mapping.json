@@ -1,0 +1,94 @@
+{
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "fullyQualifiedName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "displayName": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "fqnParts": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
+      "deleted": {
+        "type": "text"
+      },
+      "href": {
+        "type": "text"
+      },
+      "executable": {
+        "type": "text"
+      }
+    }
+  }
+}

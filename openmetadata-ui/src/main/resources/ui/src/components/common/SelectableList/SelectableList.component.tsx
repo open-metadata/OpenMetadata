@@ -11,20 +11,52 @@
  *  limitations under the License.
  */
 import { Button, Checkbox, List, Space, Tooltip } from 'antd';
-import Loader from 'components/Loader/Loader';
-import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
-import { EntityReference } from 'generated/entity/data/table';
-import { Paging } from 'generated/type/paging';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
-import Searchbar from '../searchbar/Searchbar';
+import Loader from '../../../components/Loader/Loader';
+import {
+  ADD_USER_CONTAINER_HEIGHT,
+  pagingObject,
+} from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
+import { getEntityName } from '../../../utils/EntityUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';
+
+const RemoveIcon = ({
+  removeOwner,
+  removeIconTooltipLabel,
+}: {
+  removeOwner?: () => void;
+  removeIconTooltipLabel?: string;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip
+      title={
+        removeIconTooltipLabel ??
+        t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })
+      }>
+      <SVGIcons
+        data-testid="remove-owner"
+        icon={Icons.ICON_REMOVE_COLORED}
+        onClick={(e) => {
+          e.stopPropagation();
+          removeOwner && removeOwner();
+        }}
+      />
+    </Tooltip>
+  );
+};
 
 export const SelectableList = ({
   fetchOptions,
@@ -34,6 +66,9 @@ export const SelectableList = ({
   onCancel,
   searchPlaceholder,
   customTagRenderer,
+  searchBarDataTestId,
+  removeIconTooltipLabel,
+  emptyPlaceholderText,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -148,10 +183,6 @@ export const SelectableList = ({
           newItemsMap?.set(id, item);
         }
 
-        setUniqueOptions((options) =>
-          sortUniqueListFromSelectedList(newItemsMap, options)
-        );
-
         return newItemsMap;
       });
     } else {
@@ -174,18 +205,24 @@ export const SelectableList = ({
   return (
     <List
       data-testid="selectable-list"
+      dataSource={uniqueOptions}
       footer={
         multiSelect && (
           <div className="d-flex justify-between">
             <Button
               color="primary"
+              data-testid="clear-all-button"
               size="small"
               type="text"
               onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">
-              <Button color="primary" size="small" onClick={onCancel}>
+              <Button
+                color="primary"
+                data-testid="cancel-button"
+                size="small"
+                onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
@@ -203,63 +240,50 @@ export const SelectableList = ({
         <Searchbar
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
-          searchValue={searchText}
+          searchBarDataTestId={searchBarDataTestId}
           typingInterval={500}
           onSearch={handleSearch}
         />
       }
       itemLayout="vertical"
       loading={{ spinning: fetching, indicator: <Loader /> }}
+      locale={{
+        emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
+      }}
       size="small">
-      <VirtualList
-        data={uniqueOptions}
-        height={ADD_USER_CONTAINER_HEIGHT}
-        itemKey="id"
-        onScroll={onScroll}>
-        {(item) => (
-          <List.Item
-            className="cursor-pointer"
-            extra={
-              multiSelect ? (
-                <Checkbox checked={selectedItemsInternal.has(item.id)} />
-              ) : (
-                selectedItemsInternal.has(item.id) && (
-                  <RemoveIcon removeOwner={handleRemoveClick} />
+      {uniqueOptions.length > 0 && (
+        <VirtualList
+          data={uniqueOptions}
+          height={ADD_USER_CONTAINER_HEIGHT}
+          itemKey="id"
+          onScroll={onScroll}>
+          {(item) => (
+            <List.Item
+              className="selectable-list-item cursor-pointer"
+              extra={
+                multiSelect ? (
+                  <Checkbox checked={selectedItemsInternal.has(item.id)} />
+                ) : (
+                  selectedItemsInternal.has(item.id) && (
+                    <RemoveIcon
+                      removeIconTooltipLabel={removeIconTooltipLabel}
+                      removeOwner={handleRemoveClick}
+                    />
+                  )
                 )
-              )
-            }
-            key={item.id}
-            title={getEntityName(item)}
-            onClick={() => selectionHandler(item)}>
-            {customTagRenderer ? (
-              customTagRenderer(item)
-            ) : (
-              <UserTag id={item.id} name={getEntityName(item)} />
-            )}
-          </List.Item>
-        )}
-      </VirtualList>
+              }
+              key={item.id}
+              title={getEntityName(item)}
+              onClick={() => selectionHandler(item)}>
+              {customTagRenderer ? (
+                customTagRenderer(item)
+              ) : (
+                <UserTag id={item.name ?? ''} name={getEntityName(item)} />
+              )}
+            </List.Item>
+          )}
+        </VirtualList>
+      )}
     </List>
-  );
-};
-
-const RemoveIcon = ({ removeOwner }: { removeOwner?: () => void }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip
-      title={t('label.remove-entity', {
-        entity: t('label.owner-lowercase'),
-      })}>
-      <SVGIcons
-        color="#E41E0B"
-        data-testid="remove-owner"
-        icon={Icons.ICON_REMOVE_COLORED}
-        onClick={(e) => {
-          e.stopPropagation();
-          removeOwner && removeOwner();
-        }}
-      />
-    </Tooltip>
   );
 };

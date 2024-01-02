@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getQueriesList } from 'rest/queryAPI';
 import { MOCK_QUERIES, MOCK_QUERIES_ES_DATA } from '../../mocks/Queries.mock';
+import { getQueriesList } from '../../rest/queryAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
@@ -31,7 +31,7 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
@@ -39,15 +39,15 @@ jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
-jest.mock('rest/queryAPI', () => ({
-  ...jest.requireActual('rest/queryAPI'),
+jest.mock('../../rest/queryAPI', () => ({
+  ...jest.requireActual('../../rest/queryAPI'),
   getQueriesList: jest
     .fn()
     .mockImplementation(() =>
       Promise.resolve({ data: MOCK_QUERIES, paging: { total: 2 } })
     ),
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest.fn(),
     permissions: {
@@ -57,7 +57,7 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
     },
   })),
 }));
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   getSearchedUsers: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
@@ -108,11 +108,11 @@ describe('Test TableQueries Component', () => {
     expect(noDataPlaceholder).toBeInTheDocument();
   });
 
-  it('If paging count is more than 10, pagination should be visible', async () => {
+  it('If paging count is more than 15, pagination should be visible', async () => {
     (getQueriesList as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         data: MOCK_QUERIES,
-        paging: { total: 11 },
+        paging: { total: 16 },
       })
     );
     render(<TableQueries {...mockTableQueriesProp} />, {

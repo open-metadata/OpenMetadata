@@ -89,6 +89,7 @@ def test_connection(
             parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
         ),
         "GetOwners": client.get_owners,
+        "GetDataModels": client.test_get_datamodels,
     }
 
     test_connection_steps(

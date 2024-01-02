@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
-import { FqnPart } from 'enums/entity.enum';
+import { SearchOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
+import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
 import {
   Option,
   SearchSuggestions,
@@ -25,11 +34,13 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { serviceTypeLogo } from './ServiceUtils';
-import SVGIcons, { Icons } from './SvgUtils';
-import { getEntityLink } from './TableUtils';
+import searchClassBase from './SearchClassBase';
+import serviceUtilClassBase from './ServiceUtilClassBase';
+import { escapeESReservedCharacters } from './StringsUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -43,10 +54,14 @@ export const getSearchAPIQueryParams = (
   trackTotalHits = false
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
+
+  const encodedQueryString = queryString
+    ? escapeESReservedCharacters(queryString)
+    : '';
   const query =
-    queryString && queryString === WILD_CARD_CHAR
-      ? queryString
-      : `*${queryString}*`;
+    encodedQueryString === WILD_CARD_CHAR
+      ? encodedQueryString
+      : `*${encodedQueryString}*`;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),
@@ -78,73 +93,87 @@ export const getSearchAPIQueryParams = (
 export const getQueryWithSlash = (query: string): string =>
   query.replace(/["']/g, '\\$&');
 
-export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
+export const getGroupLabel = (index: string) => {
   let label = '';
-  let icon = '';
+  let GroupIcon;
   switch (index) {
     case SearchIndex.TOPIC:
       label = i18next.t('label.topic-plural');
-      icon = Icons.TOPIC_GREY;
+      GroupIcon = IconTopic;
 
       break;
     case SearchIndex.DASHBOARD:
       label = i18next.t('label.dashboard-plural');
-      icon = Icons.DASHBOARD_GREY;
+      GroupIcon = IconDashboard;
 
       break;
     case SearchIndex.PIPELINE:
       label = i18next.t('label.pipeline-plural');
-      icon = Icons.PIPELINE_GREY;
+      GroupIcon = IconPipeline;
 
       break;
     case SearchIndex.MLMODEL:
       label = i18next.t('label.ml-model-plural');
-      icon = Icons.MLMODAL;
+      GroupIcon = IconMlModal;
 
       break;
     case SearchIndex.GLOSSARY:
       label = i18next.t('label.glossary-term-plural');
-      icon = Icons.FLAT_FOLDER;
+      GroupIcon = IconTable;
 
       break;
     case SearchIndex.TAG:
       label = i18next.t('label.tag-plural');
-      icon = Icons.TAG_GREY;
+      GroupIcon = IconTag;
 
       break;
     case SearchIndex.CONTAINER:
       label = i18next.t('label.container-plural');
-      icon = Icons.CONTAINER;
+      GroupIcon = IconContainer;
 
       break;
 
-    case SearchIndex.TABLE:
-    default:
-      label = i18next.t('label.table-plural');
-      icon = Icons.TABLE_GREY;
+    case SearchIndex.STORED_PROCEDURE:
+      label = i18next.t('label.stored-procedure-plural');
+      GroupIcon = IconStoredProcedure;
 
       break;
+
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+      label = i18next.t('label.data-model-plural');
+      GroupIcon = IconDashboard;
+
+      break;
+
+    case SearchIndex.SEARCH_INDEX:
+      label = i18next.t('label.search-index-plural');
+      GroupIcon = SearchOutlined;
+
+      break;
+
+    case SearchIndex.DATA_PRODUCT:
+      label = i18next.t('label.data-product-plural');
+      GroupIcon = DataProductIcon;
+
+      break;
+
+    default: {
+      const { label: indexLabel, GroupIcon: IndexIcon } =
+        searchClassBase.getIndexGroupLabel(index);
+
+      label = indexLabel;
+      GroupIcon = IndexIcon;
+
+      break;
+    }
   }
 
   const groupLabel = (
-    <div
-      className={`d-flex items-center ${!wrapInSelectOption ? 'tw-my-2' : ''}`}>
-      <SVGIcons
-        alt="icon"
-        className={`  ${
-          !wrapInSelectOption ? 'tw-w-4 tw-h-4 tw-ml-2' : 'tw-w-3 tw-h-3'
-        }`}
-        icon={icon}
-      />
-      <p className="tw-px-2 text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
-        {label}
-      </p>
+    <div className="d-flex items-center p-y-xs">
+      <GroupIcon className="m-r-sm" height={16} width={16} />
+      <p className="text-grey-muted text-xs">{label}</p>
     </div>
   );
-
-  if (wrapInSelectOption) {
-    return <Select.Option disabled>{groupLabel}</Select.Option>;
-  }
 
   return groupLabel;
 };
@@ -152,9 +181,9 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
 export const getSuggestionElement = (
   suggestion: SearchSuggestions[number],
   index: string,
-  wrapInSelectOption: boolean,
   onClickHandler?: () => void
 ) => {
+  const entitySource = suggestion as SearchSourceAlias;
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
   let database;
   let schema;
@@ -163,42 +192,43 @@ export const getSuggestionElement = (
     schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
   }
 
-  const entityLink = getEntityLink(index, fqdn);
+  const entityLink = searchClassBase.getEntityLink(entitySource);
+  const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
+    FqnPart.Service,
+  ])}-${name}`.replaceAll(`"`, '');
+
+  const displayText =
+    database && schema
+      ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+      : searchClassBase.getEntityName(entitySource);
 
   const retn = (
-    <div
-      className="d-flex items-center hover:tw-bg-body-hover"
-      data-testid={`${getPartialNameFromTableFQN(fqdn, [
-        FqnPart.Service,
-      ])}-${name}`}
-      key={fqdn}>
-      <img
-        alt={serviceType}
-        className={`inline tw-h-4 ${!wrapInSelectOption ? 'tw-ml-2' : ''}`}
-        src={serviceTypeLogo(serviceType)}
-      />
+    <Button
+      block
+      className="text-left truncate p-0"
+      data-testid={dataTestId}
+      icon={
+        <img
+          alt={serviceType}
+          className="m-r-sm"
+          height="16px"
+          src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
+          width="16px"
+        />
+      }
+      key={fqdn}
+      type="text">
       <Link
-        className={`tw-text-sm ${
-          !wrapInSelectOption ? 'd-block tw-px-4 tw-py-2' : 'tw-px-2'
-        }`}
+        className="text-sm"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
+        target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
-        {database && schema
-          ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-          : name}
+        {displayText}
       </Link>
-    </div>
+    </Button>
   );
-
-  if (wrapInSelectOption) {
-    return (
-      <Select.Option key={entityLink} value={entityLink}>
-        {retn}
-      </Select.Option>
-    );
-  }
 
   return retn;
 };
@@ -206,9 +236,38 @@ export const getSuggestionElement = (
 export const filterOptionsByIndex = (
   options: Array<Option>,
   searchIndex: SearchIndex,
-  maxItemsPerType = 3
+  maxItemsPerType = 5
 ) =>
   options
     .filter((option) => option._index === searchIndex)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
+
+export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
+  const commonAssets: Record<string, EntityType> = {
+    [SearchIndex.TABLE]: EntityType.TABLE,
+    [SearchIndex.PIPELINE]: EntityType.PIPELINE,
+    [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
+    [SearchIndex.MLMODEL]: EntityType.MLMODEL,
+    [SearchIndex.TOPIC]: EntityType.TOPIC,
+    [SearchIndex.CONTAINER]: EntityType.CONTAINER,
+    [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
+    [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
+    [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+    [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
+    [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
+    [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
+    [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
+    [SearchIndex.PIPELINE_SERVICE]: EntityType.PIPELINE_SERVICE,
+    [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
+    [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
+    [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
+    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY_TERM,
+    [SearchIndex.TAG]: EntityType.TAG,
+    [SearchIndex.DATABASE]: EntityType.DATABASE,
+    [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+    [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+  };
+
+  return commonAssets[searchIndex] || null; // Return null if not found
+};

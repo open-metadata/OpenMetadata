@@ -11,29 +11,42 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ContainerSearchSource } from 'interface/search.interface';
-import React, { useEffect, useRef, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSuggestions } from 'rest/miscAPI';
+import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
+import {
+  ContainerSearchSource,
+  DashboardDataModelSearchSource,
+  StoredProcedureSearchSource,
+} from '../../interface/search.interface';
+import { searchData } from '../../rest/miscAPI';
+import { Transi18next } from '../../utils/CommonUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import {
   filterOptionsByIndex,
   getGroupLabel,
   getSuggestionElement,
-} from 'utils/SearchUtils';
-import { SearchIndex } from '../../enums/search.enum';
+} from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
+  DataProductSource,
   GlossarySource,
   MlModelSource,
   Option,
   PipelineSource,
+  SearchIndexSource,
   SearchSuggestions,
   TableSource,
   TagSource,
   TopicSource,
 } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../TourProvider/TourProvider';
 
 type SuggestionProp = {
   searchText: string;
@@ -44,11 +57,12 @@ type SuggestionProp = {
 
 const Suggestions = ({
   searchText,
-  isOpen,
   setIsOpen,
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -68,10 +82,25 @@ const Suggestions = ({
   const [glossarySuggestions, setGlossarySuggestions] = useState<
     GlossarySource[]
   >([]);
+  const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
+    SearchIndexSource[]
+  >([]);
   const [tagSuggestions, setTagSuggestions] = useState<TagSource[]>([]);
+
+  const [storedProcedureSuggestions, setStoredProcedureSuggestions] = useState<
+    StoredProcedureSearchSource[]
+  >([]);
+
+  const [dataModelSuggestions, setDataModelSuggestions] = useState<
+    DashboardDataModelSearchSource[]
+  >([]);
+  const [dataProductSuggestions, setDataProductSuggestions] = useState<
+    DataProductSource[]
+  >([]);
+
   const isMounting = useRef(true);
 
-  const setSuggestions = (options: Array<Option>) => {
+  const updateSuggestions = (options: Array<Option>) => {
     setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
     setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
     setDashboardSuggestions(
@@ -82,8 +111,20 @@ const Suggestions = ({
     setContainerSuggestions(
       filterOptionsByIndex(options, SearchIndex.CONTAINER)
     );
+    setSearchIndexSuggestions(
+      filterOptionsByIndex(options, SearchIndex.SEARCH_INDEX)
+    );
+    setStoredProcedureSuggestions(
+      filterOptionsByIndex(options, SearchIndex.STORED_PROCEDURE)
+    );
+    setDataModelSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
+    );
     setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
+    setDataProductSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
   };
 
   const getSuggestionsForIndex = (
@@ -98,7 +139,7 @@ const Suggestions = ({
       <>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
-          return getSuggestionElement(suggestion, searchIndex, false, () =>
+          return getSuggestionElement(suggestion, searchIndex, () =>
             setIsOpen(false)
           );
         })}
@@ -108,7 +149,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div className="py-1" role="none">
+      <div data-testid="global-search-suggestion-box" role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -126,10 +167,27 @@ const Suggestions = ({
             searchIndex: SearchIndex.CONTAINER,
           },
           {
+            suggestions: searchIndexSuggestions,
+            searchIndex: SearchIndex.SEARCH_INDEX,
+          },
+          {
+            suggestions: storedProcedureSuggestions,
+            searchIndex: SearchIndex.STORED_PROCEDURE,
+          },
+          {
+            suggestions: dataModelSuggestions,
+            searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          },
+          {
             suggestions: glossarySuggestions,
             searchIndex: SearchIndex.GLOSSARY,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
+          {
+            suggestions: dataProductSuggestions,
+            searchIndex: SearchIndex.DATA_PRODUCT,
+          },
+          ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
         )}
@@ -137,31 +195,40 @@ const Suggestions = ({
     );
   };
 
-  useEffect(() => {
-    if (!isMounting.current && searchText) {
-      getSuggestions(searchText, searchCriteria)
-        .then((res) => {
-          if (res.data) {
-            setOptions(
-              res.data.suggest['metadata-suggest'][0]
-                .options as unknown as Option[]
-            );
-            setSuggestions(
-              res.data.suggest['metadata-suggest'][0]
-                .options as unknown as Option[]
-            );
-          } else {
-            throw t('server.unexpected-response');
-          }
+  const fetchSearchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await searchData(
+        searchText,
+        1,
+        PAGE_SIZE_BASE,
+        '',
+        '',
+        '',
+        searchCriteria ?? SearchIndex.ALL
+      );
+
+      if (res.data) {
+        setOptions(res.data.hits.hits as unknown as Option[]);
+        updateSuggestions(res.data.hits.hits as unknown as Option[]);
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
         })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.suggestion-lowercase-plural'),
-            })
-          );
-        });
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchText, searchCriteria]);
+
+  useEffect(() => {
+    if (!isMounting.current && searchText && !isTourOpen) {
+      fetchSearchData();
+    } else {
+      setIsLoading(false);
     }
   }, [searchText, searchCriteria]);
 
@@ -170,28 +237,25 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
-  return (
-    <>
-      {options.length > 0 && isOpen ? (
-        <>
-          <button
-            className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
-            data-testid="suggestion-overlay"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            aria-labelledby="menu-button"
-            aria-orientation="vertical"
-            className="suggestions-menu tw-origin-top-right tw-absolute z-400
-          tw-w-600 tw-mt-1 tw-rounded-md tw-shadow-lg
-        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
-            role="menu">
-            {getEntitiesSuggestions()}
-          </div>
-        </>
-      ) : null}
-    </>
-  );
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
+    return (
+      <Typography.Text>
+        <Transi18next
+          i18nKey="message.please-enter-to-find-data-assets"
+          renderElement={<strong />}
+          values={{
+            keyword: `"${searchText}"`,
+          }}
+        />
+      </Typography.Text>
+    );
+  }
+
+  return getEntitiesSuggestions();
 };
 
 export default Suggestions;

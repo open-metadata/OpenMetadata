@@ -28,7 +28,7 @@ from metadata.ingestion.source.dashboard.looker.parser import (
     LkmlParser,
     ViewName,
 )
-from metadata.readers.local import LocalReader
+from metadata.readers.file.local import LocalReader
 
 BASE_PATH = Path(__file__).parent.parent.parent / "resources/lkml"
 
@@ -250,7 +250,7 @@ class TestLkmlParser(TestCase):
             ),
         ]
 
-        self.assertEquals(cols, expected_cols)
+        self.assertEqual(cols, expected_cols)
 
     def test_view_col_parser(self):
         """
@@ -278,4 +278,4 @@ class TestLkmlParser(TestCase):
             ),
         ]
 
-        self.assertEquals(cols, expected_cols)
+        self.assertEqual(cols, expected_cols)

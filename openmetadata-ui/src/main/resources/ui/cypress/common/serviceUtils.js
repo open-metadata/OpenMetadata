@@ -12,6 +12,17 @@
  */
 import { interceptURL, verifyResponseStatusCode } from './common';
 
+export const searchServiceFromSettingPage = (service) => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(service);
+
+  verifyResponseStatusCode('@searchService', 200);
+};
+
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
   // Click on settings page
   interceptURL(
@@ -19,7 +30,8 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
+
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -29,7 +41,9 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@getServices', 200);
+  cy.wait('@getServices');
+
+  searchServiceFromSettingPage(service.name);
 
   // click on created service
   cy.get(`[data-testid="service-name-${service.name}"]`)
@@ -43,7 +57,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
       .should('be.visible')
       .invoke('text')
       .then((text) => {
-        expect(text).to.equal(service.name);
+        expect(text).to.equal(service.displayName);
       });
   }
 

@@ -21,14 +21,11 @@ from datetime import datetime
 from typing import Callable, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)
@@ -88,12 +85,15 @@ class BaseTestValidator(ABC):
         pre_processed_value = pre_processor(value)
         return type_(pre_processed_value)
 
-    def get_test_case_result_object(
+    def get_test_case_result_object(  # pylint: disable=too-many-arguments
         self,
         execution_date: Union[datetime, float],
         status: TestCaseStatus,
         result: str,
         test_result_value: List[TestResultValue],
+        row_count: Optional[int] = None,
+        failed_rows: Optional[int] = None,
+        passed_rows: Optional[int] = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -105,25 +105,29 @@ class BaseTestValidator(ABC):
         Returns:
             TestCaseResult:
         """
-        if status == TestCaseStatus.Failed:
-            test_case_failure_status = TestCaseFailureStatus(
-                testCaseFailureStatusType=TestCaseFailureStatusType.New,
-                testCaseFailureReason=None,
-                testCaseFailureComment=None,
-                updatedAt=Timestamp(__root__=int(datetime.utcnow().timestamp() * 1000)),
-                updatedBy=None,
-            )
-        else:
-            test_case_failure_status = None
-
-        return TestCaseResult(
+        test_case_result = TestCaseResult(
             timestamp=execution_date,  # type: ignore
             testCaseStatus=status,
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
-            testCaseFailureStatus=test_case_failure_status,
         )
+
+        if (row_count is not None) and (
+            # we'll need at least one of these to be not None to compute the other
+            (failed_rows is not None)
+            or (passed_rows is not None)
+        ):
+            passed_rows = passed_rows if passed_rows is not None else (row_count - failed_rows)  # type: ignore
+            failed_rows = (
+                failed_rows if failed_rows is not None else (row_count - passed_rows)
+            )
+            test_case_result.passedRows = passed_rows
+            test_case_result.failedRows = failed_rows
+            test_case_result.passedRowsPercentage = (passed_rows / row_count) * 100
+            test_case_result.failedRowsPercentage = (failed_rows / row_count) * 100  # type: ignore
+
+        return test_case_result
 
     def format_column_list(self, status: TestCaseStatus, cols: List):
         """Format column list based on the test status

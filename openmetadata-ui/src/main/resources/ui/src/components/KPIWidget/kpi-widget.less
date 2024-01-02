@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.kpi-widget-container {
-  .entity-data {
-    min-width: 170px;
-    margin-right: 8px;
-  }
-  .kpi-widget-card {
-    border-radius: 10px;
-    box-shadow: none;
+
+.ant-card.ant-card-bordered.kpi-widget-card {
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.kpi-widget-card {
+  .ant-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 }

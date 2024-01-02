@@ -1,5 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,7 +24,7 @@ public class PostResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityReference getOwner() {
-    return SubjectCache.getInstance().getUser(postedBy).getEntityReference();
+    return Entity.getEntityReferenceByName(Entity.USER, postedBy, NON_DELETED);
   }
 
   @Override

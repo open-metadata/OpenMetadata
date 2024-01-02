@@ -33,7 +33,8 @@ import org.openmetadata.service.resources.analytics.WebAnalyticEventResource.Web
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalyticEvent, CreateWebAnalyticEvent> {
+public class WebAnalyticEventResourceTest
+    extends EntityResourceTest<WebAnalyticEvent, CreateWebAnalyticEvent> {
   public WebAnalyticEventResourceTest() {
     super(
         Entity.WEB_ANALYTIC_EVENT,
@@ -92,7 +93,8 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
       verifyWebAnalyticEventData(webAnalyticEventDataResultList, List.of(webAnalyticEventData), 1);
     }
 
-    deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(BOT_USER.getName()));
+    deleteWebAnalyticEventData(
+        TestUtils.dateToTimestamp("2022-10-11"), authHeaders(BOT_USER.getName()));
 
     ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -129,9 +131,9 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     assertResponse(
         () ->
             deleteWebAnalyticEventData(
-                TestUtils.dateToTimestamp("2022-10-11"), authHeaders(USER_WITH_DATA_CONSUMER_ROLE.getName())),
+                TestUtils.dateToTimestamp("2022-10-11"), authHeaders(DATA_CONSUMER.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER_WITH_DATA_CONSUMER_ROLE.getName(), List.of(MetadataOperation.DELETE)));
+        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Override
@@ -144,13 +146,16 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
   @Override
   public void validateCreatedEntity(
-      WebAnalyticEvent createdEntity, CreateWebAnalyticEvent request, Map<String, String> authHeaders) {
+      WebAnalyticEvent createdEntity,
+      CreateWebAnalyticEvent request,
+      Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(WebAnalyticEvent expected, WebAnalyticEvent updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      WebAnalyticEvent expected, WebAnalyticEvent updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
     assertEquals(expected.getDescription(), updated.getDescription());
@@ -183,14 +188,16 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     TestUtils.put(target, data, OK, authHeaders);
   }
 
-  public void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
+  public void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders)
+      throws IOException {
     String url = String.format("/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
     WebTarget target = getCollection().path(url);
     TestUtils.delete(target, WebAnalyticEvent.class, authHeaders);
   }
 
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
-      String eventType, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
+      String eventType, Long start, Long end, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/collect");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);

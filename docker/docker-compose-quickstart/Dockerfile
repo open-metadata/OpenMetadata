@@ -10,21 +10,24 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.15 AS build
-ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/openmetadata-1.2.0.tar.gz"
+FROM alpine:3.18 AS build
+ARG RI_VERSION="1.3.0-SNAPSHOT"
+ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
+
 RUN mkdir -p /opt/openmetadata && \
     wget ${RELEASE_URL} && \
     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.15
+FROM alpine:3.18
+ARG RI_VERSION="1.3.0-SNAPSHOT"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
 LABEL org.open-metadata.image.authors="support@openmetadata.org"
 LABEL org.open-metadata.vendor="OpenMetadata"
-LABEL org.open-metadata.release-version="1.2.0"
+LABEL org.open-metadata.release-version="$RI_VERSION"
 LABEL org.open-metadata.description="OpenMetadata is an open source platform for metadata management and discovery."
 LABEL org.open-metadata.url="https://open-metadata.org/"
 LABEL org.open-metadata.vcs-url="https://github.com/open-metadata/OpenMetadata"
@@ -34,8 +37,13 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 EXPOSE 8585 8586
 COPY docker/openmetadata-start.sh ./
 COPY --from=build /opt/openmetadata /opt/openmetadata
-RUN apk add --update --no-cache bash openjdk11-jre && \
+RUN apk add --update --no-cache bash openjdk17-jre && \
     chmod 777 openmetadata-start.sh
+
+RUN adduser -D openmetadata
+RUN chown -R openmetadata:openmetadata /opt/openmetadata
+USER openmetadata
+
 WORKDIR /opt/openmetadata
 ENTRYPOINT [ "/bin/bash" ]
 CMD ["/openmetadata-start.sh"]

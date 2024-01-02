@@ -1,0 +1,70 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../styles/variables.less');
+.domain-content-container {
+  height: @domain-page-height;
+  overflow-y: auto;
+}
+
+.domain-details-page-tabs {
+  .ant-tabs-nav {
+    padding: 0 20px;
+    margin: 0 !important;
+  }
+}
+
+.domain-page-layout {
+  .page-layout-v1-vertical-scroll {
+    height: @domain-page-height;
+  }
+  .page-layout-rightpanel {
+    padding-right: 0;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0;
+    border-top: 0;
+
+    .summary-panel-container {
+      height: @domain-page-height;
+    }
+  }
+}
+
+.domain-asset-page-layout {
+  .page-layout-v1-vertical-scroll {
+    height: @domain-page-height;
+    .assets-tab-container {
+      padding-top: 4px;
+    }
+  }
+}
+
+.domain-form-container .toastui-editor,
+.add-data-product-modal .toastui-editor {
+  min-height: 150px !important; // overriding inline style
+  .ProseMirror {
+    min-height: 150px;
+  }
+}
+
+.ant-tooltip.domain-type-tooltip-container {
+  max-width: 750px;
+  .ant-tooltip-arrow-content::before {
+    background: @white;
+  }
+  .ant-tooltip-inner {
+    background: @white;
+    padding: 20px;
+  }
+}

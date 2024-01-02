@@ -23,6 +23,7 @@ const CREDENTIALS = {
   lastName: 'User',
   email: 'user@openmetadata.org',
   password: 'User@OMD123',
+  id: '',
 };
 const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
@@ -30,6 +31,7 @@ const invalidPassword = 'testUsers@123';
 describe('Login flow should work properly', () => {
   it('Signup and Login with signed up credentials', () => {
     interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
+    interceptURL('POST', '/api/v1/users/checkEmailInUse', 'createUser');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
     // Click on create account button
@@ -58,6 +60,7 @@ describe('Login flow should work properly', () => {
       .type(CREDENTIALS.password);
     // Click on create account button
     cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
+    verifyResponseStatusCode('@createUser', 200);
     cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
 
     // Login with the created user
@@ -81,11 +84,12 @@ describe('Login flow should work properly', () => {
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    verifyResponseStatusCode('@getUser', 200);
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.wait('@getUser').then((response) => {
+      CREDENTIALS.id = response.response.body.id;
+    });
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
   });
 
   it('Signin using invalid credentials', () => {
@@ -121,5 +125,23 @@ describe('Login flow should work properly', () => {
     cy.get('[id="email"]').should('be.visible').clear().type(CREDENTIALS.email);
     // Click on submit
     cy.get('.ant-btn').contains('Submit').click();
+  });
+});
+
+describe('Cleanup', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('delete user', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 });

@@ -11,18 +11,33 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { Query } from 'generated/entity/data/query';
-import { MOCK_QUERIES } from 'mocks/Queries.mock';
+import { render, screen, waitForElement } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Query } from '../../../generated/entity/data/query';
+import { MOCK_QUERIES } from '../../../mocks/Queries.mock';
+import { searchData } from '../../../rest/miscAPI';
+import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../Explore/Explore.mock';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 
 const mockProps: QueryUsedByOtherTableProps = {
   query: MOCK_QUERIES[0] as Query,
-  tableId: MOCK_QUERIES[0].queryUsedIn[0].id,
+  isEditMode: false,
+  onChange: jest.fn(),
 };
+
+jest.mock('../../AsyncSelect/AsyncSelect', () => ({
+  AsyncSelect: jest
+    .fn()
+    .mockImplementation(() => <div>AsyncSelect.component</div>),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockReturnValue(() => Promise.resolve(MOCK_EXPLORE_SEARCH_RESULTS)),
+}));
 
 describe('QueryUsedByOtherTable test', () => {
   it('Component should render', async () => {
@@ -35,22 +50,6 @@ describe('QueryUsedByOtherTable test', () => {
     expect(
       await screen.findByText('message.query-used-by-other-tables:')
     ).toBeInTheDocument();
-  });
-
-  it('Top 3 except current table should visible, with view more button', async () => {
-    const table1 = MOCK_QUERIES[0].queryUsedIn[1].name;
-    const table2 = MOCK_QUERIES[0].queryUsedIn[2].name;
-    const table3 = MOCK_QUERIES[0].queryUsedIn[3].name;
-    render(<QueryUsedByOtherTable {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const viewMore = await screen.findByTestId('show-more');
-
-    expect(await screen.findByText(table1)).toBeInTheDocument();
-    expect(await screen.findByText(table2)).toBeInTheDocument();
-    expect(await screen.findByText(table3)).toBeInTheDocument();
-    expect(viewMore.textContent).toEqual('5 label.more-lowercase');
   });
 
   it('If no queryUsedIn available, "--" should visible', async () => {
@@ -69,7 +68,45 @@ describe('QueryUsedByOtherTable test', () => {
 
     expect(viewMore).not.toBeInTheDocument();
     expect(container.textContent).toEqual(
-      'message.query-used-by-other-tables:  --'
+      'message.query-used-by-other-tables:--'
     );
+  });
+
+  it('Should display select box if edit mode is true', async () => {
+    render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
+      wrapper: MemoryRouter,
+    });
+    const selectField = await screen.findByText('AsyncSelect.component');
+
+    expect(selectField).toBeInTheDocument();
+  });
+
+  it('Should fetch initial dropdown list in edit mode', async () => {
+    const mockSearchData = searchData as jest.Mock;
+    render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
+      wrapper: MemoryRouter,
+    });
+    const selectField = await screen.findByText('AsyncSelect.component');
+
+    expect(selectField).toBeInTheDocument();
+    expect(mockSearchData).toHaveBeenCalledWith(
+      '',
+      1,
+      25,
+      '',
+      '',
+      '',
+      'table_search_index'
+    );
+  });
+
+  it('Loader should be visible while loading the initial options', async () => {
+    render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
+      wrapper: MemoryRouter,
+    });
+    const selectField = await screen.findByText('AsyncSelect.component');
+    waitForElement(async () => expect(await screen.findByText('Loader')));
+
+    expect(selectField).toBeInTheDocument();
   });
 });

@@ -11,28 +11,9 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNodeV1 from 'components/EntityLineage/CustomNodeV1.component';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  Edge as InterfaceEdge,
-  EdgeData,
-  EdgeTypeEnum,
-  EntityReferenceChild,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-  ModifiedColumn,
-  NodeIndexMap,
-  SelectedEdge,
-  SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
-import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import {
@@ -41,9 +22,9 @@ import {
   isEqual,
   isNil,
   isUndefined,
-  lowerCase,
   uniqueId,
   uniqWith,
+  upperCase,
 } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
@@ -57,12 +38,31 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
+import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  EntityReferenceChild,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  NodeIndexMap,
+  SelectedEdge,
+  SelectedNode,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import Loader from '../components/Loader/Loader';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -79,12 +79,14 @@ import {
   NODE_WIDTH,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -94,13 +96,13 @@ import {
   LineageDetails,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
+import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -115,11 +117,12 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
         <Typography.Title
           ellipsis
@@ -396,10 +399,12 @@ export const getLineageData = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-      <span>
-        {t('message.lineage-data-is-not-available-for-deleted-entities')}
-      </span>
+    <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {t('message.field-data-is-not-available-for-deleted-entities', {
+          field: t('label.lineage'),
+        })}
+      </ErrorPlaceHolder>
     </div>
   );
 };
@@ -501,21 +506,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
-  );
 };
 
 export const getSelectedEdgeArr = (
@@ -804,7 +794,7 @@ export const getUpdatedEdgeWithPipeline = (
   edges: EntityLineage['downstreamEdges'],
   updatedLineageDetails: LineageDetails,
   selectedEdge: CustomEdgeData,
-  pipelineDetail: EntityReference | undefined
+  edgeDetails: EntityReference | undefined
 ) => {
   if (isUndefined(edges)) {
     return [];
@@ -820,8 +810,9 @@ export const getUpdatedEdgeWithPipeline = (
           ...updatedLineageDetails,
           pipeline: !isUndefined(updatedLineageDetails.pipeline)
             ? {
-                displayName: pipelineDetail?.displayName,
-                name: pipelineDetail?.name,
+                displayName: edgeDetails?.displayName,
+                name: edgeDetails?.name,
+                fullyQualifiedName: edgeDetails?.fullyQualifiedName,
                 ...updatedLineageDetails.pipeline,
               }
             : undefined,
@@ -836,7 +827,9 @@ export const getUpdatedEdgeWithPipeline = (
 export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
-  customEdgeData: CustomEdgeData
+  customEdgeData: CustomEdgeData,
+  type: EntityType,
+  edgeDetails?: EntityReference
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -847,7 +840,8 @@ export const getNewLineageConnectionDetails = (
       ? undefined
       : {
           id: selectedPipelineId,
-          type: EntityType.PIPELINE,
+          type,
+          fullyQualifiedName: edgeDetails?.fullyQualifiedName ?? '',
         },
   };
 
@@ -1290,7 +1284,7 @@ export const findNodeById = (
   return undefined;
 };
 
-export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
   try {
     await addLineage(edge);
   } catch (err) {
@@ -1322,29 +1316,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
     );
 
     throw err;
-  }
-};
-
-export const getParamByEntityType = (entityType: EntityType): string => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return 'datasetFQN';
-    case EntityType.TOPIC:
-      return 'topicFQN';
-    case EntityType.PIPELINE:
-      return 'pipelineFQN';
-    case EntityType.MLMODEL:
-      return 'mlModelFqn';
-    case EntityType.DASHBOARD:
-      return 'dashboardFQN';
-    case EntityType.DATABASE:
-      return 'databaseFQN';
-    case EntityType.DATABASE_SCHEMA:
-      return 'databaseSchemaFQN';
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return 'dashboardDataModelFQN';
-    default:
-      return 'entityFQN';
   }
 };
 
@@ -1381,7 +1352,7 @@ export const getEntityLineagePath = (
 
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
-  switch (lowerCase(label)) {
+  switch (label) {
     case EntityType.TABLE:
       return TableIcon;
     case EntityType.DASHBOARD:
@@ -1392,7 +1363,31 @@ export const getEntityNodeIcon = (label: string) => {
       return PipelineIcon;
     case EntityType.MLMODEL:
       return MlModelIcon;
+    case EntityType.SEARCH_INDEX:
+      return SearchOutlined;
     default:
       return TableIcon;
   }
+};
+
+export const getSearchIndexFromNodeType = (entityType: string) => {
+  const searchIndexKey = upperCase(entityType).replace(
+    ' ',
+    '_'
+  ) as keyof typeof SearchIndex;
+
+  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
+};
+
+export const updateEdgesWithLineageDetails = (
+  edgesArray: EntityLineageEdge[],
+  updatedEdgeDetails: AddLineage
+) => {
+  const { fromEntity, toEntity, lineageDetails } = updatedEdgeDetails.edge;
+
+  return edgesArray.map((item) =>
+    item.toEntity === toEntity.id && item.fromEntity === fromEntity.id
+      ? { ...item, lineageDetails: lineageDetails }
+      : item
+  );
 };

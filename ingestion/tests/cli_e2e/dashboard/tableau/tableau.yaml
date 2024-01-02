@@ -11,12 +11,12 @@ source:
       hostPort: $E2E_TABLEAU_HOST_PORT
       siteName: $E2E_TABLEAU_SITE
       siteUrl: $E2E_TABLEAU_SITE
-      apiVersion: 3.19
+      apiVersion: 3.21
   sourceConfig:
     config:
       type: DashboardMetadata
       dbServiceNames:
-      - local_redshift
+      - local_redshift_tableau
 sink:
   type: metadata-rest
   config: {}

@@ -14,45 +14,48 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { Chart } from 'generated/entity/data/chart';
 import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { getEntityDetailLink } from 'utils/CommonUtils';
-import AppState from '../../../AppState';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
+import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Chart } from '../../../generated/entity/data/chart';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { postThread } from '../../../rest/feedsAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
-import '../TaskPage.style.less';
+import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
@@ -60,8 +63,10 @@ const UpdateTag = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
+  const { currentUser } = useAuthContext();
 
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -75,27 +80,34 @@ const UpdateTag = () => {
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
-
-  const message = `Update tags for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const sanitizeValue = useMemo(
+    () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
+    [value]
   );
+
+  const taskMessage = useMemo(
+    () =>
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Update tags',
+      }),
+    [value, entityType, field, entityData]
+  );
+
+  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const back = () => history.goBack();
 
   const columnObject = useMemo(() => {
-    const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
+    const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
     return getColumnObject(
       column[0],
       getEntityColumnsDetails(entityType, entityData),
-      entityType as EntityType,
+      entityType,
       chartData
     );
   }, [field, entityData, chartData, entityType]);
@@ -123,8 +135,8 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      message: value.title || taskMessage,
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -145,8 +157,8 @@ const UpdateTag = () => {
         );
         history.push(
           getEntityDetailLink(
-            entityType as EntityType,
-            entityFQN,
+            entityType,
+            decodedEntityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -157,7 +169,7 @@ const UpdateTag = () => {
 
   useEffect(() => {
     fetchEntityDetail(
-      entityType as EntityType,
+      entityType,
       entityFQN as string,
       setEntityData,
       setChartData
@@ -173,13 +185,14 @@ const UpdateTag = () => {
           label: getEntityName(owner),
           value: owner.id || '',
           type: owner.type,
+          name: owner.name,
         },
       ];
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       updatedTags: getTags(),
       assignees: defaultAssignee,
     });
@@ -190,6 +203,10 @@ const UpdateTag = () => {
     setSuggestion(getTags());
   }, [entityData, columnObject]);
 
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
+
   return (
     <ResizablePanels
       firstPanel={{
@@ -199,7 +216,7 @@ const UpdateTag = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -242,6 +259,7 @@ const UpdateTag = () => {
                     },
                   ]}>
                   <Assignees
+                    disabled={Boolean(entityData.owner)}
                     options={options}
                     value={assignees}
                     onChange={setAssignees}
@@ -315,4 +333,4 @@ const UpdateTag = () => {
   );
 };
 
-export default observer(UpdateTag);
+export default UpdateTag;

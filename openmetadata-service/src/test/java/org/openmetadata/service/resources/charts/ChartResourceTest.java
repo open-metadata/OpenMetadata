@@ -17,9 +17,12 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -46,10 +49,10 @@ import org.openmetadata.service.resources.charts.ChartResource.ChartList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
+  private final DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
 
   public ChartResourceTest() {
     super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS);
@@ -99,7 +102,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set url, description and chart type.
-    ChangeDescription change = getChangeDescription(chart.getVersion());
+    ChangeDescription change = getChangeDescription(chart, MINOR_UPDATE);
     chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
@@ -110,11 +113,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             request.withDescription("desc1").withChartType(type1).withSourceUrl("url1"),
             OK,
             ADMIN_AUTH_HEADERS,
-            UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Update description, chartType and chart url and verify update
-    change = getChangeDescription(chart.getVersion());
+    change = getChangeDescription(chart, MINOR_UPDATE);
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
 
     fieldUpdated(change, "description", "desc1", "desc2");
@@ -125,7 +128,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         request.withDescription("desc2").withChartType(type2).withSourceUrl("url2"),
         OK,
         ADMIN_AUTH_HEADERS,
-        UpdateType.MINOR_UPDATE,
+        MINOR_UPDATE,
         change);
   }
 
@@ -145,30 +148,29 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     String originalJson = JsonUtils.pojoToJson(chart);
 
     // Set url, description and chart type.
-    ChangeDescription change = getChangeDescription(chart.getVersion());
+    ChangeDescription change = getChangeDescription(chart, MINOR_UPDATE);
     chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
     fieldAdded(change, "sourceUrl", "url1");
-
-    chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart.getVersion());
-    fieldUpdated(change, "description", "desc1", "desc2");
-    fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "sourceUrl", "url1", "url2");
-
+    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "description", "desc2");
+    fieldAdded(change, "chartType", type2);
+    fieldAdded(change, "sourceUrl", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
-    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a dashboard service, carry it forward from the chart
-    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateDashboardService createService =
+        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a chart without domain and ensure it inherits domain from the parent
@@ -176,9 +178,25 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create dashboard service with owner data consumer
+    CreateDashboardService createDashboardService =
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
+    DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create chart under it
+    createEntity(
+        createRequest("chart").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
+  }
+
   @Override
   @Execution(ExecutionMode.CONCURRENT)
-  public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  public Chart validateGetWithDifferentFields(Chart chart, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     chart =
         byName
@@ -200,7 +218,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public CreateChart createRequest(String name) {
-    return new CreateChart().withName(name).withService(getContainer().getName()).withChartType(ChartType.Area);
+    return new CreateChart()
+        .withName(name)
+        .withService(getContainer().getName())
+        .withChartType(ChartType.Area);
   }
 
   @Override
@@ -214,7 +235,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public void validateCreatedEntity(Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
     assertEquals(createRequest.getChartType(), chart.getChartType());
@@ -229,12 +251,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
     if (fieldName.startsWith("chartType")) {
-      ChartType expectedChartType = (ChartType) expected;
+      ChartType expectedChartType = ChartType.fromValue(expected.toString());
       ChartType actualChartType = ChartType.fromValue(actual.toString());
       assertEquals(expectedChartType, actualChartType);
     } else {

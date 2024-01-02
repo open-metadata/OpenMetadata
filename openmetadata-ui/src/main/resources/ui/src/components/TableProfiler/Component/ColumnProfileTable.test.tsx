@@ -19,63 +19,34 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
-import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
 
-jest.mock('antd', () => ({
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
-
-  Space: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-  Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
-    <table>
-      <thead>
-        <tr>
-          {(columns as ColumnsType<ColumnProfile>).map((col) => (
-            <th key={col.key}>{col.title}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody key="tbody">
-        {dataSource.map((row: any, i: number) => (
-          <tr key={i}>
-            {columns.map((col: any) => (
-              <td key={col.key}>
-                {col.render
-                  ? col.render(row[col.dataIndex], col)
-                  : row[col.dataIndex]}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )),
+jest.mock('../../../components/common/Table/Table', () =>
+  jest.fn().mockImplementation(() => <div>Table</div>)
+);
+jest.mock('../../PageHeader/PageHeader.component', () =>
+  jest.fn().mockImplementation(() => <div>PageHeader</div>)
+);
+jest.mock('../../DatePickerMenu/DatePickerMenu.component', () =>
+  jest.fn().mockImplementation(() => <div>DatePickerMenu</div>)
+);
+jest.mock('./ColumnPickerMenu', () =>
+  jest.fn().mockImplementation(() => <div>ColumnPickerMenu</div>)
+);
+jest.mock('./ColumnSummary', () =>
+  jest.fn().mockImplementation(() => <div>ColumnSummary</div>)
+);
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => ({
+  SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
 }));
-jest.mock('../../common/searchbar/Searchbar', () => {
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation(({ searchValue, onSearch }) => (
@@ -100,14 +71,13 @@ jest.mock('../../common/TestIndicator/TestIndicator', () => {
     </span>
   ));
 });
+jest.mock('../TableProfilerProvider', () => ({
+  useTableProfiler: jest.fn().mockImplementation(() => ({
+    tableProfiler: MOCK_TABLE,
+    splitTestCases: { column: [] },
+  })),
+}));
 jest.mock('../../../utils/DatasetDetailsUtils');
-
-const mockProps: ColumnProfileTableProps = {
-  columns: MOCK_TABLE.columns,
-  columnTests: [],
-  hasEditAccess: true,
-  dateRangeObject: {} as DateRangeObject,
-};
 
 describe('Test ColumnProfileTable component', () => {
   beforeEach(() => {
@@ -115,7 +85,7 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing', async () => {
-    render(<ColumnProfileTable {...mockProps} />, {
+    render(<ColumnProfileTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -129,15 +99,9 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing even if column is undefined', async () => {
-    render(
-      <ColumnProfileTable
-        {...mockProps}
-        columns={undefined as unknown as Column[]}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<ColumnProfileTable />, {
+      wrapper: MemoryRouter,
+    });
 
     const container = await screen.findByTestId(
       'column-profile-table-container'
@@ -149,7 +113,7 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('search box should work as expected', async () => {
-    render(<ColumnProfileTable {...mockProps} />, {
+    render(<ColumnProfileTable />, {
       wrapper: MemoryRouter,
     });
 

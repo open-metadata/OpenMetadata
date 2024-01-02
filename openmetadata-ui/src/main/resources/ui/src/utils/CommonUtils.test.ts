@@ -25,21 +25,24 @@ import {
 } from './CommonUtils.mock';
 
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
   getDayCron,
   getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import { ERROR_MESSAGE } from 'constants/constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { FilterPatternEnum } from 'enums/filterPattern.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep } from 'lodash';
+} from '../components/common/CronEditor/CronEditor.constant';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
 import {
   digitFormatter,
   getBase64EncodedString,
   getEntityDetailLink,
-  getFilterTypes,
   getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
@@ -240,11 +243,12 @@ describe('Tests for CommonUtils', () => {
     });
 
     it('should reduce color opacity by the given value', () => {
-      expect(reduceColorOpacity('#0000FF', 0)).toBe('#0000FFFF');
-      expect(reduceColorOpacity('#00FF00', 0.25)).toBe('#00FF0040');
-      expect(reduceColorOpacity('#FF0000', 0.5)).toBe('#FF000080');
-      expect(reduceColorOpacity('#FF0000', 0.75)).toBe('#FF0000BF');
-      expect(reduceColorOpacity('#FF0000', -0.5)).toBe('#FF00000');
+      expect(reduceColorOpacity('#0000FF', 0)).toBe('rgba(0, 0, 255, 0)');
+      expect(reduceColorOpacity('#00FF00', 0.25)).toBe('rgba(0, 255, 0, 0.25)');
+      expect(reduceColorOpacity('#FF0000', 0.5)).toBe('rgba(255, 0, 0, 0.5)');
+      expect(reduceColorOpacity('#FF0000', 0.75)).toBe('rgba(255, 0, 0, 0.75)');
+      expect(reduceColorOpacity('#FF0000', -0.5)).toBe('rgba(255, 0, 0, -0.5)');
+      expect(reduceColorOpacity('#FF0000', 0.05)).toBe('rgba(255, 0, 0, 0.05)');
     });
 
     it('should return base64 encoded string for input text', () => {
@@ -253,39 +257,6 @@ describe('Tests for CommonUtils', () => {
       const result = getBase64EncodedString(input);
 
       expect(result).toBe(expectedOutput);
-    });
-
-    it('should return the correct filter pattern for each type', () => {
-      expect(getFilterTypes(FilterPatternEnum.CHART)).toBe(
-        'chartFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.DASHBOARD)).toBe(
-        'dashboardFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.DATABASE)).toBe(
-        'databaseFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.MLMODEL)).toBe(
-        'mlModelFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.PIPELINE)).toBe(
-        'pipelineFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.SCHEMA)).toBe(
-        'schemaFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.TABLE)).toBe(
-        'tableFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.CONTAINER)).toBe(
-        'containerFilterPattern'
-      );
-      expect(getFilterTypes(FilterPatternEnum.DASHBOARD_DATAMODEL)).toBe(
-        'dataModelFilterPattern'
-      );
-      expect(getFilterTypes('UNKNOWN_TYPE' as FilterPatternEnum)).toBe(
-        'topicFilterPattern'
-      );
     });
 
     it('should return the correct tag value for different inputs', () => {

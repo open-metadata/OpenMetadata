@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface DashboardVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Dashboard;
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
+  domain: Dashboard['domain'];
+  dataProducts: Dashboard['dataProducts'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

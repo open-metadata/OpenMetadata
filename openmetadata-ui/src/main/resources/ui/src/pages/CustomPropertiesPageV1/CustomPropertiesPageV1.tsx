@@ -13,39 +13,42 @@
 
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs } from 'enums/entity.enum';
-import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import { default as React, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
-import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
+import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './CustomPropertiesPageV1.less';
+import './custom-properties-pageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const history = useHistory();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
@@ -58,7 +61,7 @@ const CustomEntityDetailV1 = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
+  const tabAttributePath = useMemo(() => ENTITY_PATH[tab], [tab]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -94,34 +97,37 @@ const CustomEntityDetailV1 = () => {
     setIsLoading(false);
   };
 
-  const onTabChange = (activeKey: string) => {
+  const onTabChange = useCallback((activeKey: string) => {
     setActiveTab(activeKey as EntityTabs);
-  };
+  }, []);
 
-  const handleAddProperty = () => {
+  const handleAddProperty = useCallback(() => {
     const path = getAddCustomPropertyPath(tabAttributePath);
     history.push(path);
-  };
+  }, [tabAttributePath, history]);
 
-  const updateEntityType = async (properties: Type['customProperties']) => {
-    setIsButtonLoading(true);
-    const patch = compare(selectedEntityTypeDetail, {
-      ...selectedEntityTypeDetail,
-      customProperties: properties,
-    });
+  const updateEntityType = useCallback(
+    async (properties: Type['customProperties']) => {
+      setIsButtonLoading(true);
+      const patch = compare(selectedEntityTypeDetail, {
+        ...selectedEntityTypeDetail,
+        customProperties: properties,
+      });
 
-    try {
-      const data = await updateType(selectedEntityTypeDetail.id || '', patch);
-      setSelectedEntityTypeDetail((prev) => ({
-        ...prev,
-        customProperties: data.customProperties,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsButtonLoading(false);
-    }
-  };
+      try {
+        const data = await updateType(selectedEntityTypeDetail.id ?? '', patch);
+        setSelectedEntityTypeDetail((prev) => ({
+          ...prev,
+          customProperties: data.customProperties,
+        }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsButtonLoading(false);
+      }
+    },
+    [selectedEntityTypeDetail]
+  );
 
   const customPageHeader = useMemo(() => {
     switch (tabAttributePath) {
@@ -137,11 +143,27 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.mlmodels:
+      case ENTITY_PATH.mlModels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.containers:
         return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.searchIndex:
+        return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.storedProcedure:
+        return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.glossaryTerm:
+        return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.database:
+        return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.databaseSchema:
+        return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
+
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
@@ -153,7 +175,7 @@ const CustomEntityDetailV1 = () => {
       setIsError(false);
       fetchTypeDetail(tabAttributePath);
     }
-  }, [tab]);
+  }, [tabAttributePath]);
 
   useEffect(() => {
     if (selectedEntityTypeDetail?.id) {
@@ -162,13 +184,13 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const tabs = useMemo(() => {
-    const { customProperties } = selectedEntityTypeDetail;
+    const { customProperties, schema } = selectedEntityTypeDetail;
 
     return [
       {
         label: (
           <TabsLabel
-            count={(customProperties || []).length}
+            count={(customProperties ?? []).length}
             id={EntityTabs.CUSTOM_PROPERTIES}
             isActive={activeTab === EntityTabs.CUSTOM_PROPERTIES}
             name={t('label.custom-property-plural')}
@@ -177,42 +199,27 @@ const CustomEntityDetailV1 = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <div data-testid="entity-custom-fields">
-            {isEmpty(selectedEntityTypeDetail.customProperties) ? (
-              <ErrorPlaceHolder
-                className="mt-24"
-                doc={CUSTOM_PROPERTIES_DOCS}
-                heading={t('label.property')}
-                permission={editPermission}
-                type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                onClick={handleAddProperty}
-              />
-            ) : (
-              <>
-                <div className="flex justify-end">
-                  {editPermission && (
-                    <Button
-                      className="m-b-md p-y-xss p-x-xs rounded-4"
-                      data-testid="add-field-button"
-                      disabled={!editPermission}
-                      size="middle"
-                      type="primary"
-                      onClick={handleAddProperty}>
-                      {t('label.add-entity', {
-                        entity: t('label.property'),
-                      })}
-                    </Button>
-                  )}
-                </div>
-                <CustomPropertyTable
-                  customProperties={
-                    selectedEntityTypeDetail.customProperties || []
-                  }
-                  hasAccess={editPermission}
-                  isLoading={isButtonLoading}
-                  updateEntityType={updateEntityType}
-                />
-              </>
-            )}
+            <div className="flex justify-end">
+              {editPermission && (
+                <Button
+                  className="m-b-md p-y-xss p-x-xs rounded-4"
+                  data-testid="add-field-button"
+                  size="middle"
+                  type="primary"
+                  onClick={handleAddProperty}>
+                  {t('label.add-entity', {
+                    entity: t('label.property'),
+                  })}
+                </Button>
+              )}
+            </div>
+            <CustomPropertyTable
+              customProperties={customProperties ?? []}
+              hasAccess={editPermission}
+              isButtonLoading={isButtonLoading}
+              isLoading={isLoading}
+              updateEntityType={updateEntityType}
+            />
           </div>
         ),
       },
@@ -224,22 +231,22 @@ const CustomEntityDetailV1 = () => {
             <SchemaEditor
               className="custom-properties-schemaEditor p-y-md"
               editorClass="custom-entity-schema"
-              value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
+              value={JSON.parse(schema ?? '{}')}
             />
           </div>
         ),
       },
     ];
   }, [
-    selectedEntityTypeDetail,
+    selectedEntityTypeDetail.schema,
     editPermission,
     isButtonLoading,
     customPageHeader,
+    isLoading,
+    activeTab,
+    handleAddProperty,
+    updateEntityType,
   ]);
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   if (isError) {
     return <ErrorPlaceHolder />;
@@ -254,7 +261,7 @@ const CustomEntityDetailV1 = () => {
         <PageHeader data={customPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
-        <Tabs activeKey={activeTab} items={tabs} onChange={onTabChange} />
+        <Tabs items={tabs} key={tab} onChange={onTabChange} />
       </Col>
     </Row>
   );

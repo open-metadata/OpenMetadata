@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ElementLoadingState } from 'components/EntityLineage/EntityLineage.interface';
-import { capitalize } from 'lodash';
+import { t } from 'i18next';
+import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../enums/entity.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;
@@ -28,13 +28,36 @@ export const PIPELINE_EDGE_WIDTH = 200;
 export const entityData = [
   {
     type: EntityType.TABLE,
-    label: capitalize(EntityType.TABLE),
+    label: t('label.table-plural'),
   },
-  { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
-  { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC) },
-  { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
-  { type: EntityType.CONTAINER, label: capitalize(EntityType.CONTAINER) },
-  { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
+  {
+    type: EntityType.DASHBOARD,
+    label: t('label.dashboard-plural'),
+  },
+  {
+    type: EntityType.TOPIC,
+    label: t('label.topic-plural'),
+  },
+  {
+    type: EntityType.MLMODEL,
+    label: t('label.ml-model-plural'),
+  },
+  {
+    type: EntityType.CONTAINER,
+    label: t('label.container-plural'),
+  },
+  {
+    type: EntityType.PIPELINE,
+    label: t('label.pipeline-plural'),
+  },
+  {
+    type: EntityType.SEARCH_INDEX,
+    label: t('label.search-index-plural'),
+  },
+  {
+    type: EntityType.DASHBOARD_DATA_MODEL,
+    label: t('label.data-model-plural'),
+  },
 ];
 
 export const POSITION_X = 150;

@@ -28,6 +28,9 @@
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
       "type": "array",
@@ -75,6 +78,10 @@
       "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
       "type" : "boolean",
       "default" : "false"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["glossary", "name", "description"],

@@ -10,16 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Select, Space } from 'antd';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import Loader from 'components/Loader/Loader';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { mapAssetsSearchIndex } from 'constants/Assets.constants';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
-import { compare } from 'fast-json-patch';
-import { map, startCase } from 'lodash';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Divider,
+  Dropdown,
+  List,
+  Modal,
+  Space,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -27,38 +38,116 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchQuery } from 'rest/searchAPI';
+import { ERROR_COLOR, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
-} from 'utils/Assets/AssetsUtils';
-import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
+  BulkOperationResult,
+  Status,
+} from '../../../generated/type/bulkOperationResult';
+import { Aggregations } from '../../../interface/search.interface';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+  QueryFilterInterface,
+} from '../../../pages/ExplorePage/ExplorePage.interface';
+import {
+  addAssetsToDataProduct,
+  getDataProductByName,
+} from '../../../rest/dataProductAPI';
+import { addAssetsToDomain, getDomainByName } from '../../../rest/domainAPI';
+import {
+  addAssetsToGlossaryTerm,
+  getGlossaryTermByFQN,
+} from '../../../rest/glossaryAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import {
+  getAggregations,
+  getSelectedValuesFromQuickFilter,
+} from '../../../utils/Explore.utils';
+import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
+import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
+import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import Loader from '../../Loader/Loader';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './asset-selection-model.style.less';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 
 export const AssetSelectionModal = ({
-  glossaryFQN,
+  entityFqn,
   onCancel,
   onSave,
   open,
+  type = AssetsOfEntity.GLOSSARY,
+  queryFilter,
+  emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
+  const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
+  const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    SearchIndex.TABLE
+    type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
+  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+  const [aggregations, setAggregations] = useState<Aggregations>();
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([]);
+  const [quickFilterQuery, setQuickFilterQuery] =
+    useState<QueryFilterInterface>();
+  const [updatedQueryFilter, setUpdatedQueryFilter] =
+    useState<QueryFilterInterface>(
+      getCombinedQueryFilterObject(queryFilter as QueryFilterInterface, {
+        query: {
+          bool: {},
+        },
+      })
+    );
+  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => [...prevSelected, key]);
+  };
+
+  const filterMenu: ItemType[] = useMemo(() => {
+    return filters.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      onClick: handleMenuClick,
+    }));
+  }, [filters]);
+
   const fetchEntities = useCallback(
-    async ({ searchText = '', page = 1, index = activeFilter }) => {
+    async ({
+      searchText = '',
+      page = 1,
+      index = activeFilter,
+      updatedQueryFilter,
+    }) => {
       try {
         setIsLoading(true);
         const res = await searchQuery({
@@ -66,12 +155,14 @@ export const AssetSelectionModal = ({
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
           query: searchText,
-          queryFilter: getQueryFilterToExcludeTerm(glossaryFQN),
+          queryFilter: updatedQueryFilter,
+          includeDeleted: false,
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
+        setAggregations(getAggregations(res?.aggregations));
       } catch (_) {
         // Nothing here
       } finally {
@@ -81,11 +172,52 @@ export const AssetSelectionModal = ({
     [setActiveFilter]
   );
 
+  const fetchCurrentEntity = useCallback(async () => {
+    if (type === AssetsOfEntity.DOMAIN) {
+      const data = await getDomainByName(encodeURIComponent(entityFqn), '');
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+      const data = await getDataProductByName(
+        encodeURIComponent(entityFqn),
+        'domain,assets'
+      );
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.GLOSSARY) {
+      const data = await getGlossaryTermByFQN(entityFqn, 'tags');
+      setActiveEntity(data);
+    }
+  }, [type, entityFqn]);
+
+  useEffect(() => {
+    const dropdownItems = getAssetsPageQuickFilters(type);
+
+    setFilters(
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          undefined // pass in state variable
+        ),
+      }))
+    );
+  }, [type]);
+
   useEffect(() => {
     if (open) {
-      fetchEntities({ index: activeFilter, searchText: search });
+      fetchEntities({
+        index: activeFilter,
+        searchText: search,
+        updatedQueryFilter,
+      });
     }
-  }, [open, activeFilter, search]);
+  }, [open, activeFilter, search, type, updatedQueryFilter]);
+
+  useEffect(() => {
+    if (open) {
+      fetchCurrentEntity();
+    }
+  }, [open, fetchCurrentEntity]);
 
   const handleCardClick = (
     details: SearchedDataProps['data'][number]['_source']
@@ -121,62 +253,110 @@ export const AssetSelectionModal = ({
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
-    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, 'tags')
-    );
-
     try {
-      const entityDetailsResponse = await Promise.allSettled(entityDetails);
-      const map = new Map();
+      setIsSaveLoading(true);
+      setFailedStatus(undefined);
+      if (!activeEntity) {
+        return;
+      }
 
-      entityDetailsResponse.forEach((response) => {
-        if (response.status === 'fulfilled') {
-          const entity = response.value;
-
-          entity && map.set(entity.fullyQualifiedName, entity.tags);
-        }
+      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+        return getEntityReferenceFromEntity(item, item.entityType);
       });
-      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-        .map((item) => {
-          if (map.has(item.fullyQualifiedName)) {
-            const jsonPatch = compare(
-              { tags: map.get(item.fullyQualifiedName) },
-              {
-                tags: [
-                  ...(item.tags ?? []),
-                  {
-                    tagFQN: glossaryFQN,
-                    source: 'Glossary',
-                    labelType: 'Manual',
-                  },
-                ],
-              }
-            );
 
-            const api = getAPIfromSource(item.entityType);
+      let res;
+      switch (type) {
+        case AssetsOfEntity.DATA_PRODUCT:
+          res = await addAssetsToDataProduct(
+            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            entities
+          );
 
-            return api(item.id, jsonPatch);
-          }
+          break;
+        case AssetsOfEntity.GLOSSARY:
+          res = await addAssetsToGlossaryTerm(
+            activeEntity as GlossaryTerm,
+            entities
+          );
 
-          return;
-        })
-        .filter(Boolean);
+          break;
+        case AssetsOfEntity.DOMAIN:
+          res = await addAssetsToDomain(
+            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            entities
+          );
 
-      await Promise.all(patchAPIPromises);
-      onSave && onSave();
-      onCancel();
-    } catch (_) {
-      // Nothing here
+          break;
+        default:
+          // Handle other entity types here
+          break;
+      }
+
+      if ((res as BulkOperationResult).status === Status.Success) {
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+            onSave?.();
+          }, ES_UPDATE_DELAY);
+        });
+        onCancel();
+      } else {
+        setFailedStatus(res as BulkOperationResult);
+      }
+    } catch (err) {
+      showErrorToast(err as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsSaveLoading(false);
     }
   };
 
+  const onSaveAction = useCallback(() => {
+    handleSave();
+  }, [type, handleSave]);
+
+  const mergeFilters = useCallback(() => {
+    const res = getCombinedQueryFilterObject(
+      queryFilter as QueryFilterInterface,
+      quickFilterQuery as QueryFilterInterface
+    );
+    setUpdatedQueryFilter(res);
+  }, [queryFilter, quickFilterQuery]);
+
+  useEffect(() => {
+    mergeFilters();
+  }, [quickFilterQuery, queryFilter]);
+
+  useEffect(() => {
+    const updatedQuickFilters = filters
+      .filter((filter) => selectedFilter.includes(filter.key))
+      .map((selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
+
+        return originalFilterItem || selectedFilterItem;
+      });
+
+    const newItems = updatedQuickFilters.filter(
+      (item) =>
+        !selectedQuickFilters.some(
+          (existingItem) => item.key === existingItem.key
+        )
+    );
+
+    if (newItems.length > 0) {
+      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
+    }
+  }, [selectedFilter, selectedQuickFilters, filters]);
+
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
+      const scrollHeight =
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
+
       if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
+        scrollHeight > 499 &&
+        scrollHeight < 501 &&
         items.length < totalCount
       ) {
         !isLoading &&
@@ -184,75 +364,312 @@ export const AssetSelectionModal = ({
             searchText: search,
             page: pageNumber + 1,
             index: activeFilter,
+            updatedQueryFilter,
           });
       }
     },
-    [activeFilter, search, totalCount, items]
+    [
+      pageNumber,
+      updatedQueryFilter,
+      activeFilter,
+      search,
+      totalCount,
+      items,
+      isLoading,
+      fetchEntities,
+    ]
   );
+
+  const onSelectAll = (selectAll: boolean) => {
+    setSelectedItems((prevItems) => {
+      const selectedItemMap = new Map(prevItems ?? []);
+
+      if (selectAll) {
+        items.forEach(({ _source }) => {
+          const id = _source.id;
+          if (id) {
+            selectedItemMap.set(id, _source);
+          }
+        });
+      } else {
+        // Clear selection
+        selectedItemMap.clear();
+      }
+
+      return selectedItemMap;
+    });
+  };
+
+  const getErrorStatusAndMessage = useCallback(
+    (id: string) => {
+      if (!failedStatus?.failedRequest) {
+        return {
+          isError: false,
+          errorMessage: null,
+        };
+      }
+
+      const matchingStatus = failedStatus.failedRequest.find(
+        (status) => status.request.id === id
+      );
+
+      return {
+        isError: !!matchingStatus,
+        errorMessage: matchingStatus ? matchingStatus.message : null,
+      };
+    },
+    [failedStatus]
+  );
+
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must: QueryFieldInterface[] = [];
+    data.forEach((filter) => {
+      if (!isEmpty(filter.value)) {
+        const should: QueryFieldValueInterface[] = [];
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term: Record<string, string> = {};
+            term[filter.key] = filterValue.key;
+            should.push({ term });
+          });
+        }
+
+        must.push({
+          bool: { should },
+        });
+      }
+    });
+
+    const quickFilterQuery = isEmpty(must)
+      ? undefined
+      : {
+          query: { bool: { must } },
+        };
+
+    setQuickFilterQuery(quickFilterQuery);
+  };
+
+  const handleQuickFiltersValueSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          if (preField.key === field.key) {
+            return field;
+          } else {
+            return preField;
+          }
+        });
+
+        handleQuickFiltersChange(data);
+
+        return data;
+      });
+    },
+    [setSelectedQuickFilters]
+  );
+
+  const clearFilters = useCallback(() => {
+    setQuickFilterQuery(undefined);
+    setSelectedQuickFilters((pre) => {
+      const data = pre.map((preField) => {
+        return { ...preField, value: [] };
+      });
+
+      handleQuickFiltersChange(data);
+
+      return data;
+    });
+  }, [setQuickFilterQuery, handleQuickFiltersChange, setSelectedQuickFilters]);
 
   return (
     <Modal
       destroyOnClose
+      className="asset-selection-modal"
       closable={false}
       closeIcon={null}
+      data-testid="asset-selection-modal"
       footer={
-        <>
-          <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button loading={isLoading} type="primary" onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        </>
+        <div className="d-flex justify-between">
+          <div className="d-flex items-center gap-2">
+            {selectedItems && selectedItems.size >= 1 && (
+              <Typography.Text className="gap-2">
+                <CheckOutlined className="text-success m-r-xs" />
+                {selectedItems.size} {t('label.selected-lowercase')}
+              </Typography.Text>
+            )}
+            {failedStatus?.failedRequest &&
+              failedStatus.failedRequest.length > 0 && (
+                <>
+                  <Divider className="m-x-xss" type="vertical" />
+                  <Typography.Text type="danger">
+                    <CloseOutlined className="m-r-xs" />
+                    {failedStatus.failedRequest.length} {t('label.error')}
+                  </Typography.Text>
+                </>
+              )}
+          </div>
+
+          <div>
+            <Button data-testid="cancel-btn" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save-btn"
+              disabled={!selectedItems?.size || isLoading}
+              loading={isSaveLoading}
+              type="primary"
+              onClick={onSaveAction}>
+              {t('label.save')}
+            </Button>
+          </div>
+        </div>
       }
       open={open}
       style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
-      width={750}
+      width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
-        <Searchbar
-          removeMargin
-          showClearSearch
-          showLoadingStatus
-          inputProps={{
-            addonBefore: (
-              <Select
-                bordered={false}
-                options={map(mapAssetsSearchIndex, (value, key) => ({
-                  label: startCase(key),
-                  value: value,
-                }))}
-                style={{ minWidth: '100px' }}
-                value={activeFilter}
-                onChange={setActiveFilter}
+        <div className="d-flex items-center gap-3">
+          <Dropdown
+            menu={{
+              items: filterMenu,
+              selectedKeys: selectedFilter,
+            }}
+            trigger={['click']}>
+            <Button icon={<PlusOutlined />} size="small" type="primary" />
+          </Dropdown>
+          <div className="flex-1">
+            <Searchbar
+              removeMargin
+              showClearSearch
+              placeholder={t('label.search-entity', {
+                entity: t('label.asset-plural'),
+              })}
+              searchValue={search}
+              onSearch={setSearch}
+            />
+          </div>
+        </div>
+
+        {selectedQuickFilters && selectedQuickFilters.length > 0 && (
+          <div className="d-flex items-center">
+            <div className="d-flex justify-between flex-1">
+              <ExploreQuickFilters
+                aggregations={aggregations}
+                fields={selectedQuickFilters}
+                index={SearchIndex.ALL}
+                showDeleted={false}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
               />
-            ),
-          }}
-          placeholder={t('label.search-entity', {
-            entity: t('label.asset-plural'),
-          })}
-          searchValue={search}
-          onSearch={setSearch}
-        />
-        <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
-          <VirtualList
-            data={items}
-            height={500}
-            itemKey="id"
-            onScroll={onScroll}>
-            {({ _source: item }) => (
-              <TableDataCardV2
-                openEntityInNewPage
-                showCheckboxes
-                checked={selectedItems?.has(item.id)}
-                className="m-b-sm asset-selection-model-card cursor-pointer"
-                handleSummaryPanelDisplay={handleCardClick}
-                id={`tabledatacard-${item.id}`}
-                key={item.id}
-                source={{ ...item, tags: [] }}
-              />
+              {quickFilterQuery && (
+                <Typography.Text
+                  className="p-r-xss text-primary self-center cursor-pointer"
+                  onClick={clearFilters}>
+                  {t('label.clear-entity', {
+                    entity: '',
+                  })}
+                </Typography.Text>
+              )}
+            </div>
+          </div>
+        )}
+
+        {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
+          <Alert
+            closable
+            className="w-full"
+            description={
+              <Typography.Text className="text-grey-muted">
+                {t('message.validation-error-assets')}
+              </Typography.Text>
+            }
+            message={
+              <div className="d-flex items-center gap-3">
+                <ExclamationCircleOutlined
+                  style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                />
+                <Typography.Text className="font-semibold text-sm">
+                  {t('label.validation-error-plural')}
+                </Typography.Text>
+              </div>
+            }
+            type="error"
+          />
+        )}
+
+        {items.length > 0 && (
+          <div className="border p-xs">
+            <Checkbox
+              className="assets-checkbox p-x-sm"
+              onChange={(e) => onSelectAll(e.target.checked)}>
+              {t('label.select-field', {
+                field: t('label.all'),
+              })}
+            </Checkbox>
+            <List>
+              <VirtualList
+                data={items}
+                height={500}
+                itemKey="id"
+                onScroll={onScroll}>
+                {({ _source: item }) => {
+                  const { isError, errorMessage } = getErrorStatusAndMessage(
+                    item.id
+                  );
+
+                  return (
+                    <div
+                      className={classNames({
+                        'm-y-sm border-danger rounded-4': isError,
+                      })}
+                      key={item.id}>
+                      <TableDataCardV2
+                        openEntityInNewPage
+                        showCheckboxes
+                        checked={selectedItems?.has(item.id ?? '')}
+                        className="border-none asset-selection-model-card cursor-pointer"
+                        handleSummaryPanelDisplay={handleCardClick}
+                        id={`tabledatacard-${item.id}`}
+                        key={item.id}
+                        showBody={false}
+                        showName={false}
+                        source={{ ...item, tags: [] }}
+                      />
+                      {isError && (
+                        <>
+                          <div className="p-x-sm">
+                            <Divider className="m-t-0 m-y-sm " />
+                          </div>
+                          <div className="d-flex gap-3 p-x-sm p-b-sm">
+                            <ExclamationCircleOutlined
+                              style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                            />
+                            <Typography.Text className="break-all">
+                              {errorMessage}
+                            </Typography.Text>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                }}
+              </VirtualList>
+            </List>
+          </div>
+        )}
+
+        {!isLoading && items.length === 0 && (
+          <ErrorPlaceHolder>
+            {emptyPlaceHolderText && (
+              <Typography.Paragraph>
+                {emptyPlaceHolderText}
+              </Typography.Paragraph>
             )}
-          </VirtualList>
-        </List>
+          </ErrorPlaceHolder>
+        )}
+
+        {isLoading && <Loader size="small" />}
       </Space>
     </Modal>
   );

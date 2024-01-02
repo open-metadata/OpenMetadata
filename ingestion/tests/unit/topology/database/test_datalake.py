@@ -31,8 +31,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.utils.datalake.avro_dispatch import read_from_avro
-from metadata.utils.datalake.json_dispatch import read_from_json
+from metadata.readers.dataframe.avro import AvroDataFrameReader
+from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.utils.datalake.datalake_utils import get_columns
 
 mock_datalake_config = {
     "source": {
@@ -114,16 +115,16 @@ MOCK_DATABASE = Database(
     ),
 )
 
-EXAMPLE_JSON_TEST_1 = """
+EXAMPLE_JSON_TEST_1 = b"""
 {"name":"John","age":16,"sex":"M"}
 {"name":"Milan","age":19,"sex":"M"}
 """
 
-EXAMPLE_JSON_TEST_2 = """
+EXAMPLE_JSON_TEST_2 = b"""
 {"name":"John","age":16,"sex":"M"}
 """
 
-EXAMPLE_JSON_TEST_3 = """
+EXAMPLE_JSON_TEST_3 = b"""
 {
     "name":"John",
     "age":16,
@@ -140,7 +141,7 @@ EXAMPLE_JSON_TEST_3 = """
 }
 """
 
-EXAMPLE_JSON_TEST_4 = """
+EXAMPLE_JSON_TEST_4 = b"""
 [
     {"name":"John","age":16,"sex":"M","address":null},
     {
@@ -165,51 +166,61 @@ EXAMPLE_JSON_COL_3 = [
         name="name",
         dataType="STRING",
         dataTypeDisplay="STRING",
+        displayName="name",
     ),
     Column(
         name="age",
         dataType="INT",
         dataTypeDisplay="INT",
+        displayName="age",
     ),
     Column(
         name="sex",
         dataType="STRING",
         dataTypeDisplay="STRING",
+        displayName="sex",
     ),
     Column(
         name="address",
-        dataType="RECORD",
-        dataTypeDisplay="RECORD",
+        dataType="JSON",
+        dataTypeDisplay="JSON",
+        displayName="address",
         children=[
             Column(
                 name="city",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="city",
             ),
             Column(
                 name="state",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="state",
             ),
             Column(
                 name="country",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="country",
             ),
             Column(
                 name="coordinates",
-                dataType="RECORD",
-                dataTypeDisplay="RECORD",
+                dataType="JSON",
+                dataTypeDisplay="JSON",
+                displayName="coordinates",
                 children=[
                     Column(
                         name="lat",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lat",
                     ),
                     Column(
                         name="lon",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lon",
                     ),
                 ],
             ),
@@ -222,13 +233,15 @@ EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
 EXAMPLE_JSON_COL_4[3].children[3].children = [
     Column(
         name="lat",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lat",
     ),
     Column(
         name="lon",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lon",
     ),
 ]
 
@@ -381,6 +394,7 @@ def _get_str_value(data):
 def custom_column_compare(self, other):
     return (
         self.name == other.name
+        and self.displayName == other.displayName
         and self.description == other.description
         and self.dataTypeDisplay == other.dataTypeDisplay
         and self.children == other.children
@@ -390,7 +404,7 @@ def custom_column_compare(self, other):
 
 class DatalakeUnitTest(TestCase):
     """
-    Datalake Source Unit Teststest_datalake.py:249
+    Datalake Source Unit Tests
     """
 
     @patch(
@@ -404,10 +418,10 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE
+        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
         self.datalake_source.context.__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
+        ] = MOCK_DATABASE_SERVICE.name.__root__
 
     def test_s3_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
@@ -425,33 +439,43 @@ class DatalakeUnitTest(TestCase):
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
-        exp_df_list = pd.json_normalize(
+        exp_df_list = pd.DataFrame.from_records(
             [
                 {"name": "John", "age": 16, "sex": "M"},
                 {"name": "Milan", "age": 19, "sex": "M"},
             ]
         )
-        exp_df_obj = pd.json_normalize(sample_dict)
+        exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
-        actual_df_1 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_1)[0]
-        actual_df_2 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_2)[0]
+        actual_df_1 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
+        )[0]
+        actual_df_2 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
+        )[0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
-        actual_df_3 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_3)[0]
-        actual_cols_3 = DatalakeSource.get_columns(actual_df_3)
-        self.assertEqual(actual_cols_3, EXAMPLE_JSON_COL_3)
+        Column.__eq__ = custom_column_compare
 
-        actual_df_4 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_4)[0]
-        actual_cols_4 = DatalakeSource.get_columns(actual_df_4)
-        self.assertEqual(actual_cols_4, EXAMPLE_JSON_COL_4)
+        actual_df_3 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
+        )[0]
+        actual_cols_3 = get_columns(actual_df_3)
+        assert actual_cols_3 == EXAMPLE_JSON_COL_3
+
+        actual_df_4 = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
+        )[0]
+        actual_cols_4 = get_columns(actual_df_4)
+        assert actual_cols_4 == EXAMPLE_JSON_COL_4
 
     def test_avro_file_parse(self):
-        columns = read_from_avro(AVRO_SCHEMA_FILE)
+        columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 
         assert EXPECTED_AVRO_COL_1 == columns.columns  # pylint: disable=no-member
 
-        columns = read_from_avro(AVRO_DATA_FILE)
+        columns = AvroDataFrameReader.read_from_avro(AVRO_DATA_FILE)
         assert EXPECTED_AVRO_COL_2 == columns.columns  # pylint: disable=no-member

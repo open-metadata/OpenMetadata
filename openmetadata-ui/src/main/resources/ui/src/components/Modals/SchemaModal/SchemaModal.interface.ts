@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SampleDataType } from 'components/SampleDataTable/sample.interface';
 import { HTMLAttributes } from 'react';
+import { SampleDataType } from '../../SampleDataTable/SampleData.interface';
 
 export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;

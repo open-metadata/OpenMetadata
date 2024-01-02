@@ -15,12 +15,11 @@ Validator Mixin for Pandas based tests cases
 
 from typing import Optional
 
-from metadata.generated.schema.entity.data.table import DataType
-from metadata.ingestion.source.database.datalake.metadata import DATALAKE_DATA_TYPES
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.utils.datalake.datalake_utils import fetch_col_types
 from metadata.utils.entity_link import get_decoded_column
-from metadata.utils.sqa_like_column import SQALikeColumn, Type
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class PandasValidatorMixin:
@@ -29,12 +28,11 @@ class PandasValidatorMixin:
     def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
         # we'll use the first dataframe chunk to get the column name.
         column = dfs[0][get_decoded_column(entity_link)]
-        _type = DATALAKE_DATA_TYPES.get(column.dtypes.name, DataType.STRING.value)
+        _type = fetch_col_types(dfs[0], get_decoded_column(entity_link))
         sqa_like_column = SQALikeColumn(
             name=column.name,
-            type=Type(_type),
+            type=_type,
         )
-        sqa_like_column.type.__class__.__name__ = _type
         return sqa_like_column
 
     def run_dataframe_results(
@@ -61,3 +59,12 @@ class PandasValidatorMixin:
             return metric_fn(runner)
         except Exception as exc:
             raise RuntimeError(exc)
+
+    def _compute_row_count(self, runner, column: SQALikeColumn, **kwargs):
+        """compute row count
+
+        Args:
+            runner (List[DataFrame]): runner to run the test case against)
+            column (SQALikeColumn): column to compute row count for
+        """
+        return self.run_dataframe_results(runner, Metrics.ROW_COUNT, column, **kwargs)

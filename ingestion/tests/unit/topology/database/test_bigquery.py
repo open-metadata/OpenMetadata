@@ -15,12 +15,13 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 mock_bq_config = {
@@ -44,6 +45,11 @@ mock_bq_config = {
     },
 }
 
+mock_credentials_path_bq_config = mock_bq_config
+mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"][
+    "gcpConfig"
+]["__root__"] = "credentials.json"
+
 
 MOCK_DB_NAME = "random-project-id"
 MOCK_SCHEMA_NAME = "test_omd"
@@ -53,13 +59,17 @@ EXPECTED_URL = "https://console.cloud.google.com/bigquery?project=random-project
 
 class BigqueryUnitTest(TestCase):
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
     )
     @patch(
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
     )
-    def __init__(self, methodName, set_project_id, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
+    def __init__(
+        self, methodName, get_connection, set_project_id, test_connection
+    ) -> None:
         super().__init__(methodName)
+        get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)
@@ -78,3 +88,30 @@ class BigqueryUnitTest(TestCase):
             ),
             EXPECTED_URL,
         )
+
+
+class BigqueryLineageSourceTest(TestCase):
+    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
+    @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id"
+    )
+    def __init__(
+        self,
+        methodName,
+        set_project_id_lineage,
+        test_connection,
+        get_connection,
+    ) -> None:
+        super().__init__(methodName)
+
+        self.config = OpenMetadataWorkflowConfig.parse_obj(
+            mock_credentials_path_bq_config
+        )
+        self.bq_query_parser = BigqueryLineageSource(
+            self.config.source, self.config.workflowConfig.openMetadataServerConfig
+        )
+
+    def test_get_engine_without_project_id_specified(self):
+        for engine in self.bq_query_parser.get_engine():
+            assert engine is self.bq_query_parser.engine

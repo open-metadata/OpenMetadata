@@ -3,12 +3,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageServiceMetadataPipeline",
   "description": "StorageService Metadata Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "storageMetadataConfigType": {
       "description": "Object Store Source Config Metadata Pipeline type",
       "type": "string",
       "enum": ["StorageMetadata"],
       "default": "StorageMetadata"
+    },
+    "noMetadataConfigurationSource": {
+      "title": "No Global Manifest",
+      "description": "No manifest file available. Ingestion would look for bucket-level metadata file instead",
+      "type": "object",
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -20,6 +27,27 @@
     "containerFilterPattern": {
       "description": "Regex to only fetch containers that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "storageMetadataConfigSource": {
+      "mask": true,
+      "title": "Storage Metadata Configuration Source",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/noMetadataConfigurationSource"
+        },
+        {
+          "$ref": "./storage/storageMetadataLocalConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataHttpConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataS3Config.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataADLSConfig.json"
+        }
+      ]
     }
   },
   "additionalProperties": false

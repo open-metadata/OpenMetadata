@@ -37,10 +37,6 @@ interface ServiceConfigProps {
   onFocus: (id: string) => void;
 }
 
-export const Field = ({ children }: { children: React.ReactNode }) => {
-  return <div className="tw-mt-4">{children}</div>;
-};
-
 const ServiceConfig = ({
   serviceCategory,
   serviceFQN,
@@ -104,7 +100,7 @@ const ServiceConfig = ({
         className="w-full p-b-lg"
         data-testid="service-config"
         id="serviceConfig">
-        <div className="tw-mx-auto">{getDynamicFields()}</div>
+        <div className="m-x-auto">{getDynamicFields()}</div>
       </div>
     </div>
   );

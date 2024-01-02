@@ -13,7 +13,7 @@
 
 import React, { Fragment, useState } from 'react';
 import SchemaModal from '../Modals/SchemaModal/SchemaModal';
-import { SampleDataType } from './sample.interface';
+import { SampleDataType } from './SampleData.interface';
 
 export const RowData = ({ data }: { data: SampleDataType }) => {
   const [isFullView, setIsFullView] = useState<boolean>(false);
@@ -25,7 +25,7 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
     if (typeof rowValue === 'object') {
       return (
         <p
-          className="tw-w-52 tw-truncate tw-cursor-pointer"
+          className="w-52 truncate cursor-pointer"
           data-testid="json-object"
           onClick={onOpen}>
           {JSON.stringify(rowValue)}

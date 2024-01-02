@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { getEntityLink } from '../../utils/TableUtils';
-import './SourceList.style.less';
+import './source-list.less';
 
 const SourceList = ({ feature }: { feature: MlFeature }) => {
   const { t } = useTranslation();
@@ -49,7 +49,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             className="feature-source-info"
             key={`${source.fullyQualifiedName}${i}`}
             wrap={false}>
-            <Col span={2}>{String(i + 1).padStart(2, '0')}</Col>
+            <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
               <Typography.Text className="text-grey-muted">
                 {`${t('label.name')}:`}
@@ -66,22 +66,27 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
                 {source.dataType}
               </Typography.Text>
             </Col>
-            <Col span={10}>
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.data-entity', {
-                  entity: t('label.source'),
-                })}:`}
-              </Typography.Text>
-              <Link
-                className="m-l-xs"
-                to={getEntityLink(
-                  EntityType.TABLE,
-                  source.dataSource?.fullyQualifiedName ||
-                    source.dataSource?.name ||
-                    ''
-                )}>
-                {source.dataSource?.fullyQualifiedName}
-              </Link>
+            <Col span={11}>
+              <Row>
+                <Col flex="100px">
+                  <Typography.Text className="text-grey-muted">
+                    {`${t('label.data-entity', {
+                      entity: t('label.source'),
+                    })}:`}
+                  </Typography.Text>
+                </Col>
+                <Col flex="auto">
+                  <Link
+                    to={getEntityLink(
+                      EntityType.TABLE,
+                      source.dataSource?.fullyQualifiedName ||
+                        source.dataSource?.name ||
+                        ''
+                    )}>
+                    {source.dataSource?.fullyQualifiedName}
+                  </Link>
+                </Col>
+              </Row>
             </Col>
           </Row>
         ))}

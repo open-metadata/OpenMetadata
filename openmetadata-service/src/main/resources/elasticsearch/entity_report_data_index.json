@@ -12,6 +12,9 @@
           "id": {
             "type": "text"
           },
+          "serviceName": {
+            "type": "keyword"
+          },
           "team": {
             "type": "keyword"
           },

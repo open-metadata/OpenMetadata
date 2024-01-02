@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.permissions;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DESCRIPTION;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
@@ -32,7 +31,6 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -80,7 +78,7 @@ import org.openmetadata.service.util.TestUtils;
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;
-  private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations(CREATE);
+  private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations();
   private static final List<MetadataOperation> ORG_NO_OWNER_RULE_OPERATIONS = List.of(EDIT_OWNER);
 
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -98,7 +96,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     DATA_CONSUMER_ALLOWED.addAll(List.of(EDIT_DESCRIPTION, EDIT_TAGS));
   }
 
-  private static final List<MetadataOperation> DATA_STEWARD_ALLOWED = new ArrayList<>(DATA_CONSUMER_ALLOWED);
+  private static final List<MetadataOperation> DATA_STEWARD_ALLOWED =
+      new ArrayList<>(DATA_CONSUMER_ALLOWED);
 
   static {
     // DATA_CONSUMER + additional operations
@@ -116,30 +115,34 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
 
     Policy orgPolicy =
-        policyResourceTest.getEntityByName(ORGANIZATION_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+        policyResourceTest.getEntityByName(
+            ORGANIZATION_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     List<Rule> orgRules = orgPolicy.getRules();
     // Rules are alphabetically ordered
     ORG_NO_OWNER_RULE = orgRules.get(0);
     ORG_IS_OWNER_RULE = orgRules.get(1);
 
     DATA_STEWARD_POLICY =
-        policyResourceTest.getEntityByName(DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+        policyResourceTest.getEntityByName(
+            DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_RULES = DATA_STEWARD_POLICY.getRules();
 
-    DATA_STEWARD_USER = EntityResourceTest.USER_WITH_DATA_STEWARD_ROLE;
+    DATA_STEWARD_USER = EntityResourceTest.DATA_STEWARD;
 
     DATA_CONSUMER_POLICY =
-        policyResourceTest.getEntityByName(DATA_CONSUMER_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+        policyResourceTest.getEntityByName(
+            DATA_CONSUMER_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_RULES = DATA_CONSUMER_POLICY.getRules();
 
-    DATA_CONSUMER_USER = EntityResourceTest.USER_WITH_DATA_CONSUMER_ROLE;
+    DATA_CONSUMER_USER = EntityResourceTest.DATA_CONSUMER;
   }
 
   @Test
   void get_anotherUserPermission_disallowed() {
     // Only admin can get another user's permission (this is tested in other tests)
     // Getting as a data consumer, data steward's permissions should fail
-    Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
+    Map<String, String> authHeaders =
+        SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
     assertResponse(
         () -> getPermissions(DATA_STEWARD_USER_NAME, authHeaders),
         FORBIDDEN,
@@ -151,7 +154,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     // Ensure an admin has all the permissions
     List<ResourcePermission> actualPermissions = getPermissions(ADMIN_AUTH_HEADERS);
     assertEquals(
-        PolicyEvaluator.trimResourcePermissions(PolicyEvaluator.getResourcePermissions(ALLOW)), actualPermissions);
+        PolicyEvaluator.trimResourcePermissions(PolicyEvaluator.getResourcePermissions(ALLOW)),
+        actualPermissions);
   }
 
   @Test
@@ -159,56 +163,86 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     //
     // Validate permissions for all resources as logged-in user
     //
-    Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
+    Map<String, String> authHeaders =
+        SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
     List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
     permissionsBuilder.setPermission(
-        DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
+        DATA_CONSUMER_ALLOWED,
+        ALLOW,
+        DATA_CONSUMER_ROLE_NAME,
+        DATA_CONSUMER_POLICY_NAME,
+        DATA_CONSUMER_RULES.get(0));
     // Set permissions based on alphabetical order of roles
     permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_NO_OWNER_RULE);
+        ORG_NO_OWNER_RULE_OPERATIONS,
+        CONDITIONAL_ALLOW,
+        null,
+        ORGANIZATION_POLICY_NAME,
+        ORG_NO_OWNER_RULE);
     permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
+        ORG_IS_OWNER_RULE_OPERATIONS,
+        CONDITIONAL_ALLOW,
+        null,
+        ORGANIZATION_POLICY_NAME,
+        ORG_IS_OWNER_RULE);
     assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actualPermissions);
+        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
+        actualPermissions);
 
     // Validate permissions for all resources for data consumer as admin
     actualPermissions = getPermissions(DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
     assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actualPermissions);
+        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
+        actualPermissions);
 
     // Validate permission as logged-in user for each resource one at a time
     ResourcePermission actualPermission;
     for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
       actualPermission = getPermission(rd.getName(), null, authHeaders);
       assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())), actualPermission);
+          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())),
+          actualPermission);
     }
 
     // Validate permission of data consumer as admin user for each resource one at a time
     for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
       actualPermission = getPermission(rd.getName(), DATA_CONSUMER_USER_NAME, authHeaders);
       assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())), actualPermission);
+          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())),
+          actualPermission);
     }
   }
 
   @Test
   void get_dataSteward_permissions_for_role() throws HttpResponseException {
-    Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_STEWARD_USER_NAME + "@open-metadata.org");
-    List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
-
+    Map<String, String> authHeaders =
+        SecurityUtil.authHeaders(DATA_STEWARD_USER_NAME + "@open-metadata.org");
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
     permissionsBuilder.setPermission(
-        DATA_STEWARD_ALLOWED, ALLOW, DATA_STEWARD_ROLE_NAME, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
+        DATA_STEWARD_ALLOWED,
+        ALLOW,
+        DATA_STEWARD_ROLE_NAME,
+        DATA_STEWARD_POLICY_NAME,
+        DATA_STEWARD_RULES.get(0));
     // Set permissions based on alphabetical order of roles
     permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_NO_OWNER_RULE);
+        ORG_NO_OWNER_RULE_OPERATIONS,
+        CONDITIONAL_ALLOW,
+        null,
+        ORGANIZATION_POLICY_NAME,
+        ORG_NO_OWNER_RULE);
     permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
+        ORG_IS_OWNER_RULE_OPERATIONS,
+        CONDITIONAL_ALLOW,
+        null,
+        ORGANIZATION_POLICY_NAME,
+        ORG_IS_OWNER_RULE);
 
+    List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
     assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actualPermissions);
+        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
+        actualPermissions);
   }
 
   @Test
@@ -221,7 +255,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         DATA_CONSUMER_ALLOWED, ALLOW, null, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
 
     assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actual);
+        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
+        actual);
 
     // Get permissions for DATA_CONSUMER and DATA_STEWARD policies together and assert it is correct
     policies.add(DATA_STEWARD_POLICY.getId());
@@ -229,7 +264,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     permissionsBuilder.setPermission(
         DATA_STEWARD_ALLOWED, ALLOW, null, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
     assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actual);
+        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
+        actual);
   }
 
   @Test
@@ -238,34 +274,47 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     // Test getting permissions for an entity user does not own
     //
     TableResourceTest tableResourceTest = new TableResourceTest();
-    Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
+    Map<String, String> authHeaders =
+        SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
 
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
     permissionsBuilder.setPermission(
-        DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
-    // Organization policy of no owner or isOwner does not apply. Hence, not added to expected permissions
+        DATA_CONSUMER_ALLOWED,
+        ALLOW,
+        DATA_CONSUMER_ROLE_NAME,
+        DATA_CONSUMER_POLICY_NAME,
+        DATA_CONSUMER_RULES.get(0));
+    // Organization policy of no owner or isOwner does not apply. Hence, not added to expected
+    // permissions
 
-    // Create a table with owner other than data consumer & make sure data consumer doesn't have permission as non owner
+    // Create a table with owner other than data consumer & make sure data consumer doesn't have
+    // permission as non owner
     CreateTable createTable =
-        tableResourceTest.createRequest("permissionTest1").withOwner(DATA_STEWARD_USER.getEntityReference());
+        tableResourceTest
+            .createRequest("permissionTest1")
+            .withOwner(DATA_STEWARD_USER.getEntityReference());
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Data consumer has non-owner permissions
-    ResourcePermission actualPermission = getPermission(Entity.TABLE, table.getId(), null, authHeaders);
+    ResourcePermission actualPermission =
+        getPermission(Entity.TABLE, table.getId(), null, authHeaders);
 
-    // Note that conditional list is empty. All the required context to resolve is met when requesting permission of
-    // a specific resource (both subject and resource context). Only Deny, Allow, NotAllow permissions are expected.
+    // Note that conditional list is empty. All the required context to resolve is met when
+    // requesting permission of a specific resource (both subject and resource context).
+    // Only Deny, Allow, NotAllow permissions are expected.
     assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)), actualPermission);
+        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
+        actualPermission);
   }
 
   @Test
-  void get_owner_permissions() throws HttpResponseException, JsonProcessingException {
+  void get_owner_permissions() throws HttpResponseException {
     //
-    // Test getting permissions for an entity as an owner - where ORG_POLICY isOwner becomes effective
+    // Test getting permissions for an entity as an owner - ORG_POLICY isOwner becomes effective
     //
     TableResourceTest tableResourceTest = new TableResourceTest();
-    Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
+    Map<String, String> authHeaders =
+        SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
 
     // Create an entity with data consumer as owner
     CreateTable createTable =
@@ -276,50 +325,74 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
             .withOwner(DATA_CONSUMER_USER.getEntityReference());
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    // Data consumer must have all operations except create allowed based on Organization policy as an owner
+    // Data consumer must have all operations except create allowed based on Organization policy as
+    // an owner
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
     permissionsBuilder.setPermission(
-        DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
+        DATA_CONSUMER_ALLOWED,
+        ALLOW,
+        DATA_CONSUMER_ROLE_NAME,
+        DATA_CONSUMER_POLICY_NAME,
+        DATA_CONSUMER_RULES.get(0));
     permissionsBuilder.setPermission(
         ORG_IS_OWNER_RULE_OPERATIONS, ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
-    ResourcePermission actualPermission = getPermission(Entity.TABLE, table.getId(), null, authHeaders);
+    ResourcePermission actualPermission =
+        getPermission(Entity.TABLE, table.getId(), null, authHeaders);
     assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)), actualPermission);
+        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
+        actualPermission);
 
     // get permissions by resource entity name
-    actualPermission = getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
+    actualPermission =
+        getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
     assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)), actualPermission);
+        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
+        actualPermission);
 
     // Admin getting permissions for a specific resource on for Data consumer
-    actualPermission = getPermission(Entity.TABLE, table.getId(), DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
+    actualPermission =
+        getPermission(Entity.TABLE, table.getId(), DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
     assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)), actualPermission);
+        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
+        actualPermission);
 
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
-    Policy orgPolicy = policyResourceTest.getEntityByName(ORGANIZATION_POLICY_NAME, "", ADMIN_AUTH_HEADERS);
-    List<MetadataOperation> editOperations = getOperations(Entity.TABLE, "Edit", EDIT_ALL, EDIT_DESCRIPTION, EDIT_TAGS);
+    Policy orgPolicy =
+        policyResourceTest.getEntityByName(ORGANIZATION_POLICY_NAME, "", ADMIN_AUTH_HEADERS);
+    List<MetadataOperation> editOperations =
+        getOperations(Entity.TABLE, "Edit", EDIT_ALL, EDIT_DESCRIPTION, EDIT_TAGS);
 
-    // Change organization owner rule to take away one permission at a time and ensure permissions reflect it
+    // Change organization owner rule to take away one permission at a time and ensure permissions
+    // reflect it
     for (MetadataOperation editOperation : editOperations) {
       List<MetadataOperation> allowedOperations =
-          editOperations.stream().filter(operation -> operation != editOperation).collect(Collectors.toList());
+          editOperations.stream()
+              .filter(operation -> operation != editOperation)
+              .collect(Collectors.toList());
       LOG.info("Removing permission for {}", editOperation);
 
       // Update the organization policy with the list of allowed operations
       String origJson = JsonUtils.pojoToJson(orgPolicy);
       orgPolicy.getRules().get(1).withOperations(allowedOperations); // Exclude the editOperation
-      orgPolicy = policyResourceTest.patchEntity(orgPolicy.getId(), origJson, orgPolicy, ADMIN_AUTH_HEADERS);
+      orgPolicy =
+          policyResourceTest.patchEntity(
+              orgPolicy.getId(), origJson, orgPolicy, ADMIN_AUTH_HEADERS);
 
       // Ensure removed operation is not allowed
       permissionsBuilder = new ResourcePermissionsBuilder();
       permissionsBuilder.setPermission(
-          DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
+          DATA_CONSUMER_ALLOWED,
+          ALLOW,
+          DATA_CONSUMER_ROLE_NAME,
+          DATA_CONSUMER_POLICY_NAME,
+          DATA_CONSUMER_RULES.get(0));
       permissionsBuilder.setPermission(
           allowedOperations, ALLOW, null, ORGANIZATION_POLICY_NAME, orgPolicy.getRules().get(1));
-      actualPermission = getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
+      actualPermission =
+          getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
       assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)), actualPermission);
+          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
+          actualPermission);
 
       // Finally, try to patch the field that can't be edited and expect permission denied
       String field = ResourceRegistry.getField(editOperation);
@@ -330,16 +403,19 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         assertResponse(
             () -> tableResourceTest.patchEntity(table.getId(), patch, authHeaders),
             FORBIDDEN,
-            CatalogExceptionMessage.permissionNotAllowed(DATA_CONSUMER_USER_NAME, List.of(editOperation)));
+            CatalogExceptionMessage.permissionNotAllowed(
+                DATA_CONSUMER_USER_NAME, List.of(editOperation)));
       } else {
         LOG.warn("Field for operation {} is null", editOperation);
       }
     }
   }
 
-  private void assertResourcePermissions(List<ResourcePermission> expected, List<ResourcePermission> actual) {
+  private void assertResourcePermissions(
+      List<ResourcePermission> expected, List<ResourcePermission> actual) {
     assertEquals(expected.size(), actual.size());
-    Comparator<ResourcePermission> resourcePermissionComparator = Comparator.comparing(ResourcePermission::getResource);
+    Comparator<ResourcePermission> resourcePermissionComparator =
+        Comparator.comparing(ResourcePermission::getResource);
     expected.sort(resourcePermissionComparator);
     actual.sort(resourcePermissionComparator);
     for (int i = 0; i < expected.size(); i++) {
@@ -353,12 +429,14 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     expected.getPermissions().sort(operationComparator);
     actual.getPermissions().sort(operationComparator);
     for (int i = 0; i < expected.getPermissions().size(); i++) {
-      // Using for loop to compare instead of equals to help with debugging the difference between the lists
+      // Using for loop to compare instead of equals to help with debugging the difference between
+      // the lists
       assertEquals(expected.getPermissions().get(i), actual.getPermissions().get(i));
     }
   }
 
-  public List<ResourcePermission> getPermissions(Map<String, String> authHeaders) throws HttpResponseException {
+  public List<ResourcePermission> getPermissions(Map<String, String> authHeaders)
+      throws HttpResponseException {
     // Get permissions as a logged-in user for all the resources
     WebTarget target = getResource("permissions");
     return TestUtils.get(target, ResourcePermissionList.class, authHeaders).getData();
@@ -372,15 +450,16 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ResourcePermissionList.class, authHeaders).getData();
   }
 
-  public ResourcePermission getPermission(String resource, String user, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public ResourcePermission getPermission(
+      String resource, String user, Map<String, String> authHeaders) throws HttpResponseException {
     // Get permissions for another user for a given resource type
     WebTarget target = getResource("permissions/" + resource);
     target = user != null ? target.queryParam("user", user) : target;
     return TestUtils.get(target, ResourcePermission.class, authHeaders);
   }
 
-  public ResourcePermission getPermission(String resource, UUID uuid, String user, Map<String, String> authHeaders)
+  public ResourcePermission getPermission(
+      String resource, UUID uuid, String user, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Get permissions for another user for a given resource type and specific resource by id
     WebTarget target = getResource("permissions/" + resource + "/" + uuid);
@@ -389,15 +468,16 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   public ResourcePermission getPermissionByName(
-      String resource, String name, String user, Map<String, String> authHeaders) throws HttpResponseException {
+      String resource, String name, String user, Map<String, String> authHeaders)
+      throws HttpResponseException {
     // Get permissions for another user for a given resource type and specific resource by name
     WebTarget target = getResource("permissions/").path(resource).path("/name/").path(name);
     target = user != null ? target.queryParam("user", user) : target;
     return TestUtils.get(target, ResourcePermission.class, authHeaders);
   }
 
-  public List<ResourcePermission> getPermissionsForPolicies(List<UUID> policyIds, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public List<ResourcePermission> getPermissionsForPolicies(
+      List<UUID> policyIds, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("permissions/policies");
     for (UUID policyId : policyIds) {
       target = target.queryParam("ids", policyId);
@@ -408,7 +488,8 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   /** Build permissions based on role, policies, etc. for testing purposes */
   public static class ResourcePermissionsBuilder {
     @Getter
-    private final List<ResourcePermission> resourcePermissions = PolicyEvaluator.getResourcePermissions(NOT_ALLOW);
+    private final List<ResourcePermission> resourcePermissions =
+        PolicyEvaluator.getResourcePermissions(NOT_ALLOW);
 
     public void setPermission(
         List<MetadataOperation> operations, Access access, String role, String policy, Rule rule) {

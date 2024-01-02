@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -23,7 +22,6 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
-import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -61,7 +59,6 @@ import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconDrag from '../assets/svg/drag.svg';
-import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
@@ -70,7 +67,7 @@ import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
-import IconForeignKey from '../assets/svg/foriegnKey.svg';
+import IconForeignKey from '../assets/svg/foreign-key.svg';
 import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconHidePassword from '../assets/svg/hide-password.svg';
@@ -88,10 +85,10 @@ import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
 import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
-import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFlatDoc from '../assets/svg/ic-flat-doc.svg';
 import IconFolderPrimary from '../assets/svg/ic-folder-primary.svg';
 import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
@@ -117,7 +114,6 @@ import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
-import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
 import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
@@ -137,7 +133,7 @@ import IconDown from '../assets/svg/icon-down.svg';
 import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
 import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
-import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconNotNull from '../assets/svg/icon-not-null.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTestSuite from '../assets/svg/icon-test-suite.svg';
@@ -168,8 +164,6 @@ import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
-import IconReaction from '../assets/svg/Reaction.svg';
-import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -178,6 +172,7 @@ import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconShowPassword from '../assets/svg/show-password.svg';
+import IconSkippedBadge from '../assets/svg/skipped-badge.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconSuccessBadge from '../assets/svg/success-badge.svg';
@@ -185,7 +180,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
-import IconTaskColor from '../assets/svg/Task-ic.svg';
+import IconTaskColor from '../assets/svg/task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -219,7 +214,6 @@ export const Icons = {
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
-  EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
   EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
@@ -255,7 +249,6 @@ export const Icons = {
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
-  EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
   HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
@@ -346,6 +339,7 @@ export const Icons = {
   SUCCESS_BADGE: 'success-badge',
   FAIL_BADGE: 'fail-badge',
   PENDING_BADGE: 'pending-badge',
+  SKIPPED_BADGE: 'skipped-badge',
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
@@ -592,10 +586,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconCheckCircle;
 
       break;
-    case Icons.EXCLAMATION_CIRCLE:
-      IconComponent = IconExclamationCircle;
 
-      break;
     case Icons.TIMES_CIRCLE:
       IconComponent = IconTimesCircle;
 
@@ -838,10 +829,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
       break;
 
-    case Icons.EDIT_BLACK:
-      IconComponent = IconEditBlack;
-
-      break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
 
@@ -971,6 +958,11 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconPendingBadge;
 
       break;
+
+    case Icons.SKIPPED_BADGE:
+      IconComponent = IconSkippedBadge;
+
+      break;
     case Icons.BOT_PROFILE:
       IconComponent = IconBotProfile;
 
@@ -983,19 +975,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconDeployIngestion;
 
       break;
-    case Icons.ADD_REACTION:
-      IconComponent = IconAddReaction;
 
-      break;
-    case Icons.ADD_REPLY:
-      IconComponent = IconReplyFeed;
-
-      break;
-
-    case Icons.REACTION:
-      IconComponent = IconReaction;
-
-      break;
     case Icons.FEED_DELETE:
       IconComponent = IconFeedDelete;
 
@@ -1038,10 +1018,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconStar;
 
       break;
-    case Icons.STAR_PRIMARY:
-      IconComponent = IconStarPrimary;
 
-      break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
 

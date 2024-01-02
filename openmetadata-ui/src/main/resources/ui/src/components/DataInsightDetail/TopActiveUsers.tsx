@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import Table from '../../components/common/Table/Table';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
-  getDateTimeFromMilliSeconds,
-  getTimeDurationFromSeconds,
-} from '../../utils/TimeUtils';
+  formatDateTimeWithTimezone,
+  formatTimeDurationFromSeconds,
+} from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import Loader from '../Loader/Loader';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
@@ -76,7 +75,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         render: (userName: string) => (
           <Space>
-            <ProfilePicture id="" name={userName} type="circle" width="24" />
+            <ProfilePicture name={userName} width="24" />
             <Link to={getUserPath(userName)}>{userName}</Link>
           </Space>
         ),
@@ -95,7 +94,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'lastSession',
         render: (lastSession: number) => (
           <Typography.Text>
-            {getDateTimeFromMilliSeconds(lastSession)}
+            {formatDateTimeWithTimezone(lastSession)}
           </Typography.Text>
         ),
       },
@@ -115,7 +114,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
           <Typography.Text>
-            {getTimeDurationFromSeconds(avgSessionDuration)}
+            {formatTimeDurationFromSeconds(avgSessionDuration)}
           </Typography.Text>
         ),
       },
@@ -127,6 +126,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{
@@ -135,18 +135,17 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isEmpty(mostActiveUsers) ? (
-        <EmptyGraphPlaceholder />
-      ) : (
-        <Table
-          className="data-insight-table-wrapper"
-          columns={columns}
-          dataSource={mostActiveUsers}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
-          pagination={false}
-          size="small"
-        />
-      )}
+      <Table
+        className="data-insight-table-wrapper"
+        columns={columns}
+        dataSource={mostActiveUsers}
+        loading={isLoading}
+        locale={{
+          emptyText: <EmptyGraphPlaceholder />,
+        }}
+        pagination={false}
+        size="small"
+      />
     </Card>
   );
 };

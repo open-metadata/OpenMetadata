@@ -13,7 +13,8 @@
 
 @import url('../../../styles/variables.less');
 
-.tag-chip {
+.ant-tag.tag-chip {
+  max-width: 100%;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -25,29 +26,39 @@
   overflow: hidden;
 }
 
-.tag-chip-content {
+.ant-tag.tag-highlight {
+  .tags-label {
+    background-color: @text-highlighter!important;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+}
+
+.ant-tag.tag-chip-content {
+  width: max-content;
+  height: 30px;
   margin: 0 5px 4px 0;
   border: none;
   padding: 0;
-  background: rgba(0, 0, 0, 0.03);
+  background: @tag-background-color;
+
+  &.diff-added {
+    background: @success-background-color;
+  }
 }
 
-.tag-chip-add-button {
+.ant-tag.tag-chip-add-button {
   padding: 3px 8px;
   background: @white;
 }
 
 .tag-color-bar {
-  width: 5px;
-  height: auto;
-  background: rgba(0, 0, 0, 0.03);
+  border-left: 5px solid @tag-background-color;
 }
 
 .tags-label {
   display: inline-block;
-  white-space: normal;
-  word-break: break-all;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 30px;
+  font-size: 12px;
+  font-weight: 500;
+  color: inherit;
 }

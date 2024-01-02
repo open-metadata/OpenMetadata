@@ -23,6 +23,7 @@
 /docker
 
 # Assets
+*.gif
 *.svg
 *.png
 *.ico
@@ -76,3 +77,6 @@ Thumbs.db
 
 # Generated
 src/generated
+
+# Snapshots
+*.snap

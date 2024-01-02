@@ -22,7 +22,7 @@ import { sortTagsCaseInsensitive } from './CommonUtils';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus || '';
@@ -38,6 +38,9 @@ export const getStatusBadgeIcon = (status?: StatusType) => {
 
     case StatusType.Pending:
       return Icons.PENDING_BADGE;
+
+    case StatusType.Skipped:
+      return Icons.SKIPPED_BADGE;
 
     default:
       return '';

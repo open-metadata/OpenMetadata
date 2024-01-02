@@ -12,34 +12,37 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DashboardDetails from 'components/DashboardDetails/DashboardDetails.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { updateChart } from 'rest/chartAPI';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Chart } from '../../generated/entity/data/chart';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { updateChart } from '../../rest/chartAPI';
 import {
   addFollower,
   getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
-} from 'rest/dashboardAPI';
-import { postThread } from 'rest/feedsAPI';
-import { getVersionPath } from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Chart } from '../../generated/entity/data/chart';
-import { Dashboard } from '../../generated/entity/data/dashboard';
+  updateDashboardVotes,
+} from '../../rest/dashboardAPI';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   defaultFields,
@@ -56,10 +59,11 @@ export type ChartType = {
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardFQN } = useParams<{ dashboardFQN: string }>();
+  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
@@ -169,7 +173,10 @@ const DashboardDetailsPage = () => {
         return {
           ...previous,
           version: response.version,
-          [key]: response[key],
+          [key]:
+            key === 'tags'
+              ? sortTagsCaseInsensitive(response[key] ?? [])
+              : response[key],
         };
       });
     } catch (error) {
@@ -281,6 +288,39 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = (version?: number) => {
+    setDashboardDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDashboardVotes(id, data);
+      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      setDashboardDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateDashboardDetailsState = useCallback((data) => {
+    const updatedData = data as Dashboard;
+
+    setDashboardDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
@@ -314,9 +354,12 @@ const DashboardDetailsPage = () => {
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
+      handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
+      updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

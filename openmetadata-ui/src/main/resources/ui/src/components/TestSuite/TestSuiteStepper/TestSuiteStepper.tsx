@@ -13,38 +13,47 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
-import { getRightPanelForAddTestSuitePage } from 'components/AddDataQualityTest/rightPanelData';
-import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import SuccessScreen from 'components/common/success-screen/SuccessScreen';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  STEPS_FOR_ADD_TEST_SUITE,
-  TEST_SUITE_STEPPER_BREADCRUMB,
-} from 'constants/TestSuite.constant';
-import { FormSubmitType } from 'enums/form.enum';
-import { OwnerType } from 'enums/user.enum';
-import { TestSuite } from 'generated/tests/testSuite';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { addTestCaseToLogicalTestSuite, createTestSuites } from 'rest/testAPI';
-import { getCurrentUserId } from 'utils/CommonUtils';
-import { getTestSuitePath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import RightPanel from '../../../components/AddDataQualityTest/components/RightPanel';
+import { getRightPanelForAddTestSuitePage } from '../../../components/AddDataQualityTest/rightPanelData';
+import { AddTestCaseList } from '../../../components/AddTestCaseList/AddTestCaseList.component';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
+import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
+import {
+  STEPS_FOR_ADD_TEST_SUITE,
+  TEST_SUITE_STEPPER_BREADCRUMB,
+} from '../../../constants/TestSuite.constant';
+import { FormSubmitType } from '../../../enums/form.enum';
+import { OwnerType } from '../../../enums/user.enum';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import {
+  addTestCaseToLogicalTestSuite,
+  createTestSuites,
+} from '../../../rest/testAPI';
+import { getTestSuitePath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { currentUser } = useAuthContext();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
+    history.push(
+      getTestSuitePath(
+        getEncodedFqn(testSuiteResponse?.fullyQualifiedName ?? '')
+      )
+    );
   };
 
   const handleTestSuitNextClick = (data: TestSuite) => {
@@ -55,7 +64,7 @@ const TestSuiteStepper = () => {
   const onSubmit = async (data: string[]) => {
     try {
       const owner = {
-        id: getCurrentUserId(),
+        id: currentUser?.id ?? '',
         type: OwnerType.USER,
       };
 

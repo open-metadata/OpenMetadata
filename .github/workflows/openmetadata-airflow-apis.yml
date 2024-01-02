@@ -34,6 +34,6 @@ jobs:
         run: |
           make install_dev install_apis
           cd openmetadata-airflow-apis; \
-            python setup.py install sdist bdist_wheel; \
+            python -m build; \
             twine check dist/*; \
             twine upload dist/* --verbose

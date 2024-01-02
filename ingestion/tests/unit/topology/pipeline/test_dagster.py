@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -77,7 +77,6 @@ EXPECTED_CREATED_PIPELINES = [
         name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
-        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=None,
@@ -87,46 +86,51 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__recommender_model",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=["s3__recommender__user_story_matrix"],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__recommender_model"
+                ),
             ),
             Task(
                 name="s3__recommender__user_story_matrix",
                 displayName="s3__recommender__user_story_matrix",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=["snowflake__recommender__comment_stories"],
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__user_story_matrix"
+                ),
             ),
             Task(
                 name="snowflake__recommender__comment_stories",
                 displayName="snowflake__recommender__comment_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__comment_stories"
+                ),
             ),
             Task(
                 name="snowflake__recommender__component_top_stories",
                 displayName="snowflake__recommender__component_top_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -136,13 +140,15 @@ EXPECTED_CREATED_PIPELINES = [
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__component_top_stories"
+                ),
             ),
             Task(
                 name="snowflake__recommender__user_top_recommended_stories",
                 displayName="snowflake__recommender__user_top_recommended_stories",
                 fullyQualifiedName=None,
                 description=None,
-                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -152,6 +158,9 @@ EXPECTED_CREATED_PIPELINES = [
                 startDate=None,
                 endDate=None,
                 tags=None,
+                sourceUrl=SourceUrl(
+                    __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__user_top_recommended_stories"
+                ),
             ),
         ],
         tags=[
@@ -167,6 +176,9 @@ EXPECTED_CREATED_PIPELINES = [
         owner=None,
         service="dagster_source_test",
         extension=None,
+        sourceUrl=SourceUrl(
+            __root__="http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/"
+        ),
     ),
 ]
 MOCK_CONNECTION_URI_PATH = (
@@ -204,12 +216,12 @@ EXPECTED_PIPELINE_STATUS = [
                 TaskStatus(
                     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
                     executionStatus=StatusType.Successful.value,
-                    startTime=1655393914,
-                    endTime=1655394054,
+                    startTime=1655393914000,
+                    endTime=1655394054000,
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            timestamp=1655393914,
+            timestamp=1655393914000,
         ),
     ),
 ]
@@ -262,8 +274,10 @@ class DagsterUnitTest(TestCase):
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.dagster.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.dagster.context.__dict__["repository_name"] = "hacker_new_repository"
         self.dagster.context.__dict__["repository_location"] = "project_fully_featured"
 
@@ -286,7 +300,7 @@ class DagsterUnitTest(TestCase):
         )
         pipelines_list = []
         for result in results:
-            pipelines_list.append(result)
+            pipelines_list.append(result.right)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_CREATED_PIPELINES, pipelines_list)

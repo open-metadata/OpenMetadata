@@ -55,9 +55,9 @@ $$section
 There are three schemes based on the user's requirement to fetch data from MSSQL:
 - **mssql+pytds**: High-performance open-source library for connecting to Microsoft SQL Server.
 - **mssql+pyodbc**: Cross-platform Python library that uses ODBC to connect to Microsoft SQL Server.
-- *mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
+- **mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
 
-If you are unsure about this setting, keep the default value.
+If you are connecting via windows authentication from a linux docker deployment please use `mssql+pymssql`. 
 
 $$
 
@@ -78,13 +78,13 @@ $$section
 
 This parameter specifies the host and port of the MSSQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:1433`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:1433` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:1433` as the value.
 $$
 
 $$section
 ### Database $(id="database")
 
-Database of the data source.
+Initial Mssql database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
 $$
 
 $$section
@@ -97,6 +97,13 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
+
+$$section
+### Ingest All Databases $(id="ingestAllDatabases")
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+$$
+
+
 $$section
 ### Connection Options $(id="connectionOptions")
 
@@ -107,4 +114,6 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
+
+When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes.
 $$

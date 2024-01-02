@@ -18,6 +18,7 @@ from __future__ import annotations
 import unittest
 import uuid
 from datetime import datetime, timedelta
+from random import randint
 
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -30,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
@@ -119,7 +121,8 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Test web analytic event deletion"""
 
         for delta in range(7):
-            tmsp = get_beginning_of_day_timestamp_mill(days=delta)
+            delta = timedelta(days=delta, milliseconds=randint(100, 999))
+            tmsp = datetime_to_ts(datetime.utcnow() - delta)
 
             user_id = uuid.uuid4()
             session_id = uuid.uuid4()

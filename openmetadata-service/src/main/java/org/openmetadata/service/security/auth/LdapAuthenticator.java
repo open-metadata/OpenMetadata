@@ -31,7 +31,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -40,6 +39,8 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -49,6 +50,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.LdapUtil;
@@ -69,19 +71,21 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LoginConfiguration loginConfiguration;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    if (config.getAuthenticationConfiguration().getProvider().equals("ldap")
+  public void init(OpenMetadataApplicationConfig config) {
+    if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
-      ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
+      ldapLookupConnectionPool =
+          getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
     this.roleRepository = new RoleRepository(jdbi.onDemand(CollectionDAO.class));
     this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+    this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache(config);
-    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
+    this.loginAttemptCache = new LoginAttemptCache();
+    this.loginConfiguration =
+        SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -89,7 +93,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
         LdapUtil ldapUtil = new LdapUtil();
-        SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
+        SSLUtil sslUtil =
+            new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
 
         try (LDAPConnection connection =
             new LDAPConnection(
@@ -132,10 +137,11 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
-  private User checkAndCreateUser(String email) throws IOException {
+  private User checkAndCreateUser(String email) {
     // Check if the user exists in OM Database
     try {
-      return userRepository.getByName(null, email.split("@")[0], userRepository.getFields("id,name,email"));
+      return userRepository.getByName(
+          null, email.split("@")[0], userRepository.getFields("id,name,email"));
     } catch (EntityNotFoundException ex) {
       // User does not exist
       return userRepository.create(null, getUserForLdap(email));
@@ -175,17 +181,17 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User storedUser) throws TemplateException, IOException {
+  public void recordFailedLoginAttempt(String providedIdentity, User storedUser)
+      throws TemplateException, IOException {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.getInstance()
-          .sendAccountStatus(
-              storedUser,
-              "Multiple Failed Login Attempts.",
-              String.format(
-                  "Someone is tried accessing your account. Login is Blocked for %s seconds.",
-                  loginConfiguration.getAccessBlockTime()));
+      EmailUtil.sendAccountStatus(
+          storedUser,
+          "Multiple Failed Login Attempts.",
+          String.format(
+              "Someone is tried accessing your account. Login is Blocked for %s seconds.",
+              loginConfiguration.getAccessBlockTime()));
     }
   }
 
@@ -201,13 +207,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       }
     } catch (Exception ex) {
       if (bindingResult != null
-          && Objects.equals(bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
+          && Objects.equals(
+              bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
         recordFailedLoginAttempt(providedIdentity, storedUser);
         throw new CustomExceptionMessage(UNAUTHORIZED, INVALID_EMAIL_PASSWORD);
       }
     }
     if (bindingResult != null) {
-      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, bindingResult.getResultCode().getName());
+      throw new CustomExceptionMessage(
+          INTERNAL_SERVER_ERROR, bindingResult.getResultCode().getName());
     } else {
       throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
     }
@@ -217,27 +225,21 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   public User lookUserInProvider(String email) {
     try {
       Filter filter;
-
-      if (EmailUtil.isValidEmail(email)) {
-        filter = Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), email));
-      } else {
-        filter = Filter.create(String.format("%s=%s", ldapConfiguration.getUsernameAttributeName(), email));
-      }
+          Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), email));
       SearchRequest searchRequest =
           new SearchRequest(
               ldapConfiguration.getUserBaseDN(),
               SearchScope.SUB,
-              filter,
-              ldapConfiguration.getMailAttributeName(),
-              ldapConfiguration.getUsernameAttributeName());
+              emailFilter,
+              ldapConfiguration.getMailAttributeName());
       SearchResult result = ldapLookupConnectionPool.search(searchRequest);
       // there has to be a unique entry for username and email in LDAP under the group
       if (result.getSearchEntries().size() == 1) {
         // Get the user using DN directly
         SearchResultEntry searchResultEntry = result.getSearchEntries().get(0);
         String userDN = searchResultEntry.getDN();
-        Attribute emailAttr = searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
-        Attribute userNameAttr = searchResultEntry.getAttribute(ldapConfiguration.getUsernameAttributeName());
+        Attribute emailAttr =
+            searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
         if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
           return getUserForLdap(emailAttr.getValue(), userNameAttr.getValue()).withName(userDN);
@@ -453,9 +455,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
+    tokenRepository.deleteTokenByUserAndType(currentUserId, REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
     tokenRepository.insertToken(newRefreshToken);

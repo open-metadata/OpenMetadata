@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -24,7 +24,10 @@
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
-        "QuickSight"
+        "QuickSight",
+        "QlikSense",
+        "Lightdash",
+        "Mstr"
       ],
       "javaEnums": [
         {
@@ -56,6 +59,15 @@
         },
         {
           "name": "QuickSight"
+        },
+        {
+          "name": "QlikSense"
+        },
+        {
+          "name": "Lightdash"
+        },
+        {
+          "name": "Mstr"
         }
       ]
     },
@@ -99,6 +111,15 @@
             },
             {
               "$ref": "./connections/dashboard/quickSightConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/qlikSenseConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/lightdashConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/mstrConnection.json"
             }
           ]
         }
@@ -178,6 +199,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "domain" : {
       "description": "Domain the Dashboard service belongs to.",

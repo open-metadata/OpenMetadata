@@ -15,6 +15,7 @@
 .explore-search-card {
   background-color: @white;
   padding: 20px;
+  position: relative;
   &.highlight-card {
     border-left: 4px solid @info-color;
     box-shadow: none;
@@ -22,12 +23,24 @@
   .entity-summary-details {
     font-size: 12px;
   }
-
-  .max-two-lines {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
+  .explore-card-actions {
+    position: absolute;
+    right: 10px;
+    top: 8px;
+    transition: width 0.3s;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
   }
+
+  &:hover {
+    background-color: @grey-1;
+  }
+}
+
+.assets-checkbox .ant-checkbox-inner {
+  border-width: 2px;
+  height: 18px;
+  width: 18px;
+  border-color: @primary-color;
 }

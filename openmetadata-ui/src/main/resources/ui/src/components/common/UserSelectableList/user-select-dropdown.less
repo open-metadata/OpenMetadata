@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@trigger-btn-hover-bg: #efefef;
-@update-btn-hover-bg: #e2e2e2;
+@import url('../../../styles/variables.less');
+
+.selectable-list-item {
+  &:hover {
+    background-color: @grey-1;
+  }
+}
 
 .user-select-popover {
   min-width: 275px;
@@ -25,17 +30,6 @@
 
   .dropdown-control-bar {
     padding: 8px;
-  }
-
-  .update-btn {
-    background-color: @trigger-btn-hover-bg;
-    border-color: @trigger-btn-hover-bg;
-  }
-
-  .update-btn:hover {
-    background-color: @update-btn-hover-bg;
-    border-color: @update-btn-hover-bg;
-    color: inherit;
   }
 
   .ant-list-header,

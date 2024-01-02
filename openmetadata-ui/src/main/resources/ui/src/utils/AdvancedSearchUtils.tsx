@@ -13,9 +13,20 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
+import { isArray, isEmpty } from 'lodash';
+import React from 'react';
+import { RenderSettings } from 'react-awesome-query-builder';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import {
+  COMMON_DROPDOWN_ITEMS,
+  DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
+  GLOSSARY_ASSETS_DROPDOWN_ITEMS,
+} from '../constants/AdvancedSearch.constants';
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
   ContainerSearchSource,
@@ -26,51 +37,28 @@ import {
   SuggestOption,
   TableSearchSource,
   TopicSearchSource,
-} from 'interface/search.interface';
-import { isArray, isEmpty } from 'lodash';
-import React from 'react';
-import { RenderSettings } from 'react-awesome-query-builder';
-import { getCountBadge } from 'utils/CommonUtils';
-import {
-  COMMON_DROPDOWN_ITEMS,
-  CONTAINER_DROPDOWN_ITEMS,
-  DASHBOARD_DROPDOWN_ITEMS,
-  GLOSSARY_DROPDOWN_ITEMS,
-  PIPELINE_DROPDOWN_ITEMS,
-  TABLE_DROPDOWN_ITEMS,
-  TOPIC_DROPDOWN_ITEMS,
-} from '../constants/AdvancedSearch.constants';
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../enums/search.enum';
+} from '../interface/search.interface';
+import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
+import searchClassBase from './SearchClassBase';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
-  switch (index) {
-    case SearchIndex.TABLE:
-      return [...COMMON_DROPDOWN_ITEMS, ...TABLE_DROPDOWN_ITEMS];
+  return searchClassBase.getDropDownItems(index);
+};
 
-    case SearchIndex.TOPIC:
-      return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
+export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
+  switch (type) {
+    case AssetsOfEntity.DOMAIN:
+    case AssetsOfEntity.DATA_PRODUCT:
+      return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
-    case SearchIndex.DASHBOARD:
-      return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
-
-    case SearchIndex.PIPELINE:
-      return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
-
-    case SearchIndex.MLMODEL:
-      return [
-        ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
-      ];
-    case SearchIndex.CONTAINER:
-      return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-    case SearchIndex.GLOSSARY:
-      return [...GLOSSARY_DROPDOWN_ITEMS];
-
+    case AssetsOfEntity.GLOSSARY:
+      return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
     default:
-      return [];
+      return [...COMMON_DROPDOWN_ITEMS];
   }
+  // TODO: Add more quick filters
 };
 
 export const getAdvancedField = (field: string) => {
@@ -171,6 +159,44 @@ export const getSearchLabel = (itemLabel: string, searchKey: string) => {
   }
 };
 
+export const generateSearchDropdownLabel = (
+  option: SearchDropdownOption,
+  checked: boolean,
+  searchKey: string,
+  showProfilePicture: boolean
+) => {
+  return (
+    <div className="d-flex justify-between">
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
+        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+        {showProfilePicture && (
+          <ProfilePicture
+            displayName={option.label}
+            name={option.label || ''}
+            textClass="text-xs"
+            width="18"
+          />
+        )}
+        <Typography.Text
+          ellipsis
+          className="dropdown-option-label"
+          title={option.label}>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: getSearchLabel(option.label, searchKey),
+            }}
+          />
+        </Typography.Text>
+      </Space>
+      {getCountBadge(option.count, 'm-r-sm', false)}
+    </div>
+  );
+};
+
 export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
@@ -184,39 +210,11 @@ export const getSearchDropdownLabels = (
 
     return sortedOptions.map((option) => ({
       key: option.key,
-      label: (
-        <div className="d-flex justify-between">
-          <Space
-            align="center"
-            className="m-x-sm"
-            data-testid={option.key}
-            size={8}>
-            <Checkbox
-              checked={checked}
-              data-testid={`${option.key}-checkbox`}
-            />
-            {showProfilePicture && (
-              <ProfilePicture
-                displayName={option.label}
-                id={option.key || ''}
-                name={option.label || ''}
-                textClass="text-xs"
-                width="18"
-              />
-            )}
-            <Typography.Text
-              ellipsis
-              className="dropdown-option-label"
-              title={option.label}>
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: getSearchLabel(option.label, searchKey),
-                }}
-              />
-            </Typography.Text>
-          </Space>
-          {getCountBadge(option.count, 'm-r-sm', false)}
-        </div>
+      label: generateSearchDropdownLabel(
+        option,
+        checked,
+        searchKey,
+        showProfilePicture
       ),
     }));
   } else {

@@ -12,20 +12,18 @@
  */
 
 import classNames from 'classnames';
-import { observer } from 'mobx-react';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
-import AppState from '../../../AppState';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
-import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
-import Avatar from '../avatar/Avatar';
+import Avatar from '../AvatarComponent/Avatar';
 
-type UserData = Pick<User, 'id' | 'name' | 'displayName'>;
+type UserData = Pick<User, 'name' | 'displayName'>;
 
 interface Props extends UserData {
   width?: string;
@@ -34,18 +32,19 @@ interface Props extends UserData {
   className?: string;
   height?: string;
   profileImgClasses?: string;
+  isTeam?: boolean;
 }
 
 const ProfilePicture = ({
-  id,
   name,
   displayName,
   className = '',
   textClass = '',
-  type = 'square',
+  type = 'circle',
   width = '36',
   height,
   profileImgClasses,
+  isTeam = false,
 }: Props) => {
   const { permissions } = usePermissionProvider();
 
@@ -53,13 +52,11 @@ const ProfilePicture = ({
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
-  const profilePic = useMemo(() => {
-    return getUserProfilePic(viewUserPermission, id, name);
-  }, [id, name, AppState.userProfilePics]);
-
-  const isPicLoading = useMemo(() => {
-    return AppState.isProfilePicLoading(id, name);
-  }, [id, name, AppState.userProfilePicsLoading]);
+  const [profileURL, isPicLoading] = useUserProfile({
+    permission: viewUserPermission,
+    name,
+    isTeam,
+  });
 
   const getAvatarByName = () => {
     return (
@@ -84,10 +81,10 @@ const ProfilePicture = ({
         }}>
         {getAvatarByName()}
         <div
-          className="absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
+          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
           data-testid="loader-cntnr">
           <Loader
-            className="absolute tw-inset-0"
+            className="absolute inset-0"
             size="small"
             style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
             type="white"
@@ -99,7 +96,7 @@ const ProfilePicture = ({
     );
   };
 
-  return profilePic ? (
+  return profileURL ? (
     <div
       className={classNames('profile-image', type, className)}
       style={{ height: `${height || width}px`, width: `${width}px` }}>
@@ -108,7 +105,7 @@ const ProfilePicture = ({
         className={profileImgClasses}
         data-testid="profile-image"
         referrerPolicy="no-referrer"
-        src={profilePic}
+        src={profileURL}
       />
     </div>
   ) : (
@@ -116,4 +113,4 @@ const ProfilePicture = ({
   );
 };
 
-export default observer(ProfilePicture);
+export default ProfilePicture;

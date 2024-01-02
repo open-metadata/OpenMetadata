@@ -19,6 +19,7 @@ No sample data is required beforehand
 
 import os
 from copy import deepcopy
+from pathlib import Path
 from unittest import TestCase
 
 import boto3
@@ -33,19 +34,22 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
+SERVICE_NAME = Path(__file__).stem
+REGION = "us-west-1"
 BUCKET_NAME = "MyBucket"
 INGESTION_CONFIG = {
     "source": {
         "type": "datalake",
-        "serviceName": "datalake_for_integration_tests",
+        "serviceName": SERVICE_NAME,
         "serviceConnection": {
             "config": {
                 "type": "Datalake",
@@ -53,7 +57,7 @@ INGESTION_CONFIG = {
                     "securityConfig": {
                         "awsAccessKeyId": "fake_access_key",
                         "awsSecretAccessKey": "fake_secret_key",
-                        "awsRegion": "us-weat-1",
+                        "awsRegion": REGION,
                     }
                 },
                 "bucketName": f"{BUCKET_NAME}",
@@ -94,14 +98,14 @@ class DatalakeProfilerTestE2E(TestCase):
         boto3.DEFAULT_SESSION = None
         self.client = boto3.client(
             "s3",
-            region_name="us-weat-1",
+            region_name=REGION,
         )
 
-        # check that we are not running our test againsta real bucket
+        # check that we are not running our test against a real bucket
         try:
             s3 = boto3.resource(
                 "s3",
-                region_name="us-west-1",
+                region_name=REGION,
                 aws_access_key_id="fake_access_key",
                 aws_secret_access_key="fake_secret_key",
             )
@@ -113,7 +117,7 @@ class DatalakeProfilerTestE2E(TestCase):
             raise EnvironmentError(err)
         self.client.create_bucket(
             Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": "us-west-1"},
+            CreateBucketConfiguration={"LocationConstraint": REGION},
         )
         current_dir = os.path.dirname(__file__)
         resources_dir = os.path.join(current_dir, "resources")
@@ -132,10 +136,10 @@ class DatalakeProfilerTestE2E(TestCase):
             self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
 
         # Ingest our S3 data
-        ingestion_workflow = Workflow.create(INGESTION_CONFIG)
+        ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
     def test_datalake_profiler_workflow(self):
@@ -158,13 +162,13 @@ class DatalakeProfilerTestE2E(TestCase):
         assert status == 0
 
         table_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
         )
 
         column_profile = self.metadata.get_profile_data(
-            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".first_name',
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".first_name',
             get_beginning_of_day_timestamp_mill(),
             get_end_of_day_timestamp_mill(),
             profile_type=ColumnProfile,
@@ -186,7 +190,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "first_name",
@@ -207,7 +211,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -230,7 +234,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "birthdate",
@@ -252,7 +256,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -275,7 +279,7 @@ class DatalakeProfilerTestE2E(TestCase):
             "config": {
                 "tableConfig": [
                     {
-                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
                         "profileSample": 100,
                         "partitionConfig": {
                             "enablePartitioning": "true",
@@ -298,7 +302,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
             fields=["tableProfilerConfig"],
         )
 
@@ -308,10 +312,118 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert profile.rowCount == 2.0
 
+    def test_datalake_profiler_workflow_with_custom_profiler_config(self):
+        """Test custom profiler config return expected sample and metric computation"""
+        profiler_metrics = [
+            "MIN",
+            "MAX",
+            "MEAN",
+            "MEDIAN",
+        ]
+        id_metrics = ["MIN", "MAX"]
+        non_metric_values = ["name", "timestamp"]
+
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "ingestion_profiler",
+                    "metrics": profiler_metrics,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
+                        "columnConfig": {
+                            "includeColumns": [
+                                {"columnName": "id", "metrics": id_metrics},
+                                {"columnName": "age"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn=f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
+            fields=["tableProfilerConfig"],
+        )
+
+        id_profile = self.metadata.get_profile_data(
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".id',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.__root__)
+
+        id_metric_ln = 0
+        for metric_name, metric in latest_id_profile:
+            if metric_name.upper() in id_metrics:
+                assert metric is not None
+                id_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert id_metric_ln == len(id_metrics)
+
+        age_profile = self.metadata.get_profile_data(
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".age',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.__root__)
+
+        age_metric_ln = 0
+        for metric_name, metric in latest_age_profile:
+            if metric_name.upper() in profiler_metrics:
+                assert metric is not None
+                age_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert age_metric_ln == len(profiler_metrics)
+
+        latest_exc_timestamp = latest_age_profile.timestamp.__root__
+        first_name_profile = self.metadata.get_profile_data(
+            f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".first_name_profile',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        assert not [
+            p
+            for p in first_name_profile
+            if p.timestamp.__root__ == latest_exc_timestamp
+        ]
+
+        sample_data = self.metadata.get_sample_data(table)
+        assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
+            ["id", "age"]
+        )
+
     def tearDown(self):
         s3 = boto3.resource(
             "s3",
-            region_name="us-weat-1",
+            region_name=REGION,
         )
         bucket = s3.Bucket(BUCKET_NAME)
         for key in bucket.objects.all():
@@ -320,7 +432,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         service_id = str(
             self.metadata.get_by_name(
-                entity=DatabaseService, fqn="datalake_for_integration_tests"
+                entity=DatabaseService, fqn=SERVICE_NAME
             ).id.__root__
         )
 

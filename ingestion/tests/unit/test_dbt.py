@@ -23,7 +23,8 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     generate_entity_link,
     get_corrected_name,
@@ -33,7 +34,10 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
+from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
+
+logger = ingestion_logger()
 
 mock_dbt_config = {
     "source": {
@@ -92,6 +96,7 @@ EXPECTED_DATA_MODELS = [
         description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
         path="sample/customers/root/path/models/customers.sql",
         rawSql="sample customers raw code",
+        resourceType="model",
         sql="sample customers compile code",
         upstream=[],
         owner=EntityReference(
@@ -159,6 +164,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
         description=None,
         path="sample/customers_null_db/root/path/models/staging/customers_null_db.sql",
         rawSql="sample customers_null_db raw_code",
+        resourceType="model",
         sql="sample customers_null_db compiled code",
         upstream=[],
         owner=EntityReference(
@@ -276,8 +282,9 @@ class DbtUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(
             mock_dbt_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
+        set_loggers_level("DEBUG")
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
@@ -454,6 +461,9 @@ class DbtUnitTest(TestCase):
 
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
     def test_dbt_owner(self, es_search_from_fqn):
+        """
+        This test requires having the sample data properly indexed
+        """
         es_search_from_fqn.return_value = MOCK_USER
         _, dbt_objects = self.get_dbt_object_files(
             mock_manifest=MOCK_SAMPLE_MANIFEST_V8
@@ -490,7 +500,7 @@ class DbtUnitTest(TestCase):
         return dbt_files, dbt_objects
 
     def check_dbt_validate(self, dbt_files, expected_records):
-        with self.assertLogs(level="DEBUG") as captured:
+        with self.assertLogs(level="DEBUG", logger=logger) as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
         self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
@@ -503,14 +513,14 @@ class DbtUnitTest(TestCase):
             dbt_objects=dbt_objects
         )
         for data_model_link in yield_data_models:
-            if isinstance(data_model_link, DataModelLink):
+            if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
-                data_model_list.append(data_model_link.datamodel)
+                data_model_list.append(data_model_link.right.datamodel)
 
-        for _, (exptected, original) in enumerate(
+        for _, (expected, original) in enumerate(
             zip(expected_data_models, data_model_list)
         ):
-            self.assertEqual(exptected, original)
+            self.assertEqual(expected, original)

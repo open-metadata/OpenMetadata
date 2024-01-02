@@ -23,7 +23,13 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import Dialects, is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import (
+    FLOAT_SET,
+    Dialects,
+    is_concatenable,
+    is_date_time,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -55,6 +61,21 @@ def _(element, compiler, **kw):
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
 
 
+@compiles(StdDevFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    proc = compiler.process(element.clauses, **kw)
+    first_clause = element.clauses.clauses[0]
+    # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
+    # or if the type of the first clause is date time
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
+        # If the condition is true, return the stddev value of the column
+        return f"STDDEV_POP({proc})"
+    return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
+
+
 @compiles(StdDevFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Returns stdv for clickhouse database and handle empty tables.
@@ -62,6 +83,15 @@ def _(element, compiler, **kw):
     """
     proc = compiler.process(element.clauses, **kw)
     return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
+
+
+@compiles(StdDevFn, Dialects.Druid)
+def _(element, compiler, **kw):  # pylint: disable=unused-argument
+    """returns  stdv for druid. Could not validate with our cluster
+    we might need to look into installing the druid-stats module
+    https://druid.apache.org/docs/latest/configuration/extensions/#loading-extensions
+    """
+    return "NULL"
 
 
 class StdDev(StaticMetric):
@@ -83,10 +113,10 @@ class StdDev(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return StdDevFn(column(self.col.name))
+            return StdDevFn(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return StdDevFn(LenFn(column(self.col.name)))
+            return StdDevFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
@@ -100,10 +130,13 @@ class StdDev(StaticMetric):
 
         if is_quantifiable(self.col.type):
             try:
-                return pd.concat(df[self.col.name] for df in dfs).std()
+                df = pd.to_numeric(pd.concat(df[self.col.name] for df in dfs))
+                if not df.empty:
+                    return df.std()
+                return None
             except MemoryError:
                 logger.error(
-                    f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                    f"Unable to compute Standard Deviation for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None

@@ -10,11 +10,7 @@
 #  limitations under the License.
 
 """
-Define Random Number function
-
-Returns a column with random values
-between 0 and 100 to help us draw sample
-data.
+Define Sum function
 """
 
 from sqlalchemy.ext.compiler import compiles
@@ -34,6 +30,13 @@ def _(element, compiler, **kw):
     """Cast to BIGINT to address overflow error from summing 32-bit int in most database dialects, #8430"""
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS BIGINT))"
+
+
+@compiles(SumFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    """Cast to BIGINT to address cannot cast nan to bigint"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(TRY_CAST({proc} AS BIGINT))"
 
 
 @compiles(SumFn, Dialects.BigQuery)
@@ -87,3 +90,10 @@ def _(element, compiler, **kw):
     """Handle the case for DB2 where it requires to type cast the variables"""
     proc = compiler.process(element.clauses, **kw).replace("?", "CAST(? AS INT)")
     return f"SUM(CAST({proc} AS BIGINT))"
+
+
+@compiles(SumFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handle case where column type is INTEGER but SUM returns a NUMBER"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(accurateCastOrNull({proc},'BIGINT'))"

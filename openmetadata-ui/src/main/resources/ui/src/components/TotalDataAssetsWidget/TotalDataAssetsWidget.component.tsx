@@ -10,16 +10,189 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import TotalEntityInsightV1 from 'components/DataInsightDetail/TotalEntityInsightV1';
-import { CHART_WIDGET_DAYS_DURATION } from 'constants/constants';
-import React from 'react';
-import './total-data-assets.less';
+import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../assets/svg/data-insight-no-data-placeholder.svg';
+import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
+import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { SIZE } from '../../enums/common.enum';
+import { WidgetWidths } from '../../enums/CustomizablePage.enum';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import {
+  DataInsightChartResult,
+  DataInsightChartType,
+} from '../../generated/dataInsight/dataInsightChartResult';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { axisTickFormatter } from '../../utils/ChartUtils';
+import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import '../DataInsightDetail/data-insight-detail.less';
+import { EmptyGraphPlaceholder } from '../DataInsightDetail/EmptyGraphPlaceholder';
+import TotalEntityInsightSummary from '../DataInsightDetail/TotalEntityInsightSummary.component';
+import './total-data-assets-widget.less';
+import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
-const TotalDataAssetsWidget = () => {
+const TotalDataAssetsWidget = ({
+  isEditView = false,
+  selectedDays = CHART_WIDGET_DAYS_DURATION,
+  handleRemoveWidget,
+  widgetKey,
+  selectedGridSize,
+}: TotalDataAssetsWidgetProps) => {
+  const [totalEntitiesByType, setTotalEntitiesByType] =
+    useState<DataInsightChartResult>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const { data, entities, total, relativePercentage, latestData } =
+    useMemo(() => {
+      return getGraphDataByEntityType(
+        totalEntitiesByType?.data ?? [],
+        DataInsightChartType.TotalEntitiesByType
+      );
+    }, [totalEntitiesByType]);
+
+  const { t } = useTranslation();
+
+  const fetchTotalEntitiesByType = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        startTs: getEpochMillisForPastDays(selectedDays),
+        endTs: getCurrentMillis(),
+        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
+        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setTotalEntitiesByType(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedDays]);
+
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
+
+  const isWidgetSizeLarge = useMemo(
+    () => selectedGridSize === WidgetWidths.large,
+    [selectedGridSize]
+  );
+
+  useEffect(() => {
+    fetchTotalEntitiesByType();
+  }, [selectedDays]);
+
   return (
-    <div className="total-data-assets-widget-container">
-      <TotalEntityInsightV1 selectedDays={CHART_WIDGET_DAYS_DURATION} />
-    </div>
+    <Card
+      className="total-data-insight-card"
+      data-testid="entity-summary-card"
+      id={DataInsightChartType.TotalEntitiesByType}
+      loading={isLoading}>
+      {isEditView && (
+        <Row gutter={8} justify="end">
+          <Col>
+            <DragOutlined
+              className="drag-widget-icon cursor-pointer"
+              size={14}
+            />
+          </Col>
+          <Col>
+            <CloseOutlined size={14} onClick={handleCloseClick} />
+          </Col>
+        </Row>
+      )}
+      {isEmpty(data) ? (
+        <Row className="h-full">
+          <Col span={14}>
+            <Typography.Text className="font-medium">
+              {t('label.data-insight-total-entity-summary')}
+            </Typography.Text>
+          </Col>
+          <Col className="h-95" span={24}>
+            <EmptyGraphPlaceholder
+              icon={
+                <TotalDataAssetsEmptyIcon
+                  height={SIZE.X_SMALL}
+                  width={SIZE.X_SMALL}
+                />
+              }
+            />
+          </Col>
+        </Row>
+      ) : (
+        <Row className="h-95">
+          <Col span={isWidgetSizeLarge ? 14 : 24}>
+            <Typography.Text className="font-medium">
+              {t('label.data-insight-total-entity-summary')}
+            </Typography.Text>
+            <div className="p-t-md">
+              <ResponsiveContainer height={250} width="100%">
+                <AreaChart
+                  data={data}
+                  margin={{
+                    top: 10,
+                    right: isWidgetSizeLarge ? 50 : 20,
+                    left: -30,
+                    bottom: 0,
+                  }}
+                  syncId="anyId">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="timestamp" />
+                  <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
+                  <Tooltip />
+                  {entities.map((entity, i) => (
+                    <Area
+                      dataKey={entity}
+                      fill={TOTAL_ENTITY_CHART_COLOR[i]}
+                      key={entity}
+                      stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Col>
+          {isWidgetSizeLarge && (
+            <Col className="overflow-y-scroll h-max-full" span={10}>
+              <TotalEntityInsightSummary
+                entities={entities}
+                latestData={latestData}
+                relativePercentage={relativePercentage}
+                selectedDays={selectedDays}
+                total={total}
+              />
+            </Col>
+          )}
+        </Row>
+      )}
+    </Card>
   );
 };
 

@@ -11,29 +11,47 @@
  *  limitations under the License.
  */
 
-import { Col, Table } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
-import { isEmpty, isUndefined } from 'lodash';
-import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
-import { ServicePageData } from 'pages/service';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { Link, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import {
+  getDataModelDetailsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  pagingObject,
+} from '../../constants/constants';
+import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getDataModels } from '../../rest/dashboardAPI';
+import { getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 
-const DataModelTable = ({
-  data,
-  isLoading,
-  paging,
-  pagingHandler,
-  currentPage,
-}: DataModelTableProps) => {
+const DataModelTable = () => {
   const { t } = useTranslation();
+  const { fqn } = useParams<{ fqn: string }>();
+  const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
+  const [showDeleted, setShowDeleted] = useState(false);
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging();
+  const [isLoading, setIsLoading] = useState(true);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
@@ -43,10 +61,17 @@ const DataModelTable = ({
         key: 'displayName',
         width: 350,
         render: (_, record: ServicePageData) => {
+          const dataModelDisplayName = getEntityName(record);
+
           return (
-            <Link to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
-              {getEntityName(record)}
-            </Link>
+            <div className="d-inline-flex w-max-90">
+              <Link
+                className="break-word"
+                data-testid={`data-model-${dataModelDisplayName}`}
+                to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
+                {dataModelDisplayName}
+              </Link>
+            </div>
           );
         },
       },
@@ -69,36 +94,93 @@ const DataModelTable = ({
     []
   );
 
-  if (isEmpty(data)) {
-    return <ErrorPlaceHolder />;
-  }
+  const fetchDashboardsDataModel = useCallback(
+    async (pagingData?: Partial<Paging>) => {
+      try {
+        setIsLoading(true);
+        const { data, paging: resPaging } = await getDataModels({
+          service: fqn,
+          limit: pageSize,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...pagingData,
+        });
+        setDataModels(data);
+        handlePagingChange(resPaging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setDataModels([]);
+        handlePagingChange(pagingObject);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fqn, pageSize, showDeleted]
+  );
+
+  const handleDataModelPageChange: NextPreviousProps['pagingHandler'] = ({
+    cursorType,
+    currentPage,
+  }) => {
+    if (cursorType) {
+      fetchDashboardsDataModel({ [cursorType]: paging[cursorType] });
+    }
+    handlePageChange(currentPage);
+  };
+
+  const handleShowDeletedChange = (checked: boolean) => {
+    setShowDeleted(checked);
+    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageSizeChange(PAGE_SIZE_BASE);
+  };
+
+  useEffect(() => {
+    fetchDashboardsDataModel();
+  }, [pageSize, showDeleted]);
 
   return (
-    <Col data-testid="table-container" span={24}>
-      <Table
-        bordered
-        className="mt-4 table-shadow"
-        columns={tableColumn}
-        data-testid="data-models-table"
-        dataSource={data}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
-        pagination={false}
-        rowKey="id"
-        size="small"
-      />
-      {paging && paging.total > PAGE_SIZE && (
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={PAGE_SIZE}
-          paging={paging}
-          pagingHandler={pagingHandler}
-          totalCount={paging.total}
+    <Row gutter={[0, 16]}>
+      <Col className="p-t-sm p-x-lg" span={24}>
+        <Row justify="end">
+          <Col>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedChange}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>{' '}
+          </Col>
+        </Row>
+      </Col>
+      <Col className="p-x-lg" data-testid="table-container" span={24}>
+        <Table
+          bordered
+          className="mt-4 table-shadow"
+          columns={tableColumn}
+          data-testid="data-models-table"
+          dataSource={dataModels}
+          loading={isLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
         />
-      )}
-    </Col>
+      </Col>
+      <Col className="p-b-sm" span={24}>
+        {showPagination && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleDataModelPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
+    </Row>
   );
 };
 

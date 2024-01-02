@@ -19,64 +19,74 @@ import {
   MenuProps,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
-import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
-import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from 'components/common/AssigneeList/AssigneeList';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TaskOperation } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
-import { TaskType } from 'generated/api/feed/createThread';
-import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { TagLabel } from 'generated/type/tagLabel';
-import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
-import Assignees from 'pages/TasksPage/shared/Assignees';
-import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
-import TagsTask from 'pages/TasksPage/shared/TagsTask';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import ActivityFeedCardV1 from '../../../components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import {
+  TaskDetails,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { useAuth } from '../../../hooks/authHooks';
+import Assignees from '../../../pages/TasksPage/shared/Assignees';
+import DescriptionTask from '../../../pages/TasksPage/shared/DescriptionTask';
+import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import {
   Option,
   TaskAction,
   TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { updateTask, updateThread } from 'rest/feedsAPI';
-import EntityLink from 'utils/EntityLink';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityFQN } from 'utils/FeedUtils';
-import { getEntityLink } from 'utils/TableUtils';
+} from '../../../pages/TasksPage/TasksPage.interface';
+import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchOptions,
+  getTaskDetailPath,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
-} from 'utils/TasksUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
   taskThread,
   owner,
   entityType,
+  isForFeedTab,
   ...rest
 }: TaskTabProps) => {
+  const history = useHistory();
   const [assigneesForm] = useForm();
+  const { currentUser } = useAuthContext();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
 
   const { task: taskDetails } = taskThread;
@@ -84,7 +94,6 @@ export const TaskTab = ({
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const history = useHistory();
   const { isAdminUser } = useAuth();
   const { postFeed, setActiveThread } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
@@ -101,14 +110,9 @@ export const TaskTab = ({
         label: getEntityName(assignee),
         value: assignee.id || '',
         type: assignee.type,
+        name: assignee.name,
       })) ?? [],
     [taskDetails]
-  );
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const taskField = useMemo(() => {
@@ -144,14 +148,46 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+
+  const handleTaskLinkClick = () => {
+    history.push({
+      pathname: getTaskDetailPath(taskThread),
+    });
+  };
+
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text className="font-medium text-md">
-      <span>{`#${taskDetails?.id} `}</span>
+    <Typography.Text className="font-medium text-md" data-testid="task-title">
+      <Button
+        className="p-r-xss text-md font-medium"
+        type="link"
+        onClick={handleTaskLinkClick}>
+        {`#${taskDetails?.id} `}
+      </Button>
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
 
-      {!isEmpty(taskField) ? <span>{taskField}</span> : null}
+      {!isForFeedTab && (
+        <>
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all p-r-xss"
+              data-testid="entitylink"
+              to={getEntityLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              <Typography.Text className="text-md font-medium text-color-inherit">
+                {' '}
+                {getNameFromFQN(entityFQN)}
+              </Typography.Text>
+            </Link>
+          </EntityPopOverCard>
+        </>
+      )}
+      {!isEmpty(taskField) ? (
+        <span className="break-all">{taskField}</span>
+      ) : null}
     </Typography.Text>
   );
 
@@ -162,14 +198,17 @@ export const TaskTab = ({
     updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
-        rest.onUpdateEntityDetails?.();
-        history.push(getEntityLink(entityType ?? '', entityFQN ?? ''));
+        rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
   const onTaskResolve = () => {
-    if (isEmpty(taskDetails?.suggestion)) {
+    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -187,7 +226,10 @@ export const TaskTab = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: taskDetails?.suggestion };
+      const newValue = isTaskGlossaryApproval
+        ? 'approved'
+        : taskDetails?.suggestion;
+      const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
   };
@@ -215,9 +257,11 @@ export const TaskTab = ({
    *
    * @returns True if has access otherwise false
    */
-  const hasEditAccess = () => isAdminUser || isAssignee || isOwner;
-
-  const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
+  const hasEditAccess =
+    isAdminUser ||
+    isAssignee ||
+    isOwner ||
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const onSave = (message: string) => {
     postFeed(message, taskThread?.id ?? '').catch(() => {
@@ -239,28 +283,83 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (comment && taskDetails?.id) {
-      updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-        comment,
-      } as unknown as TaskDetails)
-        .then(() => {
-          showSuccessToast(t('server.task-closed-successfully'));
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
+    if (!isTaskGlossaryApproval && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
+
+      return;
     }
+
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
+
+  const approvalWorkflowActions = useMemo(() => {
+    const hasApprovalAccess =
+      isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-approve-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="reject-task"
+            disabled={!hasApprovalAccess}
+            onClick={onTaskReject}>
+            {t('label.reject')}
+          </Button>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-approve-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="approve-task"
+            disabled={!hasApprovalAccess}
+            type="primary"
+            onClick={onTaskResolve}>
+            {t('label.approve')}
+          </Button>
+        </Tooltip>
+      </Space>
+    );
+  }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
       return null;
     }
 
+    const taskType = taskDetails?.type ?? '';
+
+    if (isTaskGlossaryApproval) {
+      return approvalWorkflowActions;
+    }
+
     const parsedSuggestion = [
       'RequestDescription',
       'UpdateDescription',
-    ].includes(taskDetails?.type ?? '')
+    ].includes(taskType)
       ? taskDetails?.suggestion
       : JSON.parse(taskDetails?.suggestion || '[]');
 
@@ -269,14 +368,13 @@ export const TaskTab = ({
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {(isCreator || hasTaskUpdateAccess()) && (
+        {(isCreator || hasEditAccess) && (
           <Button onClick={onTaskReject}>{t('label.close')}</Button>
         )}
-        {hasTaskUpdateAccess() ? (
+        {hasEditAccess ? (
           <>
-            {['RequestDescription', 'RequestTag'].includes(
-              taskDetails?.type ?? ''
-            ) && isEmpty(parsedSuggestion) ? (
+            {['RequestDescription', 'RequestTag'].includes(taskType) &&
+            isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
@@ -286,6 +384,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
                   items: TASK_ACTION_LIST,
@@ -314,7 +413,9 @@ export const TaskTab = ({
     handleMenuItemClick,
     taskAction,
     isTaskClosed,
+    isTaskGlossaryApproval,
     isCreator,
+    approvalWorkflowActions,
   ]);
 
   const initialFormValue = useMemo(() => {
@@ -359,7 +460,7 @@ export const TaskTab = ({
   }, [initialAssignees]);
 
   return (
-    <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
+    <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
         <Icon
           className="m-r-xs"
@@ -409,6 +510,7 @@ export const TaskTab = ({
                     }}
                     onSave={() => assigneesForm.submit()}>
                     <Assignees
+                      disabled={Boolean(owner)}
                       options={options}
                       value={updatedAssignees}
                       onChange={(values) =>
@@ -426,12 +528,9 @@ export const TaskTab = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={taskDetails?.assignees ?? []}
-                  className="d-flex gap-1"
-                  profilePicType="circle"
-                  profileWidth="24"
                   showUserName={false}
                 />
-                {isCreator || hasTaskUpdateAccess() ? (
+                {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
                   <Button
                     className="flex-center p-0"
                     data-testid="edit-assignees"
@@ -460,7 +559,7 @@ export const TaskTab = ({
       <Col span={24}>
         {isTaskDescription && (
           <DescriptionTask
-            hasEditAccess={hasEditAccess()}
+            hasEditAccess={hasEditAccess}
             isTaskActionEdit={false}
             taskThread={taskThread}
             onChange={(value) => form.setFieldValue('description', value)}
@@ -469,7 +568,7 @@ export const TaskTab = ({
 
         {isTaskTags && (
           <TagsTask
-            hasEditAccess={hasEditAccess()}
+            hasEditAccess={hasEditAccess}
             isTaskActionEdit={false}
             task={taskDetails}
             onChange={(value) => form.setFieldValue('updatedTags', value)}
@@ -525,7 +624,7 @@ export const TaskTab = ({
               trigger="onChange">
               <TagsTask
                 isTaskActionEdit
-                hasEditAccess={hasEditAccess()}
+                hasEditAccess={hasEditAccess}
                 task={taskDetails}
                 onChange={(value) => form.setFieldValue('updatedTags', value)}
               />
@@ -546,7 +645,7 @@ export const TaskTab = ({
               trigger="onTextChange">
               <DescriptionTask
                 isTaskActionEdit
-                hasEditAccess={hasEditAccess()}
+                hasEditAccess={hasEditAccess}
                 taskThread={taskThread}
                 onChange={(value) => form.setFieldValue('description', value)}
               />

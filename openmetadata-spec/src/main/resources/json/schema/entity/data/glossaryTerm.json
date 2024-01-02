@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.GlossaryTerm",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -24,8 +25,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Approved", "Deprecated"],
-      "default": "Draft"
+      "enum": ["Draft", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -44,6 +44,9 @@
     "description": {
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
@@ -140,9 +143,16 @@
       "type" : "boolean",
       "default" : "false"
     },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
     "domain" : {
       "description": "Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["id", "name", "description", "glossary"],

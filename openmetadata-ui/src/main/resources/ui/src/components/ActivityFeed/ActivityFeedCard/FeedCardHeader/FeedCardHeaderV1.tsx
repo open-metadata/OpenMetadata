@@ -12,26 +12,24 @@
  */
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { getUserPath } from 'constants/constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   entityDisplayName,
   getEntityField,
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
-} from 'utils/FeedUtils';
-import { getEntityLink } from 'utils/TableUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from 'utils/TimeUtils';
+} from '../../../../utils/FeedUtils';
+import { getEntityLink } from '../../../../utils/TableUtils';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v1.style.less';
 
 interface FeedCardHeaderV1Props {
@@ -39,7 +37,6 @@ interface FeedCardHeaderV1Props {
   createdBy?: string;
   timeStamp?: number;
   className?: string;
-  showUserAvatar?: boolean;
   isEntityFeed?: boolean;
 }
 
@@ -48,19 +45,14 @@ const FeedCardHeaderV1 = ({
   createdBy = '',
   timeStamp,
   className = '',
-  showUserAvatar = true,
   isEntityFeed = false,
 }: FeedCardHeaderV1Props) => {
   const { t } = useTranslation();
-  const history = useHistory();
+
   const entityType = getEntityType(entityLink) ?? '';
   const entityFQN = getEntityFQN(entityLink) ?? '';
   const entityField = getEntityField(entityLink) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
-
-  const onTitleClickHandler = (name: string) => {
-    history.push(getUserPath(name));
-  };
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
@@ -87,35 +79,20 @@ const FeedCardHeaderV1 = ({
 
   return (
     <div className={classNames('feed-header', className)}>
-      {showUserAvatar && (
-        <UserPopOverCard userName={createdBy}>
-          <span className="p-r-xs cursor-pointer" data-testid="authorAvatar">
-            <ProfilePicture id="" name={createdBy} type="circle" width="24" />
+      <UserPopOverCard
+        showUserName
+        className="thread-author"
+        userName={createdBy}
+      />
+      {getFeedLinkElement}
+
+      {timeStamp && (
+        <Tooltip title={formatDateTime(timeStamp)}>
+          <span className="feed-header-timestamp" data-testid="timestamp">
+            {getRelativeTime(timeStamp)}
           </span>
-        </UserPopOverCard>
+        </Tooltip>
       )}
-      <span className="feed-header-content">
-        <UserPopOverCard userName={createdBy}>
-          <span
-            className="thread-author cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTitleClickHandler(createdBy);
-            }}>
-            {createdBy}
-          </span>
-        </UserPopOverCard>
-
-        {getFeedLinkElement}
-
-        {timeStamp && (
-          <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
-            <span className="feed-header-timestamp" data-testid="timestamp">
-              {getDayTimeByTimeStamp(timeStamp)}
-            </span>
-          </Tooltip>
-        )}
-      </span>
     </div>
   );
 };

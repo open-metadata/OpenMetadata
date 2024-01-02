@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface MlModelVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Mlmodel;
   isVersionLoading: boolean;
   owner: Mlmodel['owner'];
+  domain: Mlmodel['domain'];
+  dataProducts: Mlmodel['dataProducts'];
   tier: TagLabel;
   slashedMlModelName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

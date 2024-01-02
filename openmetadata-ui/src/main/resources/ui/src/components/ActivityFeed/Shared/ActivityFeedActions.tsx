@@ -10,27 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space } from 'antd';
-import AppState from 'AppState';
-import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import Reaction from 'components/Reactions/Reaction';
-import { REACTION_LIST } from 'constants/reactions.constant';
-import { ReactionOperation } from 'enums/reactions.enum';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Popover, Space } from 'antd';
+import { uniqueId } from 'lodash';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
+import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import Reaction from '../../../components/Reactions/Reaction';
+import { REACTION_LIST } from '../../../constants/reactions.constant';
+import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
   ReactionType,
   Thread,
   ThreadType,
-} from 'generated/entity/feed/thread';
-import { uniqueId } from 'lodash';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+} from '../../../generated/entity/feed/thread';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import './activity-feed-actions.less';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
-import { ReactComponent as ReplyIcon } from '/assets/svg/ic-reply.svg';
 
 interface ActivityFeedActionsProps {
   post: Post;
@@ -46,10 +47,7 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const isAuthor = post.from === currentUser?.name;
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -139,7 +137,7 @@ const ActivityFeedActions = ({
 
   return (
     <>
-      <Space className="feed-actions" size={6}>
+      <Space className="feed-actions" data-testid="feed-actions" size={12}>
         {feed.type !== ThreadType.Task && !isPost && (
           <Popover
             destroyTooltipOnHide
@@ -152,57 +150,54 @@ const ActivityFeedActions = ({
             trigger="click"
             zIndex={9999}
             onOpenChange={handleVisibleChange}>
-            <Button
+            <Icon
               className="toolbar-button"
+              component={IconReaction}
               data-testid="add-reactions"
-              icon={<AddReactionIcon />}
-              size="small"
-              type="text"
-              onClick={(e) => e.stopPropagation()}
+              style={{ fontSize: '16px' }}
             />
           </Popover>
         )}
 
         {!isPost && (
-          <Button
+          <Icon
             className="toolbar-button"
+            component={IconReply}
             data-testid="add-reply"
-            icon={<ReplyIcon />}
-            size="small"
-            type="text"
+            style={{ fontSize: '16px' }}
             onClick={onReply}
           />
         )}
 
         {editCheck && (
-          <Button
+          <Icon
             className="toolbar-button"
+            component={IconEdit}
             data-testid="edit-message"
-            icon={<EditIcon width={14} />}
-            size="small"
-            title={t('label.edit')}
-            type="text"
+            style={{ fontSize: '16px' }}
             onClick={onEditPost}
           />
         )}
 
         {deleteCheck && (
-          <Button
+          <Icon
             className="toolbar-button"
+            component={DeleteIcon}
             data-testid="delete-message"
-            icon={<DeleteIcon width={14} />}
-            size="small"
-            title={t('label.delete')}
-            type="text"
+            style={{ fontSize: '16px' }}
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
         {/* </div> */}
       </Space>
-      <DeleteConfirmationModal
+      <ConfirmationModal
+        bodyText={t('message.confirm-delete-message')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('message.delete-message-question-mark')}
         visible={showDeleteDialog}
-        onDelete={handleDelete}
-        onDiscard={() => setShowDeleteDialog(false)}
+        onCancel={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
       />
     </>
   );

@@ -13,75 +13,78 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
+import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import {
+  entityDisplayName,
+  getEntityField,
   getEntityFieldDisplay,
+  getEntityFQN,
+  getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
-  onCancel,
-  entityField,
   className,
+  entityLink,
   noun,
   onShowNewConversation,
   threadType,
-  entityFQN = '',
+  onCancel,
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
+  const entityType = getEntityType(entityLink);
+  const entityFQN = getEntityFQN(entityLink);
+  const entityField = getEntityField(entityLink);
 
   return (
-    <header className={className}>
-      <div className="d-flex justify-between p-y-md">
-        <p data-testid="header-title">
-          <span data-testid="header-noun">
-            {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
-            {t('label.on-lowercase')}{' '}
-          </span>
-          <span className="tw-heading" data-testid="entity-attribute">
-            {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
-          </span>
-        </p>
-        <div className="d-flex">
-          {onShowNewConversation ? (
-            <Tooltip
-              placement="bottom"
-              title={t('label.start-entity', {
-                entity: t('label.conversation-lowercase'),
-              })}
-              trigger="hover">
-              <Button
-                data-testid="add-new-conversation"
-                icon={<PlusOutlined />}
-                size="small"
-                type="primary"
-                onClick={() => {
-                  onShowNewConversation?.(true);
-                }}
-              />
-            </Tooltip>
-          ) : null}
-          {hideCloseIcon ? null : (
-            <svg
-              className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
-              data-testid="closeDrawer"
-              fill="none"
-              stroke="#6B7280"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              onClick={onCancel}>
-              <path
-                d="M6 18L18 6M6 6l12 12"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
+    <header className={classNames('d-flex justify-between p-y-md', className)}>
+      <p data-testid="header-title">
+        <span data-testid="header-noun">
+          {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
+          {t('label.on-lowercase')}{' '}
+        </span>
+        <span className="font-medium" data-testid="entity-attribute">
+          {entityField ? (
+            getEntityFieldDisplay(entityField)
+          ) : (
+            <Link
+              className="break-all"
+              data-testid="entitylink"
+              to={getEntityLink(entityType, entityFQN)}>
+              <span>{entityDisplayName(entityType, entityFQN)}</span>
+            </Link>
           )}
-        </div>
+        </span>
+      </p>
+      <div className="d-flex items-center">
+        {onShowNewConversation ? (
+          <Tooltip
+            placement="bottom"
+            title={t('label.start-entity', {
+              entity: t('label.conversation-lowercase'),
+            })}
+            trigger="hover">
+            <Button
+              data-testid="add-new-conversation"
+              icon={<PlusOutlined />}
+              size="small"
+              type="primary"
+              onClick={() => {
+                onShowNewConversation(true);
+              }}
+            />
+          </Tooltip>
+        ) : null}
+        {hideCloseIcon ? null : (
+          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
+        )}
       </div>
     </header>
   );

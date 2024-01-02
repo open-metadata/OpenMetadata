@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
-import { ReactComponent as KPIIcon } from 'assets/svg/ic-kpi.svg';
+import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { DATA_INSIGHT_DOCS } from 'constants/docs.constants';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,27 +22,30 @@ import {
   Line,
   LineChart,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
-import { Transi18next } from 'utils/CommonUtils';
-import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+import { ReactComponent as KPIIcon } from '../../assets/svg/ic-kpi.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
+import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
+import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
+import { Transi18next } from '../../utils/CommonUtils';
+import { getKpiGraphData } from '../../utils/DataInsightUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
+  isEditView?: boolean;
   kpiList: Array<Kpi>;
   selectedDays: number;
+  isKPIListLoading: boolean;
 }
 
 const EmptyPlaceholder = () => {
@@ -79,7 +81,12 @@ const EmptyPlaceholder = () => {
   );
 };
 
-const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
+const KPIChartV1: FC<Props> = ({
+  isKPIListLoading,
+  kpiList,
+  selectedDays,
+  isEditView = false,
+}) => {
   const { t } = useTranslation();
 
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
@@ -92,8 +99,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
     try {
       const promises = kpiList.map((kpi) =>
         getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getPastDaysDateTimeMillis(selectedDays),
-          endTs: getCurrentDateTimeMillis(),
+          startTs: getEpochMillisForPastDays(selectedDays),
+          endTs: getCurrentMillis(),
         })
       );
       const responses = await Promise.allSettled(promises);
@@ -156,12 +163,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
     }
   };
 
-  const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
-    const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
-      return { ...previous, [curr.name]: curr.metricType };
-    }, {});
-
-    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
+  const { kpis, graphData } = useMemo(() => {
+    return { ...getKpiGraphData(kpiResults, kpiList) };
   }, [kpiResults, kpiList]);
 
   useEffect(() => {
@@ -185,15 +188,24 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}>
-      <Row>
-        <Col span={24}>
+      loading={isKPIListLoading || isLoading}>
+      <Row align="middle" justify="space-between">
+        <Col>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
         </Col>
+        {isEditView && (
+          <Space align="center">
+            <DragOutlined
+              className="drag-widget-icon cursor-pointer"
+              size={14}
+            />
+            <CloseOutlined size={14} />
+          </Space>
+        )}
       </Row>
-      {kpiList.length ? (
+      {kpiList.length > 0 ? (
         <Row>
           {graphData.length ? (
             <>
@@ -213,11 +225,6 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
                     />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
-                    <Tooltip
-                      content={
-                        <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
-                      }
-                    />
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}

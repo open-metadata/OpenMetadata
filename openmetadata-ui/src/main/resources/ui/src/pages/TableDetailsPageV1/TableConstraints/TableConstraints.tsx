@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { SUPPORTED_TABLE_CONSTRAINTS } from 'constants/Table.constants';
-import { EntityType, FqnPart } from 'enums/entity.enum';
-import { ConstraintType, Table } from 'generated/entity/data/table';
 import { isEmpty, map } from 'lodash';
 import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getEntityLink } from 'utils/TableUtils';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { SUPPORTED_TABLE_CONSTRAINTS } from '../../../constants/Table.constants';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ConstraintType, Table } from '../../../generated/entity/data/table';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
@@ -54,17 +54,32 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
       {supportedConstraints.map(
         ({ constraintType, columns, referredColumns }) => {
           if (constraintType === ConstraintType.PrimaryKey) {
-            const columnsLength = (columns?.length ?? 0) - 1;
-
             return (
-              <Space wrap className="constraint-columns">
-                {columns?.map((column, index) => (
-                  <Fragment key={column}>
-                    <Typography.Text>{column}</Typography.Text>
-                    {index < columnsLength ? <PrimaryKeyConstraint /> : null}
-                  </Fragment>
-                ))}
-              </Space>
+              <div className="d-flex constraint-columns">
+                <Space
+                  className="constraint-icon-container"
+                  direction="vertical"
+                  size={0}>
+                  {columns?.map((column, index) => (
+                    <Fragment key={column}>
+                      {(columns?.length ?? 0) - 1 !== index ? (
+                        <PrimaryKeyConstraint />
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </Space>
+
+                <Space direction="vertical" size={16}>
+                  {columns?.map((column) => (
+                    <Typography.Text
+                      className="w-60"
+                      ellipsis={{ tooltip: true }}
+                      key={column}>
+                      {column}
+                    </Typography.Text>
+                  ))}
+                </Space>
+              </div>
             );
           }
           if (constraintType === ConstraintType.ForeignKey) {

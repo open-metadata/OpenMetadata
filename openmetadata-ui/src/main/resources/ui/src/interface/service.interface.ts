@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { FormSubmitType } from '../enums/form.enum';
+import { ServiceCategory } from '../enums/service.enum';
 import {
-  StorageConnection,
-  StorageService,
-} from 'generated/entity/services/storageService';
+  Pipeline,
+  PipelineType,
+} from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   DashboardConnection,
   DashboardService,
@@ -36,6 +38,14 @@ import {
   PipelineConnection,
   PipelineService,
 } from '../generated/entity/services/pipelineService';
+import {
+  SearchConnection,
+  SearchService,
+} from '../generated/entity/services/searchService';
+import {
+  StorageConnection,
+  StorageService,
+} from '../generated/entity/services/storageService';
 import { Paging } from '../generated/type/paging';
 
 export interface IngestionSchedule {
@@ -77,6 +87,14 @@ export interface EditObj {
   id?: string;
 }
 
+export type DomainSupportedServiceTypes =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService;
+
 export type ServicesType =
   | DatabaseService
   | MessagingService
@@ -84,7 +102,8 @@ export type ServicesType =
   | PipelineService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -98,4 +117,25 @@ export type ConfigData =
   | PipelineConnection
   | MlModelConnection
   | MetadataConnection
-  | StorageConnection;
+  | StorageConnection
+  | SearchConnection;
+
+export type IngestionWorkflowData = Pipeline & {
+  name: string;
+  enableDebugLog?: boolean;
+  displayName?: string;
+};
+
+export interface IngestionWorkflowFormProps {
+  pipeLineType: PipelineType;
+  serviceCategory: ServiceCategory;
+  workflowData: IngestionWorkflowData;
+  operationType: FormSubmitType;
+  cancelText?: string;
+  okText?: string;
+  className?: string;
+  onCancel: () => void;
+  onFocus: (fieldId: string) => void;
+  onSubmit: (data: IngestionWorkflowData) => void;
+  onChange?: (data: IngestionWorkflowData) => void;
+}

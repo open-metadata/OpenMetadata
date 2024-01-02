@@ -4,6 +4,7 @@
   "title": "StorageContainerConfig",
   "description": "Definition of the properties contained by an object store container template config file",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.ContainerMetadataConfig",
+  "type": "object",
   "definitions": {
     "metadataEntry": {
       "description": "Config properties for a container found in a user-supplied metadata config",
@@ -18,6 +19,12 @@
         "structureFormat": {
           "title": "Schema format",
           "description": "What's the schema format for the container, eg. avro, parquet, csv.",
+          "type": "string",
+          "default": null
+        },
+        "separator": {
+          "title": "Separator",
+          "description": "For delimited files such as CSV, what is the separator being used?",
           "type": "string",
           "default": null
         },
@@ -37,9 +44,7 @@
           "default": null
         }
       },
-      "required": [
-        "dataPath"
-      ]
+      "required": ["dataPath"]
     }
   },
   "properties": {

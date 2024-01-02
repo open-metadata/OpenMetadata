@@ -18,6 +18,7 @@ from typing import Optional
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -42,9 +43,10 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
     def __init__(
         self,
-        ometa_client: OpenMetadata,
         service_connection_config: DatalakeConnection,
-        table_entity,
+        ometa_client: OpenMetadata,
+        table_entity: Table = None,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         self.table_entity = table_entity
 
@@ -92,7 +94,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             test_handler = TestHandler(
                 self.dfs,
                 test_case=test_case,
-                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Button, Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { includes, isEmpty, round, toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
-  Legend,
-  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -28,7 +25,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -37,15 +33,17 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  TIER_BAR_COLOR_MAP,
-  TIER_DATA,
+  GRAPH_HEIGHT,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   axisTickFormatter,
   updateActiveChartFilter,
@@ -53,29 +51,45 @@ import {
 import {
   CustomTooltip,
   getGraphDataByTierType,
-  renderLegend,
+  sortEntityByValue,
 } from '../../utils/DataInsightUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './DataInsightDetail.less';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;
+  tierTags: { tags: Tag[]; isLoading: boolean };
 }
 
-const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
+const TierInsight: FC<Props> = ({ chartFilter, selectedDays, tierTags }) => {
   const [totalEntitiesByTier, setTotalEntitiesByTier] =
     useState<DataInsightChartResult>();
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
+  const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
 
   const { data, tiers, total, relativePercentage, latestData } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
   }, [totalEntitiesByTier]);
+  const sortedEntitiesByValue = useMemo(() => {
+    return sortEntityByValue(tiers, latestData);
+  }, [tiers, latestData]);
+  const rightSideEntityList = useMemo(
+    () =>
+      sortedEntitiesByValue.filter((entity) =>
+        includes(toLower(entity), toLower(searchEntityKeyWord))
+      ),
+    [sortedEntitiesByValue, searchEntityKeyWord]
+  );
 
   const { t } = useTranslation();
 
@@ -88,8 +102,17 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
+      const updatedRes = response.data?.map((data) => {
+        const currentTier = tierTags.tags.find(
+          (value) => value.fullyQualifiedName === data.entityTier
+        );
 
-      setTotalEntitiesByTier(response);
+        return {
+          ...data,
+          entityTier: getEntityName(currentTier) || data.entityTier,
+        };
+      });
+      setTotalEntitiesByTier({ ...response, data: updatedRes });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -97,123 +120,151 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
     }
   };
 
-  const handleLegendClick: LegendProps['onClick'] = (event) => {
+  const handleLegendClick = (entity: string) => {
     setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+      updateActiveChartFilter(entity, prevActiveKeys)
     );
   };
-  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.dataKey);
+
+  const handleLegendMouseEnter = (entity: string) => {
+    setActiveMouseHoverKey(entity);
   };
-  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+  const handleLegendMouseLeave = () => {
     setActiveMouseHoverKey('');
   };
 
   useEffect(() => {
-    fetchTotalEntitiesByTier();
-  }, [chartFilter]);
+    if (!tierTags.isLoading) {
+      fetchTotalEntitiesByTier();
+    }
+  }, [chartFilter, tierTags]);
+
+  if (isLoading || data.length === 0) {
+    return (
+      <Card
+        className="data-insight-card"
+        loading={isLoading}
+        title={
+          <PageHeader
+            data={{
+              header: t('label.data-insight-tier-summary'),
+              subHeader: t('message.field-insight', {
+                field: t('label.tier'),
+              }),
+            }}
+          />
+        }>
+        <EmptyGraphPlaceholder />
+      </Card>
+    );
+  }
 
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       id={DataInsightChartType.TotalEntitiesByTier}
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.data-insight-tier-summary'),
-            subHeader: t('message.field-insight', {
-              field: t('label.tier'),
-            }),
-          }}
-        />
-      }>
-      {data.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
-              <LineChart data={data} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid
-                  stroke={GRAPH_BACKGROUND_COLOR}
-                  vertical={false}
-                />
-                <XAxis dataKey="timestamp" />
-                <YAxis
-                  tickFormatter={(value) => axisTickFormatter(value, '%')}
-                />
-                <Tooltip content={<CustomTooltip isPercentage isTier />} />
-                <Legend
-                  align="left"
-                  content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys, true)
+      loading={isLoading}>
+      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+        <Col span={DI_STRUCTURE.leftContainerSpan}>
+          <PageHeader
+            data={{
+              header: t('label.data-insight-tier-summary'),
+              subHeader: t('message.field-insight', {
+                field: t('label.tier'),
+              }),
+            }}
+          />
+          <ResponsiveContainer
+            debounce={1}
+            height={GRAPH_HEIGHT}
+            id={`${DataInsightChartType.TotalEntitiesByTier}-graph`}>
+            <LineChart data={data} margin={BAR_CHART_MARGIN}>
+              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+              <XAxis dataKey="timestamp" />
+              <YAxis tickFormatter={(value) => axisTickFormatter(value, '%')} />
+              <Tooltip
+                content={<CustomTooltip isPercentage isTier />}
+                wrapperStyle={{ pointerEvents: 'auto' }}
+              />
+              {tiers.map((tier, i) => (
+                <Line
+                  dataKey={tier}
+                  hide={
+                    activeKeys.length && tier !== activeMouseHoverKey
+                      ? !activeKeys.includes(tier)
+                      : false
                   }
-                  layout="horizontal"
-                  verticalAlign="top"
-                  wrapperStyle={{ left: '0px', top: '0px' }}
-                  onClick={handleLegendClick}
-                  onMouseEnter={handleLegendMouseEnter}
-                  onMouseLeave={handleLegendMouseLeave}
+                  key={tier}
+                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  strokeOpacity={
+                    isEmpty(activeMouseHoverKey) || tier === activeMouseHoverKey
+                      ? DEFAULT_CHART_OPACITY
+                      : HOVER_CHART_OPACITY
+                  }
+                  type="monotone"
                 />
-                {tiers.map((tier) => (
-                  <Line
-                    dataKey={tier}
-                    hide={
-                      activeKeys.length && tier !== activeMouseHoverKey
-                        ? !activeKeys.includes(tier)
-                        : false
-                    }
-                    key={tier}
-                    stroke={TIER_BAR_COLOR_MAP[tier]}
-                    strokeOpacity={
-                      isEmpty(activeMouseHoverKey) ||
-                      tier === activeMouseHoverKey
-                        ? DEFAULT_CHART_OPACITY
-                        : HOVER_CHART_OPACITY
-                    }
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
-          <Col span={DI_STRUCTURE.rightContainerSpan}>
-            <Row gutter={DI_STRUCTURE.rightRowGutter}>
-              <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {`${t('label.assigned-entity', {
-                    entity: t('label.tier'),
-                  })} %`}
-                </Typography.Paragraph>
-                <DataInsightProgressBar
-                  changeInValue={relativePercentage}
-                  className="m-b-md"
-                  duration={selectedDays}
-                  progress={Number(total)}
-                  showLabel={false}
-                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </Col>
+        <Col span={DI_STRUCTURE.rightContainerSpan}>
+          <Row gutter={[8, 16]}>
+            <Col span={24}>
+              <DataInsightProgressBar
+                changeInValue={relativePercentage}
+                duration={selectedDays}
+                label={`${t('label.assigned-entity', {
+                  entity: t('label.tier'),
+                })} %`}
+                progress={Number(total)}
+                showLabel={false}
+              />
+            </Col>
+            <Col span={24}>
+              <Searchbar
+                removeMargin
+                searchValue={searchEntityKeyWord}
+                onSearch={setSearchEntityKeyWord}
+              />
+            </Col>
+            <Col className="chart-card-right-panel-container" span={24}>
+              <Row gutter={[8, 8]}>
+                {rightSideEntityList.map((tier, i) => {
+                  return (
+                    <Col
+                      className="entity-summary-container"
+                      key={tier}
+                      span={24}
+                      onClick={() => handleLegendClick(tier)}
+                      onMouseEnter={() => handleLegendMouseEnter(tier)}
+                      onMouseLeave={handleLegendMouseLeave}>
+                      <EntitySummaryProgressBar
+                        entity={tier}
+                        isActive={
+                          activeKeys.length ? activeKeys.includes(tier) : true
+                        }
+                        label={round(latestData[tier] || 0, 2) + '%'}
+                        latestData={latestData}
+                        pluralize={false}
+                        progress={latestData[tier]}
+                        strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                      />
+                    </Col>
+                  );
+                })}
+              </Row>
+            </Col>
+            {activeKeys.length > 0 && (
+              <Col className="flex justify-end" span={24}>
+                <Button type="link" onClick={() => setActiveKeys([])}>
+                  {t('label.clear')}
+                </Button>
               </Col>
-              {tiers.map((tiers) => {
-                return (
-                  <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
-                      progress={latestData[tiers]}
-                      showLabel={false}
-                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
-                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
-                    />
-                  </Col>
-                );
-              })}
-            </Row>
-          </Col>
-        </Row>
-      ) : (
-        <EmptyGraphPlaceholder />
-      )}
+            )}
+          </Row>
+        </Col>
+      </Row>
     </Card>
   );
 };

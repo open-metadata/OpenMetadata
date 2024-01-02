@@ -14,13 +14,15 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column
+from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
+    FLOAT_SET,
+    Dialects,
     is_concatenable,
     is_date_time,
     is_quantifiable,
@@ -35,6 +37,33 @@ class MinFn(GenericFunction):
 @compiles(MinFn)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
+    return f"MIN({col})"
+
+
+@compiles(MinFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    first_clause = element.clauses.clauses[0]
+    # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
+    # or if the type of the first clause is date time
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
+        # If the condition is true, return the minimum value of the column
+        return f"MIN({col})"
+    return f"IF(is_nan(MIN({col})), NULL, MIN({col}))"
+
+
+@compiles(MinFn, Dialects.MySQL)
+@compiles(MinFn, Dialects.MariaDB)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    col_type = element.clauses.clauses[0].type
+    if isinstance(col_type, TIME):
+        # Mysql Sqlalchemy returns timedelta which is not supported pydantic type
+        # hence we profile the time by modifying it in seconds
+        return f"MIN(TIME_TO_SEC({col}))"
     return f"MIN({col})"
 
 
@@ -53,14 +82,17 @@ class Min(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
-            return MinFn(LenFn(column(self.col.name)))
+            return MinFn(LenFn(column(self.col.name, self.col.type)))
 
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MinFn(column(self.col.name))
+        return MinFn(column(self.col.name, self.col.type))
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        if is_quantifiable(self.col.type) or is_date_time(self.col.type):
+        if is_quantifiable(self.col.type):
             return min((df[self.col.name].min() for df in dfs))
+        if is_date_time(self.col.type):
+            min_ = min((df[self.col.name].min() for df in dfs))
+            return int(min_.timestamp() * 1000)
         return 0

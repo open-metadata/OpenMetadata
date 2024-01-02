@@ -199,6 +199,14 @@ export const MOCK_TABLE = {
       ['address_id3', 'shop_id3', 'first_name3', 'last_name3'],
     ],
   },
+  testSuite: {
+    summary: {
+      success: 0,
+      failed: 0,
+      aborted: 0,
+    },
+  },
+  retentionPeriod: 'P23DT23H',
   deleted: false,
 } as unknown as Table;
 

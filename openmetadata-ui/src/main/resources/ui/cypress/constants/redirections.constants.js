@@ -62,41 +62,41 @@ export const LEFT_PANEL_DETAILS = {
 
 export const NAVBAR_DETAILS = {
   explore: {
-    testid: '[data-testid="appbar-item-explore"]',
+    testid: '[data-testid="app-bar-item-explore"]',
     url: `${BASE_URL}/explore/tables`,
   },
   quality: {
-    testid: '[data-testid="appbar-item-data-quality"]',
+    testid: '[data-testid="app-bar-item-data-quality"]',
     url: `${BASE_URL}/data-quality`,
   },
   insights: {
-    testid: '[data-testid="appbar-item-data-insight"]',
+    testid: '[data-testid="app-bar-item-data-insight"]',
     url: `${BASE_URL}/data-insights`,
   },
   glossary: {
     testid: `[data-testid="governance"]`,
-    subMenu: `[data-testid="appbar-item-glossary"]`,
+    subMenu: `[data-testid="app-bar-item-glossary"]`,
     url: `${BASE_URL}/glossary`,
   },
   tags: {
     testid: `[data-testid="governance"]`,
-    subMenu: '[data-testid="appbar-item-tags"]',
+    subMenu: '[data-testid="app-bar-item-tags"]',
     url: `${BASE_URL}/tags/`,
   },
   settings: {
-    testid: '[data-testid="appbar-item-settings"]',
+    testid: '[data-testid="app-bar-item-settings"]',
     url: `${BASE_URL}/settings/members/teams/Organization`,
   },
   profile: {
     testid: '[data-testid="dropdown-profile"]',
-    subMenu: '[data-testid="greeting-text"] [data-testid="user-name"]',
+    subMenu: '[data-testid="user-name"]',
     url: `${BASE_URL}/users/admin`,
   },
 };
 
 export const SETTINGS_LEFT_PANEL = {
   settings: {
-    testid: '[data-testid="appbar-item-settings"]',
+    testid: '[data-testid="app-bar-item-settings"]',
     url: `${BASE_URL}/settings/members/teams/Organization`,
   },
   teams: {
@@ -140,8 +140,24 @@ export const SETTINGS_LEFT_PANEL = {
     url: `${BASE_URL}/settings/services/mlModels`,
   },
   metadata: {
-    testid: '[data-menu-id*="metadata"]',
+    testid: '[data-menu-id*="services.metadata"]',
     url: `${BASE_URL}/settings/services/metadata`,
+  },
+  storages: {
+    testid: '[data-menu-id*="services.storages"]',
+    url: `${BASE_URL}/settings/services/storages`,
+  },
+  searchService: {
+    testid: '[data-menu-id*="services.search"]',
+    url: `${BASE_URL}/settings/services/search`,
+  },
+  activityFeeds: {
+    testid: '[data-menu-id*="notifications.activityFeeds"]',
+    url: `${BASE_URL}/settings/notifications/activityFeeds`,
+  },
+  alerts: {
+    testid: '[data-menu-id*="notifications.alerts"]',
+    url: `${BASE_URL}/settings/notifications/alerts`,
   },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
@@ -163,9 +179,21 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     url: `${BASE_URL}/settings/customAttributes/mlModels`,
   },
-  search: {
-    testid: '[data-menu-id*="search"]',
-    url: `${BASE_URL}/settings/openMetadata/search`,
+  customAttributesContainers: {
+    testid: '[data-menu-id*="customAttributes.containers"]',
+    url: `${BASE_URL}/settings/customAttributes/containers`,
+  },
+  customAttributesSearchIndex: {
+    testid: '[data-menu-id*="customAttributes.searchIndex"]',
+    url: `${BASE_URL}/settings/customAttributes/searchIndex`,
+  },
+  customAttributesStoredProcedure: {
+    testid: '[data-menu-id*="customAttributes.storedProcedure"]',
+    url: `${BASE_URL}/settings/customAttributes/storedProcedure`,
+  },
+  applications: {
+    testid: '[data-menu-id*="integrations.apps"]',
+    url: `${BASE_URL}/settings/integrations/apps`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

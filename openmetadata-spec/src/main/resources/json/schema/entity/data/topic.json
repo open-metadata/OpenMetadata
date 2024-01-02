@@ -126,7 +126,8 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this table.",
@@ -153,13 +154,30 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "domain" : {
       "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
     "dataProducts" : {
-      "description": "List of of data products this entity is part of.",
+      "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["id", "name", "partitions", "service"],

@@ -19,9 +19,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -33,9 +31,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.Entity.EntityList;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
@@ -50,7 +48,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
 public class EventResource {
-  @Getter private final ChangeEventRepository dao;
+  @Getter private final ChangeEventRepository repository;
 
   public static class EventList extends ResultList<ChangeEvent> {
 
@@ -62,9 +60,8 @@ public class EventResource {
     }
   }
 
-  public EventResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
-    this.dao = new ChangeEventRepository(dao);
+  public EventResource(Authorizer authorizer) {
+    this.repository = Entity.getChangeEventRepository();
   }
 
   @GET
@@ -72,12 +69,16 @@ public class EventResource {
   @Operation(
       operationId = "listChangeEvents",
       summary = "Get change events",
-      description = "Get a list of change events matching event types, entity type, from a given date",
+      description =
+          "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventList.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventList.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public ResultList<ChangeEvent> get(
@@ -93,11 +94,19 @@ public class EventResource {
       @Parameter(
               description =
                   "List of comma separated entities requested for "
-                      + "`entityCreated` event. When set to `*` all entities will be "
+                      + "`entityUpdated` event. When set to `*` all entities will be "
                       + "returned",
               schema = @Schema(type = "string", example = "table,dashboard,..."))
           @QueryParam("entityUpdated")
           String entityUpdated,
+      @Parameter(
+              description =
+                  "List of comma separated entities requested for "
+                      + "`entityRestored` event. When set to `*` all entities will be "
+                      + "returned",
+              schema = @Schema(type = "string", example = "table,dashboard,..."))
+          @QueryParam("entityRestored")
+          String entityRestored,
       @Parameter(
               description =
                   "List of comma separated entities requested for "
@@ -111,12 +120,14 @@ public class EventResource {
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("timestamp")
-          long timestamp)
-      throws IOException {
+          long timestamp) {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
+    List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    List<ChangeEvent> events = dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
+    List<ChangeEvent> events =
+        repository.list(
+            timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
     return new EventList(events, null, null, events.size());
   }

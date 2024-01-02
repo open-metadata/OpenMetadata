@@ -12,35 +12,41 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { compare } from 'fast-json-patch';
+import { isUndefined, omitBy, toString } from 'lodash';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TopicDetails from 'components/TopicDetails/TopicDetails.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy, toString } from 'lodash';
-import { observer } from 'mobx-react';
-import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Topic } from '../../generated/entity/data/topic';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
-} from 'rest/topicsAPI';
-import { getVersionPath } from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic } from '../../generated/entity/data/topic';
+  updateTopicVotes,
+} from '../../rest/topicsAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -50,11 +56,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { topicFQN } = useParams<{ topicFQN: string }>();
+  const { fqn: topicFQN } = useParams<{ fqn: string }>();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -121,7 +128,9 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.OWNER,
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
-        TabSpecificField.EXTENSION,
+        TabSpecificField.DOMAIN,
+        TabSpecificField.DATA_PRODUCTS,
+        TabSpecificField.VOTES,
       ]);
       const { id, fullyQualifiedName, serviceType } = res;
 
@@ -210,6 +219,44 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const handleToggleDelete = (version?: number) => {
+    setTopicDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateTopicVotes(id, data);
+      const details = await getTopicByFqn(topicFQN, [
+        TabSpecificField.OWNER,
+        TabSpecificField.FOLLOWERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.VOTES,
+      ]);
+      setTopicDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateTopicDetailsState = useCallback((data) => {
+    const updatedData = data as Topic;
+
+    setTopicDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     fetchResourcePermission(topicFQN);
   }, [topicFQN]);
@@ -239,13 +286,16 @@ const TopicDetailsPage: FunctionComponent = () => {
       createThread={createThread}
       fetchTopic={() => fetchTopicDetail(topicFQN)}
       followTopicHandler={followTopic}
+      handleToggleDelete={handleToggleDelete}
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}
+      updateTopicDetailsState={updateTopicDetailsState}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };
 
-export default observer(TopicDetailsPage);
+export default TopicDetailsPage;

@@ -65,7 +65,7 @@ def parse_column(self, line, state):
     name, type_, args = spec["name"], spec["coltype"], spec["arg"]
 
     try:
-        col_type = self.dialect.ischema_names[type_]
+        col_type = self.dialect.ischema_names[type_.lower()]
     except KeyError:
         util.warn(f"Did not recognize type '{type_}' of column '{name}'")
         col_type = sqltypes.NullType
@@ -88,9 +88,9 @@ def parse_column(self, line, state):
     for ikw in ("unsigned", "zerofill"):
         if spec.get(ikw, False):
             type_kw[ikw] = True
-    for ikw in ("charset", "collate"):
-        if spec.get(ikw, False):
-            type_kw[ikw] = spec[ikw]
+    if spec.get("charset", False):
+        type_kw["charset"] = spec["charset"]
+
     if issubclass(col_type, (ENUM, SET)):
         type_args = _strip_values(type_args)
 

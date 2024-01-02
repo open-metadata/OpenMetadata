@@ -11,39 +11,50 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getListKPIs } from 'rest/KpiAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import { EmptyGraphPlaceholder } from '../../components/DataInsightDetail/EmptyGraphPlaceholder';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
+import { getListKPIs } from '../../rest/KpiAPI';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTime } from '../../utils/TimeUtils';
 
-const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
+const KPIList = () => {
   const history = useHistory();
-  const { isAdminUser } = useAuth();
+  const { currentUser } = useAuthContext();
+  const isAdminUser = currentUser?.isAdmin ?? false;
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const viewKPIPermission = useMemo(
+    () => checkPermission(Operation.ViewAll, ResourceEntity.KPI, permissions),
+    [permissions]
+  );
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [kpiPage, setKpiPage] = useState(INITIAL_PAGING_VALUE);
@@ -101,7 +112,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text> {formatDateTime(startDate)}</Typography.Text>
+          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
         ),
       },
       {
@@ -111,6 +122,22 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         render: (endDate: number) => (
           <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
         ),
+      },
+      {
+        title: t('label.target'),
+        dataIndex: 'targetDefinition',
+        key: 'targetDefinition',
+        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+          const isPercentageMetric =
+            record.metricType === KpiTargetType.Percentage;
+          const targetValue = targetDefinition?.length
+            ? isPercentageMetric
+              ? `${+targetDefinition[0].value * 100}%`
+              : targetDefinition[0].value
+            : '-';
+
+          return <Typography.Text>{targetValue}</Typography.Text>;
+        },
       },
       {
         title: t('label.metric-type'),
@@ -170,19 +197,25 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
     return col;
   }, [kpiList]);
 
-  const kpiPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
-    setKpiPage(activePage as number);
-    fetchKpiList({
-      [cursorValue]: kpiPaging[cursorValue as keyof Paging] as string,
-    });
+  const kpiPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setKpiPage(currentPage);
+      fetchKpiList({
+        [cursorType]: kpiPaging[cursorType as keyof Paging] as string,
+      });
+    }
   };
 
   useEffect(() => {
     fetchKpiList();
   }, []);
+
+  const handleAfterDeleteAction = useCallback(() => {
+    fetchKpiList();
+  }, [fetchKpiList]);
 
   const noDataPlaceHolder = useMemo(
     () =>
@@ -202,7 +235,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
           columns={columns}
           data-testid="kpi-table"
           dataSource={kpiList}
-          loading={{ spinning: isLoading, indicator: <Loader /> }}
+          loading={isLoading}
           locale={{
             emptyText: noDataPlaceHolder,
           }}
@@ -218,18 +251,17 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}
-            totalCount={kpiPaging.total}
           />
         </Col>
       )}
 
       {selectedKpi && (
         <DeleteWidgetModal
-          afterDeleteAction={fetchKpiList}
+          afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
-          deleteMessage={`Are you sure you want to delete ${getEntityName(
-            selectedKpi
-          )}`}
+          deleteMessage={t('message.are-you-sure-delete-entity', {
+            entity: getEntityName(selectedKpi),
+          })}
           entityId={selectedKpi.id}
           entityName={getEntityName(selectedKpi)}
           entityType={EntityType.KPI}

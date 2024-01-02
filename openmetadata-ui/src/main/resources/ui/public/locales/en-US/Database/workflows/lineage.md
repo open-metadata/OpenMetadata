@@ -31,3 +31,26 @@ SELECT xyz FROM query_history limit <resultLimit>
 
 This value will take precedence over the `Query Log Duration`.
 $$
+
+
+$$section
+### Filtering Condition $(id="filterCondition")
+
+We execute a query on query history table of the respective data source to perform the query analysis and extract the lineage and usage information. This field will be useful when you want to restrict some queries from being part of this analysis. In this field you can specify a sql condition that will be applied on the query history result set.
+
+For example: `query_text not ilike '--- metabase query %'`
+
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/usage/filter-query-set) document for further examples on filter conditions.
+$$
+
+$$section
+### Query Parsing Timeout Limit $(id="parsingTimeoutLimit")
+
+Specify the timeout limit for parsing the sql queries to perform the lineage analysis.
+$$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$

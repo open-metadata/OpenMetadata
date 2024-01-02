@@ -12,7 +12,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
-      "pattern": "^(?U)[\\w\\-.]+$"
+      "pattern": "(?U)^[\\w\\-.]+$"
     },
     "authenticationMechanism": {
       "type": "object",
@@ -102,6 +102,14 @@
     },
     "teams": {
       "description": "Teams that the user belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "defaultPersona": {
+      "description": "Default Persona for the user from list of personas.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "personas": {
+      "description": "Personas that the user assigned to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "owns": {

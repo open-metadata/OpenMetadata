@@ -18,11 +18,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { Query } from '../../generated/entity/data/query';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import QueryCard from './QueryCard';
 import { QueryCardProp } from './TableQueries.interface';
 
@@ -63,7 +63,7 @@ ORDER BY order_day ASC;`,
   checksum: '0232b0368458aadb29230ccc531462c9',
 } as Query;
 
-jest.mock('../schema-editor/SchemaEditor', () => {
+jest.mock('../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {
@@ -73,8 +73,8 @@ jest.mock('./QueryUsedByOtherTable/QueryUsedByOtherTable.component', () => {
   return jest.fn().mockReturnValue(<>QueryUsedByOtherTable</>);
 });
 const mockOnCopyToClipBoard = jest.fn();
-jest.mock('hooks/useClipBoard', () => ({
-  ...jest.requireActual('hooks/useClipBoard'),
+jest.mock('../../hooks/useClipBoard', () => ({
+  ...jest.requireActual('../../hooks/useClipBoard'),
   useClipboard: jest
     .fn()
     .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),
@@ -82,7 +82,6 @@ jest.mock('hooks/useClipBoard', () => ({
 
 const mockProps: QueryCardProp = {
   query: mockQueryData,
-  tableId: 'id',
   permission: DEFAULT_ENTITY_PERMISSION,
   onQuerySelection: jest.fn(),
   onQueryUpdate: jest.fn(),

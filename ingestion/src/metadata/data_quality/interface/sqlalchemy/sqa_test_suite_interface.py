@@ -32,7 +32,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
@@ -54,17 +53,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
         table_entity: Table = None,
+        sqa_metadata=None,
     ):
         self.ometa_client = ometa_client
         self.table_entity = table_entity
         self.service_connection_config = service_connection_config
-        self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
-        )
-        self.set_session_tag(self.session)
-        self.set_catalog(self.session)
-
-        self._table = self._convert_table_to_orm_object()
+        self.create_session()
+        self._table = self._convert_table_to_orm_object(sqa_metadata)
 
         (
             self.table_sample_query,
@@ -74,6 +69,11 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
         self._sampler = self._create_sampler()
         self._runner = self._create_runner()
+
+    def create_session(self):
+        self.session = create_and_bind_session(
+            get_connection(self.service_connection_config)
+        )
 
     @property
     def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
@@ -118,6 +118,10 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def _create_sampler(self) -> SQASampler:
         """Create sampler instance"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             client=self.session,
@@ -165,7 +169,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
-                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

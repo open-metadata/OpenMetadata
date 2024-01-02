@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
+from metadata.generated.schema.entity.services.connections.database.common.jwtAuth import (
+    JwtAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
     DatabricksScheme,
@@ -59,6 +62,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleDatabaseSchema,
     OracleScheme,
     OracleServiceName,
+    OracleTNSConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -396,7 +400,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
-            password="pass",
+            authType=BasicAuth(password="pass"),
             catalog="catalog",
         )
 
@@ -408,7 +412,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username@444",
-            password="pass@111",
+            authType=BasicAuth(password="pass@111"),
             catalog="catalog",
         )
 
@@ -423,7 +427,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         trino_conn_obj = TrinoConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             catalog="tpcds",
             connectionArguments=None,
@@ -435,7 +439,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         trino_conn_obj = TrinoConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             catalog="tpcds",
             connectionArguments={"user": "user-to-be-impersonated"},
@@ -447,7 +451,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         trino_conn_obj = TrinoConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             catalog="tpcds",
             connectionArguments=None,
@@ -463,7 +467,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         trino_conn_obj = TrinoConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             catalog="tpcds",
             connectionArguments={"user": "user-to-be-impersonated"},
@@ -485,9 +489,26 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
-            password="pass",
+            authType=BasicAuth(password="pass"),
             catalog="catalog",
-            params={"param": "value"},
+            connectionOptions={"param": "value"},
+        )
+        assert expected_url == get_connection_url(trino_conn_obj)
+
+    def test_trino_url_with_jwt_auth(self):
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
+        expected_url = (
+            "trino://username@localhost:443/catalog?access_token=jwt_token_value"
+        )
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=JwtAuth(jwt="jwt_token_value"),
+            catalog="catalog",
         )
         assert expected_url == get_connection_url(trino_conn_obj)
 
@@ -501,7 +522,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
-            password="pass",
+            authType=BasicAuth(password="pass"),
             catalog="catalog",
             proxies=test_proxies,
         )
@@ -521,7 +542,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
-            password="pass",
+            authType=BasicAuth(password="pass"),
         )
 
         assert expected_url == get_connection_url(trino_conn_obj)
@@ -1006,13 +1027,13 @@ class SourceConnectionTest(TestCase):
         )
 
         # Passing @ in username and password
-        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433"
+        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
         mssql_conn_obj = MssqlConnection(
             username="sa@123",
             password="password@444",
             hostPort="localhost:1433",
             scheme=MssqlScheme.mssql_pytds,
-            database=None,
+            database="master",
         )
 
         assert expected_url == get_connection_url(mssql_conn_obj)
@@ -1141,3 +1162,19 @@ class SourceConnectionTest(TestCase):
             ),
         )
         assert get_connection_url(oracle_conn_obj) in expected_url
+
+        tns_connection = (
+            "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
+            "(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))"
+        )
+        expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",  # We will ignore it here
+            oracleConnectionType=OracleTNSConnection(
+                oracleTNSConnection=tns_connection
+            ),
+        )
+        assert get_connection_url(oracle_conn_obj) == expected_url

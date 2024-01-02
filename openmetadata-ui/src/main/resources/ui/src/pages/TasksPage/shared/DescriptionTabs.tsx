@@ -12,13 +12,13 @@
  */
 
 import { Tabs } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 
@@ -67,15 +67,14 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
+        <div className="border border-main rounded-4 p-sm m-t-sm">
           {description.trim() ? (
             <RichTextEditorPreviewer
-              className="tw-p-2"
               enableSeeMoreVariant={false}
               markdown={description}
             />
           ) : (
-            <span className="text-grey-muted tw-p-2">
+            <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.description') })}
             </span>
           )}
@@ -83,13 +82,13 @@ export const DescriptionTabs = ({
       </TabPane>
       <TabPane data-testid="diff-tab" key="2" tab="Diff">
         <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-3"
+          className="border border-main rounded-4 p-sm m-t-sm"
           diffArr={diffs}
         />
       </TabPane>
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
-          className="tw-my-3"
+          className="m-t-sm"
           height="208px"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}

@@ -1,0 +1,136 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+
+name: Postgres Playwright Integration Tests
+on:
+  push:
+    branches:
+      - main 
+      - '0.[0-9]+.[0-9]+'
+      - '1.[0-9]+[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - 'openmetadata-docs/**'
+
+jobs:
+  playwright-postgresql:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser-type: ['chromium']
+    environment: test
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
+            docker-images: false
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.1
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Get yarn cache directory path
+        if: steps.cache-output.outputs.exit-code == 0
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Set up JDK 17
+        if: steps.cache-output.outputs.exit-code == 0
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          unixodbc-dev libevent-dev python3-dev libkrb5-dev
+      - name: Install Python Dependencies and Generate Data Models
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          pip install --upgrade pip
+          sudo make install_antlr_cli
+          make install_dev generate install_e2e_tests
+      - name: Start Server and Ingest Sample Data
+        env:
+          INGESTION_DEPENDENCY: "all"
+        run: ./docker/run_local_docker.sh -d postgresql
+        timeout-minutes: 30
+      - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }} 
+        env:
+          E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+          E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+          E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+          E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
+          E2E_DRUID_HOST_PORT: ${{ secrets.E2E_DRUID_HOST_PORT }}
+          E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
+        run: |
+          source env/bin/activate
+          make install_e2e_tests
+          make run_e2e_tests
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-artifacts
+          path: ingestion/tests/e2e/artifacts/
+          retention-days: 1
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume

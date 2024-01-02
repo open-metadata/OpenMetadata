@@ -20,7 +20,6 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const BundleAnalyzerPlugin =
   require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 
@@ -92,7 +91,6 @@ module.exports = {
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
           path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
-          path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
@@ -172,7 +170,6 @@ module.exports = {
       fs: false,
       url: require.resolve('url/'),
     },
-    plugins: [new TsconfigPathsPlugin()],
   },
 
   plugins: [

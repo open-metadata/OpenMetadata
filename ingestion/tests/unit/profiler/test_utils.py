@@ -17,8 +17,8 @@ from datetime import datetime
 from unittest import TestCase
 
 import pytest
-from sqlalchemy import Column, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.profiler.metrics.hybrid.histogram import Histogram
@@ -31,9 +31,9 @@ from metadata.utils.profiler_utils import (
     get_value_from_cache,
     set_cache,
 )
-from metadata.utils.sqa_utils import handle_array, is_array
+from metadata.utils.sqa_utils import is_array
 
-from .conftest import Row
+from .conftest import LowerRow, Row
 
 Base = declarative_base()
 
@@ -165,7 +165,22 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
         query_text=query,
     )
 
+    lower_row = LowerRow(
+        query_id=1,
+        query_type=expected,
+        start_time=datetime.now(),
+        query_text=query,
+    )
+
     query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+
+    assert query_result
+    assert query_result.query_type == expected
+    assert query_result.database_name == "database"
+    assert query_result.schema_name == "schema"
+    assert query_result.table_name == "table1"
+
+    query_result = get_snowflake_system_queries(lower_row, "DATABASE", "SCHEMA")  # type: ignore
 
     assert query_result
     assert query_result.query_type == expected

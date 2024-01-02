@@ -16,7 +16,7 @@ snowflake unit tests
 # pylint: disable=line-too-long
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -74,8 +74,8 @@ MOCK_SCHEMA_NAME_1 = "INFORMATION_SCHEMA"
 MOCK_SCHEMA_NAME_2 = "TPCDS_SF10TCL"
 MOCK_VIEW_NAME = "COLUMNS"
 MOCK_TABLE_NAME = "CALL_CENTER"
-EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
-EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
 
 
 class SnowflakeUnitTest(TestCase):
@@ -90,7 +90,7 @@ class SnowflakeUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_snowflake_config)
-        self.snowflake_source = SnowflakeSource.create(
+        self.snowflake_source: SnowflakeSource = SnowflakeSource.create(
             mock_snowflake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
@@ -128,23 +128,23 @@ class SnowflakeUnitTest(TestCase):
         method to test source url
         """
         with patch.object(
-            SnowflakeSource, "_get_current_account", return_value="random_account"
+            SnowflakeSource,
+            "account",
+            return_value="random_account",
+            new_callable=PropertyMock,
         ):
             with patch.object(
-                SnowflakeSource, "_get_current_region", return_value="AWS_US_WEST_2"
+                SnowflakeSource,
+                "org_name",
+                return_value="random_org",
+                new_callable=PropertyMock,
             ):
                 self._assert_urls()
 
             with patch.object(
                 SnowflakeSource,
-                "_get_current_region",
-                return_value="PUBLIC.AWS_US_WEST_2",
-            ):
-                self._assert_urls()
-
-            with patch.object(
-                SnowflakeSource,
-                "_get_current_region",
+                "org_name",
+                new_callable=PropertyMock,
                 return_value=None,
             ):
                 self.assertIsNone(

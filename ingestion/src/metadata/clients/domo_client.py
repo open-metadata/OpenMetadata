@@ -14,9 +14,11 @@ DomoClient source to extract data from DOMO
 """
 
 import traceback
+from dataclasses import dataclass
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Extra
+from pydomo import Domo
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
@@ -101,14 +103,14 @@ class DomoClient:
         ],
     ):
         self.config = config
-        self.config.sandboxDomain = (
-            self.config.sandboxDomain[:-1]
-            if self.config.sandboxDomain.endswith("/")
-            else self.config.sandboxDomain
+        self.config.instanceDomain = (
+            self.config.instanceDomain[:-1]
+            if self.config.instanceDomain.endswith("/")
+            else self.config.instanceDomain
         )
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.sandboxDomain,
+            base_url=self.config.instanceDomain,
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
@@ -170,3 +172,29 @@ class DomoClient:
             )
             logger.debug(traceback.format_exc())
         return []
+
+    def test_list_cards(self) -> None:
+        """
+        Test function to list the cards. Since we are not passing any URNS from the dashboard
+        we expect an empty result. However, the call should not fail with any 401 error.
+        This helps us validate that the provided Access Token is correct for Domo Dashboard.
+        """
+        try:
+            self.client._request(  # pylint: disable=protected-access
+                method="GET", path="content/v1/cards", headers=HEADERS
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error listing cards due to [{exc}]")
+            raise exc
+
+
+@dataclass
+class OMPyDomoClient:
+    """
+    domo_client: official pydomo client https://github.com/domoinc/domo-python-sdk
+    client: custom requests on the instance domain
+    """
+
+    domo: Domo
+    custom: DomoClient

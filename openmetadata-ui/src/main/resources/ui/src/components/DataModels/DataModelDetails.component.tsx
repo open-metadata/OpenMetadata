@@ -11,40 +11,46 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { CSMode } from 'enums/codemirror.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
+import { Card, Col, Row, Tabs } from 'antd';
+import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCounts } from 'utils/CommonUtils';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
-import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import {
+  getDataModelDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { CSMode } from '../../enums/codemirror.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { TagLabel } from '../../generated/type/tagLabel';
+import { restoreDataModel } from '../../rest/dataModelsAPI';
+import { getFeedCounts } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { createTagObject } from '../../utils/TagsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
+import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
+  updateDataModelDetailsState,
   dataModelData,
   dataModelPermissions,
   fetchDataModel,
@@ -56,34 +62,23 @@ const DataModelDetails = ({
   handleUpdateDescription,
   handleColumnUpdateDataModel,
   onUpdateDataModel,
+  handleToggleDelete,
+  onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { dashboardDataModelFQN, tab: activeTab } =
-    useParams<{ dashboardDataModelFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardDataModelFQN, tab: activeTab } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
-  const {
-    hasEditDescriptionPermission,
-    hasEditTagsPermission,
-    hasEditLineagePermission,
-  } = useMemo(() => {
-    return {
-      hasEditDescriptionPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditDescription,
-      hasEditTagsPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditTags,
-      hasEditLineagePermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditLineage,
-    };
-  }, [dataModelPermissions]);
+  const decodedDataModelFQN = useMemo(
+    () => getDecodedFqn(dashboardDataModelFQN),
+    [dashboardDataModelFQN]
+  );
 
   const { deleted, owner, description, version, entityName, tags } =
     useMemo(() => {
@@ -93,15 +88,14 @@ const DataModelDetails = ({
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
-        tags: getTagsWithoutTier(dataModelData.tags || []),
+        tags: getTagsWithoutTier(dataModelData.tags ?? []),
       };
     }, [dataModelData]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
-      dashboardDataModelFQN,
-      setEntityFieldThreadCount,
+      decodedDataModelFQN,
       setFeedCount
     );
   };
@@ -144,20 +138,65 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(dashboardDataModelFQN, tabValue),
+        pathname: getDataModelDetailsPath(
+          getDecodedFqn(dashboardDataModelFQN),
+          tabValue
+        ),
       });
     }
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     handleUpdateTags(updatedTags);
   };
+
+  const handleRestoreDataModel = async () => {
+    try {
+      const { version: newVersion } = await restoreDataModel(
+        dataModelData.id ?? ''
+      );
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.data-model'),
+        }),
+        2000
+      );
+      handleToggleDelete(newVersion);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.data-model'),
+        })
+      );
+    }
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    []
+  );
+
+  const {
+    editDescriptionPermission,
+    editTagsPermission,
+    editLineagePermission,
+  } = useMemo(() => {
+    return {
+      editDescriptionPermission:
+        (dataModelPermissions.EditAll ||
+          dataModelPermissions.EditDescription) &&
+        !deleted,
+      editTagsPermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
+        !deleted,
+      editLineagePermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
+        !deleted,
+    };
+  }, [dataModelPermissions, deleted]);
 
   const modelComponent = useMemo(() => {
     return (
@@ -166,17 +205,13 @@ const DataModelDetails = ({
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={description}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditDescriptionPermission}
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEditDescription}
-              isReadOnly={deleted}
               owner={owner}
+              showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
               onDescriptionUpdate={handleUpdateDescription}
@@ -184,13 +219,9 @@ const DataModelDetails = ({
             />
             <ModelTab
               data={dataModelData?.columns || []}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.COLUMNS,
-                entityFieldThreadCount
-              )}
-              entityFqn={dashboardDataModelFQN}
-              hasEditDescriptionPermission={hasEditDescriptionPermission}
-              hasEditTagsPermission={hasEditTagsPermission}
+              entityFqn={decodedDataModelFQN}
+              hasEditDescriptionPermission={editDescriptionPermission}
+              hasEditTagsPermission={editTagsPermission}
               isReadOnly={Boolean(deleted)}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={handleColumnUpdateDataModel}
@@ -201,39 +232,28 @@ const DataModelDetails = ({
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <Space className="w-full" direction="vertical" size="large">
-            <TagsContainerV2
-              entityFqn={dashboardDataModelFQN}
-              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
-              selectedTags={tags}
-              tagType={TagSource.Classification}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <TagsContainerV2
-              entityFqn={dashboardDataModelFQN}
-              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
-              selectedTags={tags}
-              tagType={TagSource.Glossary}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Space>
+          <EntityRightPanel
+            dataProducts={dataModelData?.dataProducts ?? []}
+            domain={dataModelData?.domain}
+            editTagPermission={editTagsPermission}
+            entityFQN={decodedDataModelFQN}
+            entityId={dataModelData.id}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            selectedTags={tags}
+            onTagSelectionChange={handleTagSelection}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
         </Col>
       </Row>
     );
   }, [
+    decodedDataModelFQN,
     dataModelData,
     description,
     dashboardDataModelFQN,
-    entityFieldThreadCount,
-    hasEditTagsPermission,
+    editTagsPermission,
     deleted,
-    hasEditDescriptionPermission,
+    editDescriptionPermission,
     isEditDescription,
     entityName,
     handleTagSelection,
@@ -267,14 +287,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchDataModel}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            fqn={dataModelData?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDataModel}
+          />
         ),
       },
       ...(dataModelData?.sql
@@ -318,31 +336,43 @@ const DataModelDetails = ({
             deleted={deleted}
             entity={dataModelData as SourceType}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={hasEditLineagePermission}
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
     ];
 
     return allTabs;
-  }, [feedCount, dataModelData?.sql, modelComponent]);
+  }, [
+    feedCount,
+    dataModelData?.sql,
+    modelComponent,
+    deleted,
+    editLineagePermission,
+  ]);
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Data Model Details"
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.data-model'),
+      })}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDataModelDetailsState}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
+            onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>
@@ -374,4 +404,4 @@ const DataModelDetails = ({
   );
 };
 
-export default DataModelDetails;
+export default withActivityFeed<DataModelDetailsProps>(DataModelDetails);

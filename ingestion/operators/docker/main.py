@@ -15,25 +15,27 @@ import os
 
 import yaml
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.workflow import Workflow
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
+from metadata.workflow.data_insight import DataInsightWorkflow
+from metadata.workflow.data_quality import TestSuiteWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.usage import UsageWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 WORKFLOW_MAP = {
-    PipelineType.metadata.value: Workflow,
-    PipelineType.usage.value: Workflow,
-    PipelineType.lineage.value: Workflow,
+    PipelineType.metadata.value: MetadataWorkflow,
+    PipelineType.usage.value: UsageWorkflow,
+    PipelineType.lineage.value: MetadataWorkflow,
     PipelineType.profiler.value: ProfilerWorkflow,
     PipelineType.TestSuite.value: TestSuiteWorkflow,
     PipelineType.dataInsight.value: DataInsightWorkflow,
-    PipelineType.elasticSearchReindex.value: Workflow,
-    PipelineType.dbt.value: Workflow,
+    PipelineType.elasticSearchReindex.value: MetadataWorkflow,
+    PipelineType.dbt.value: MetadataWorkflow,
 }
 
 
@@ -107,7 +109,7 @@ def main():
     workflow = workflow_class.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

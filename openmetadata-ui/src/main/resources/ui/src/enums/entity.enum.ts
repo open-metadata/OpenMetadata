@@ -28,6 +28,7 @@ export enum EntityType {
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
+  SEARCH_SERVICE = 'searchService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -45,7 +46,21 @@ export enum EntityType {
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
-  USER_NAME = 'username',
+  CHART = 'chart',
+  DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
+  SAMPLE_DATA = 'sampleData',
+  STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndex',
+  APP_MARKET_PLACE_DEFINITION = 'appMarketPlaceDefinition',
+  APPLICATION = 'app',
+  PERSONA = 'persona',
+  DOC_STORE = 'docStore',
+  PAGE = 'Page',
+  knowledgePanels = 'KnowLedgePanels',
+  GOVERN = 'govern',
+  ALL = 'all',
+  CUSTOM_METRIC = 'customMetric',
 }
 
 export enum AssetsType {
@@ -55,12 +70,7 @@ export enum AssetsType {
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-}
-
-export enum ChangeType {
-  ADDED = 'Added',
-  UPDATED = 'Updated',
-  REMOVED = 'Removed',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum EntityLineageDirection {
@@ -100,6 +110,10 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  FIELDS = 'fields',
+  VOTES = 'votes',
+  DOMAIN = 'domain',
+  DATA_PRODUCTS = 'dataProducts',
 }
 
 export enum FqnPart {
@@ -110,29 +124,7 @@ export enum FqnPart {
   Column,
   NestedColumn,
   Topic,
-}
-
-export enum EntityInfo {
-  OWNER = 'Owner',
-  TIER = 'Tier',
-  TYPE = 'Type',
-  COLUMNS = 'Columns',
-  ROWS = 'row-plural',
-  URL = 'Url',
-  ALGORITHM = 'Algorithm',
-  TARGET = 'Target',
-  SERVER = 'Server',
-  DASHBOARD = 'Dashboard',
-  PARTITIONS = 'Partitions',
-  PARTITIONED = 'partitioned',
-  REPLICATION_FACTOR = 'Replication Factor',
-  RETENTION_SIZE = 'Retention Size',
-  CLEAN_UP_POLICIES = 'Clean-up Policies',
-  MAX_MESSAGE_SIZE = 'Max Message Size',
-  SIZE = 'size',
-  NUMBER_OF_OBJECTS = 'number-of-object-plural',
-  DATA_MODEL_TYPE = 'data-model-type',
-  QUERIES = 'queries',
+  SearchIndexField,
 }
 
 export enum EntityTabs {
@@ -159,6 +151,10 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
   SQL = 'sql',
+  FIELDS = 'fields',
+  SEARCH_INDEX_SETTINGS = 'search-index-settings',
+  STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {

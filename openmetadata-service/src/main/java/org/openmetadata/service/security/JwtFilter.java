@@ -42,8 +42,8 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
@@ -59,10 +59,13 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
-  private String providerType;
+  private AuthProvider providerType;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
-          "v1/system/config",
+          "v1/system/config/jwks",
+          "v1/system/config/authorizer",
+          "v1/system/config/customLogoConfiguration",
+          "v1/system/config/auth",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
@@ -78,7 +81,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @SneakyThrows
   public JwtFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
     this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
@@ -107,7 +111,8 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream().anyMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
+    if (EXCLUDED_ENDPOINTS.stream()
+        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
       return;
     }
 
@@ -117,8 +122,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)
-        || SSOAuthMechanism.SsoServiceType.SAML.toString().equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
@@ -136,7 +140,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // validate access token
     if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+        && ServiceTokenType.PERSONAL_ACCESS.equals(
+            ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
       validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
@@ -195,7 +200,8 @@ public class JwtFilter implements ContainerRequestFilter {
             .orElseThrow(
                 () ->
                     new AuthenticationException(
-                        "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+                        "Invalid JWT token, none of the following claims are present "
+                            + jwtPrincipalClaims));
 
     String userName;
     String domain;
@@ -215,7 +221,8 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate principal domain
     if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
       throw new AuthenticationException(
-          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
+          String.format(
+              "Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
     return userName;
   }
@@ -246,21 +253,22 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
-    if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
+    if (UserTokenCache.getToken(userName).contains(tokenFromHeader)) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {
-    LogoutRequest previouslyLoggedOutEvent = JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
+    LogoutRequest previouslyLoggedOutEvent =
+        JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
     if (previouslyLoggedOutEvent != null) {
       throw new AuthenticationException("Expired token!");
     }

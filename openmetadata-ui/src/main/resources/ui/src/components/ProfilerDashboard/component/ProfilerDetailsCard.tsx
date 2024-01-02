@@ -30,7 +30,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
@@ -41,6 +41,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   name,
   curveType,
   title,
+  isLoading,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -54,7 +55,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   return (
     <Card
       className="shadow-none global-border-radius"
-      data-testid="profiler-details-card-container">
+      data-testid="profiler-details-card-container"
+      loading={isLoading}>
       <Row gutter={[16, 16]}>
         {title && (
           <Col span={24}>
@@ -74,10 +76,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>
-              <LineChart
-                className="tw-w-full"
-                data={data}
-                margin={{ left: 16 }}>
+              <LineChart className="w-full" data={data} margin={{ left: 16 }}>
                 <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
@@ -117,10 +116,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <Row
-              align="middle"
-              className="tw-h-full tw-w-full"
-              justify="center">
+            <Row align="middle" className="h-full w-full" justify="center">
               <Col>
                 <ErrorPlaceHolder className="mt-0-important" />
               </Col>

@@ -1,0 +1,146 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/searchService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Search Service",
+  "description": "This schema defines the Search Service entity, such as ElasticSearch, OpenSearch.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.SearchService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "searchServiceType": {
+      "description": "Type of search service such as ElasticSearch or OpenSearch.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "type": "string",
+      "enum": [
+        "ElasticSearch",
+        "OpenSearch",
+        "CustomSearch"
+      ],
+      "javaEnums": [
+        {
+          "name": "ElasticSearch"
+        },
+        {
+          "name": "OpenSearch"
+        },
+        {
+          "name": "CustomSearch"
+        }
+      ]
+    },
+    "searchConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SearchConnection",
+      "description": "search Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "connections/search/elasticSearchConnection.json"
+            },
+            {
+              "$ref": "connections/search/openSearchConnection.json"
+            },
+            {
+              "$ref": "connections/search/customSearchConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this search service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this search service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this search service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of search service such as S3, GCS, AZURE...",
+      "$ref": "#/definitions/searchServiceType"
+    },
+    "description": {
+      "description": "Description of a search service instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "connection": {
+      "$ref": "#/definitions/searchConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this search service to extract metadata etc..",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this search Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this search service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this search service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "domain" : {
+      "description": "Domain the search service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

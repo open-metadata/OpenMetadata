@@ -14,6 +14,9 @@ source:
         # username: admin
         # password: admin
         # provider: db
+        # verifySSL: no-ssl / ignore / validate
+        # sslConfig:
+        #   certificatePath: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.
       type: Superset
   sourceConfig:
     config:

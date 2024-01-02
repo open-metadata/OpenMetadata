@@ -2,13 +2,11 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -25,20 +23,21 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public interface AuthenticatorHandler {
-  void init(OpenMetadataApplicationConfig config, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig config);
 
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 
   void checkIfLoginBlocked(String userName);
 
-  void recordFailedLoginAttempt(String providedIdentity, User user) throws TemplateException, IOException;
+  void recordFailedLoginAttempt(String providedIdentity, User user)
+      throws TemplateException, IOException;
 
   void validatePassword(String providedIdentity, User storedUser, String reqPassword)
       throws TemplateException, IOException;
 
   User lookUserInProvider(String userName);
 
-  default User registerUser(RegistrationRequest registrationRequest) throws IOException {
+  default User registerUser(RegistrationRequest registrationRequest) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -46,7 +45,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
+  default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -54,39 +53,49 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
+  default void sendPasswordResetLink(
+      UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
+    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+  }
+
+  default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req) throws IOException {
+  default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req)
+      throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req) throws IOException {
+  default RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+  default JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendInviteMailToUser(
-      UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
+      UriInfo uriInfo,
+      User user,
+      String subject,
+      CreateUser.CreatePasswordType requestType,
+      String pwd)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) throws JsonProcessingException {
+  default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) {
     RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), expireInSeconds, false, ServiceTokenType.OM_USER);
+                storedUser.getName(),
+                storedUser.getEmail(),
+                expireInSeconds,
+                false,
+                ServiceTokenType.OM_USER);
 
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");

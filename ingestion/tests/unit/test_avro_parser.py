@@ -76,6 +76,65 @@ SAMPLE_AVRO_SCHEMA = """
 }
 """
 
+RECURSIVE_AVRO_SCHEMA = """
+{
+   "name":"MainRecord",
+   "type":"record",
+   "fields":[
+      {
+         "default":"None",
+         "name":"NestedRecord",
+         "type":[
+            "null",
+            {
+               "fields":[
+                  {
+                     "default":"None",
+                     "name":"FieldA",
+                     "type":[
+                        "null",
+                        {
+                           "items":{
+                              "fields":[
+                                 {
+                                    "name":"FieldAA",
+                                    "type":"string"
+                                 },
+                                 {
+                                    "default":"None",
+                                    "name":"FieldBB",
+                                    "type":[
+                                       "null",
+                                       "string"
+                                    ]
+                                 },
+                                 {
+                                    "default":"None",
+                                    "name":"FieldCC",
+                                    "type":[
+                                       "null",
+                                       "RecursionIssueRecord"
+                                    ]
+                                 }
+                              ],
+                              "name":"RecursionIssueRecord",
+                              "type":"record"
+                           },
+                           "type":"array"
+                        }
+                     ]
+                  }
+               ],
+               "name":"FieldInNestedRecord",
+               "type":"record"
+            }
+         ]
+      }
+   ]
+}
+"""
+
+
 ARRAY_OF_STR = """
 {
   "type": "record",
@@ -427,6 +486,50 @@ UNION_OF_ARRAY_OF_RECORD_1 = """
 }
 """
 
+RECORD_INSIDE_RECORD = """
+{
+  "type": "record",
+  "name": "OuterRecord",
+  "fields": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "innerRecord",
+      "type": {
+        "type": "record",
+        "name": "InnerRecord",
+        "fields": [
+          {
+            "name": "address",
+            "type": "string"
+          },
+          {
+            "name": "phoneNumbers",
+            "type": {
+              "type": "array",
+              "items": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tags",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    }
+  ]
+}
+"""
+
 
 class AvroParserTests(TestCase):
     """
@@ -573,4 +676,78 @@ class AvroParserTests(TestCase):
         )
         self.parse_schema_assert_without_child(
             UNION_OF_ARRAY_OF_RECORD_1, "UNION<int,array>"
+        )
+
+    def test_nested_record_parsing(self):
+        parsed_record_schema = parse_avro_schema(RECORD_INSIDE_RECORD)
+
+        # test 1st level record
+        self.assertEqual(parsed_record_schema[0].name.__root__, "OuterRecord")
+        self.assertEqual(parsed_record_schema[0].dataType.name, "RECORD")
+
+        # test 2nd level record
+        self.assertEqual(
+            parsed_record_schema[0].children[2].name.__root__, "innerRecord"
+        )
+        self.assertEqual(parsed_record_schema[0].children[2].dataType.name, "RECORD")
+
+        # test fields inside 2nd level record
+        self.assertEqual(
+            parsed_record_schema[0].children[2].children[0].name.__root__, "InnerRecord"
+        )
+        self.assertEqual(
+            parsed_record_schema[0].children[2].children[0].dataType.name, "RECORD"
+        )
+        self.assertEqual(
+            parsed_record_schema[0].children[2].children[0].children[1].name.__root__,
+            "phoneNumbers",
+        )
+        self.assertEqual(
+            parsed_record_schema[0].children[2].children[0].children[1].dataType.name,
+            "ARRAY",
+        )
+
+    def test_recursive_record_parsing(self):
+        parsed_recursive_schema = parse_avro_schema(RECURSIVE_AVRO_SCHEMA)
+
+        # test that the recursive schema stops processing after 1st occurrence
+        self.assertEqual(
+            parsed_recursive_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .name.__root__,
+            "RecursionIssueRecord",
+        )
+        self.assertEqual(
+            parsed_recursive_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[2]
+            .name.__root__,
+            "FieldCC",
+        )
+        self.assertEqual(
+            parsed_recursive_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[2]
+            .children[0]
+            .name.__root__,
+            "RecursionIssueRecord",
+        )
+        self.assertIsNone(
+            parsed_recursive_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[2]
+            .children[0]
+            .children
         )

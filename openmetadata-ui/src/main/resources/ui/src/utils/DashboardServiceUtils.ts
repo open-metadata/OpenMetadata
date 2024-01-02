@@ -19,10 +19,13 @@ import {
 } from '../generated/entity/services/dashboardService';
 import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
 import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
+import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
+import mstrConnection from '../jsons/connectionSchemas/connections/dashboard/mstrConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
@@ -86,6 +89,24 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
     case DashboardServiceType.QuickSight: {
       schema = quicksightConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.QlikSense: {
+      schema = qliksenseConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.Lightdash: {
+      schema = lightdashConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.Mstr: {
+      schema = mstrConnection;
 
       break;
     }

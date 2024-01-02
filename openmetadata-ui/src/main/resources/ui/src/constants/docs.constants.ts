@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+export const OMD_REPOSITORY_LINK =
+  'https://github.com/open-metadata/OpenMetadata?pk_campaign=om_start_us&pk_source=OpenMetadata&pk_medium=start_us';
+
 export const WORKFLOWS_PROFILER_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
 

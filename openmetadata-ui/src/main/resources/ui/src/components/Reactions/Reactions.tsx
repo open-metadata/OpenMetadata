@@ -13,12 +13,10 @@
 
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
-import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
 import { groupBy, uniqueId } from 'lodash';
-import { observer } from 'mobx-react';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../AppState';
+import { ReactComponent as AddReactionIcon } from '../../assets/svg/ic-reaction.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -28,6 +26,7 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../generated/type/reaction';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 import './reactions.less';
@@ -43,6 +42,7 @@ interface ReactionsProps {
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
+  const { currentUser } = useAuthContext();
 
   const hide = () => {
     setVisible(false);
@@ -51,12 +51,6 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   const handleVisibleChange = (newVisible: boolean) => {
     setVisible(newVisible);
   };
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   /**
    *
@@ -104,7 +98,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex items-center">
+    <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
       <Popover
         align={{ targetOffset: [0, -10] }}
@@ -131,4 +125,4 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   );
 };
 
-export default observer(Reactions);
+export default Reactions;

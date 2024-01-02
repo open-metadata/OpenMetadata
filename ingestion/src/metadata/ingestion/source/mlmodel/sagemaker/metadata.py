@@ -21,9 +21,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
     SageMakerConnection,
 )
@@ -31,7 +28,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
@@ -60,26 +59,24 @@ class SagemakerSource(MlModelServiceSource):
     and prepare an iterator of CreateMlModelRequest
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.sagemaker = self.connection.client
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.sagemaker = self.client
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SageMakerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SageMakerConnection):
             raise InvalidSourceException(
                 f"Expected SageMakerConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
     ) -> Iterable[SageMakerModel]:
-        """
-        List and filters models
-        """
+        """List and filters models"""
         args, has_more_models, models = {"MaxResults": 100}, True, []
         try:
             while has_more_models:
@@ -91,7 +88,7 @@ class SagemakerSource(MlModelServiceSource):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
 
-        for model in models:
+        for model in response["Models"]:
             try:
                 if filter_by_mlmodel(
                     self.source_config.mlModelFilterPattern,
@@ -127,17 +124,15 @@ class SagemakerSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model: SageMakerModel
-    ) -> Iterable[CreateMlModelRequest]:
+    ) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Prepare the Request model
         """
-        self.status.scanned(model.name)
-
         mlmodel_request = CreateMlModelRequest(
             name=model.name,
             algorithm=self._get_algorithm(),  # Setting this to a constant
             mlStore=self._get_ml_store(model.name),
-            service=self.context.mlmodel_service.fullyQualifiedName,
+            service=self.context.mlmodel_service,
         )
         yield mlmodel_request
         self.register_record(mlmodel_request=mlmodel_request)

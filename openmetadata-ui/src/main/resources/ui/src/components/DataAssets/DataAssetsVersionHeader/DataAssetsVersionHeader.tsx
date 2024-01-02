@@ -13,14 +13,61 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import React from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchSourceAlias } from '../../../interface/search.interface';
+import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { stringToHTML } from '../../../utils/StringsUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
+  </>
+);
+
+export const VersionExtraInfoLink = ({
+  value,
+  href,
+}: {
+  value: string;
+  href?: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {stringToHTML(value)}
+      </Typography.Link>
+    </div>
+  </>
+);
 
 function DataAssetsVersionHeader({
   breadcrumbLinks,
@@ -32,12 +79,27 @@ function DataAssetsVersionHeader({
   tierDisplayName,
   ownerRef,
   onVersionClick,
+  entityType,
+  serviceName,
+  domainDisplayName,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
+  const extraInfo = useMemo(
+    () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
+    [entityType, currentVersionData]
+  );
+  const logo = useMemo(
+    () =>
+      serviceUtilClassBase.getServiceTypeLogo(
+        currentVersionData as SearchSourceAlias
+      ),
+    [currentVersionData]
+  );
+
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
-      <Col className="self-center">
+      <Col className="self-center" span={21}>
         <Row gutter={[16, 12]}>
           <Col span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbLinks} />
@@ -48,18 +110,30 @@ function DataAssetsVersionHeader({
               displayName={displayName}
               icon={
                 currentVersionData.serviceType && (
-                  <img
-                    className="h-9"
-                    src={serviceTypeLogo(currentVersionData.serviceType)}
-                  />
+                  <img className="h-9" src={logo} />
                 )
               }
               name={currentVersionData?.name}
-              serviceName={currentVersionData.service?.name ?? ''}
+              serviceName={serviceName ?? ''}
             />
           </Col>
           <Col span={24}>
             <div className="d-flex no-wrap">
+              {entityType !== EntityType.METADATA_SERVICE && (
+                <>
+                  <DomainLabel
+                    domain={
+                      (currentVersionData as EntitiesWithDomainField).domain
+                    }
+                    domainDisplayName={domainDisplayName}
+                    entityFqn={currentVersionData.fullyQualifiedName ?? ''}
+                    entityId={currentVersionData.id ?? ''}
+                    entityType={entityType}
+                    hasPermission={false}
+                  />
+                  <Divider className="self-center m-x-sm" type="vertical" />
+                </>
+              )}
               <OwnerLabel
                 owner={currentVersionData?.owner ?? ownerRef}
                 ownerDisplayName={ownerDisplayName}
@@ -79,17 +153,23 @@ function DataAssetsVersionHeader({
                   </span>
                 )}
               </Space>
+              {extraInfo}
             </div>
           </Col>
         </Row>
       </Col>
-      <Col>
-        <Button
-          className="w-16 p-0"
-          icon={<Icon component={VersionIcon} />}
-          onClick={onVersionClick}>
-          <Typography.Text>{version}</Typography.Text>
-        </Button>
+      <Col span={3}>
+        <Row justify="end">
+          <Col>
+            <Button
+              className="w-16 p-0"
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={onVersionClick}>
+              <Typography.Text>{version}</Typography.Text>
+            </Button>
+          </Col>
+        </Row>
       </Col>
     </Row>
   );

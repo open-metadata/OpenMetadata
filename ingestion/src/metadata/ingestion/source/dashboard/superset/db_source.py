@@ -27,13 +27,15 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
@@ -62,8 +64,8 @@ class SupersetDBSource(SupersetSourceMixin):
     Superset DB Source Class
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.engine: Engine = self.client
 
     def prepare(self):
@@ -72,17 +74,29 @@ class SupersetDBSource(SupersetSourceMixin):
         this step is done because fetch_total_charts api fetches all
         the required information which is not available in fetch_charts_with_id api
         """
-        charts = self.engine.execute(FETCH_ALL_CHARTS)
-        for chart in charts:
-            chart_detail = FetchChart(**chart)
-            self.all_charts[chart_detail.id] = chart_detail
+        try:
+            charts = self.engine.execute(FETCH_ALL_CHARTS)
+            for chart in charts:
+                chart_detail = FetchChart(**chart)
+                self.all_charts[chart_detail.id] = chart_detail
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch chart list due to - {err}]")
 
-    def get_column_list(self, table_name: FetchChart) -> Optional[Iterable[FetchChart]]:
-        sql_query = sql.text(FETCH_COLUMN.format(table_name=table_name.lower()))
-        col_list = self.engine.execute(sql_query)
-        return [FetchColumn(**col) for col in col_list]
+    def get_column_list(self, table_name: str) -> Iterable[FetchChart]:
+        try:
+            if table_name:
+                sql_query = sql.text(FETCH_COLUMN.format(table_name=table_name.lower()))
+                col_list = self.engine.execute(sql_query)
+                return [FetchColumn(**col) for col in col_list]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch column name list for table: [{table_name} due to - {err}]"
+            )
+        return []
 
-    def get_dashboards_list(self) -> Optional[Iterable[FetchDashboard]]:
+    def get_dashboards_list(self) -> Iterable[FetchDashboard]:
         """
         Get List of all dashboards
         """
@@ -92,27 +106,37 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_dashboard(
         self, dashboard_details: FetchDashboard
-    ) -> Optional[Iterable[CreateDashboardRequest]]:
-        """
-        Method to Get Dashboard Entity
-        """
-        dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.id,
-            displayName=dashboard_details.dashboard_title,
-            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details.id}/",
-            charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+    ) -> Iterable[Either[CreateDashboardRequest]]:
+        """Method to Get Dashboard Entity"""
+        try:
+            dashboard_request = CreateDashboardRequest(
+                name=dashboard_details.id,
+                displayName=dashboard_details.dashboard_title,
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details.id}/",
+                charts=[
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
+                    )
+                    for chart in self.context.charts
+                ],
+                service=self.context.dashboard_service,
+            )
+            yield Either(right=dashboard_request)
+            self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.id,
+                    error=(
+                        f"Error yielding Dashboard [{dashboard_details.id} "
+                        f"- {dashboard_details.dashboard_title}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
                 )
-                for chart in self.context.charts
-            ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-        )
-        yield dashboard_request
-        self.register_record(dashboard_request=dashboard_request)
+            )
 
     def _get_datasource_fqn_for_lineage(
         self, chart_json: FetchChart, db_service_entity: DatabaseService
@@ -125,24 +149,36 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_dashboard_chart(
         self, dashboard_details: FetchDashboard
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if not chart_json:
-                logger.warning(f"chart details for id: {chart_id} not found, skipped")
-                continue
-            chart = CreateChartRequest(
-                name=chart_json.id,
-                displayName=chart_json.slice_name,
-                description=chart_json.description,
-                chartType=get_standard_chart_type(chart_json.viz_type),
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}",
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
-            )
-            yield chart
+            try:
+                chart_json = self.all_charts.get(chart_id)
+                if not chart_json:
+                    logger.warning(
+                        f"chart details for id: {chart_id} not found, skipped"
+                    )
+
+                    continue
+                chart = CreateChartRequest(
+                    name=chart_json.id,
+                    displayName=chart_json.slice_name,
+                    description=chart_json.description,
+                    chartType=get_standard_chart_type(chart_json.viz_type),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}",
+                    service=self.context.dashboard_service,
+                )
+                yield Either(right=chart)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=chart_json.id,
+                        error=f"Error yielding Chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def _get_database_name(
         self, sqa_str: str, db_service_entity: DatabaseService
@@ -177,12 +213,12 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_datamodel(
         self, dashboard_details: FetchDashboard
-    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
 
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
-                if not chart_json:
+                if not chart_json or not chart_json.datasource_id:
                     logger.warning(
                         f"chart details for id: {chart_id} not found, skipped"
                     )
@@ -198,22 +234,18 @@ class SupersetDBSource(SupersetSourceMixin):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=chart_json.datasource_id,
                         displayName=chart_json.table_name,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                         columns=self.get_column_info(col_names),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
-                    yield data_model_request
-                    self.status.scanned(
-                        f"Data Model Scanned: {data_model_request.displayName}"
-                    )
+                    yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
+
                 except Exception as exc:
-                    error_msg = (
-                        f"Error yielding Data Model [{chart_json.table_name}]: {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name=chart_json.table_name,
+                            error=f"Error yielding Data Model [{chart_json.table_name}]: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
-                    self.status.failed(
-                        name=chart_json.datasource_id,
-                        error=error_msg,
-                        stack_trace=traceback.format_exc(),
-                    )
-                    logger.error(error_msg)
-                    logger.debug(traceback.format_exc())

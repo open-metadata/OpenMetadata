@@ -280,6 +280,7 @@ EXPTECTED_TABLE = Table(
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
+            name="atlas_table",
             description="test tag",
             source="Classification",
             labelType="Automated",
@@ -315,7 +316,7 @@ class AtlasUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(
@@ -470,7 +471,7 @@ class AtlasUnitTest(TestCase):
         Testing description updated for database, databaseSchema, table
         """
         self.mock_create_tag()
-        _ = list(self.atlas_source.next_record())
+        _ = list(self.atlas_source._iter())
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )

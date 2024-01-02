@@ -16,33 +16,37 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.json.JsonPatch;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -53,18 +57,18 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
-  private static final String PIPELINE_PATCH_FIELDS = "tasks";
+  private static final String PIPELINE_PATCH_FIELDS = "tasks,sourceHash";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-  public PipelineRepository(CollectionDAO dao) {
+  public PipelineRepository() {
     super(
         PipelineResource.COLLECTION_PATH,
         Entity.PIPELINE,
         Pipeline.class,
-        dao.pipelineDAO(),
-        dao,
+        Entity.getCollectionDAO().pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -75,57 +79,94 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Pipeline pipeline) {
-    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
-  }
-
-  @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
-      throws IOException {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals(TASKS_FIELD)) {
-      Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
-      String oldJson = JsonUtils.pojoToJson(pipeline);
-      Task pipelineTask =
-          pipeline.getTasks().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("task", entityLink.getArrayFieldName())));
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        pipelineTask.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        pipelineTask.setTags(tags);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new TaskDescriptionWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new TaskTagWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      String updatedEntityJson = JsonUtils.pojoToJson(pipeline);
-      JsonPatch patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
-      patch(null, pipeline.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class TaskDescriptionWorkflow extends DescriptionTaskWorkflow {
+    private final Task task;
+
+    TaskDescriptionWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Pipeline pipeline =
+          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks", ALL);
+      threadContext.setAboutEntity(pipeline);
+      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      task.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class TaskTagWorkflow extends TagTaskWorkflow {
+    private final Task task;
+
+    TaskTagWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Pipeline pipeline =
+          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks,tags", ALL);
+      threadContext.setAboutEntity(pipeline);
+      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      task.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
+  public void setFields(Pipeline pipeline, Fields fields) {
     pipeline.setService(getContainer(pipeline.getId()));
-    pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
+    pipeline.setSourceHash(fields.contains("sourceHash") ? pipeline.getSourceHash() : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    if (!fields.contains(TASKS_FIELD)) {
-      pipeline.withTasks(null);
-    }
-    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
+    getTaskOwners(fields.contains(FIELD_OWNER), pipeline.getTasks());
+    pipeline.withPipelineStatus(
+        fields.contains("pipelineStatus")
+            ? getPipelineStatus(pipeline)
+            : pipeline.getPipelineStatus());
   }
 
-  private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {
+  @Override
+  public void clearFields(Pipeline pipeline, Fields fields) {
+    pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
+    pipeline.withPipelineStatus(
+        fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+  }
+
+  @Override
+  protected void postDelete(Pipeline entity) {
+    // Cleanup all the fieldRelationship for task ownership. User -[owns]-> Task
+    for (Task task : listOrEmpty(entity.getTasks())) {
+      deleteTaskOwnerRelationship(task);
+    }
+  }
+
+  private PipelineStatus getPipelineStatus(Pipeline pipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+        getLatestExtensionFromTimeSeries(
+            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
-  @Transaction
-  public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) throws IOException {
+  public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
@@ -135,46 +176,60 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
+    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it
+    // is unrelated to workflow execution. We should bring back the old behavior for this one.
     String storedPipelineStatus =
         getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
-    storeTimeSeries(
-        pipeline.getFullyQualifiedName(),
-        PIPELINE_STATUS_EXTENSION,
-        "pipelineStatus",
-        JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp(),
-        storedPipelineStatus != null);
-
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              pipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus),
+              pipelineStatus.getTimestamp());
+    } else {
+      storeTimeSeries(
+          pipeline.getFullyQualifiedName(),
+          PIPELINE_STATUS_EXTENSION,
+          "pipelineStatus",
+          JsonUtils.pojoToJson(pipelineStatus));
+    }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
-  @Transaction
-  public Pipeline deletePipelineStatus(String fqn, Long timestamp) throws IOException {
+  public Pipeline deletePipelineStatus(String fqn, Long timestamp) {
     // Validate the request content
-    Pipeline pipeline = dao.findEntityByName(fqn);
+    Pipeline pipeline = findByName(fqn, NON_DELETED);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);
+        JsonUtils.readValue(
+            getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp),
+            PipelineStatus.class);
     if (storedPipelineStatus != null) {
       deleteExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
       pipeline.setPipelineStatus(storedPipelineStatus);
       return pipeline;
     }
     throw new EntityNotFoundException(
-        String.format("Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
+        String.format(
+            "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) throws IOException {
+  public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
-    return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
+            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
+            PipelineStatus.class);
+    return new ResultList<>(
+        pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 
   // Validate if a given task exists in the pipeline
   private void validateTask(Pipeline pipeline, String taskName) {
-    boolean validTask = pipeline.getTasks().stream().anyMatch(task -> task.getName().equals(taskName));
+    boolean validTask =
+        pipeline.getTasks().stream().anyMatch(task -> task.getName().equals(taskName));
     if (!validTask) {
       throw new IllegalArgumentException("Invalid task name " + taskName);
     }
@@ -183,69 +238,124 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void restorePatchAttributes(Pipeline original, Pipeline updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override
-  public void prepare(Pipeline pipeline) throws IOException {
+  public void prepare(Pipeline pipeline, boolean update) {
     populateService(pipeline);
-    if (pipeline.getTasks() != null) {
-      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
+    // Tasks can have owners
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      EntityReference owner = validateOwner(task.getOwner());
+      task.setOwner(owner);
     }
   }
 
   @Override
-  public void storeEntity(Pipeline pipeline, boolean update) throws IOException {
+  public void storeEntity(Pipeline pipeline, boolean update) {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = pipeline.getService();
     pipeline.withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Task> taskWithTags = pipeline.getTasks();
-    pipeline.setTasks(cloneWithoutTags(taskWithTags));
+    List<Task> taskWithTagsAndOwners = pipeline.getTasks();
+    pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
     store(pipeline, update);
-    pipeline.withService(service).withTasks(taskWithTags);
+    pipeline.withService(service).withTasks(taskWithTagsAndOwners);
   }
 
   @Override
   public void storeRelationships(Pipeline pipeline) {
-    EntityReference service = pipeline.getService();
-    addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
-  }
+    addServiceRelationship(pipeline, pipeline.getService());
 
-  @Override
-  public Pipeline setInheritedFields(Pipeline pipeline, Fields fields) throws IOException {
-    // If pipeline does not have domain, then inherit it from parent Pipeline service
-    if (fields.contains(FIELD_DOMAIN) && pipeline.getDomain() == null) {
-      PipelineService service = Entity.getEntity(PIPELINE_SERVICE, pipeline.getService().getId(), "domain", ALL);
-      pipeline.withDomain(service.getDomain());
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      if (task.getOwner() != null) {
+        daoCollection
+            .fieldRelationshipDAO()
+            .insert(
+                FullyQualifiedName.buildHash(
+                    task.getOwner().getFullyQualifiedName()), // from FQN hash
+                FullyQualifiedName.buildHash(task.getFullyQualifiedName()), // to FQN hash
+                task.getOwner().getFullyQualifiedName(), // from FQN
+                task.getFullyQualifiedName(), // to FQN
+                task.getOwner().getType(), // from type
+                Entity.TASK, // to type
+                OWNS.ordinal(),
+                null);
+      }
     }
-    return pipeline;
   }
 
   @Override
   public void applyTags(Pipeline pipeline) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
-    applyTags(pipeline.getTasks());
+    applyTaskTags(pipeline.getTasks()); // TODO need cleanup
   }
 
-  private void applyTags(List<Task> tasks) {
-    if (tasks != null) {
-      for (Task task : tasks) {
-        applyTags(task.getTags(), task.getFullyQualifiedName());
-      }
+  @Override
+  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public void validateTags(Pipeline entity) {
+    super.validateTags(entity);
+    for (Task task : listOrEmpty(entity.getTasks())) {
+      validateTags(task.getTags());
+      task.setTags(addDerivedTags(task.getTags()));
+      checkMutuallyExclusive(task.getTags());
+    }
+  }
+
+  private void applyTaskTags(List<Task> tasks) {
+    for (Task task : listOrEmpty(tasks)) {
+      applyTags(task.getTags(), task.getFullyQualifiedName());
     }
   }
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : null);
+      if (t.getTags() == null) {
+        t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
+      }
     }
+  }
+
+  private void getTaskOwners(boolean setOwner, List<Task> tasks) {
+    for (Task t : listOrEmpty(tasks)) {
+      if (t.getOwner() == null) {
+        t.setOwner(setOwner ? getTaskOwner(t.getFullyQualifiedName()) : t.getOwner());
+      }
+    }
+  }
+
+  private EntityReference getTaskOwner(String taskFullyQualifiedName) {
+    EntityReference ownerRef = null;
+
+    List<Triple<String, String, String>> owners =
+        daoCollection
+            .fieldRelationshipDAO()
+            .findFrom(
+                FullyQualifiedName.buildHash(taskFullyQualifiedName), Entity.TASK, OWNS.ordinal());
+
+    // Triple<fromFQN, fromType, json>
+    for (Triple<String, String, String> owner : owners) {
+      if (owner.getMiddle().equals(Entity.USER)) {
+        User user = daoCollection.userDAO().findEntityByName(owner.getLeft(), Include.NON_DELETED);
+        ownerRef =
+            new EntityReference()
+                .withId(user.getId())
+                .withName(user.getName())
+                .withFullyQualifiedName(user.getFullyQualifiedName())
+                .withDescription(user.getDescription())
+                .withDisplayName(user.getDisplayName())
+                .withHref(user.getHref())
+                .withDeleted(user.getDeleted());
+      }
+    }
+    return ownerRef;
   }
 
   private void setTaskFQN(String parentFQN, List<Task> tasks) {
@@ -274,22 +384,22 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return allTags;
   }
 
-  private void populateService(Pipeline pipeline) throws IOException {
+  private void populateService(Pipeline pipeline) {
     PipelineService service = Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
     pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
   }
 
-  private List<Task> cloneWithoutTags(List<Task> tasks) {
+  private List<Task> cloneWithoutTagsAndOwners(List<Task> tasks) {
     if (nullOrEmpty(tasks)) {
       return tasks;
     }
     List<Task> copy = new ArrayList<>();
-    tasks.forEach(t -> copy.add(cloneWithoutTags(t)));
+    tasks.forEach(t -> copy.add(cloneWithoutTagsAndOwners(t)));
     return copy;
   }
 
-  private Task cloneWithoutTags(Task task) {
+  private Task cloneWithoutTagsAndOwners(Task task) {
     return new Task()
         .withDescription(task.getDescription())
         .withName(task.getName())
@@ -303,40 +413,58 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withEndDate(task.getEndDate());
   }
 
+  protected void deleteTaskOwnerRelationship(Task task) {
+    // If the deleted task has owners, we need to remove the field relationship
+    if (task.getOwner() != null) {
+      daoCollection
+          .fieldRelationshipDAO()
+          .delete(
+              FullyQualifiedName.buildHash(task.getOwner().getFullyQualifiedName()),
+              FullyQualifiedName.buildHash(task.getFullyQualifiedName()),
+              task.getOwner().getType(),
+              Entity.TASK,
+              OWNS.ordinal());
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
     public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateTasks(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
-      recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
+      recordChange(
+          "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
-    private void updateTasks(Pipeline original, Pipeline updated) throws IOException {
+    private void updateTasks(Pipeline original, Pipeline updated) {
       // While the Airflow lineage only gets executed for one Task at a time, we will consider the
       // client Task information as the source of truth. This means that at each update, we will
       // expect to receive all the tasks known until that point.
 
       // The lineage backend will take care of controlling new & deleted tasks, while passing to the
-      // API the full list of Tasks to consider for a given Pipeline. Having a single point of control
-      // of the Tasks and their status, simplifies the logic on how to add/delete tasks.
+      // API the full list of Tasks to consider for a given Pipeline. Having a single point of
+      // control of the Tasks and their status, simplifies the logic on how to add/delete tasks.
 
       // The API will only take care of marking tasks as added/updated/deleted based on the original
       // and incoming changes.
 
-      List<Task> updatedTasks = listOrEmpty(updated.getTasks());
       List<Task> origTasks = listOrEmpty(original.getTasks());
+      List<Task> updatedTasks = listOrEmpty(updated.getTasks());
 
       boolean newTasks = false;
       // Update the task descriptions
       for (Task updatedTask : updatedTasks) {
-        Task storedTask = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
-        if (storedTask == null || updatedTask == null) { // New task added
+        Task storedTask =
+            origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
+        if (storedTask == null) { // New task added
           newTasks = true;
           continue;
         }
@@ -354,10 +482,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
         recordListChange(TASKS_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
+        applyTaskTags(added);
+        deleted.forEach(
+            d -> {
+              daoCollection.tagUsageDAO().deleteTagsByTarget(d.getFullyQualifiedName());
+              deleteTaskOwnerRelationship(d);
+            });
       }
     }
 
-    private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
+    private void updateTaskDescription(Task origTask, Task updatedTask) {
       if (operation.isPut() && !nullOrEmpty(origTask.getDescription()) && updatedByBot()) {
         // Revert the non-empty task description if being updated by a bot
         updatedTask.setDescription(origTask.getDescription());
@@ -365,11 +499,24 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       }
       // Don't record a change if descriptions are the same
       if (origTask != null
-          && ((origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription()))
+          && ((origTask.getDescription() != null
+                  && !origTask.getDescription().equals(updatedTask.getDescription()))
               || updatedTask.getDescription() != null)) {
         recordChange(
-            "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+            "tasks." + origTask.getName() + ".description",
+            origTask.getDescription(),
+            updatedTask.getDescription());
       }
     }
+  }
+
+  public static Task findTask(List<Task> tasks, String taskName) {
+    return tasks.stream()
+        .filter(c -> c.getName().equals(taskName))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidFieldName("task", taskName)));
   }
 }

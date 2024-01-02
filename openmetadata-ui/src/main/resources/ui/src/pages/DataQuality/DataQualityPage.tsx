@@ -12,20 +12,36 @@
  */
 
 import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
-import { TestCases } from 'components/DataQuality/TestCases/TestCases.component';
-import { TestSuites } from 'components/DataQuality/TestSuites/TestSuites.component';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
+import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/SummaryPanel.component';
+import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
+import { TestSuites } from '../../components/DataQuality/TestSuites/TestSuites.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
+import { TestSummary } from '../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../rest/testAPI';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
 const DataQualityPage = () => {
   const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
+  const [summary, setSummary] = useState<TestSummary>(INITIAL_TEST_SUMMARY);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
+
+  const summaryPanel = useMemo(
+    () => <SummaryPanel isLoading={isSummaryLoading} testSummary={summary} />,
+    [summary, isSummaryLoading]
+  );
 
   const tabDetails = useMemo(() => {
     const tab: TabsProps['items'] = [
@@ -36,7 +52,7 @@ const DataQualityPage = () => {
             name={t('label.by-entity', { entity: t('label.table-plural') })}
           />
         ),
-        children: <TestSuites />,
+        children: <TestSuites summaryPanel={summaryPanel} />,
         key: DataQualityPageTabs.TABLES,
       },
       {
@@ -47,7 +63,7 @@ const DataQualityPage = () => {
           />
         ),
         key: DataQualityPageTabs.TEST_CASES,
-        children: <TestCases />,
+        children: <TestCases summaryPanel={summaryPanel} />,
       },
       {
         label: (
@@ -59,18 +75,37 @@ const DataQualityPage = () => {
           />
         ),
         key: DataQualityPageTabs.TEST_SUITES,
-        children: <TestSuites />,
+        children: <TestSuites summaryPanel={summaryPanel} />,
       },
     ];
 
     return tab;
-  }, []);
+  }, [summaryPanel]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
+
+  const fetchTestSummary = async () => {
+    try {
+      const response = await getTestCaseExecutionSummary();
+      setSummary(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      fetchTestSummary();
+    } else {
+      setIsSummaryLoading(false);
+    }
+  }, []);
 
   return (
     <PageLayoutV1 pageTitle="Quality">

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import java.io.IOException;
 import java.util.LinkedList;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
@@ -42,7 +41,7 @@ public interface MessageDecorator<T> {
     return "<!remove>";
   }
 
-  T buildMessage(ChangeEvent event) throws IOException;
+  T buildMessage(ChangeEvent event);
 
   default String getPlaintextDiff(String oldValue, String newValue) {
     // create a configured DiffRowGenerator
@@ -72,7 +71,9 @@ public interface MessageDecorator<T> {
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
     diff = this.replaceMarkers(diff, addMarker, this.getAddMarker(), this.getAddMarkerClose());
-    diff = this.replaceMarkers(diff, removeMarker, this.getRemoveMarker(), this.getRemoveMarkerClose());
+    diff =
+        this.replaceMarkers(
+            diff, removeMarker, this.getRemoveMarker(), this.getRemoveMarkerClose());
     return diff;
   }
 

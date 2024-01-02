@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { getContainerDetailPath } from 'constants/constants';
-import { Container } from 'generated/entity/data/container';
-import { EntityReference } from 'generated/type/entityReference';
-import { isEmpty } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { ColumnsType } from 'antd/lib/table';
+import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../../components/common/Table/Table';
+import { getContainerDetailPath } from '../../../constants/constants';
+import { Container } from '../../../generated/entity/data/container';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 interface ContainerChildrenProps {
   childrenList: Container['children'];
+  isLoading?: boolean;
+  fetchChildren: () => void;
 }
 
-const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
+const ContainerChildren: FC<ContainerChildrenProps> = ({
+  childrenList,
+  isLoading,
+  fetchChildren,
+}) => {
   const { t } = useTranslation();
 
   const columns: ColumnsType<EntityReference> = useMemo(
@@ -35,15 +41,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
       {
         title: t('label.name'),
         dataIndex: 'name',
-        width: '200px',
+        width: 400,
         key: 'name',
         render: (_, record) => (
-          <Link
-            className="link-hover"
-            data-testid="container-name"
-            to={getContainerDetailPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              data-testid="container-name"
+              to={getContainerDetailPath(record.fullyQualifiedName ?? '')}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {
@@ -68,9 +76,9 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
     []
   );
 
-  if (isEmpty(childrenList)) {
-    return <ErrorPlaceHolder />;
-  }
+  useEffect(() => {
+    fetchChildren();
+  }, []);
 
   return (
     <Table
@@ -78,6 +86,10 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
       columns={columns}
       data-testid="container-list-table"
       dataSource={childrenList}
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+      }}
       pagination={false}
       rowKey="id"
       size="small"

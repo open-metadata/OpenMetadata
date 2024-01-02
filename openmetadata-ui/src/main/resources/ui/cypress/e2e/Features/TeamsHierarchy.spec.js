@@ -38,31 +38,26 @@ describe('Add nested teams and test TeamsSelectable', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
-    interceptURL('GET', '/api/v1/permissions/team/*', 'getPermissions');
+    interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
     // Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@getTeams', 200);
     verifyResponseStatusCode('@getOrganization', 200);
   });
 
   it('Add teams', () => {
     verifyResponseStatusCode('@getPermissions', 200);
     teamNames.forEach((teamName, index) => {
-      interceptURL(
-        'GET',
-        '/api/v1/search/query?q=*&from=*&size=*&index=*',
-        'getCreatedTeam'
-      );
-      addTeam(getTeam(teamName), index);
+      addTeam(getTeam(teamName), index, true);
       verifyResponseStatusCode('@getOrganization', 200);
-      verifyResponseStatusCode('@getCreatedTeam', 200);
+
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
       verifyResponseStatusCode('@getOrganization', 200);
@@ -88,9 +83,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .type(buTeamName);
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
 
     teamNames.forEach((teamName) => {
@@ -100,9 +93,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
         .should('be.visible')
         .click()
         .type(teamName);
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
   });
 });

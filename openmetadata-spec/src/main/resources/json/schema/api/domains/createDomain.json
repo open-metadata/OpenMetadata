@@ -1,11 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/entity/domains/createDomain.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "createDomain",
+  "title": "CreateDomainRequest",
   "description": "Create Domain API request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.domains.CreateDomain",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "domainType": {
       "description": "Domain type",
@@ -27,9 +29,12 @@
       "description": "Description of the Domain.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "parent" : {
-      "description" : "Fully qualified name of parent domain.",
-      "type" : "string"
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
+    "parent": {
+      "description": "Fully qualified name of parent domain.",
+      "type": "string"
     },
     "owner": {
       "description": "Owner of this Domain.",
@@ -37,14 +42,18 @@
       "default": null
     },
     "experts": {
-      "description": "List of of user/login names of users who are experts in this Domain.",
+      "description": "List of user/login names of users who are experts in this Domain.",
       "type" : "array",
       "items": {
-        "type" : "string"
+        "type": "string"
       },
       "default": null
     }
   },
-  "required": ["id", "name", "description", "domainType"],
+  "required": [
+    "name",
+    "description",
+    "domainType"
+  ],
   "additionalProperties": false
 }

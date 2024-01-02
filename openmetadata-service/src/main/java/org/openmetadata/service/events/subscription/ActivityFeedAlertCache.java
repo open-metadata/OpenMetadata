@@ -4,42 +4,32 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 
 @Slf4j
 public class ActivityFeedAlertCache {
-  private static final ActivityFeedAlertCache INSTANCE = new ActivityFeedAlertCache();
-  private static volatile boolean initialized = false;
-  protected static final LoadingCache<String, EventSubscription> eventSubCache =
+  protected static final LoadingCache<String, EventSubscription> EVENT_SUB_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new ActivityFeedAlertLoader());
-  protected static EventSubscriptionRepository eventSubscriptionRepository;
-  private static String activityFeedAlertName;
+  private static final String ACTIVITY_FEED_ALERT = "ActivityFeedAlert";
 
-  public static void initialize(String alertName, EventSubscriptionRepository repo) {
-    if (!initialized) {
-      eventSubscriptionRepository = repo;
-      initialized = true;
-      activityFeedAlertName = alertName;
-    }
+  private ActivityFeedAlertCache() {
+    // Private constructor for static class
   }
 
-  public static ActivityFeedAlertCache getInstance() {
-    return INSTANCE;
-  }
-
-  public EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
+  public static EventSubscription getActivityFeedAlert() {
     try {
-      return eventSubCache.get(activityFeedAlertName);
+      return EVENT_SUB_CACHE.get(ACTIVITY_FEED_ALERT);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
@@ -47,9 +37,9 @@ public class ActivityFeedAlertCache {
 
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
     @Override
-    public EventSubscription load(@CheckForNull String alertName) throws IOException {
+    public @NonNull EventSubscription load(@CheckForNull String alertName) {
       EventSubscription alert =
-          eventSubscriptionRepository.getByName(null, alertName, eventSubscriptionRepository.getFields("*"));
+          Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
       LOG.debug("Loaded Alert {}", alert);
       return alert;
     }

@@ -21,13 +21,15 @@ import {
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('entityName'),
-}));
-
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
+jest.mock(
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
+  }
+);
 
 const mockUpdateEntityType = jest.fn();
 const mockProperties = [
@@ -64,6 +66,7 @@ const mockProp = {
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
   isLoading: false,
+  isButtonLoading: false,
 };
 
 describe('Test CustomField Table Component', () => {

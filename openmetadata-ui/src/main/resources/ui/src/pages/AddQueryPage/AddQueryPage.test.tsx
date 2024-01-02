@@ -11,42 +11,40 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_TABLE } from 'mocks/TableData.mock';
 import React from 'react';
+import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import AddQueryPage from './AddQueryPage.component';
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_TABLE })),
 }));
-jest.mock('rest/queryAPI', () => ({
+jest.mock('../../rest/queryAPI', () => ({
   postQuery: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('react-router-dom', () => ({
-  useParams: jest
-    .fn()
-    .mockReturnValue({ datasetFQN: MOCK_TABLE.fullyQualifiedName }),
+  useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),
 }));
 jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }
 );
-jest.mock('components/schema-editor/SchemaEditor', () => {
+jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
 });
-jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(() => <div>RichTextEditor</div>);
 });
-jest.mock('components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest.fn().mockImplementation(() => <div>AsyncSelect</div>),
 }));
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>
@@ -54,7 +52,7 @@ jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       query: {

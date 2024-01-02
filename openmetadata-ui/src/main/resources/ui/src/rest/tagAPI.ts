@@ -18,6 +18,7 @@ import { CreateClassification } from '../generated/api/classification/createClas
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -144,6 +145,25 @@ export const deleteTag = async (tagId: string) => {
       hardDelete: true,
     },
   });
+
+  return response.data;
+};
+
+export const getClassificationVersionsList = async (id: string) => {
+  const url = `${BASE_URL}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getClassificationVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `${BASE_URL}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Classification>(url);
 
   return response.data;
 };

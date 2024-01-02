@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
 
 export const PIE_DATA = [
   { name: 'Tables', value: 40 },
@@ -458,7 +458,7 @@ export const getEntityCountData = () => {
   const timestamps: string[] = [];
 
   const data = ENTITY_COUNT.map((data) => {
-    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    const timestamp = formatDate(data.timestamp);
     if (!entities.includes(data.Type)) {
       entities.push(data.Type);
     }
@@ -491,7 +491,7 @@ export const getEntityDescriptionData = () => {
   const timestamps: string[] = [];
 
   const data = ENTITY_DESCRIPTION.map((data) => {
-    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    const timestamp = formatDate(data.timestamp);
     if (!entities.includes(data.entityType)) {
       entities.push(data.entityType);
     }
@@ -524,7 +524,7 @@ export const getEntityOwnersData = () => {
   const timestamps: string[] = [];
 
   const data = ENTITY_OWNERS.map((data) => {
-    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    const timestamp = formatDate(data.timestamp);
     if (!entities.includes(data.entityType)) {
       entities.push(data.entityType);
     }
@@ -559,7 +559,7 @@ export const getEntityTiersData = () => {
 
   const data = ENTITY_TIER.map((data) => {
     const tiering = data.entityTier ?? NO_TIER;
-    const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+    const timestamp = formatDate(data.timestamp);
     if (!tiers.includes(tiering)) {
       tiers.push(tiering);
     }

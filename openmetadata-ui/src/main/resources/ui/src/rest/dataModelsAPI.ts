@@ -12,11 +12,13 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { EntityReference } from 'generated/type/entityReference';
-import { Include } from 'generated/type/include';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';
@@ -59,11 +61,13 @@ export const getDataModelsByName = async (
 
 export const getDataModelDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include = Include.All
 ) => {
   const url = `${getURLWithQueryFields(
-    `/dashboard/datamodels/name/${databaseSchemaName}`,
-    arrQueryFields
+    `${URL}/name/${databaseSchemaName}`,
+    arrQueryFields,
+    `include=${include}`
   )}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
@@ -114,6 +118,24 @@ export const getDataModelVersion = async (id: string, version: string) => {
   const url = `${URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
+
+  return response.data;
+};
+
+export const restoreDataModel = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<DashboardDataModel>
+  >(`${URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateDataModelVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<
+    QueryVote,
+    AxiosResponse<DashboardDataModel>
+  >(`${URL}/${id}/vote`, data);
 
   return response.data;
 };

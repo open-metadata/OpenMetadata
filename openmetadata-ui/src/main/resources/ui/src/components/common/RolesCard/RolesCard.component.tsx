@@ -13,14 +13,13 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Select, Space } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { getEntityName } from '../../../utils/EntityUtils';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
@@ -35,7 +34,6 @@ const RolesCard = ({
 
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
@@ -81,24 +79,23 @@ const RolesCard = ({
     });
   }
 
-  if (isAdminUser && !isAuthDisabled) {
+  if (isAdminUser) {
     return (
       <Card
         className="ant-card-feed relative page-layout-v1-left-panel"
+        extra={
+          !isRolesEdit && (
+            <Button
+              className="m-l-xs"
+              data-testid="edit-roles"
+              icon={<EditIcon width={16} />}
+              type="text"
+              onClick={() => setIsRolesEdit(true)}
+            />
+          )
+        }
         key="roles-card"
-        title={
-          <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.role-plural')}</h6>
-            {!isRolesEdit && (
-              <button
-                className="m-l-xs focus:tw-outline-none"
-                data-testid="edit-roles"
-                onClick={() => setIsRolesEdit(true)}>
-                <EditIcon width={16} />
-              </button>
-            )}
-          </div>
-        }>
+        title={t('label.role-plural')}>
         <div className="mb-4">
           {isRolesEdit ? (
             <Space className="w-full" direction="vertical">
@@ -142,11 +139,7 @@ const RolesCard = ({
       <Card
         className="relative page-layout-v1-left-panel mt-2.5"
         key="roles-card"
-        title={
-          <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.role-plural')}</h6>
-          </div>
-        }>
+        title={t('label.role-plural')}>
         <div className="flex items-center justify-between mb-4">
           <RolesElement userData={userData} />
         </div>

@@ -11,67 +11,141 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import React, { useEffect, useMemo, useState } from 'react';
+import { Col, Row, Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { TableConstraint } from '../../generated/api/data/createTable';
+import { SearchIndexField } from '../../generated/entity/data/searchIndex';
 import { Column } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import Searchbar from '../common/searchbar/Searchbar';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
-const VersionTable = ({
+function VersionTable<T extends Column | SearchIndexField>({
   columnName,
   columns,
   joins,
   tableConstraints,
-  constraintUpdatedColumns,
-}: VersionTableProps) => {
-  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
+  addedColumnConstraintDiffs,
+  deletedColumnConstraintDiffs,
+  addedTableConstraintDiffs,
+  deletedTableConstraintDiffs,
+}: Readonly<VersionTableProps<T>>) {
+  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
 
-  const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
+  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
 
-  const versionTableColumns = useMemo(
+  const renderColumnName = useCallback(
+    (name: T['name'], record: T) => {
+      const addedColumnConstraint = addedColumnConstraintDiffs?.find((diff) =>
+        diff.name?.includes(name)
+      );
+      const deletedColumnConstraint = deletedColumnConstraintDiffs?.find(
+        (diff) => diff.name?.includes(name)
+      );
+      let addedTableConstraint: TableConstraint[] | undefined;
+      let deletedTableConstraint: TableConstraint[] | undefined;
+
+      addedTableConstraintDiffs?.forEach((diff) => {
+        const constraintNewValue = JSON.parse(diff.newValue);
+        constraintNewValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            addedTableConstraint = [
+              ...(addedTableConstraint ?? []),
+              constraint,
+            ];
+          }
+        });
+      });
+
+      deletedTableConstraintDiffs?.forEach((diff) => {
+        const constraintOldValue = JSON.parse(diff.oldValue);
+        constraintOldValue?.forEach((constraint: TableConstraint) => {
+          if (constraint.columns?.includes(name)) {
+            deletedTableConstraint = [
+              ...(deletedTableConstraint ?? []),
+              constraint,
+            ];
+          }
+        });
+      });
+
+      let addedConstraintIcon = null;
+      let deletedConstraintIcon = null;
+
+      const existingAddedTableConstraint = isUndefined(addedTableConstraint)
+        ? tableConstraints
+        : undefined;
+
+      addedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint:
+          addedColumnConstraint?.newValue ?? (record as Column).constraint,
+        tableConstraints: addedTableConstraint ?? existingAddedTableConstraint,
+        isColumnConstraintAdded: !isUndefined(addedColumnConstraint),
+        isTableConstraintAdded: !isUndefined(addedTableConstraint),
+      });
+
+      deletedConstraintIcon = prepareConstraintIcon({
+        columnName: name,
+        columnConstraint: deletedColumnConstraint?.oldValue,
+        tableConstraints: deletedTableConstraint,
+        isColumnConstraintAdded: false,
+        isColumnConstraintDeleted: !isUndefined(deletedColumnConstraint),
+        isTableConstraintDeleted: !isUndefined(deletedTableConstraint),
+      });
+
+      return (
+        <div className="d-inline-flex flex-column hover-icon-group w-full">
+          <div className="d-inline-flex">
+            {deletedConstraintIcon}
+            {addedConstraintIcon}
+            <RichTextEditorPreviewer markdown={name} />
+          </div>
+          {!isEmpty(record.displayName) ? (
+            <RichTextEditorPreviewer markdown={record.displayName ?? ''} />
+          ) : null}
+        </div>
+      );
+    },
+    [
+      columns,
+      tableConstraints,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
+      addedTableConstraintDiffs,
+      deletedTableConstraintDiffs,
+    ]
+  );
+
+  const versionTableColumns: ColumnsType<T> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        ellipsis: true,
-        width: 180,
-        render: (name: Column['name'], record: Column) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
-            {prepareConstraintIcon(
-              name,
-              record.constraint,
-              tableConstraints,
-              undefined,
-              undefined,
-              constraintUpdatedColumns?.includes(name)
-            )}
-            <RichTextEditorPreviewer markdown={name} />
-          </Space>
-        ),
+        width: 200,
+        render: renderColumnName,
       },
       {
         title: t('label.type'),
@@ -80,12 +154,25 @@ const VersionTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) =>
-          dataTypeDisplay ? (
-            <RichTextEditorPreviewer markdown={dataTypeDisplay.toLowerCase()} />
+        render: (dataTypeDisplay: T['dataTypeDisplay']) => {
+          return dataTypeDisplay ? (
+            <Tooltip
+              title={
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                  textVariant="white"
+                />
+              }>
+              <div className="cursor-pointer">
+                <RichTextEditorPreviewer
+                  markdown={dataTypeDisplay?.toLowerCase() ?? ''}
+                />
+              </div>
+            </Tooltip>
           ) : (
             NO_DATA_PLACEHOLDER
-          ),
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -93,13 +180,13 @@ const VersionTable = ({
         key: 'description',
         accessor: 'description',
         width: 400,
-        render: (description: Column['description']) =>
+        render: (description: T['description']) =>
           description ? (
             <>
               <RichTextEditorPreviewer markdown={description} />
               {getFrequentlyJoinedColumns(
                 columnName,
-                joins,
+                joins ?? [],
                 t('label.frequently-joined-column-plural')
               )}
             </>
@@ -117,11 +204,10 @@ const VersionTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Column['tags']) => (
+        render: (tags: T['tags']) => (
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags ?? []).Classification}
-            type="border"
           />
         ),
       },
@@ -131,16 +217,12 @@ const VersionTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Column['tags']) => (
-          <TagsViewer
-            sizeCap={-1}
-            tags={getFilterTags(tags ?? []).Glossary}
-            type="border"
-          />
+        render: (tags: T['tags']) => (
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags ?? []).Glossary} />
         ),
       },
     ],
-    [columnName, joins, data]
+    [columnName, joins, data, renderColumnName]
   );
 
   const handleSearchAction = (searchValue: string) => {
@@ -151,7 +233,7 @@ const VersionTable = ({
     if (!searchText) {
       setSearchedColumns(columns);
     } else {
-      const searchCols = searchInColumns(columns, searchText);
+      const searchCols = searchInColumns<T>(columns, searchText);
       setSearchedColumns(searchCols);
     }
   }, [searchText, columns]);
@@ -173,7 +255,7 @@ const VersionTable = ({
           data-testid="entity-table"
           dataSource={data}
           expandable={{
-            ...getTableExpandableConfig<Column>(),
+            ...getTableExpandableConfig<T>(),
             defaultExpandAllRows: true,
           }}
           key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
@@ -188,6 +270,6 @@ const VersionTable = ({
       </Col>
     </Row>
   );
-};
+}
 
 export default VersionTable;

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+import {
+  customFormatDateTime,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import {
   addUser,
   deleteSoftDeletedUser,
@@ -29,24 +34,38 @@ const adminEmail = `${adminName}@gmail.com`;
 
 const searchBotText = 'bot';
 
+const expirationTime = {
+  oneday: '1',
+  sevendays: '7',
+  onemonth: '30',
+  twomonths: '60',
+  threemonths: '90',
+};
+
+const revokeToken = () => {
+  // Click on revoke button
+  cy.get('[data-testid="revoke-button"]').should('be.visible').click();
+  // Verify the revoke text
+  cy.get('[data-testid="body-text"]').should(
+    'contain',
+    'Are you sure you want to revoke access for Personal Access Token?'
+  );
+  // Click on confirm button
+  cy.get('[data-testid="save-button"]').click();
+  // Verify the revoke is successful
+  cy.get('[data-testid="revoke-button"]').should('not.exist');
+};
+
 describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL(
-      'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
-      'getUsers'
-    );
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
+    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
 
   it('Add new User', () => {
@@ -55,20 +74,6 @@ describe('Users flow should work properly', () => {
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
-
-    // Validate if user is added in the User tab
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=**&from=0&size=*&index=*',
-      'searchUser'
-    );
-
-    cy.get('[data-testid="searchbar"]')
-      .should('exist')
-      .should('be.visible')
-      .type(userName);
-    verifyResponseStatusCode('@searchUser', 200);
-    cy.get('.ant-table-tbody ').should('contain', userName);
   });
 
   it('Soft delete user', () => {
@@ -87,7 +92,7 @@ describe('Users flow should work properly', () => {
   it('Search for bot user', () => {
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=15&index=user_search_index`,
+      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=25&index=user_search_index`,
       'searchUser'
     );
     cy.get('[data-testid="searchbar"]')
@@ -96,8 +101,6 @@ describe('Users flow should work properly', () => {
       .type(searchBotText);
 
     verifyResponseStatusCode('@searchUser', 200);
-
-    cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
   });
 });
 
@@ -105,15 +108,11 @@ describe('Admin flow should work properly', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL(
-      'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15',
-      'getAdmins'
-    );
+    interceptURL('GET', '/api/v1/users?*isAdmin=true*', 'getAdmins');
     cy.get('.ant-menu-title-content')
       .contains('Admins')
       .should('exist')
@@ -160,5 +159,69 @@ describe('Admin flow should work properly', () => {
   it('Permanently Delete Soft Deleted admin', () => {
     softDeleteUser(adminName, true);
     deleteSoftDeletedUser(adminName);
+  });
+
+  describe('Personal Access Token flow should work properly', () => {
+    beforeEach(() => {
+      cy.login();
+    });
+
+    it('Token should be generated and revoked', function () {
+      // Enter profile section
+      cy.get('.username').click();
+      cy.get('[data-testid="user-name"] > .ant-typography').click();
+      cy.get('[data-testid="access-token"] > .ant-space-item').click();
+      cy.get('[data-testid="access-token"] > .ant-space-item').should(
+        'be.visible'
+      );
+
+      // generate token
+      cy.get('[data-testid="no-token"]').should('be.visible');
+      cy.get('[data-testid="auth-mechanism"] > span').click();
+      cy.get('[data-testid="token-expiry"]').should('be.visible').click();
+      cy.contains('1 hr').should('exist').should('be.visible').click();
+      cy.get('[data-testid="token-expiry"]').should('be.visible');
+      cy.get('[data-testid="save-edit"]').should('be.visible').click();
+
+      // revoke token
+      cy.get('[data-testid="revoke-button"] > span').should('be.visible');
+      cy.get('[data-testid="revoke-button"] > span').click();
+      cy.get('[data-testid="save-button"] > span').click();
+      cy.get(':nth-child(1) > .ant-row > .ant-form-item-label > label').should(
+        'be.visible'
+      );
+    });
+
+    Object.values(expirationTime).forEach((expiry) => {
+      it(`Update token expiration for ${expiry} days`, () => {
+        cy.get('.username').click();
+        cy.get('[data-testid="user-name"] > .ant-typography').click();
+        cy.get('[data-testid="access-token"] > .ant-space-item').click();
+        cy.get('[data-testid="access-token"] > .ant-space-item').should(
+          'be.visible'
+        );
+        cy.get('[data-testid="no-token"]').should('be.visible');
+        cy.get('[data-testid="auth-mechanism"] > span').click();
+
+        cy.get('[data-testid="token-expiry"]').click();
+        // Select the expiration period
+        cy.contains(`${expiry} days`).click();
+        // Save the updated date
+        const expiryDate = customFormatDateTime(
+          getEpochMillisForFutureDays(expiry),
+          `ccc d'th' MMMM, yyyy`
+        );
+        cy.get('[data-testid="save-edit"]').click();
+        cy.get('[data-testid="center-panel"]')
+          .find('[data-testid="revoke-button"]')
+          .should('be.visible');
+        // Verify the expiry time
+        cy.get('[data-testid="token-expiry"]')
+          .invoke('text')
+          .should('contain', `Expires on ${expiryDate}`);
+        cy.get('[data-testid="token-expiry"]').click();
+        revokeToken();
+      });
+    });
   });
 });

@@ -26,11 +26,14 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
+)
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
-from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 
 
 class SQAInterfaceMixin:
@@ -84,17 +87,21 @@ class SQAInterfaceMixin:
             )
 
     def set_catalog(self, session) -> None:
-        """Set catalog for the session. Right now only databricks requires it
+        """Set catalog for the session. Right now only databricks and unity catalog requires it
 
         Args:
             session (Session): sqa session object
         """
-        if isinstance(self.service_connection_config, DatabricksConnection):
-            bind = session.get_bind()
-            bind.execute(
-                "USE CATALOG %(catalog)s;",
-                {"catalog": self.service_connection_config.catalog},
-            ).first()
+        if not isinstance(
+            self.service_connection_config,
+            (UnityCatalogConnection, DatabricksConnection),
+        ):
+            return
+        bind = session.get_bind()
+        bind.execute(
+            "USE CATALOG %(catalog)s;",
+            {"catalog": self.service_connection_config.catalog},
+        ).first()
 
     def close(self):
         """close session"""

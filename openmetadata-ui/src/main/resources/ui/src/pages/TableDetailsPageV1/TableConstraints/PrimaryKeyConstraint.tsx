@@ -12,8 +12,9 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Tooltip } from 'antd';
-import { ReactComponent as IconKey } from 'assets/svg/icon-key.svg';
-import StraightLine from 'assets/svg/straight-line.svg';
+import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
+import SectionLine from '../../../assets/svg/section-line-medium.svg';
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,7 +23,7 @@ const PrimaryKeyConstraint = () => {
 
   return (
     <div className="constraint-primary-key">
-      <img src={StraightLine} />
+      <img className="primary-key-section-line" src={SectionLine} />
       <Tooltip
         placement="bottom"
         title={t('label.primary-key')}

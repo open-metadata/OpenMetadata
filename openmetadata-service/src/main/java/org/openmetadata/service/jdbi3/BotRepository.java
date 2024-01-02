@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -26,26 +26,37 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
-
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+  public BotRepository() {
+    super(
+        BotResource.COLLECTION_PATH,
+        Entity.BOT,
+        Bot.class,
+        Entity.getCollectionDAO().botDAO(),
+        "",
+        BOT_UPDATE_FIELDS);
+    quoteFqn = true;
   }
 
   @Override
-  public Bot setFields(Bot entity, Fields fields) throws IOException {
-    return entity.withBotUser(getBotUser(entity));
+  public void setFields(Bot entity, Fields fields) {
+    entity.withBotUser(getBotUser(entity));
   }
 
   @Override
-  public void prepare(Bot entity) throws IOException {
+  public void clearFields(Bot entity, Fields fields) {
+    /* Do nothing */
+  }
+
+  @Override
+  public void prepare(Bot entity, boolean update) {
     User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }
 
   @Override
-  public void storeEntity(Bot entity, boolean update) throws IOException {
+  public void storeEntity(Bot entity, boolean update) {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
     store(entity, update);
@@ -54,7 +65,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void storeRelationships(Bot entity) {
-    addRelationship(entity.getId(), entity.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+    addRelationship(
+        entity.getId(),
+        entity.getBotUser().getId(),
+        Entity.BOT,
+        Entity.USER,
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -68,8 +84,10 @@ public class BotRepository extends EntityRepository<Bot> {
     updated.withBotUser(original.getBotUser());
   }
 
-  public EntityReference getBotUser(Bot bot) throws IOException {
-    return getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
+  public EntityReference getBotUser(Bot bot) {
+    return bot.getBotUser() != null
+        ? bot.getBotUser()
+        : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {
@@ -77,14 +95,20 @@ public class BotRepository extends EntityRepository<Bot> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateUser(original, updated);
     }
 
-    private void updateUser(Bot original, Bot updated) throws IOException {
+    private void updateUser(Bot original, Bot updated) {
       deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
-      addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+      addRelationship(
+          updated.getId(),
+          updated.getBotUser().getId(),
+          Entity.BOT,
+          Entity.USER,
+          Relationship.CONTAINS);
       if (original.getBotUser() == null
           || updated.getBotUser() == null
           || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {

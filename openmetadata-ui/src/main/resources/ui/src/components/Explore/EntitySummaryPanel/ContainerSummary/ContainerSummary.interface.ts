@@ -10,12 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Container } from 'generated/entity/data/container';
-import { TagLabel } from 'generated/type/tagLabel';
+
+import {
+  Container,
+  TagLabel,
+} from '../../../../generated/entity/data/container';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface ContainerSummaryProps {
   entityDetails: Container;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }

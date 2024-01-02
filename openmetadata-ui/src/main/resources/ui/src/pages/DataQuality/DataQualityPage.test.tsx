@@ -12,7 +12,8 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -24,17 +25,20 @@ const mockUseHistory = {
 };
 
 // mock components
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('components/DataQuality/TestSuites/TestSuites.component', () => {
-  return {
-    TestSuites: jest
-      .fn()
-      .mockImplementation(() => <div>TestSuites.component</div>),
-  };
-});
-jest.mock('components/DataQuality/TestCases/TestCases.component', () => {
+jest.mock(
+  '../../components/DataQuality/TestSuites/TestSuites.component',
+  () => {
+    return {
+      TestSuites: jest
+        .fn()
+        .mockImplementation(() => <div>TestSuites.component</div>),
+    };
+  }
+);
+jest.mock('../../components/DataQuality/TestCases/TestCases.component', () => {
   return {
     TestCases: jest
       .fn()
@@ -47,6 +51,21 @@ jest.mock('react-router-dom', () => {
     useHistory: jest.fn().mockImplementation(() => mockUseHistory),
   };
 });
+
+jest.mock(
+  '../../components/DataQuality/SummaryPannel/SummaryPanel.component',
+  () => ({ SummaryPanel: jest.fn() })
+);
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest
+    .fn()
+    .mockImplementation(() => ({ permissions: DEFAULT_ENTITY_PERMISSION })),
+}));
+
+jest.mock('../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn(),
+}));
 
 describe('DataQualityPage', () => {
   it('component should render', async () => {

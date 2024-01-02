@@ -40,6 +40,13 @@ from metadata.ingestion.source.database.oracle.query_parser import (
 
 
 class OracleLineageSource(OracleQueryParserSource, LineageSource):
-    filters = "AND COMMAND_TYPE IN (1, 2)"
+    filters = """
+        AND COMMAND_TYPE IN (1, 2) AND (
+            lower(SQL_FULLTEXT) LIKE '%%create%%table%%as%%select%%'
+            OR lower(SQL_FULLTEXT) LIKE '%%insert%%into%%select%%'
+            OR lower(SQL_FULLTEXT) LIKE '%%update%%'
+            OR lower(SQL_FULLTEXT) LIKE '%%merge%%'
+        )
+        """
 
     sql_stmt = ORACLE_QUERY_HISTORY_STATEMENT

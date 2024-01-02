@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { EntityFieldThreads } from 'interface/feed.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ThreadType } from '../../generated/api/feed/createThread';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
 export interface MlModelFeaturesListProp {
   mlFeatures: Mlmodel['mlFeatures'];
@@ -22,6 +21,5 @@ export interface MlModelFeaturesListProp {
   handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
   isDeleted?: boolean;
   entityFqn: string;
-  entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }

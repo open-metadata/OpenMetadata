@@ -14,18 +14,17 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { observer } from 'mobx-react';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { getEntityDetailLink } from 'utils/CommonUtils';
-import AppState from '../../../AppState';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
+import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -34,28 +33,34 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { postThread } from '../../../rest/feedsAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import TagSuggestion from '../shared/TagSuggestion';
-import '../TaskPage.style.less';
+import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -66,16 +71,21 @@ const RequestTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
+  const taskMessage = useMemo(
+    () =>
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Request tags',
+      }),
+    [value, entityType, field, entityData]
+  );
 
-  const message = `Request tags for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(entityFQN),
+    [entityType]
   );
 
   const back = () => history.goBack();
@@ -95,8 +105,8 @@ const RequestTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      message: value.title || taskMessage,
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -117,8 +127,8 @@ const RequestTag = () => {
         );
         history.push(
           getEntityDetailLink(
-            entityType as EntityType,
-            entityFQN,
+            entityType,
+            decodedEntityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -128,11 +138,7 @@ const RequestTag = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(
-      entityType as EntityType,
-      entityFQN as string,
-      setEntityData
-    );
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -144,16 +150,21 @@ const RequestTag = () => {
           label: getEntityName(owner),
           value: owner.id || '',
           type: owner.type,
+          name: owner.name,
         },
       ];
       setAssignees(defaultAssignee);
       setOptions((prev) => [...defaultAssignee, ...prev]);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
   }, [entityData]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels
@@ -164,7 +175,7 @@ const RequestTag = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -215,6 +226,7 @@ const RequestTag = () => {
                     },
                   ]}>
                   <Assignees
+                    disabled={Boolean(entityData.owner)}
                     options={options}
                     value={assignees}
                     onChange={setAssignees}
@@ -273,4 +285,4 @@ const RequestTag = () => {
   );
 };
 
-export default observer(RequestTag);
+export default RequestTag;

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+
 export interface SearchDropdownProps {
   label: string;
   isSuggestionsLoading?: boolean;
@@ -19,6 +21,8 @@ export interface SearchDropdownProps {
   selectedKeys: SearchDropdownOption[];
   highlight?: boolean;
   showProfilePicture?: boolean;
+  fixedOrderOptions?: boolean;
+  index?: ExploreSearchIndex;
   onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;

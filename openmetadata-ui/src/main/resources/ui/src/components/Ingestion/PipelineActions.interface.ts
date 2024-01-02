@@ -18,7 +18,7 @@ import { SelectedRowDetails } from './ingestion.interface';
 
 export interface PipelineActionsProps {
   record: IngestionPipeline;
-  servicePermission?: IngestionServicePermission;
+  ingestionPipelinesPermission?: IngestionServicePermission;
   isRequiredDetailsAvailable: boolean;
   serviceCategory: ServiceCategory;
   serviceName: string;
@@ -26,7 +26,7 @@ export interface PipelineActionsProps {
   deployIngestion: (id: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
-  handleEnableDisableIngestion: (id: string) => void;
+  handleEnableDisableIngestion: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate: () => void;
 }

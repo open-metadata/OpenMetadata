@@ -5,10 +5,25 @@
   "description": "This schema defines the Authentication Configuration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.security.AuthenticationConfiguration",
+  "definitions": {
+    "responseType": {
+      "javaType": "org.openmetadata.schema.api.security.ResponseType",
+      "description": "Response Type",
+      "type": "string",
+      "enum": [
+        "id_token",
+        "code"
+      ],
+      "default": "id_token"
+    }
+  },
   "properties": {
     "provider": {
-      "description": "SSO provider: no-auth, okta, google, azure, auth0, custom-oidc, aws-cognito, ldap, saml, etc.",
-      "type": "string"
+      "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
+    },
+    "responseType": {
+      "description": "This is used by auth provider provide response as either id_token or code.",
+      "$ref": "#/definitions/responseType"
     },
     "providerName": {
       "description": "Custom OIDC Authentication Provider Name",

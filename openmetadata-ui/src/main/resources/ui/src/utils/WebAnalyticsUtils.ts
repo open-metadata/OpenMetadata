@@ -17,17 +17,17 @@ import {
   setSession,
 } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { AnalyticsData } from 'components/WebAnalytics/WebAnalytics.interface';
-import {
-  CustomEvent,
-  CustomEventTypes,
-} from 'generated/analytics/webAnalyticEventType/customEvent';
-import { postWebAnalyticEvent } from 'rest/WebAnalyticsAPI';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
+import {
+  CustomEvent,
+  CustomEventTypes,
+} from '../generated/analytics/webAnalyticEventType/customEvent';
 import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
+import { postWebAnalyticEvent } from '../rest/WebAnalyticsAPI';
+import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
 
 /**
  * Check if url is valid or not and return the pathname
@@ -85,7 +85,7 @@ const handlePostAnalytic = async (
  * @param pageData PageData
  * @param userId string
  */
-export const trackPageView = (pageData: AnalyticsData, userId: string) => {
+export const trackPageView = (pageData: AnalyticsData, userId?: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -126,7 +126,7 @@ export const trackPageView = (pageData: AnalyticsData, userId: string) => {
   }
 };
 
-export const trackCustomEvent = (eventData: AnalyticsData) => {
+export const trackCustomEvent = (eventData: AnalyticsData, userId?: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -138,22 +138,24 @@ export const trackCustomEvent = (eventData: AnalyticsData) => {
   // timestamp for the current event
   const timestamp = meta.ts;
 
-  const customEventData: CustomEvent = {
-    url: location.pathname,
-    fullUrl: location.href,
-    hostname: location.hostname,
-    eventType: CustomEventTypes.Click,
-    sessionId: currentSession.id,
-    eventValue,
-  };
+  if (userId) {
+    const customEventData: CustomEvent = {
+      url: location.pathname,
+      fullUrl: location.href,
+      hostname: location.hostname,
+      eventType: CustomEventTypes.Click,
+      sessionId: currentSession.id,
+      eventValue,
+    };
 
-  const webAnalyticEventData: WebAnalyticEventData = {
-    eventType: WebAnalyticEventType.CustomEvent,
-    eventData: customEventData,
-    timestamp,
-  };
+    const webAnalyticEventData: WebAnalyticEventData = {
+      eventType: WebAnalyticEventType.CustomEvent,
+      eventData: customEventData,
+      timestamp,
+    };
 
-  handlePostAnalytic(webAnalyticEventData);
+    handlePostAnalytic(webAnalyticEventData);
+  }
 };
 
 /**
@@ -161,7 +163,7 @@ export const trackCustomEvent = (eventData: AnalyticsData) => {
  * @param userId string
  * @returns AnalyticsInstance
  */
-export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
+export const getAnalyticInstance = (userId?: string): AnalyticsInstance => {
   return Analytics({
     app: 'OpenMetadata',
     plugins: [
@@ -171,7 +173,7 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
           trackPageView(pageData, userId);
         },
         track: (trackingData: AnalyticsData) => {
-          trackCustomEvent(trackingData);
+          trackCustomEvent(trackingData, userId);
         },
       },
     ],

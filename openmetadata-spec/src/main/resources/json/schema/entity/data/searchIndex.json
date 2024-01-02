@@ -1,0 +1,259 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/SearchIndex.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchIndex",
+  "$comment": "@om-entity-type",
+  "description": "A `SearchIndex` is a index mapping definition in ElasticSearch or OpenSearch",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.SearchIndex",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "searchIndexSettings": {
+      "javaType": "org.openmetadata.schema.type.searchindex.SearchIndexSettings",
+      "description": "Contains key/value pair of SearchIndex Settings.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": { "type": "string" }
+      }
+    },
+    "searchIndexSampleData": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.searchindex.SearchIndexSampleData",
+      "description": "This schema defines the type to capture sample data for a SearchIndex.",
+      "properties": {
+        "messages": {
+          "description": "List of local sample messages for a SearchIndex.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataType": {
+      "javaType": "org.openmetadata.schema.type.SearchIndexDataType",
+      "description": "This enum defines the type of data stored in a searchIndex.",
+      "type": "string",
+      "enum": [
+        "NUMBER",
+        "TEXT",
+        "BINARY",
+        "TIMESTAMP",
+        "TIMESTAMPZ",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "KEYWORD",
+        "ARRAY",
+        "OBJECT",
+        "FLATTENED",
+        "NESTED",
+        "JOIN",
+        "RANGE",
+        "IP",
+        "VERSION",
+        "MURMUR3",
+        "AGGREGATE_METRIC_DOUBLE",
+        "HISTOGRAM",
+        "ANNOTATED-TEXT",
+        "COMPLETION",
+        "SEARCH_AS_YOU_TYPE",
+        "DENSE_VECTOR",
+        "RANK_FEATURE",
+        "RANK_FEATURES",
+        "GEO_POINT",
+        "GEO_SHAPE",
+        "POINT",
+        "SHAPE",
+        "PERCOLATOR",
+        "BOOLEAN",
+        "CONSTANT_KEYWORD",
+        "WILDCARD",
+        "LONG",
+        "INTEGER",
+        "SHORT",
+        "BYTE",
+        "DOUBLE",
+        "FLOAT",
+        "HALF_FLOAT",
+        "SCALED_FLOAT",
+        "UNSIGNED_LONG",
+        "UNKNOWN"
+      ]
+    },
+    "searchIndexFieldName": {
+      "description": "Local name (not fully qualified name) of the field. ",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
+    },
+    "searchIndexField": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SearchIndexField",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
+      "description": "This schema defines the type for a field in a searchIndex.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/searchIndexFieldName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this searchIndexField name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of the searchIndex (int, date etc.).",
+          "$ref": "#/definitions/dataType"
+        },
+        "dataTypeDisplay": {
+          "description": "Display name used for dataType. ",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the field.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "fullyQualifiedName": {
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "tags": {
+          "description": "Tags associated with the column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        },
+        "children": {
+          "description": "Child columns if dataType has properties.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/searchIndexField"
+          },
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "dataType"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this SearchIndex instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the SearchIndex.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a SearchIndex in the format 'searchServiceName.searchIndexName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this SearchIndex. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the SearchIndex instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "service": {
+      "description": "Link to the search cluster/service where this SearchIndex is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this SearchIndex is hosted in.",
+      "$ref": "../services/searchService.json#/definitions/searchServiceType"
+    },
+    "fields": {
+      "description": "Fields in this SearchIndex.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/searchIndexField"
+      },
+      "default": null
+    },
+    "searchIndexSettings": {
+      "description": "Contains key/value pair of searchIndex settings.",
+      "$ref": "#/definitions/searchIndexSettings"
+    },
+    "sampleData": {
+      "description": "Sample data for a searchIndex.",
+      "$ref": "#/definitions/searchIndexSampleData",
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this searchIndex.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "followers": {
+      "description": "Followers of this searchIndex.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this searchIndex.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Domain the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "service", "fields"],
+  "additionalProperties": false
+}

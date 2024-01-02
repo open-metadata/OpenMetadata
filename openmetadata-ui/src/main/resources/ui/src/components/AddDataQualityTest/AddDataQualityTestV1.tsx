@@ -13,12 +13,6 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from 'components/TableProfiler/Component/SingleColumnProfile';
-import TableProfilerChart from 'components/TableProfiler/Component/TableProfilerChart';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -31,11 +25,13 @@ import {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
+import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
+import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getTableTabPath } from '../../constants/constants';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../constants/profiler.constant';
@@ -43,13 +39,17 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddDataQualityTestProps } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
@@ -60,7 +60,8 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   table,
 }: AddDataQualityTestProps) => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } =
+    useParams<{ entityTypeFQN: string; dashboardType: string }>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
   const history = useHistory();
@@ -69,13 +70,17 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
+  const { currentUser } = useAuthContext();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
+        url: getTableTabPath(
+          getEncodedFqn(table.fullyQualifiedName ?? ''),
+          EntityTabs.PROFILER
+        ),
       },
       {
         name: t('label.add-entity-test', {
@@ -91,16 +96,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const owner = useMemo(
     () => ({
-      id: getCurrentUserId(),
+      id: currentUser?.id ?? '',
       type: OwnerType.USER,
     }),
-    [getCurrentUserId]
+    [currentUser]
   );
 
   const handleRedirection = () => {
     history.push({
       pathname: getTableTabPath(
-        table.fullyQualifiedName ?? '',
+        getEncodedFqn(table.fullyQualifiedName ?? ''),
         EntityTabs.PROFILER
       ),
       search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),
@@ -168,9 +173,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const successMessage = isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">{`"${
-            testCaseRes?.name ?? t('label.test-case')
-          }"`}</span>
+          <span className="font-medium">
+            {`"${testCaseRes?.name ?? t('label.test-case')}"`}{' '}
+          </span>
           <span>
             {`${t('message.has-been-created-successfully')}.`}
             &nbsp;
@@ -229,18 +234,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       />
       {isTableFqn && (
         <TableProfilerChart
-          dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
-          showOperationGraph={
-            table.serviceType &&
-            allowedServiceForOperationGraph.includes(table.serviceType)
-          }
+          showHeader={false}
+          tableDetails={table}
         />
       )}
       {isColumnFqn && (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}
           dateRangeObject={DEFAULT_RANGE_DATA}
+          tableDetails={table}
         />
       )}
     </Fragment>
@@ -296,7 +299,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         flex: 0.4,
         overlay: {
           displayThreshold: 200,
-          header: t('label.setup-guide'),
+          header: t('label.data-profiler-metrics'),
           rotation: 'counter-clockwise',
         },
       }}

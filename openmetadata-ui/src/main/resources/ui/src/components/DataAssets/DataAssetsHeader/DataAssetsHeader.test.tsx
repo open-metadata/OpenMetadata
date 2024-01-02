@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
-import { Container } from 'generated/entity/data/container';
 import React from 'react';
-import { getContainerByName } from 'rest/storageAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
+import { getContainerByName } from '../../../rest/storageAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
@@ -45,7 +45,7 @@ const mockProps: DataAssetsHeaderProps = {
 };
 
 jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest
       .fn()
@@ -53,19 +53,19 @@ jest.mock(
   }
 );
 jest.mock(
-  'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
   () => {
     return jest
       .fn()
       .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
   }
 );
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
+jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
     .mockImplementation(() => <div>OwnerLabel.component</div>),
 }));
-jest.mock('components/common/TierCard/TierCard', () =>
+jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
     <div>
       TierCard.component
@@ -73,20 +73,21 @@ jest.mock('components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
-jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () =>
-  jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
 );
 jest.mock(
-  'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer',
+  '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
 );
-jest.mock('rest/storageAPI', () => ({
+jest.mock('../../../rest/storageAPI', () => ({
   getContainerByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ name: 'test' })),

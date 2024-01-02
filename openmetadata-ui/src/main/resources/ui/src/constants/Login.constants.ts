@@ -12,11 +12,11 @@
  */
 
 import { CarouselProps } from 'antd';
-import collaborationImg from '../assets/img/screenShot1.png';
-import discoveryImg from '../assets/img/screenShot2.png';
-import dataQualityImg from '../assets/img/screenShot3.png';
-import governanceImg from '../assets/img/screenShot4.png';
-import insightImg from '../assets/img/screenShot5.png';
+import collaborationImg from '../assets/img/data-collaboration.png';
+import discoveryImg from '../assets/img/data-discovery.png';
+import governanceImg from '../assets/img/data-governance.png';
+import insightImg from '../assets/img/data-insights.png';
+import dataQualityImg from '../assets/img/data-qauality.png';
 
 export const LOGIN_SLIDE = [
   {

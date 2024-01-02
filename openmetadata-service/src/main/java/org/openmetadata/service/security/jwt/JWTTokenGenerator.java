@@ -66,11 +66,13 @@ public class JWTTokenGenerator {
           && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
           && jwtTokenConfiguration.getRsapublicKeyFilePath() != null
           && !jwtTokenConfiguration.getRsapublicKeyFilePath().isEmpty()) {
-        byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsaprivateKeyFilePath()));
+        byte[] privateKeyBytes =
+            Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsaprivateKeyFilePath()));
         PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
         KeyFactory privateKF = KeyFactory.getInstance("RSA");
         privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
-        byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsapublicKeyFilePath()));
+        byte[] publicKeyBytes =
+            Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsapublicKeyFilePath()));
         X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
@@ -88,12 +90,22 @@ public class JWTTokenGenerator {
   }
 
   public JWTAuthMechanism generateJWTToken(
-      String userName, String email, long expiryInSeconds, boolean isBot, ServiceTokenType tokenType) {
-    return getJwtAuthMechanism(userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
+      String userName,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType) {
+    return getJwtAuthMechanism(
+        userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
   }
 
   public JWTAuthMechanism getJwtAuthMechanism(
-      String userName, String email, boolean isBot, ServiceTokenType tokenType, Date expires, JWTTokenExpiry expiry) {
+      String userName,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry) {
     try {
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
@@ -112,36 +124,25 @@ public class JWTTokenGenerator {
       jwtAuthMechanism.setJWTTokenExpiresAt(expires != null ? expires.getTime() : null);
       return jwtAuthMechanism;
     } catch (Exception e) {
-      throw new JWTCreationException("Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
+      throw new JWTCreationException(
+          "Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
     }
   }
 
   public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
-    LocalDateTime expiryDate;
-    switch (jwtTokenExpiry) {
-      case OneHour:
-        expiryDate = LocalDateTime.now().plusHours(1);
-        break;
-      case One:
-        expiryDate = LocalDateTime.now().plusDays(1);
-        break;
-      case Seven:
-        expiryDate = LocalDateTime.now().plusDays(7);
-        break;
-      case Thirty:
-        expiryDate = LocalDateTime.now().plusDays(30);
-        break;
-      case Sixty:
-        expiryDate = LocalDateTime.now().plusDays(60);
-        break;
-      case Ninety:
-        expiryDate = LocalDateTime.now().plusDays(90);
-        break;
-      case Unlimited:
-      default:
-        expiryDate = null;
-    }
-    return expiryDate != null ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()) : null;
+    LocalDateTime expiryDate =
+        switch (jwtTokenExpiry) {
+          case OneHour -> LocalDateTime.now().plusHours(1);
+          case One -> LocalDateTime.now().plusDays(1);
+          case Seven -> LocalDateTime.now().plusDays(7);
+          case Thirty -> LocalDateTime.now().plusDays(30);
+          case Sixty -> LocalDateTime.now().plusDays(60);
+          case Ninety -> LocalDateTime.now().plusDays(90);
+          case Unlimited -> null;
+        };
+    return expiryDate != null
+        ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant())
+        : null;
   }
 
   public Date getCustomExpiryDate(long seconds) {
@@ -156,7 +157,8 @@ public class JWTTokenGenerator {
       jwksKey.setKid(kid);
       jwksKey.setKty(publicKey.getAlgorithm());
       jwksKey.setN(Base64.getUrlEncoder().encodeToString(publicKey.getModulus().toByteArray()));
-      jwksKey.setE(Base64.getUrlEncoder().encodeToString(publicKey.getPublicExponent().toByteArray()));
+      jwksKey.setE(
+          Base64.getUrlEncoder().encodeToString(publicKey.getPublicExponent().toByteArray()));
     }
     jwksResponse.setJwsKeys(List.of(jwksKey));
     return jwksResponse;

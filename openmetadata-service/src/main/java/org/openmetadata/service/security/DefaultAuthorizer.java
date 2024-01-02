@@ -13,29 +13,26 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
-import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi dbi) {
+  public void init(OpenMetadataApplicationConfig config) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
   }
 
@@ -44,36 +41,44 @@ public class DefaultAuthorizer implements Authorizer {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
+        ? PolicyEvaluator.getResourcePermissions(
+            ALLOW) // Admin has permissions to do all operations.
         : PolicyEvaluator.listPermission(subjectContext);
   }
 
   @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, String resourceType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
+        ? PolicyEvaluator.getResourcePermission(
+            resourceType, ALLOW) // Admin has permissions to do all operations.
         : PolicyEvaluator.getPermission(subjectContext, resourceType);
   }
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException {
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
+        ? PolicyEvaluator.getResourcePermission(
+            resourceContext.getResource(), ALLOW) // Admin all permissions
         : PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
-      throws IOException {
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin()) {
       return;
+    }
+    if (isReviewer(resourceContext, subjectContext)) {
+      return; // Reviewer of a resource gets admin level privilege on the resource
     }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
@@ -113,22 +118,31 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
-  }
-
-  public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getInstance().getSubjectContext(EntityInterfaceUtil.quoteName(userName));
+    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
     // Asking for some other user's permissions is admin only operation
-    if (user != null && !loggedInUser.getUser().getName().equals(user)) {
+    if (user != null && !loggedInUser.user().getName().equals(user)) {
       if (!loggedInUser.isAdmin()) {
-        throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
+        throw new AuthorizationException(notAdmin(loggedInUser.user().getName()));
       }
       LOG.debug("Changing subject context from logged-in user to {}", user);
-      return getSubjectContext(user);
+      return SubjectContext.getSubjectContext(user);
     }
     return loggedInUser;
+  }
+
+  private boolean isReviewer(
+      ResourceContextInterface resourceContext, SubjectContext subjectContext) {
+    if (resourceContext.getEntity() == null) {
+      return false;
+    }
+    String updatedBy = subjectContext.user().getName();
+    List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
+    return !nullOrEmpty(reviewers)
+        && reviewers.stream()
+            .anyMatch(
+                e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
   }
 }

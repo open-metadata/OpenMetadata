@@ -18,11 +18,15 @@
       "type": "string",
       "enum": [
         "S3",
+        "ADLS",
         "CustomStorage"
       ],
       "javaEnums": [
         {
           "name": "S3"
+        },
+        {
+          "name": "ADLS"
         },
         {
           "name": "CustomStorage"
@@ -42,6 +46,12 @@
           "oneOf": [
             {
               "$ref": "connections/storage/s3Connection.json"
+            },
+            {
+              "$ref": "connections/storage/adlsConnection.json"
+            },
+            {
+              "$ref": "connections/storage/customStorageConnection.json"
             }
           ]
         }
@@ -121,6 +131,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "domain" : {
       "description": "Domain the Storage service belongs to.",

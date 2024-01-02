@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { diffArrays } from 'diff';
-import { TagLabel } from 'generated/type/tagLabel';
 import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,6 +20,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -50,10 +51,10 @@ const TagsTask: FC<TagsTaskProps> = ({
   const diffView = useMemo(() => {
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 text-grey-muted">
+        <div>
+          <Typography.Text className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
-          </span>
+          </Typography.Text>
         </div>
       );
     } else {
@@ -75,9 +76,9 @@ const TagsTask: FC<TagsTaskProps> = ({
   const suggestedTagsDiff = useMemo(() => {
     if (!suggestion && !oldValue) {
       return (
-        <span className="tw-p-2 text-grey-muted">
+        <Typography.Text className="text-grey-muted p-xs">
           {t('label.no-entity', { entity: t('label.suggestion') })}
-        </span>
+        </Typography.Text>
       );
     } else {
       return (

@@ -16,9 +16,6 @@ import os
 from unittest import TestCase, mock
 from uuid import uuid4
 
-import boto3
-import botocore
-import moto
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -27,7 +24,6 @@ from metadata.generated.schema.entity.data.table import ColumnName, DataType, Ta
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
@@ -60,10 +56,26 @@ class DatalakeMetricsTest(TestCase):
 
     import pandas as pd
 
+    col_names = [
+        "name",
+        "fullname",
+        "nickname",
+        "comments",
+        "age",
+        "dob",
+        "tob",
+        "doe",
+        "json",
+        "array",
+    ]
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
+    df1 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
+    )
+    df2 = pd.read_csv(
+        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
+    )
 
     @classmethod
     @mock.patch(
@@ -73,7 +85,7 @@ class DatalakeMetricsTest(TestCase):
     @mock.patch.object(
         PandasProfilerInterface,
         "_convert_table_to_list_of_dataframe_objects",
-        return_value=[df1, df2],
+        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs):
         """
@@ -94,6 +106,7 @@ class DatalakeMetricsTest(TestCase):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=table_entity,
             service_connection_config=None,
+            storage_config=None,
             ometa_client=None,
             thread_count=None,
             profile_sample_config=None,
@@ -114,7 +127,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.name.name).get(Metrics.COUNT.name) == 5
+        assert res.get(User.name.name).get(Metrics.COUNT.name) == 4
 
     def test_min(self):
         """
@@ -141,7 +154,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 6.85
+        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 0.82
 
     def test_time(self):
         """
@@ -169,7 +182,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 1
+        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
 
     def test_null_ratio(self):
         """
@@ -190,7 +203,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
         assert (
             str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
-            == "0.2"
+            == "0.33"
         )
 
     def test_table_row_count(self):
@@ -203,7 +216,7 @@ class DatalakeMetricsTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 5
+        assert res.get(Metrics.ROW_COUNT.name) == 6
 
     def test_table_column_count(self):
         """
@@ -216,7 +229,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._table_results
         # Not counting id here
-        assert res.get(Metrics.COLUMN_COUNT.name) == 8
+        assert res.get(Metrics.COLUMN_COUNT.name) == 10
 
     def test_avg(self):
         """
@@ -234,7 +247,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert round(res.get(User.age.name)[Metrics.MEAN.name], 2) == 35.25
+        assert round(res.get(User.age.name)[Metrics.MEAN.name], 2) == 31.0
 
         # String
         avg = Metrics.MEAN.value
@@ -260,7 +273,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert round(res.get(User.comments.name)[Metrics.MEAN.name], 2) == 17.0
+        assert round(res.get(User.comments.name)[Metrics.MEAN.name], 2) == 15.0
 
     def test_duplicate_count(self):
         """
@@ -280,7 +293,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 0
+        assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 1
 
     def test_histogram(self):
         """
@@ -330,7 +343,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MAX.name] == 45
+        assert res.get(User.age.name)[Metrics.MAX.name] == 32
 
     def test_min_length(self):
         """
@@ -432,7 +445,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 141
+        assert res.get(User.age.name)[Metrics.SUM.name] == 124
 
         res = (
             Profiler(
@@ -459,7 +472,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 1
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 2
 
     def test_unique_ratio(self):
         """
@@ -480,7 +493,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.2"
+            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.5"
         )
 
     def test_distinct_count(self):
@@ -518,7 +531,8 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2)) == "0.6"
+            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
+            == "0.75"
         )
 
     def test_count_in_set(self):
@@ -565,7 +579,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 33.0
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 31.0
 
     def test_first_quartile(self):
         """
@@ -598,7 +612,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 40
+        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31.5
 
     def test_iqr(self):
         """Check IQR metric"""
@@ -616,7 +630,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.IQR.name] == 9.5
+        assert res.get(User.age.name)[Metrics.IQR.name] == 1.0
 
     def test_sum_function(self):
         """Check overwritten sum function"""
@@ -630,4 +644,4 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 141
+        assert res.get(User.age.name)[Metrics.SUM.name] == 124

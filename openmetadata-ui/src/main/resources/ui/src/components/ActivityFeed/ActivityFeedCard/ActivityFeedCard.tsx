@@ -15,9 +15,7 @@ import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { FC, useEffect, useRef, useState } from 'react';
-import AppState from '../../../AppState';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
@@ -27,8 +25,8 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
@@ -60,8 +58,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityType = getEntityType(entityLink ?? '');
   const entityFQN = getEntityFQN(entityLink ?? '');
   const entityField = getEntityField(entityLink ?? '');
-
-  const currentUser = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
@@ -166,9 +163,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       <div
         className={classNames(
           className,
-          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-2 tw-mb-1 tw-rounded',
+          'bg-grey-1-hover m--x-sm p-x-sm m--t-xss py-2 m-b-xss rounded-4',
           {
-            'tw-bg-gray-100': visible,
+            'bg-grey-1-hover': visible,
           }
         )}
         ref={containerRef}>
@@ -198,18 +195,10 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           onOpenChange={handleVisibleChange}>
-          <Space align="start" className="w-full">
-            {showUserAvatar && (
-              <UserPopOverCard userName={feedDetail.from}>
-                <span className="cursor-pointer" data-testid="authorAvatar">
-                  <ProfilePicture id="" name={feedDetail.from} width="32" />
-                </span>
-              </UserPopOverCard>
-            )}
-
-            <div className="tw-flex tw-flex-col tw-flex-1">
+          <Space align="start" className="w-full" size={0}>
+            {showUserAvatar && <UserPopOverCard userName={feedDetail.from} />}
+            <div>
               <FeedCardHeader
-                className="tw-pl-2"
                 createdBy={feedDetail.from}
                 entityFQN={entityFQN}
                 entityField={entityField ?? ''}
@@ -221,7 +210,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               />
               <FeedCardBody
                 announcementDetails={announcementDetails}
-                className="tw-pl-2 tw-break-all"
                 isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
@@ -234,7 +222,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </Space>
           {isFooterVisible && (
             <FeedCardFooter
-              className="tw-mt-2"
               isFooterVisible={isFooterVisible}
               lastReplyTimeStamp={lastReplyTimeStamp}
               repliedUsers={repliedUsers}
@@ -258,4 +245,4 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   );
 };
 
-export default observer(ActivityFeedCard);
+export default ActivityFeedCard;

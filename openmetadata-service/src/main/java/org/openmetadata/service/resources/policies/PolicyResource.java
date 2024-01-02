@@ -49,6 +49,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
@@ -59,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.resources.Collection;
@@ -67,7 +67,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -76,7 +75,8 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/policies")
 @Tag(
     name = "Policies",
-    description = "A `Policy` defines control that needs to be applied across different Data " + "Entities.")
+    description =
+        "A `Policy` defines control that needs to be applied across different Data Entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0)
@@ -86,14 +86,14 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
-    Entity.withHref(uriInfo, policy.getOwner());
+    super.addHref(uriInfo, policy);
     Entity.withHref(uriInfo, policy.getTeams());
     Entity.withHref(uriInfo, policy.getRoles());
     return policy;
   }
 
-  public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Policy.class, new PolicyRepository(dao), authorizer);
+  public PolicyResource(Authorizer authorizer) {
+    super(Entity.POLICY, authorizer);
   }
 
   @Override
@@ -106,23 +106,27 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
-    PolicyCache.initialize();
   }
 
   @Override
-  public void upgrade() throws IOException {
-    // OrganizationPolicy rule change
-    Policy originalOrgPolicy = repository.getByName(null, Entity.ORGANIZATION_POLICY_NAME, repository.getPatchFields());
-    Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);
-
-    // Rules are in alphabetical order - change second rule "OrganizationPolicy-Owner-Rule"
-    // from ALL operation to remove CREATE operation and allow all the other operations for the owner
-    updatedOrgPolicy
-        .getRules()
-        .get(1)
-        .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL, MetadataOperation.DELETE));
-    repository.patch(
-        null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
+  public void upgrade() {
+    // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
+    try {
+      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      String originalJson = JsonUtils.pojoToJson(organizationPolicy);
+      for (Rule rule : organizationPolicy.getRules()) {
+        if (rule.getName().equals("OrganizationPolicy-Owner-Rule")
+            && !rule.getOperations().contains(MetadataOperation.ALL)) {
+          rule.getOperations().clear();
+          rule.getOperations().add(MetadataOperation.ALL);
+        }
+      }
+      String updatedJson = JsonUtils.pojoToJson(organizationPolicy);
+      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
+      repository.patch(null, organizationPolicy.getId(), "admin", patch);
+    } catch (Exception e) {
+      LOG.error("Failed to update OrganizationPolicy", e);
+    }
   }
 
   public static class PolicyList extends ResultList<Policy> {
@@ -146,7 +150,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of policies",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PolicyList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PolicyList.class)))
       })
   public ResultList<Policy> list(
       @Context UriInfo uriInfo,
@@ -156,16 +163,20 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number policies returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number policies returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of policies before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of policies before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of policies after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of policies after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -173,10 +184,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -189,13 +200,17 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
       })
   public Policy get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -206,8 +221,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -221,12 +235,17 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "404", description = "Policy for instance {fqn} is not found")
       })
   public Policy getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the policy",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -240,8 +259,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -255,13 +273,16 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of policy versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -275,21 +296,24 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+            description = "Policy for instance {id} and version {version} is not found")
       })
   public Policy getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "policy version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -310,7 +334,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "listPolicyFunctions",
       summary = "Get list of policy functions used in authoring conditions in policy rules.",
       description = "Get list of policy functions used in authoring conditions in policy rules.")
-  public ResultList<Function> listPolicyFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public ResultList<Function> listPolicyFunctions(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
   }
 
@@ -323,11 +348,16 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
-      throws IOException {
+  public Response create(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePolicy create) {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, policy);
   }
@@ -338,22 +368,25 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "patchPolicy",
       summary = "Update a policy",
       description = "Update an existing policy using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -366,12 +399,16 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePolicy create) {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, policy);
   }
@@ -393,8 +430,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -415,10 +452,11 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the policy",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -432,11 +470,15 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Policy ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Policy.class)))
       })
   public Response restorePolicy(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -459,8 +501,12 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 
-  private Policy getPolicy(CreatePolicy create, String user) throws IOException {
-    Policy policy = copy(new Policy(), create, user).withRules(create.getRules()).withEnabled(create.getEnabled());
+  private Policy getPolicy(CreatePolicy create, String user) {
+    Policy policy =
+        repository
+            .copy(new Policy(), create, user)
+            .withRules(create.getRules())
+            .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

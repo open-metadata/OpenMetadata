@@ -14,7 +14,7 @@ for the profiler
 """
 import math
 import random
-from typing import cast
+from typing import List, Optional, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class DatalakeSampler(SamplerInterface):
@@ -33,9 +34,6 @@ class DatalakeSampler(SamplerInterface):
     Generates a sample of the data to not
     run the query in the whole table.
     """
-
-    def _fetch_rows(self, data_frame):
-        return data_frame.dropna().values.tolist()
 
     def _partitioned_table(self):
         """Get partitioned table"""
@@ -121,16 +119,19 @@ class DatalakeSampler(SamplerInterface):
             for df in self.table
         ]
 
-    def get_col_row(self, data_frame):
+    def get_col_row(self, data_frame, columns: Optional[List[SQALikeColumn]] = None):
         """
         Fetches columns and rows from the data_frame
         """
-        cols = []
+        if columns:
+            cols = [col.name for col in columns]
+        else:
+            # we'll use the first dataframe to get the columns
+            cols = data_frame[0].columns.tolist()
         rows = []
-        cols = data_frame[0].columns.tolist()
         # Sample Data should not exceed sample limit
         for chunk in data_frame:
-            rows.extend(self._fetch_rows(chunk)[: self.sample_limit])
+            rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
             if len(rows) >= self.sample_limit:
                 break
         return cols, rows
@@ -152,7 +153,12 @@ class DatalakeSampler(SamplerInterface):
 
         return self._get_sampled_dataframe()
 
-    def fetch_sample_data(self) -> TableData:
+    def _fetch_rows(self, data_frame):
+        return data_frame.dropna().values.tolist()
+
+    def fetch_sample_data(
+        self, columns: Optional[List[SQALikeColumn]] = None
+    ) -> TableData:
         """Fetch sample data from the table
 
         Returns:
@@ -161,5 +167,5 @@ class DatalakeSampler(SamplerInterface):
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        cols, rows = self.get_col_row(data_frame=self.table)
+        cols, rows = self.get_col_row(data_frame=self.table, columns=columns)
         return TableData(columns=cols, rows=rows)

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { TreeSelect } from 'antd';
+import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getTeamsHierarchy } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
-import SVGIcons from '../../utils/SvgUtils';
+import { EntityReference } from '../../generated/entity/type';
+import { getTeamsHierarchy } from '../../rest/teamsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
@@ -30,19 +30,24 @@ const TeamsSelectable = ({
     type: t('label.team-plural-lowercase'),
   }),
   selectedTeams,
+  maxValueCount,
 }: TeamsSelectableProps) => {
-  const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
 
-  const onChange = (newValue: string[]) => {
-    onSelectionChange(newValue);
-    setValue(newValue);
+  const onChange = (newValue: { label: string; value: string }[]) => {
+    onSelectionChange &&
+      onSelectionChange(
+        newValue.map(
+          (val) =>
+            ({
+              id: val.value,
+              displayName: val.label,
+              type: 'team',
+            } as EntityReference)
+        )
+      );
   };
-
-  useEffect(() => {
-    setValue(selectedTeams ?? []);
-  }, [selectedTeams]);
 
   const loadOptions = () => {
     getTeamsHierarchy(filterJoinable)
@@ -84,35 +89,42 @@ const TeamsSelectable = ({
     });
   }, [teams]);
 
+  const selectedTeamsInternal = useMemo(() => {
+    return selectedTeams?.map((selectedTeam) => ({
+      label: getEntityName(selectedTeam),
+      value: selectedTeam.id,
+    }));
+  }, [selectedTeams]);
+
   return (
     <>
       <TreeSelect
         allowClear
+        labelInValue
         multiple
         showSearch
         treeDefaultExpandAll
         data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        maxTagCount={maxValueCount}
         placeholder={placeholder}
         showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}
         treeData={teamsTree}
         treeLine={{ showLeafIcon }}
         treeNodeFilterProp="title"
-        value={value}
+        value={selectedTeamsInternal}
         onChange={onChange}
       />
       {noTeam && (
-        <div
-          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-          data-testid="toast">
-          <div className="tw-font-semibold d-flex-shrink-0">
-            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
-          </div>
-          <div className="tw-font-semibold tw-px-1">
-            {t('message.no-data-available')}
-          </div>
-        </div>
+        <Alert
+          showIcon
+          className="m-t-md"
+          message={t('message.no-entity-data-available', {
+            entity: t('label.team-plural'),
+          })}
+          type="info"
+        />
       )}
     </>
   );

@@ -14,7 +14,7 @@
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import Searchbar from '../common/searchbar/Searchbar';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
@@ -25,11 +25,11 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasDescriptionEditAccess,
   hasTagEditAccess,
-  entityFieldThreads,
   onThreadLinkSelect,
   isReadOnly = false,
   entityFqn,
   tableConstraints,
+  tablePartitioned,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -51,7 +51,6 @@ const SchemaTab: FunctionComponent<Props> = ({
 
       <SchemaTable
         columnName={columnName}
-        entityFieldThreads={entityFieldThreads}
         entityFqn={entityFqn}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
         hasTagEditAccess={hasTagEditAccess}
@@ -60,6 +59,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         searchText={lowerCase(searchText)}
         tableColumns={columns}
         tableConstraints={tableConstraints}
+        tablePartitioned={tablePartitioned}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />

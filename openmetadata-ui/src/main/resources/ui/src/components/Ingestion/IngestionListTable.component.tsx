@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
-import { Paging } from 'generated/type/paging';
-import { isEmpty, isNil } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { getErrorPlaceHolder } from 'utils/IngestionUtils';
-import { PAGE_SIZE } from '../../constants/constants';
+import Table from '../../components/common/Table/Table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
-import NextPrevious from '../common/next-previous/NextPrevious';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -36,7 +35,7 @@ function IngestionListTable({
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
-  servicePermission,
+  ingestionPipelinesPermission,
   serviceCategory,
   serviceName,
   handleDeleteSelection,
@@ -45,60 +44,49 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineType,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(10);
 
-    onIngestionWorkflowsUpdate(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
-  };
+  useEffect(() => {
+    handlePagingChange(paging);
+  }, [paging]);
 
-  const renderNameField = (text: string, record: IngestionPipeline) => {
-    return airflowEndpoint ? (
-      <Tooltip
-        title={
-          permissions.ViewAll || permissions.ViewBasic
-            ? t('label.view-entity', {
-                entity: t('label.dag'),
-              })
-            : t('message.no-permission-to-view')
-        }>
-        <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
-          data-testid="airflow-tree-view"
-          disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-          href={`${airflowEndpoint}/tree?dag_id=${text}`}
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    ) : (
-      getEntityName(record)
-    );
+  const ingestionPagingHandler = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = `&${cursorType}=${paging[cursorType]}`;
+
+        onIngestionWorkflowsUpdate(pagingString);
+        handlePageChange(currentPage);
+      }
+    },
+    [paging, handlePageChange, onIngestionWorkflowsUpdate]
+  );
+
+  const renderNameField = (_: string, record: IngestionPipeline) => {
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
@@ -112,11 +100,11 @@ function IngestionListTable({
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        ingestionPipelinesPermission={ingestionPipelinesPermission}
         isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
-        servicePermission={servicePermission}
         triggerIngestion={triggerIngestion}
         onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
       />
@@ -166,11 +154,10 @@ function IngestionListTable({
       triggerIngestion,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
-      servicePermission,
+      ingestionPipelinesPermission,
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
@@ -178,41 +165,40 @@ function IngestionListTable({
     ]
   );
 
-  const showNextPrevious = useMemo(
-    () =>
-      Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-      paging.total > PAGE_SIZE,
-    [paging]
-  );
-
-  return !isEmpty(ingestionData) ? (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+  return (
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
-        data-testid="schema-table"
+        data-testid="ingestion-list-table"
         dataSource={ingestionData}
+        loading={isLoading}
+        locale={{
+          emptyText: getErrorPlaceHolder(
+            isRequiredDetailsAvailable,
+            ingestionData.length,
+            pipelineType
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
       />
 
-      {showNextPrevious && (
+      {showPagination && (
         <NextPrevious
-          currentPage={ingestionCurrentPage}
-          pageSize={PAGE_SIZE}
+          currentPage={currentPage}
+          pageSize={pageSize}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          totalCount={paging.total}
+          onShowSizeChange={handlePageSizeChange}
         />
       )}
-    </div>
-  ) : (
-    getErrorPlaceHolder(
-      isRequiredDetailsAvailable,
-      ingestionData.length,
-      pipelineType
-    )
+    </Space>
   );
 }
 

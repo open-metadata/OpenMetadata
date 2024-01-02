@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 
+import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { toNumber } from 'lodash';
-
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import React, { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KPI_WIDGET_GRAPH_BG_COLORS,
   KPI_WIDGET_GRAPH_COLORS,
-} from 'constants/DataInsight.constants';
-import React, { FC, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getKpiResultFeedback } from 'utils/DataInsightUtils';
+} from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
+import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
+import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
 import './kpi-latest-results.less';
 
 interface Props {
@@ -38,7 +37,11 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space className="w-full p-t-lg p-r-xs" direction="vertical" size={48}>
+    <Space
+      className="w-full p-t-lg p-r-xs"
+      data-testid="kpi-latest-result-container"
+      direction="vertical"
+      size={48}>
       {latestResultsList.map((result, index) => {
         const name = result[0];
         const resultData = result[1];
@@ -61,12 +64,12 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         const currentProgress = (targetValue / targetMetValue) * 100;
 
-        const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
+        const daysLeft = getDaysRemaining(resultData.endDate);
 
         const isTargetMet = targetResult.targetMet;
 
         return (
-          <Row key={name}>
+          <Row data-testid={name} key={name}>
             <Col className="d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
@@ -74,16 +77,20 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   color: KPI_WIDGET_GRAPH_COLORS[index],
                   backgroundColor: KPI_WIDGET_GRAPH_BG_COLORS[index],
                 }}>
-                {daysLeft <= 0 ? (
+                {isTargetMet ? (
                   <>
-                    <Typography.Text className="days-remaining">
+                    <Typography.Text
+                      className="days-remaining"
+                      data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
                     </Typography.Text>
                   </>
                 ) : (
                   <>
-                    <Typography.Text className="days-remaining">
-                      {daysLeft}
+                    <Typography.Text
+                      className="days-remaining"
+                      data-testid="kpi-days-remaining">
+                      {daysLeft <= 0 ? 0 : daysLeft}
                     </Typography.Text>
                     <Typography.Text className="days-left">
                       {t('label.day-left', { day: 'days' })}
@@ -96,12 +103,17 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   <Typography.Text className="text-xs">
                     {resultData.displayName ?? name}
                   </Typography.Text>
-                  <Tooltip
-                    placement="bottom"
-                    title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-                    trigger="hover">
-                    <InfoCircleOutlined style={{ fontSize: '14px' }} />
-                  </Tooltip>
+                  {daysLeft <= 0 || isTargetMet ? (
+                    <Tooltip
+                      placement="bottom"
+                      title={getKpiResultFeedback(
+                        daysLeft,
+                        Boolean(isTargetMet)
+                      )}
+                      trigger="hover">
+                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                    </Tooltip>
+                  ) : null}
                 </Space>
                 <Progress
                   percent={Number(currentProgress)}

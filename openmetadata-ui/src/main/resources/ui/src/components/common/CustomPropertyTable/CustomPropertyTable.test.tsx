@@ -18,10 +18,9 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { CustomPropertyTable } from './CustomPropertyTable';
-import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -47,15 +46,15 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
-jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/metadataTypeAPI', () => ({
+jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,
@@ -63,20 +62,67 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as EntityDetails;
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: 'fqn',
+  })),
+}));
+
+jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
+  getEntityExtentionDetailsFromEntityType: jest.fn(),
+}));
+
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
-  entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,
+  hasPermission: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  it("Should render permission placeholder if doesn't have permission", async () => {
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          {...mockProp}
+          entityType={EntityType.TABLE}
+          hasPermission={false}
+        />
+      );
+    });
+    const permissionPlaceholder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
+  });
+
   it('Should render table component', async () => {
     await act(async () => {
-      render(<CustomPropertyTable {...mockProp} />);
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
     });
     const table = await screen.findByTestId('custom-properties-table');
 
@@ -96,7 +142,9 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(<CustomPropertyTable {...mockProp} />);
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
     });
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'
@@ -107,10 +155,10 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
-    render(<CustomPropertyTable {...mockProp} />);
+    render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'

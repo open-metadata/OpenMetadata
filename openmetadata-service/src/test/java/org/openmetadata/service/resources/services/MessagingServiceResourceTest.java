@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -43,26 +45,16 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
-
+public class MessagingServiceResourceTest
+    extends ServiceResourceTest<MessagingService, CreateMessagingService> {
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
-  public static URI SCHEMA_REGISTRY_URL;
-
-  static {
-    try {
-      SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
-    }
-  }
+  public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
@@ -82,7 +74,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
             .withConnection(TestUtils.KAFKA_CONNECTION);
-    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    MessagingService messagingService =
+        messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = messagingService.getEntityReference();
 
     // Create Pulsar messaging service
@@ -91,7 +84,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         .withServiceType(MessagingServiceType.Redpanda)
         .withConnection(TestUtils.REDPANDA_CONNECTION);
 
-    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    messagingService =
+        messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     REDPANDA_REFERENCE = messagingService.getEntityReference();
   }
 
@@ -102,12 +96,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create messaging with mandatory brokers field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -125,6 +113,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                             .withBootstrapServers("localhost:9092")
                             .withSchemaRegistryURL(new URI("localhost:8081")))),
         authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -153,30 +144,34 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             .withName(service.getName())
             .withDescription("description1")
             .withConnection(messagingConnection);
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update connection
     MessagingConnection messagingConnection1 =
         new MessagingConnection()
             .withConfig(
-                new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
-    change = getChangeDescription(service.getVersion());
+                new KafkaConnection()
+                    .withBootstrapServers("host:9092")
+                    .withSchemaRegistryURL(new URI("host:8081")));
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection, messagingConnection1);
     update.withConnection(messagingConnection1);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description and connection
     MessagingConnection messagingConnection2 =
         new MessagingConnection()
             .withConfig(
-                new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
+                new KafkaConnection()
+                    .withBootstrapServers("host1:9092")
+                    .withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
     update.setConnection(messagingConnection2);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -188,12 +183,15 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MessagingService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -219,14 +217,18 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
   @Override
   public void validateCreatedEntity(
-      MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
+      MessagingService service,
+      CreateMessagingService createRequest,
+      Map<String, String> authHeaders) {
     MessagingConnection expectedMessagingConnection = createRequest.getConnection();
     MessagingConnection actualMessagingConnection = service.getConnection();
-    validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
+    validateConnection(
+        expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
   }
 
   @Override
-  public void compareEntities(MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      MessagingService expected, MessagingService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -250,11 +252,14 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
@@ -272,10 +277,15 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         if (actualConnection.getConfig() instanceof KafkaConnection) {
           actualKafkaConnection = (KafkaConnection) actualConnection.getConfig();
         } else {
-          actualKafkaConnection = JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
+          actualKafkaConnection =
+              JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
         }
-        assertEquals(expectedKafkaConnection.getBootstrapServers(), actualKafkaConnection.getBootstrapServers());
-        assertEquals(expectedKafkaConnection.getSchemaRegistryURL(), actualKafkaConnection.getSchemaRegistryURL());
+        assertEquals(
+            expectedKafkaConnection.getBootstrapServers(),
+            actualKafkaConnection.getBootstrapServers());
+        assertEquals(
+            expectedKafkaConnection.getSchemaRegistryURL(),
+            actualKafkaConnection.getSchemaRegistryURL());
       }
     }
   }

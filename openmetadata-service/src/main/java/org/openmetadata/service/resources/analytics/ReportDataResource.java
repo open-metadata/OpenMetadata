@@ -7,12 +7,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -20,16 +21,15 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
@@ -43,14 +43,11 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class ReportDataResource {
+public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
-  @Getter protected final ReportDataRepository dao;
-  protected final Authorizer authorizer;
 
-  public ReportDataResource(CollectionDAO dao, Authorizer authorizer) {
-    this.authorizer = authorizer;
-    this.dao = new ReportDataRepository(dao);
+  public ReportDataResource(Authorizer authorizer) {
+    super(Entity.ENTITY_REPORT_DATA, authorizer);
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {
@@ -70,11 +67,15 @@ public class ReportDataResource {
             responseCode = "200",
             description = "List of report data",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDataResultList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportDataResultList.class)))
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @QueryParam("reportDataType")
           ReportDataType reportDataType,
@@ -89,12 +90,12 @@ public class ReportDataResource {
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
-          Long endTs)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+          Long endTs) {
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.getReportData(reportDataType, startTs, endTs);
+    return repository.getReportData(reportDataType, startTs, endTs);
   }
 
   @POST
@@ -106,14 +107,90 @@ public class ReportDataResource {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully added reportData.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
       })
   public Response addReportData(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid ReportData reportData) {
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.addReportData(reportData);
+    return create(
+        reportData,
+        ReportDataRepository.REPORT_DATA_EXTENSION,
+        reportData.getReportDataType().toString());
+  }
+
+  @DELETE
+  @Path("/{reportDataType}/{date}")
+  @Operation(
+      operationId = "deleteReportData",
+      summary = "Delete report data for a given report data type ando date",
+      description = "Delete report data for a given report data type and date.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted report data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
+      })
+  public Response deleteReportData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
+          @NonNull
+          @PathParam("reportDataType")
+          ReportDataType reportDataType,
+      @Parameter(description = "date in format YYYY-MM-DD", schema = @Schema(type = "String"))
+          @NonNull
+          @PathParam("date")
+          String date) {
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    repository.deleteReportDataAtDate(reportDataType, date);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("/{reportDataType}")
+  @Operation(
+      operationId = "deletePreviousReportData",
+      summary = "Delete all the previous report data for a given report data type",
+      description = "Delete all the previous report data for a given report data type.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted previous report data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ReportData.class)))
+      })
+  public Response deletePreviousReportData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "report data type",
+              schema = @Schema(implementation = ReportDataType.class))
+          @NonNull
+          @PathParam("reportDataType")
+          ReportDataType reportDataType) {
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    repository.deleteReportData(reportDataType);
+    return Response.ok().build();
   }
 }

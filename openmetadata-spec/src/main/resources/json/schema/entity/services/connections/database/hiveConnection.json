@@ -75,6 +75,23 @@
       "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
       "type": "string"
     },
+    "metastoreConnection":{
+      "title": "Hive Metastore Connection Details",
+      "description": "Hive Metastore Connection Details",
+      "oneOf": [
+        {
+          "$ref": "./postgresConnection.json"
+        },
+        {
+          "$ref": "./mysqlConnection.json"
+        },
+        {
+          "title": "None",
+          "type": "object",
+          "additionalProperties": false
+        }
+      ]
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -93,6 +110,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

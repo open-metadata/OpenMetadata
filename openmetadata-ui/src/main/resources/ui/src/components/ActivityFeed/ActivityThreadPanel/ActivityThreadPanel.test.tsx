@@ -27,7 +27,7 @@ const mockActivityThreadPanelProp = {
   updateThreadHandler: jest.fn(),
 };
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -38,9 +38,6 @@ jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
 
-jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
-  return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
-});
 jest.mock('./ActivityThread', () => {
   return jest.fn().mockReturnValue(<p>ActivityThread</p>);
 });

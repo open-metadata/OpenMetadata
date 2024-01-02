@@ -22,11 +22,10 @@ from pathlib import Path
 import yaml
 
 from metadata.config.common import load_config_file
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
+from metadata.workflow.metadata import MetadataWorkflow
 
 from .config_builders.builders import builder_factory
 from .e2e_types import E2EType
@@ -74,41 +73,37 @@ class CliBase(ABC):
                 yaml.dump(config_yaml, test_file)
 
     def retrieve_statuses(self, result):
-        source_status: SourceStatus = self.extract_source_status(result)
-        sink_status: SinkStatus = self.extract_sink_status(result)
+        source_status: Status = self.extract_source_status(result)
+        sink_status: Status = self.extract_sink_status(result)
         return sink_status, source_status
 
     @staticmethod
-    def get_workflow(connector: str, test_type: str) -> Workflow:
+    def get_workflow(connector: str, test_type: str) -> MetadataWorkflow:
         config_file = Path(
             PATH_TO_RESOURCES + f"/{test_type}/{connector}/{connector}.yaml"
         )
         config_dict = load_config_file(config_file)
-        return Workflow.create(config_dict)
+        return MetadataWorkflow.create(config_dict)
 
     @staticmethod
-    def extract_source_status(output) -> SourceStatus:
+    def extract_source_status(output) -> Status:
         output_clean = output.replace("\n", " ")
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub(" ", output_clean)
-        regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
-        output_clean = re.findall(regex, output_clean.strip())
-        return SourceStatus.parse_obj(literal_eval(output_clean[0].strip()))
+        regex = r"Source Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
+        output_clean_regex = re.findall(regex, output_clean.strip())
+        return Status.parse_obj(literal_eval(output_clean_regex[0].strip()))
 
     @staticmethod
-    def extract_sink_status(output) -> SinkStatus:
+    def extract_sink_status(output) -> Status:
         output_clean = output.replace("\n", " ")
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        if re.match(".* Processor Status: .*", output_clean):
-            regex = r"Sink Status:%(log)s(.*?)%(log)sProcessor Status: .*" % REGEX_AUX
-            output_clean = re.findall(regex, output_clean.strip())[0].strip()
-        else:
-            regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow Summary.*" % REGEX_AUX
-            output_clean = re.findall(regex, output_clean.strip())[0].strip()
-        return SinkStatus.parse_obj(literal_eval(output_clean))
+        regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
+        output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
+        return Status.parse_obj(literal_eval(output_clean_regex))
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):

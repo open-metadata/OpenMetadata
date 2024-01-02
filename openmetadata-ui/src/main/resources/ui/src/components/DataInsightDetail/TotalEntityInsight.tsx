@@ -13,14 +13,11 @@
 
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
-  Legend,
-  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -28,7 +25,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -37,7 +33,8 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  GRAPH_HEIGHT,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -45,20 +42,18 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import {
-  axisTickFormatter,
-  updateActiveChartFilter,
-} from '../../utils/ChartUtils';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { axisTickFormatter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
-  renderLegend,
+  sortEntityByValue,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import CustomStatistic from './CustomStatistic';
-import './DataInsightDetail.less';
-import DataInsightProgressBar from './DataInsightProgressBar';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -82,6 +77,9 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
     }, [totalEntitiesByType]);
 
   const { t } = useTranslation();
+  const sortedEntitiesByValue = useMemo(() => {
+    return sortEntityByValue(entities, latestData);
+  }, [entities, latestData]);
 
   const fetchTotalEntitiesByType = async () => {
     setIsLoading(true);
@@ -101,115 +99,92 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
     }
   };
 
-  const handleLegendClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
-    );
-  };
-  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.dataKey);
-  };
-  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
-    setActiveMouseHoverKey('');
-  };
-
   useEffect(() => {
     fetchTotalEntitiesByType();
   }, [chartFilter]);
+
+  if (isLoading || data.length === 0) {
+    return (
+      <Card
+        className="data-insight-card"
+        loading={isLoading}
+        title={
+          <PageHeader
+            data={{
+              header: t('label.data-insight-total-entity-summary'),
+              subHeader: t('message.total-entity-insight'),
+            }}
+          />
+        }>
+        <EmptyGraphPlaceholder />
+      </Card>
+    );
+  }
 
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card"
       id={DataInsightChartType.TotalEntitiesByType}
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.data-insight-total-entity-summary'),
-            subHeader: t('message.total-entity-insight'),
-          }}
-        />
-      }>
-      {data.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
-              <LineChart data={data} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid
-                  stroke={GRAPH_BACKGROUND_COLOR}
-                  vertical={false}
-                />
-                <XAxis dataKey="timestamp" />
-                <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  align="left"
-                  content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys)
+      loading={isLoading}>
+      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+        <Col span={DI_STRUCTURE.leftContainerSpan}>
+          <PageHeader
+            data={{
+              header: t('label.data-insight-total-entity-summary'),
+              subHeader: t('message.total-entity-insight'),
+            }}
+          />
+          <ResponsiveContainer
+            className="m-t-lg"
+            debounce={1}
+            height={GRAPH_HEIGHT}
+            id="entity-summary-chart">
+            <LineChart data={data} margin={BAR_CHART_MARGIN}>
+              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+              <XAxis dataKey="timestamp" />
+              <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
+              <Tooltip
+                content={<CustomTooltip />}
+                wrapperStyle={{ pointerEvents: 'auto' }}
+              />
+              {entities.map((entity, i) => (
+                <Line
+                  dataKey={entity}
+                  hide={
+                    activeKeys.length && entity !== activeMouseHoverKey
+                      ? !activeKeys.includes(entity)
+                      : false
                   }
-                  layout="horizontal"
-                  verticalAlign="top"
-                  wrapperStyle={{ left: '0px', top: '0px' }}
-                  onClick={handleLegendClick}
-                  onMouseEnter={handleLegendMouseEnter}
-                  onMouseLeave={handleLegendMouseLeave}
+                  key={entity}
+                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  strokeOpacity={
+                    isEmpty(activeMouseHoverKey) ||
+                    entity === activeMouseHoverKey
+                      ? DEFAULT_CHART_OPACITY
+                      : HOVER_CHART_OPACITY
+                  }
+                  type="monotone"
                 />
-                {entities.map((entity) => (
-                  <Line
-                    dataKey={entity}
-                    hide={
-                      activeKeys.length && entity !== activeMouseHoverKey
-                        ? !activeKeys.includes(entity)
-                        : false
-                    }
-                    key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
-                    strokeOpacity={
-                      isEmpty(activeMouseHoverKey) ||
-                      entity === activeMouseHoverKey
-                        ? DEFAULT_CHART_OPACITY
-                        : HOVER_CHART_OPACITY
-                    }
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
-          <Col span={DI_STRUCTURE.rightContainerSpan}>
-            <Row gutter={DI_STRUCTURE.rightRowGutter}>
-              <Col span={24}>
-                <CustomStatistic
-                  changeInValue={relativePercentage}
-                  duration={selectedDays}
-                  label={t('label.total-entity', {
-                    entity: t('label.asset-plural'),
-                  })}
-                  value={total}
-                />
-              </Col>
-              {entities.map((entity) => {
-                const progress = (latestData[entity] / Number(total)) * 100;
-
-                return (
-                  <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      progress={progress}
-                      showLabel={false}
-                      startValue={latestData[entity]}
-                      successValue={entity}
-                      suffix=""
-                    />
-                  </Col>
-                );
-              })}
-            </Row>
-          </Col>
-        </Row>
-      ) : (
-        <EmptyGraphPlaceholder />
-      )}
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </Col>
+        <Col span={DI_STRUCTURE.rightContainerSpan}>
+          <TotalEntityInsightSummary
+            allowFilter
+            activeKeys={activeKeys}
+            entities={sortedEntitiesByValue}
+            gutter={DI_STRUCTURE.rightRowGutter}
+            latestData={latestData}
+            relativePercentage={relativePercentage}
+            selectedDays={selectedDays}
+            total={total}
+            onActiveKeyMouseHover={(entity) => setActiveMouseHoverKey(entity)}
+            onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
+          />
+        </Col>
+      </Row>
     </Card>
   );
 };

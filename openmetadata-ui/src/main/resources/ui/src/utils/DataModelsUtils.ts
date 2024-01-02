@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabSpecificField } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/dashboardDataModel';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Column } from '../generated/entity/data/dashboardDataModel';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const updateDataModelColumnDescription = (
@@ -40,65 +38,8 @@ export const updateDataModelColumnDescription = (
   });
 };
 
-const getUpdatedDataModelColumnTags = (
-  containerColumn: Column,
-  newContainerColumnTags: TagOption[] = []
-) => {
-  const newTagsFqnList = newContainerColumnTags.map((newTag) => newTag.fqn);
-
-  const prevTags = containerColumn?.tags?.filter((tag) =>
-    newTagsFqnList.includes(tag.tagFQN)
-  );
-
-  const prevTagsFqnList = prevTags?.map((prevTag) => prevTag.tagFQN);
-
-  const newTags: EntityTags[] = newContainerColumnTags.reduce((prev, curr) => {
-    const isExistingTag = prevTagsFqnList?.includes(curr.fqn);
-
-    return isExistingTag
-      ? prev
-      : [
-          ...prev,
-          {
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-            source: curr.source,
-            tagFQN: curr.fqn,
-          },
-        ];
-  }, [] as EntityTags[]);
-
-  return [...(prevTags as TagLabel[]), ...newTags];
-};
-
-export const updateDataModelColumnTags = (
-  containerColumns: Column[] = [],
-  changedColumnFQN: string,
-  newColumnTags: TagOption[] = []
-) => {
-  containerColumns.forEach((containerColumn) => {
-    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
-      containerColumn.tags = getUpdatedDataModelColumnTags(
-        containerColumn,
-        newColumnTags
-      );
-    } else {
-      const hasChildren = !isEmpty(containerColumn.children);
-
-      // stop condition
-      if (hasChildren) {
-        updateDataModelColumnTags(
-          containerColumn.children,
-          changedColumnFQN,
-          newColumnTags
-        );
-      }
-    }
-  });
-};
-
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.FOLLOWERS}`;
+${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getSortedDataModelColumnTags = (column: Column[]): Column[] =>
   column.map((item) => ({

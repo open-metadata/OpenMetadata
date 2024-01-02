@@ -13,11 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.reports.ReportResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -25,35 +23,48 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
-  public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", "");
+  public ReportRepository() {
+    super(
+        ReportResource.COLLECTION_PATH,
+        Entity.REPORT,
+        Report.class,
+        Entity.getCollectionDAO().reportDAO(),
+        "",
+        "");
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) {
+  public void setFields(Report report, Fields fields) {
     report.setService(getService(report)); // service is a default field
-    return report.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
+    if (report.getUsageSummary() == null) {
+      report.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
+              : report.getUsageSummary());
+    }
   }
 
   @Override
-  public void prepare(Report report) {
+  public void clearFields(Report report, Fields fields) {
+    report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
+  }
+
+  @Override
+  public void prepare(Report report, boolean update) {
     // TODO report does not have service yet
   }
 
   @Override
-  public void storeEntity(Report report, boolean update) throws IOException {
+  public void storeEntity(Report report, boolean update) {
     store(report, update);
   }
 
   @Override
   public void storeRelationships(Report report) {
-    EntityReference service = report.getService();
-    addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addServiceRelationship(report, report.getService());
   }
 
   private EntityReference getService(Report report) {
-    // TODO What are the report services?
     return null;
   }
 }

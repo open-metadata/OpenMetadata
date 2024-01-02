@@ -29,7 +29,7 @@ $$section
 ### Host Port $(id="hostPort")
 This parameter specifies the host and port of the Databricks instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `adb-xyz.azuredatabricks.net:443`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3000` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3000` as the value.
 $$
 
 $$section
@@ -57,11 +57,6 @@ $$section
 The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.
 
 If your connection fails because your cluster has not had enough time to start, you can try updating this parameter with a bigger number.
-$$
-
-$$section
-### Use Unity Catalog $(id="useUnityCatalog")
-Enable this flag to extract the metadata and lineage information using databricks unity catalog instead of using legacy hive metastore. When you enable this flag make sure you have enabled the unity catalog on your instance.
 $$
 
 $$section

@@ -14,16 +14,25 @@ Redshift source ingestion
 
 import re
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import inspect, sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
+    EntityName,
     IntervalType,
     TableConstraint,
     TablePartition,
@@ -32,20 +41,26 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_DATABASE_NAMES,
+    REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
+    REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.redshift.utils import (
@@ -56,8 +71,13 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_columns,
     get_table_comment,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
@@ -86,25 +106,25 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(CommonDbSourceService):
+class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
     """
 
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    def __init__(self, config, metadata):
+        super().__init__(config, metadata)
         self.partition_details = {}
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_partition_details(self) -> None:
         """
@@ -138,20 +158,25 @@ class RedshiftSource(CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 
@@ -218,3 +243,65 @@ class RedshiftSource(CommonDbSourceService):
                     columns=[column.get("name")],
                 )
             )
+
+    def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
+        """List Snowflake stored procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(
+                REDSHIFT_GET_STORED_PROCEDURES.format(
+                    schema_name=self.context.database_schema,
+                )
+            ).all()
+            for row in results:
+                stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
+                yield stored_procedure
+
+    def yield_stored_procedure(
+        self, stored_procedure: RedshiftStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+            )
+            yield Either(right=stored_procedure_request)
+
+            self.register_record_stored_proc_request(stored_procedure_request)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            database_name=self.context.database,
+        )
+
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
+
+        return queries_dict

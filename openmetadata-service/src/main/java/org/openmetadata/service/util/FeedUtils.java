@@ -16,7 +16,6 @@ package org.openmetadata.service.util;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +33,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public final class FeedUtils {
   private FeedUtils() {}
 
-  public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) throws IOException {
+  public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
@@ -48,14 +47,17 @@ public final class FeedUtils {
     switch (changeEvent.getEventType()) {
       case ENTITY_CREATED:
         message =
-            String.format("Created **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+            String.format(
+                "Created **%s**: `%s`",
+                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_UPDATED:
         return getThreads(entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
       case ENTITY_SOFT_DELETED:
         message =
             String.format(
-                "Soft deleted **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+                "Soft deleted **%s**: `%s`",
+                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_DELETED:
         message =
@@ -78,7 +80,8 @@ public final class FeedUtils {
     List<Thread> threads = new ArrayList<>();
 
     MessageDecorator<FeedMessage> feedFormatter = new FeedMessageDecorator();
-    Map<MessageParser.EntityLink, String> messages = getFormattedMessages(feedFormatter, changeDescription, entity);
+    Map<MessageParser.EntityLink, String> messages =
+        getFormattedMessages(feedFormatter, changeDescription, entity);
 
     // Create an automated thread
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {

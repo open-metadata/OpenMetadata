@@ -12,31 +12,42 @@
  */
 
 import { Popover } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
 import React, {
   FC,
   HTMLAttributes,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
+import { Include } from '../../../generated/type/include';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import AppState from '../../../AppState';
-import { EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
+} from '../../../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import {
+  getGlossariesByName,
+  getGlossaryTermByFQN,
+} from '../../../rest/glossaryAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getContainerByFQN } from '../../../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
+import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../Loader/Loader';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
@@ -48,15 +59,17 @@ const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
-  const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { cachedEntityData, updateCachedEntityData } =
+    useApplicationConfigContext();
+  const entityData = useMemo(
+    () => cachedEntityData[entityFQN],
+    [cachedEntityData, entityFQN]
+  );
 
-  const getData = useCallback(() => {
-    const setEntityDetails = (entityDetail: EntityUnion) => {
-      AppState.entityData[entityFQN] = entityDetail;
-    };
-
+  const getData = useCallback(async () => {
     const fields = 'tags,owner';
+    setLoading(true);
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
@@ -66,7 +79,7 @@ const PopoverContent: React.FC<{
         break;
       case EntityType.TEST_CASE:
         promise = getTableDetailsByFQN(
-          getTableFQNFromColumnFQN(entityFQN),
+          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
           fields
         );
 
@@ -76,6 +89,7 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DASHBOARD:
+      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, fields);
 
         break;
@@ -88,19 +102,47 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseSchemaDetailsByFQN(
+          entityFQN,
+          'owner',
+          Include.All
+        );
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(entityFQN, 'owner');
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
 
         break;
       case EntityType.GLOSSARY:
         promise = getGlossariesByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.CONTAINER:
+        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+
+        break;
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.DOMAIN:
+        promise = getDomainByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.DATA_PRODUCT:
+        promise = getDataProductByName(entityFQN, 'owner,domain');
 
         break;
 
@@ -109,36 +151,28 @@ const PopoverContent: React.FC<{
     }
 
     if (promise) {
-      setLoading(true);
-      promise
-        .then((res) => {
-          setEntityDetails(res);
-          setEntityData(res);
-        })
-        .catch(() => {
-          // do nothing
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      try {
+        const res = await promise;
+        updateCachedEntityData({ id: entityFQN, entityDetails: res });
+      } catch (error) {
+        // Error
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
     }
   }, [entityType, entityFQN]);
 
-  const onMouseOver = () => {
-    const entityData = AppState.entityData[entityFQN];
-    if (entityData) {
-      setEntityData(entityData);
-    } else {
+  useEffect(() => {
+    const entityData = cachedEntityData[entityFQN];
+    if (!entityData) {
       getData();
     }
-  };
-
-  useEffect(() => {
-    onMouseOver();
   }, [entityFQN]);
 
   if (loading) {
-    return <Loader />;
+    return <Loader size="small" />;
   }
 
   return (
@@ -151,7 +185,7 @@ const PopoverContent: React.FC<{
         displayName: getEntityName(entityData),
         id: entityData.id ?? '',
         description: entityData.description ?? '',
-        fullyQualifiedName: entityFQN,
+        fullyQualifiedName: getDecodedFqn(entityFQN),
         tags: (entityData as Table).tags,
         entityType: entityType,
         serviceType: (entityData as Table).serviceType,
@@ -164,7 +198,12 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
+      content={
+        <PopoverContent
+          entityFQN={getEncodedFqn(entityFQN)}
+          entityType={entityType}
+        />
+      }
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

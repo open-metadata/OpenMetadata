@@ -14,7 +14,7 @@
 import { act, findByText, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createUser } from 'rest/userAPI';
+import { createUser } from '../../rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
 
 const mockUserRole = {
@@ -39,7 +39,7 @@ const mockUserRole = {
   },
 };
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -47,7 +47,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('components/CreateUser/CreateUser.component', () => {
+jest.mock('../../components/CreateUser/CreateUser.component', () => {
   return jest
     .fn()
     .mockImplementation(({ onSave }) => (
@@ -55,17 +55,11 @@ jest.mock('components/CreateUser/CreateUser.component', () => {
     ));
 });
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../AppState', () =>
-  jest.fn().mockReturnValue({
-    userTeams: [],
-  })
-);
-
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
 

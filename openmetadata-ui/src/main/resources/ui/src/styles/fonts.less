@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-@import url('./variables.less');
+@import (reference) url('./variables.less');
 
 // font family
 pre {
-  // remove important once we remove tailwind
-  font-family: 'Source Code Pro', sans-serif !important;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 //font weight
@@ -44,14 +43,12 @@ pre {
   font-size: 12px;
   line-height: 1rem /* 16px */;
 }
-.text-md {
-  font-size: 16px;
-}
 .text-lg {
   font-size: 18px;
 }
 .text-sm {
   font-size: 14px;
+  line-height: 1rem /* 16px */;
 }
 .text-md {
   font-size: 16px;
@@ -70,6 +67,16 @@ pre {
   line-height: 2rem /* 32px */;
 }
 
+.text-3xl {
+  font-size: 1.875rem /* 24px */;
+  line-height: 2.5rem /* 32px */;
+}
+
+.text-5xl {
+  font-size: 3rem /* 48px */;
+  line-height: 3rem /* 48px */;
+}
+
 // font color
 .text-base-color {
   color: @text-color;
@@ -80,6 +87,14 @@ pre {
   &:hover {
     color: @primary-color;
   }
+}
+
+.text-danger {
+  color: @error-color;
+}
+
+.text-inherit {
+  font-size: inherit;
 }
 .text-color-inherit {
   color: inherit;

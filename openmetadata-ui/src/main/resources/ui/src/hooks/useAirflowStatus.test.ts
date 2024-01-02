@@ -12,8 +12,8 @@
  */
 import { renderHook } from '@testing-library/react-hooks';
 
-import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
+import { getAirflowStatus } from '../rest/ingestionPipelineAPI';
 import { useAirflowStatus } from './useAirflowStatus';
 
 const mockResponse: PipelineServiceClientResponse = {

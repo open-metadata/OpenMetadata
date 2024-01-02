@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SortingField } from 'components/Explore/SortingDropDown';
-import i18n from 'utils/i18next/LocalUtil';
+import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
-import { Icons } from '../utils/SvgUtils';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
+export const TIER_FQN_KEY = 'tier.tagFQN';
+export const TAG_FQN_KEY = 'tags.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
@@ -54,66 +54,22 @@ export interface ExploreTabInfo {
   selectedIcon?: string;
 }
 
-export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
-  [SearchIndex.TABLE]: {
-    label: i18n.t('label.table-plural'),
-    sortingFields: tableSortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'tables',
-    icon: Icons.TABLE_GREY,
-    selectedIcon: Icons.TABLE,
-  },
-  [SearchIndex.TOPIC]: {
-    label: i18n.t('label.topic-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'topics',
-    icon: Icons.TOPIC_GREY,
-    selectedIcon: Icons.TOPIC,
-  },
-  [SearchIndex.DASHBOARD]: {
-    label: i18n.t('label.dashboard-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dashboards',
-    icon: Icons.DASHBOARD_GREY,
-    selectedIcon: Icons.DASHBOARD,
-  },
-  [SearchIndex.PIPELINE]: {
-    label: i18n.t('label.pipeline-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'pipelines',
-    icon: Icons.PIPELINE_GREY,
-    selectedIcon: Icons.PIPELINE,
-  },
-  [SearchIndex.MLMODEL]: {
-    label: i18n.t('label.ml-model-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'mlmodels',
-  },
-  [SearchIndex.CONTAINER]: {
-    label: i18n.t('label.container-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'containers',
-  },
-  [SearchIndex.GLOSSARY]: {
-    label: i18n.t('label.glossary-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'glossaries',
-  },
-  [SearchIndex.TAG]: {
-    label: i18n.t('label.tag-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'tags',
-  },
-};
-
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
+];
+
+export const TABS_SEARCH_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+  SearchIndex.TAG,
+  SearchIndex.DATA_PRODUCT,
 ];

@@ -12,9 +12,9 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getCustomLogoConfig } from 'rest/settingConfigAPI';
+import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 import ApplicationConfigProvider, {
-  useApplicationConfigProvider,
+  useApplicationConfigContext,
 } from './ApplicationConfigProvider';
 
 const mockApplicationConfig = {
@@ -22,10 +22,14 @@ const mockApplicationConfig = {
   customMonogramUrlPath: 'https://customlink.source',
 };
 
-jest.mock('rest/settingConfigAPI', () => ({
+jest.mock('../../rest/settingConfigAPI', () => ({
   getCustomLogoConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockApplicationConfig)),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
 describe('ApplicationConfigProvider', () => {
@@ -47,7 +51,7 @@ describe('ApplicationConfigProvider', () => {
 
   it('fetch the application config on mount and set in the context', async () => {
     function TestComponent() {
-      const { customLogoUrlPath } = useApplicationConfigProvider();
+      const { customLogoUrlPath } = useApplicationConfigContext();
 
       return <div>{customLogoUrlPath}</div>;
     }

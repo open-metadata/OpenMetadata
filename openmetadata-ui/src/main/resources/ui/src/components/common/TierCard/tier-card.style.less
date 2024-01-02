@@ -13,51 +13,63 @@
 
 @import url('../../../styles/variables.less');
 
-.tier-card {
-  width: 760px;
-  border: 1px solid #dde3ea;
-  box-shadow: @box-shadow-base;
-  border-radius: 4px !important;
-}
-
-.tier-card-container {
-  padding: 0;
-  .ant-popover-inner-content {
-    padding: 0;
-  }
-}
-
-.collapse-container {
-  .collapse-tier-panel {
-    border: @global-border;
-
-    .ant-collapse-content {
-      border-color: @primary-color;
-    }
-
-    &.ant-collapse-item-active {
-      border: 1px solid @primary-color;
-      background: @primary-color-hover;
-    }
-
-    &.selected {
-      border: 1px solid @primary-color;
-      background: @primary-color;
-      .ant-collapse-header {
-        color: @white;
+.tier-card-popover {
+  .ant-popover-inner {
+    box-shadow: none;
+    .ant-popover-inner-content {
+      padding: 0;
+      .tier-card {
+        width: 655px;
+        .ant-card-body {
+          .ant-collapse-item {
+            .ant-collapse-header {
+              .ant-collapse-arrow {
+                position: absolute;
+                top: 20px;
+              }
+            }
+            .ant-collapse-content {
+              &.ant-collapse-content-active {
+                border: none;
+              }
+              .ant-collapse-content-box {
+                padding: 0 12px;
+              }
+            }
+          }
+        }
       }
     }
-    &:first-child,
-    &:first-child.ant-collapse-item-active {
-      border-radius: 4px 4px 0 0;
-    }
-    &:last-child {
-      border-radius: 0 0 4px 4px;
-    }
-  }
 
-  &.ant-collapse {
-    background-color: @white;
-    border: none;
+    .tier-card-description {
+      .toastui-editor-contents ul {
+        padding-left: 18px;
+        font-size: 12px;
+        font-weight: 400;
+        color: @text-color-secondary;
+        margin: 4px;
+        li {
+          margin: 0;
+        }
+      }
+    }
+
+    .radio-input .ant-radio {
+      .ant-radio-inner {
+        width: 14px;
+        height: 14px;
+        border: 1.5px solid @primary-color;
+        box-shadow: none !important;
+      }
+
+      &:hover .ant-radio-inner {
+        background-color: @primary-color-hover;
+      }
+
+      &.ant-radio-checked .ant-radio-inner::after {
+        box-shadow: none !important;
+        transform: scale(0.35);
+      }
+    }
   }
 }

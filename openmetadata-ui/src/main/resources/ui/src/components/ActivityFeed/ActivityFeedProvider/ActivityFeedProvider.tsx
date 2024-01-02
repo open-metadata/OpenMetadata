@@ -10,20 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AppState from 'AppState';
+
 import { AxiosError } from 'axios';
-import { EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { ReactionOperation } from 'enums/reactions.enum';
 import { compare, Operation } from 'fast-json-patch';
-import {
-  Post,
-  Reaction,
-  ReactionType,
-  Thread,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -34,6 +23,16 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { Paging } from '../../../generated/type/paging';
+import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import {
   deletePostById,
   deleteThread,
@@ -42,10 +41,11 @@ import {
   postFeedById,
   updatePost,
   updateThread,
-} from 'rest/feedsAPI';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getUpdatedThread } from 'utils/FeedUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/feedsAPI';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getUpdatedThread } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -69,11 +69,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
@@ -108,14 +104,14 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const userId =
-          entityType === EntityType.USER_NAME
+          entityType === EntityType.USER
             ? user
             : feedFilterType === FeedFilter.ALL
             ? undefined
             : currentUser?.id;
 
         const { data, paging } = await getAllFeeds(
-          entityType !== EntityType.USER_NAME
+          entityType !== EntityType.USER && fqn
             ? getEntityFeedLink(entityType, fqn)
             : undefined,
           after,
@@ -126,10 +122,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
-
-        setLoading(false);
-
-        return data;
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -137,22 +129,22 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             entity: t('label.activity-feed'),
           })
         );
-
-        return [];
       } finally {
         setLoading(false);
       }
     },
-    []
+    [currentUser, user]
   );
 
   // Here value is the post message and id can be thread id or post id.
   const postFeed = useCallback(async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+    if (!currentUser) {
+      return;
+    }
 
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser.name,
     } as Post;
 
     try {

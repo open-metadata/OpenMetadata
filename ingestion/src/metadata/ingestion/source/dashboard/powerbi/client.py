@@ -19,7 +19,7 @@ from typing import List, Optional, Tuple
 
 import msal
 
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
@@ -186,7 +186,7 @@ class PowerBiApiClient:
     ) -> Optional[List[PowerBiTable]]:
         """Method to fetch dataset tables
         Returns:
-            List[Tile]
+            List[PowerBiTable]
         """
         try:
             response_data = self.client.get(

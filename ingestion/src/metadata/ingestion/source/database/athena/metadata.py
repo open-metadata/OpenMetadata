@@ -11,23 +11,26 @@
 
 """Athena source module"""
 
-from typing import Iterable
+from typing import Iterable, Tuple
 
-from pyathena.sqlalchemy_athena import AthenaDialect
+from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import (
@@ -123,10 +126,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "comment": c.comment,
             "system_data_type": c.type,
             "is_complex": is_complex_type(c.type),
-            "dialect_options": {"awsathena_partition": None},
+            "dialect_options": {"awsathena_partition": True},
         }
-        for c in metadata.columns
+        for c in metadata.partition_keys
     ]
+
+    if kw.get("only_partition_columns"):
+        return columns
+
     columns += [
         {
             "name": c.name,
@@ -137,10 +144,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "comment": c.comment,
             "system_data_type": c.type,
             "is_complex": is_complex_type(c.type),
-            "dialect_options": {"awsathena_partition": True},
+            "dialect_options": {"awsathena_partition": None},
         }
-        for c in metadata.partition_keys
+        for c in metadata.columns
     ]
+
     return columns
 
 
@@ -169,14 +177,14 @@ class AthenaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AthenaConnection):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -187,3 +195,17 @@ class AthenaSource(CommonDbSourceService):
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name)
         ]
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        columns = inspector.get_columns(
+            table_name=table_name, schema=schema_name, only_partition_columns=True
+        )
+        if columns:
+            partition_details = TablePartition(
+                intervalType=IntervalType.COLUMN_VALUE.value,
+                columns=[column["name"] for column in columns],
+            )
+            return True, partition_details
+        return False, None

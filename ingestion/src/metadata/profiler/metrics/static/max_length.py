@@ -49,7 +49,7 @@ class MaxLength(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if self._is_concatenable():
-            return func.max(LenFn(column(self.col.name)))
+            return func.max(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
@@ -63,10 +63,17 @@ class MaxLength(StaticMetric):
 
         length_vectorize_func = vectorize(len)
         if self._is_concatenable():
-            return max(
-                length_vectorize_func(df[self.col.name].dropna().astype(str)).max()
-                for df in dfs
-            )
+            max_length_list = []
+
+            for df in dfs:
+                if any(df[self.col.name]):
+                    max_length_list.append(
+                        length_vectorize_func(
+                            df[self.col.name].dropna().astype(str)
+                        ).max()
+                    )
+            if max_length_list:
+                return max(max_length_list)
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )

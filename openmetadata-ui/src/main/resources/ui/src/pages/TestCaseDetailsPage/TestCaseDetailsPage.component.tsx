@@ -13,30 +13,31 @@
 
 import { Col, Layout, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import TestSummary from 'components/ProfilerDashboard/component/TestSummary';
-import { TestCase } from 'generated/tests/testCase';
 import { has, isEmpty, isUndefined } from 'lodash';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getTestCaseByFqn } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import './TestCaseDetailsPage.style.less';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TestSummary from '../../components/ProfilerDashboard/component/TestSummary';
+import { TestCase } from '../../generated/tests/testCase';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getTestCaseByFqn } from '../../rest/testAPI';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import './test-case-details-page.style.less';
 
 function TestCaseDetailsPage() {
-  const { testCaseFQN } = useParams<{ testCaseFQN: string }>();
+  const { fqn: testCaseFQN } = useParams<{ fqn: string }>();
   const { t } = useTranslation();
   const [testCaseData, setTestCaseData] = useState<TestCase>();
 
   const fetchTestCaseData = async () => {
     try {
-      const response = await getTestCaseByFqn(testCaseFQN, {
+      const response = await getTestCaseByFqn(getEncodedFqn(testCaseFQN), {
         fields: ['testSuite', 'testCaseResult'],
       });
       setTestCaseData(response.data);
@@ -121,9 +122,7 @@ function TestCaseDetailsPage() {
               <Col span={14}>
                 <Typography.Text>
                   {testCaseData.testCaseResult?.timestamp
-                    ? getFormattedDateFromSeconds(
-                        testCaseData.testCaseResult?.timestamp
-                      )
+                    ? formatDateTime(testCaseData.testCaseResult?.timestamp)
                     : '--'}
                 </Typography.Text>
               </Col>

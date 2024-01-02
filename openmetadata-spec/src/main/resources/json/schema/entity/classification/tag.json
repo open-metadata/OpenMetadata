@@ -12,7 +12,7 @@
       "type": "string",
       "minLength": 2,
       "maxLength": 64,
-      "pattern": "^(?U)[\\w'\\- .&()]+$"
+      "pattern": "(?U)^[\\w'\\- .&()]+$"
     }
   },
   "properties": {
@@ -35,6 +35,9 @@
     "description": {
       "description": "Description of the tag.",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "classification": {
       "description": "Reference to the classification that this tag is part of.",

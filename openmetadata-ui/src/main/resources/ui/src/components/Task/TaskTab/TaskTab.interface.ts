@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/table';
-import { Thread } from 'generated/entity/feed/thread';
-import { EntityReference } from 'generated/entity/type';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/table';
+import { Thread } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 
 export type TaskTabProps = {
   taskThread: Thread;
   owner?: EntityReference;
+  isForFeedTab?: boolean;
   onUpdateEntityDetails?: () => void;
+  onAfterClose?: () => void;
 } & (
   | TableTaskTabProps
   | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }

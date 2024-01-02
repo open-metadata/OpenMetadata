@@ -15,8 +15,7 @@ import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import AppState from '../AppState';
+} from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,
@@ -36,10 +35,9 @@ export const checkPermission = (
   resourceType: ResourceEntity,
   permissions: UIPermission
 ) => {
-  const isAuthDisabled = AppState.authDisabled;
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPermission = isAuthDisabled;
+  let hasPermission = false;
 
   /**
    * If allResource is present then check for permission and return it

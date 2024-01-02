@@ -15,8 +15,6 @@ Hive E2E tests
 
 from typing import List
 
-from metadata.generated.schema.entity.data.table import Histogram
-
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 

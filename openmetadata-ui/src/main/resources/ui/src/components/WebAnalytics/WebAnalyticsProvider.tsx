@@ -11,28 +11,23 @@
  *  limitations under the License.
  */
 
-import { observer } from 'mobx-react';
-import React, { ReactNode, useMemo } from 'react';
+import React, { ReactNode } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
-import AppState from '../../AppState';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 
 interface WebAnalyticsProps {
   children: ReactNode;
 }
 
 const WebAnalyticsProvider = ({ children }: WebAnalyticsProps) => {
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
 
   return (
-    <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id ?? '')}>
+    <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id)}>
       {children}
     </AnalyticsProvider>
   );
 };
 
-export default observer(WebAnalyticsProvider);
+export default WebAnalyticsProvider;

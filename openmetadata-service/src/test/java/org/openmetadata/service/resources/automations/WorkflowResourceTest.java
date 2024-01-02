@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 
-import java.io.IOException;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -24,7 +23,12 @@ import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowL
 public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWorkflow> {
 
   public WorkflowResourceTest() {
-    super(Entity.WORKFLOW, Workflow.class, WorkflowList.class, "automations/workflows", WorkflowResource.FIELDS);
+    super(
+        Entity.WORKFLOW,
+        Workflow.class,
+        WorkflowList.class,
+        "automations/workflows",
+        WorkflowResource.FIELDS);
   }
 
   @Override
@@ -43,11 +47,13 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
                             new MysqlConnection()
                                 .withHostPort("mysql:3306")
                                 .withUsername("openmetadata_user")
-                                .withAuthType(new basicAuth().withPassword("openmetadata_password")))));
+                                .withAuthType(
+                                    new basicAuth().withPassword("openmetadata_password")))));
   }
 
   @Override
-  public void validateCreatedEntity(Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
@@ -55,14 +61,16 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void compareEntities(Workflow expected, Workflow updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      Workflow expected, Workflow updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getWorkflowType(), updated.getWorkflowType());
     assertEquals(expected.getStatus(), updated.getStatus());
   }
 
   @Override
-  public Workflow validateGetWithDifferentFields(Workflow entity, boolean byName) throws HttpResponseException {
+  public Workflow validateGetWithDifferentFields(Workflow entity, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -79,10 +87,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    if (expected == actual) {
-      return;
-    }
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

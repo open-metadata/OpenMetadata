@@ -17,12 +17,12 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { LeafNodes } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Paging } from '../../generated/type/paging';
-import { LeafNodes } from '../EntityLineage/EntityLineage.interface';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
@@ -175,6 +175,8 @@ const mockProp = {
   createThread: jest.fn(),
   version: '0.1',
   versionHandler: jest.fn(),
+  handleToggleDelete: jest.fn(),
+  onUpdateVote: jest.fn(),
 };
 
 const mockParams = {
@@ -188,29 +190,28 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/FeedEditor/FeedEditor', () => {
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
-});
-
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
+  }
+);
 
 jest.mock('./MlModelFeaturesList', () => {
   return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
@@ -220,7 +221,7 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -230,7 +231,6 @@ jest.mock('../../utils/CommonUtils', () => {
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
     getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
-    getCurrentUserId: jest.fn().mockReturnValue('testId'),
     getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
   };
 });

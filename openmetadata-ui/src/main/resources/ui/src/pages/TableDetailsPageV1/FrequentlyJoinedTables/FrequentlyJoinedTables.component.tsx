@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Typography } from 'antd';
-import { getTableDetailsPath } from 'constants/constants';
-import { JoinedWith } from 'generated/entity/data/table';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getCountBadge } from 'utils/CommonUtils';
+import { getTableDetailsPath } from '../../../constants/constants';
+import { JoinedWith } from '../../../generated/entity/data/table';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import './frequently-joined-tables.style.less';
 
 type Joined = JoinedWith & {
@@ -33,9 +33,9 @@ export const FrequentlyJoinedTables = ({
   const { t } = useTranslation();
 
   return (
-    <Row className="m-x-xs" gutter={[0, 16]}>
+    <Row className="m-b-lg" gutter={[0, 8]}>
       <Col className="m-b" span={24}>
-        <Typography.Text>
+        <Typography.Text className="right-panel-label">
           {t('label.frequently-joined-table-plural')}
         </Typography.Text>
       </Col>

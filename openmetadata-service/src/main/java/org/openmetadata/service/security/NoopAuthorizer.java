@@ -13,14 +13,13 @@
 
 package org.openmetadata.service.security;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
@@ -30,15 +29,12 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
   @Override
-  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
-    SubjectCache.initialize();
+  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     addAnonymousUser();
   }
 
@@ -49,7 +45,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resource) {
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, String resource) {
     return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
   }
 
@@ -61,14 +58,16 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     /* Always authorize */
   }
 
   private void addAnonymousUser() {
     String username = "anonymous";
     try {
-      Entity.getEntityRepository(Entity.USER).getByName(null, username, Fields.EMPTY_FIELDS);
+      Entity.getEntityByName(Entity.USER, username, "", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       User user =
           new User()
@@ -78,7 +77,7 @@ public class NoopAuthorizer implements Authorizer {
               .withUpdatedBy(username)
               .withUpdatedAt(System.currentTimeMillis());
       addOrUpdateUser(user);
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to create anonymous user {}", username, e);
     }
   }
@@ -86,9 +85,9 @@ public class NoopAuthorizer implements Authorizer {
   private void addOrUpdateUser(User user) {
     try {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
-    } catch (IOException exception) {
+    } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception ", exception);
       LOG.debug("Anonymous user entry: {} already exists.", user);

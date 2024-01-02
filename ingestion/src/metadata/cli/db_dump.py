@@ -16,10 +16,10 @@ Database Dumping utility for the metadata CLI
 import json
 from functools import singledispatch
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 from sqlalchemy import inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, Row
 
 from metadata.utils.constants import UTF_8
 
@@ -37,11 +37,14 @@ CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp
 NOT_MIGRATE = {"DATABASE_CHANGE_LOG", "SERVER_MIGRATION_SQL_LOGS", "SERVER_CHANGE_LOG"}
 
 STATEMENT_JSON = "SELECT json FROM {table}"
+STATEMENT_HASH_JSON = "SELECT json, {hash_column_name} FROM {table}"
 STATEMENT_ALL = "SELECT * FROM {table}"
 STATEMENT_TRUNCATE = "TRUNCATE TABLE {table};\n"
 STATEMENT_ALL_NEW = "SELECT {cols} FROM {table}"
 
 MYSQL_ENGINE_NAME = "mysql"
+FQN_HASH_COLUMN = "fqnHash"
+NAME_HASH_COLUMN = "nameHash"
 
 
 def single_quote_wrap(raw: str) -> str:
@@ -104,6 +107,30 @@ def _(column_raw: Optional[Union[dict, list]], engine: Engine) -> str:
     )
 
 
+def get_hash_column_name(engine: Engine, table_name: str) -> Optional[str]:
+    """
+    Method to get name of the hash column (fqnHash or nameHash)
+    """
+    inspector = inspect(engine)
+    columns = inspector.get_columns(table_name)
+    for column in columns:
+        if column["name"].lower() == FQN_HASH_COLUMN.lower():
+            return column["name"]
+        if column["name"].lower() == NAME_HASH_COLUMN.lower():
+            return column["name"]
+    return None
+
+
+def run_query_iter(engine: Engine, query: str) -> Iterable[Row]:
+    """Return a generator of rows, one row at a time, with a limit of 100 in-mem rows"""
+    with engine.connect() as conn:
+        result = conn.execution_options(
+            stream_results=True, max_row_buffer=100
+        ).execute(text(query))
+        for row in result:
+            yield row
+
+
 def dump_json(tables: List[str], engine: Engine, output: Path) -> None:
     """
     Dumps JSON data.
@@ -116,10 +143,19 @@ def dump_json(tables: List[str], engine: Engine, output: Path) -> None:
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
 
-            res = engine.execute(text(STATEMENT_JSON.format(table=table))).all()
-            for row in res:
-                insert = f"INSERT INTO {table} (json) VALUES ({clean_col(row.json, engine)});\n"
-                file.write(insert)
+            hash_column_name = get_hash_column_name(engine=engine, table_name=table)
+            if hash_column_name:
+                query = STATEMENT_HASH_JSON.format(
+                    table=table, hash_column_name=hash_column_name
+                )
+                for row in run_query_iter(engine=engine, query=query):
+                    insert = f"INSERT INTO {table} (json, {hash_column_name}) VALUES ({clean_col(row.json, engine)}, {clean_col(row[1], engine)});\n"  # pylint: disable=line-too-long
+                    file.write(insert)
+            else:
+                res = engine.execute(text(STATEMENT_JSON.format(table=table))).all()
+                for row in res:
+                    insert = f"INSERT INTO {table} (json) VALUES ({clean_col(row.json, engine)});\n"
+                    file.write(insert)
 
 
 def dump_all(tables: List[str], engine: Engine, output: Path) -> None:
@@ -131,8 +167,8 @@ def dump_all(tables: List[str], engine: Engine, output: Path) -> None:
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
 
-            res = engine.execute(text(STATEMENT_ALL.format(table=table))).all()
-            for row in res:
+            query = STATEMENT_ALL.format(table=table)
+            for row in run_query_iter(engine=engine, query=query):
                 data = ",".join(clean_col(col, engine) for col in row)
 
                 insert = f"INSERT INTO {table} VALUES ({data});\n"
@@ -150,7 +186,7 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
 
             columns = inspector.get_columns(table_name=table)
 
-            statement = STATEMENT_ALL_NEW.format(
+            query = STATEMENT_ALL_NEW.format(
                 cols=",".join(
                     col["name"]
                     for col in columns
@@ -158,8 +194,7 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
                 ),
                 table=table,
             )
-            res = engine.execute(text(statement)).all()
-            for row in res:
+            for row in run_query_iter(engine=engine, query=query):
                 # Let's use .format here to not add more variables
                 # pylint: disable=consider-using-f-string
                 insert = "INSERT INTO {table} ({cols}) VALUES ({data});\n".format(
@@ -174,6 +209,10 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
                 file.write(insert)
 
 
+def get_lower_table_names(tables):
+    return [table.lower() for table in tables]
+
+
 def dump(engine: Engine, output: Path, schema: str = None) -> None:
     """
     Get all tables from the database and dump
@@ -183,13 +222,15 @@ def dump(engine: Engine, output: Path, schema: str = None) -> None:
     tables = (
         inspector.get_table_names(schema) if schema else inspector.get_table_names()
     )
+    lower_tables = get_lower_table_names(tables)
+    all_non_json_tables = (
+        get_lower_table_names(TABLES_DUMP_ALL)
+        + get_lower_table_names(NOT_MIGRATE)
+        + get_lower_table_names(CUSTOM_TABLES)
+    )
 
     dump_json_tables = [
-        table
-        for table in tables
-        if table not in TABLES_DUMP_ALL
-        and table not in NOT_MIGRATE
-        and table not in CUSTOM_TABLES
+        table for table in lower_tables if table not in all_non_json_tables
     ]
 
     dump_all(tables=list(TABLES_DUMP_ALL), engine=engine, output=output)

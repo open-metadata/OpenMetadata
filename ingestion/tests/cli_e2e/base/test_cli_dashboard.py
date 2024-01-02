@@ -18,8 +18,7 @@ from unittest import TestCase
 
 import pytest
 
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .e2e_types import E2EType
 from .test_cli import CliBase
@@ -95,21 +94,17 @@ class CliDashboardBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_not_including(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_not_including(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: Status
         ) -> None:
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_mix(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             raise NotImplementedError()
 
         @staticmethod

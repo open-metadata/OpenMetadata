@@ -21,9 +21,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.mlmodelService import (
     MlModelConnection,
     MlModelService,
@@ -34,12 +31,11 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import (
-    DeleteEntity,
-    delete_entity_from_source,
-)
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -72,6 +68,7 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -85,6 +82,7 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
+                use_cache=True,
             ),
         ],
     )
@@ -108,12 +106,11 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -130,8 +127,10 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         yield self.config
 
     def yield_create_request_mlmodel_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=MlModelService, config=config
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=MlModelService, config=config
+            )
         )
 
     @abstractmethod
@@ -142,60 +141,47 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_mlmodel(self, *args, **kwargs) -> Iterable[CreateMlModelRequest]:
-        """
-        Method to return MlModel Entities
-        """
+    def yield_mlmodel(self, *args, **kwargs) -> Iterable[Either[CreateMlModelRequest]]:
+        """Method to return MlModel Entities"""
 
     @abstractmethod
     def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
-        """
-        Get the Hyper Parameters from the MlModel
-        """
+        """Get the Hyper Parameters from the MlModel"""
 
     @abstractmethod
     def _get_ml_store(self, *args, **kwargs) -> Optional[MlStore]:
-        """
-        Get the Ml Store from the model version object
-        """
+        """Get the Ml Store from the model version object"""
 
     @abstractmethod
     def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
-        """
-        Pick up features
-        """
+        """Pick up features"""
 
     @abstractmethod
     def _get_algorithm(self, *args, **kwargs) -> str:
-        """
-        Return the algorithm for a given model
-        """
+        """Return the algorithm for a given model"""
 
     def close(self):
-        pass
+        """By default, nothing to close"""
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
-    def mark_mlmodels_as_deleted(self) -> Iterable[DeleteEntity]:
-        """
-        Method to mark the mlmodels as deleted
-        """
+    def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Method to mark the mlmodels as deleted"""
         if self.source_config.markDeletedMlModels:
             yield from delete_entity_from_source(
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedMlModels,
-                params={
-                    "service": self.context.mlmodel_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.mlmodel_service},
             )
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:
         """
-        Mark the mlmodel record as scanned and update the mlmodel_source_state
+        Mark the mlmodel record as scanned and update
+        the mlmodel_source_state
         """
         mlmodel_fqn = fqn.build(
             self.metadata,
@@ -205,7 +191,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.mlmodel_source_state.add(mlmodel_fqn)
-        self.status.scanned(mlmodel_fqn)
 
     def prepare(self):
-        pass
+        """By default, nothing to prepare"""

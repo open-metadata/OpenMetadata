@@ -8,7 +8,7 @@ source:
       secretToken: secret-token
       accessToken: access-token
       apiHost: api.domo.com
-      sandboxDomain: https://api_domo.domo.com
+      instanceDomain: https://api_domo.domo.com
   sourceConfig:
     config:
       type: DashboardMetadata

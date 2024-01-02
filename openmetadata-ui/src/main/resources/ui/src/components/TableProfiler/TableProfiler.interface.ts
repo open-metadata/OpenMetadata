@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { ReactNode } from 'react';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
@@ -23,14 +23,39 @@ import {
   TableProfilerConfig,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { ListTestCaseParams } from '../../rest/testAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
   isTableDeleted?: boolean;
   permissions: OperationPermission;
-  testSuite?: Table['testSuite'];
 }
 
+export interface TableProfilerProviderProps extends TableProfilerProps {
+  children: ReactNode;
+}
+
+export interface TableProfilerContextInterface {
+  isTableDeleted?: boolean;
+  permissions: OperationPermission;
+  isTestsLoading: boolean;
+  isProfilerDataLoading: boolean;
+  tableProfiler?: Table;
+  customMetric?: Table;
+  allTestCases: TestCase[];
+  overallSummary: OverallTableSummaryType[];
+  onTestCaseUpdate: (testCase?: TestCase) => void;
+  onSettingButtonClick: () => void;
+  fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
+  onCustomMetricUpdate: (table: Table) => void;
+  isProfilingEnabled: boolean;
+  splitTestCases: SplitTestCasesType;
+}
+
+export type SplitTestCasesType = {
+  column: TestCase[];
+  table: TestCase[];
+};
 export type TableTestsType = {
   tests: TestCase[];
   results: {
@@ -47,13 +72,6 @@ export type ModifiedColumn = Column & {
 export type columnTestResultType = {
   [key: string]: { results: TableTestsType['results']; count: number };
 };
-
-export interface ColumnProfileTableProps {
-  columns: Column[];
-  hasEditAccess: boolean;
-  columnTests: TestCase[];
-  dateRangeObject: DateRangeObject;
-}
 
 export interface ProfilerProgressWidgetProps {
   value: number;
@@ -72,7 +90,7 @@ export interface TestIndicatorProps {
   type: string;
 }
 
-export type OverallTableSummeryType = {
+export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
@@ -84,15 +102,16 @@ export type TableProfilerData = {
 };
 
 export type TableProfilerChartProps = {
-  dateRangeObject: DateRangeObject;
   entityFqn?: string;
-  showOperationGraph?: boolean;
+  showHeader?: boolean;
+  tableDetails?: Table;
 };
 
 export interface ProfilerSettingModalState {
   data: TableProfilerConfig | undefined;
   sqlQuery: string;
   profileSample: number | undefined;
+  sampleDataCount?: number;
   excludeCol: string[];
   includeCol: ColumnProfilerConfig[];
   enablePartition: boolean;

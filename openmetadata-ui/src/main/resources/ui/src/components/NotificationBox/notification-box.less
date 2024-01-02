@@ -11,11 +11,27 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../styles/variables.less');
+
 .notification-box {
+  background: @background-color;
+  border: @global-border;
+  border-radius: 4px;
+  box-shadow: @box-shadow-base;
+
   .ant-list {
     .ant-list-footer {
       border-top: 1px solid rgb(220, 227, 236);
       box-shadow: rgb(0 0 0 / 4%) 0px -4px 4px;
     }
+  }
+}
+
+.notification-content-container {
+  min-height: 16rem;
+
+  .ant-spin-nested-loading {
+    height: 200px;
+    overflow-y: scroll;
   }
 }

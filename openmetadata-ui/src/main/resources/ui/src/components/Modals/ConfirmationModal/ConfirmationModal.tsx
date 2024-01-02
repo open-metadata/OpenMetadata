@@ -19,8 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
 /**
- *
- * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
+ * Modal to show confirmation on varios page
+ * @param param0
+ * @returns
  */
 const ConfirmationModal = ({
   isLoading,
@@ -46,6 +47,7 @@ const ConfirmationModal = ({
       destroyOnClose
       className={className}
       closable={false}
+      closeIcon={null}
       data-testid="confirmation-modal"
       footer={
         <div className={classNames('justify-end', footerClassName)}>
@@ -78,7 +80,8 @@ const ConfirmationModal = ({
           data-testid="modal-header">
           {header}
         </Typography.Text>
-      }>
+      }
+      onCancel={onCancel}>
       <div className={classNames('h-20', bodyClassName)}>
         <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
       </div>
@@ -86,8 +89,4 @@ const ConfirmationModal = ({
   );
 };
 
-/**
- *
- * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
- */
 export default ConfirmationModal;

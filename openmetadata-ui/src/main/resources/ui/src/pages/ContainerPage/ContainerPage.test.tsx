@@ -13,11 +13,11 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getContainerByName } from 'rest/storageAPI';
+import { getContainerByName } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,
@@ -44,42 +44,48 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => {
-  return {
-    CustomPropertyTable: jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="custom-properties-table">CustomPropertyTable</div>
-      ),
-  };
-});
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => {
+    return {
+      CustomPropertyTable: jest
+        .fn()
+        .mockReturnValue(
+          <div data-testid="custom-properties-table">CustomPropertyTable</div>
+        ),
+    };
+  }
+);
 
-jest.mock('components/common/description/Description', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="description">Description</div>);
 });
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="entity-page-info">TagsContainerV2</div>);
 });
 
-jest.mock('components/FeedEditor/FeedEditor', () => {
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-    );
-});
+jest.mock(
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+      );
+  }
+);
 
 jest.mock(
-  'components/ContainerDetail/ContainerChildren/ContainerChildren',
+  '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
   () => {
     return jest
       .fn()
@@ -90,7 +96,7 @@ jest.mock(
 );
 
 jest.mock(
-  'components/ContainerDetail/ContainerDataModel/ContainerDataModel',
+  '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel',
   () => {
     return jest
       .fn()
@@ -100,26 +106,29 @@ jest.mock(
   }
 );
 
-jest.mock('components/EntityLineage/EntityLineage.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);
+  }
+);
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/lineageAPI', () => ({
+jest.mock('../../rest/lineageAPI', () => ({
   getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/storageAPI', () => ({
+jest.mock('../../rest/storageAPI', () => ({
   addContainerFollower: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerByName: jest
     .fn()
@@ -132,7 +141,7 @@ jest.mock('rest/storageAPI', () => ({
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest.fn().mockImplementation(() => <>ActivityFeedTab</>),
   })

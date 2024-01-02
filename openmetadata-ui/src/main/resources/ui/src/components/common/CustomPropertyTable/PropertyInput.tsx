@@ -12,10 +12,11 @@
  */
 
 import { Input } from 'antd';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import React, { ChangeEvent, FC, useState } from 'react';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 
 export interface PropertyInputProps {
+  isLoading: boolean;
   value: string | number;
   type: 'text' | 'number';
   propertyName: string;
@@ -29,6 +30,7 @@ export const PropertyInput: FC<PropertyInputProps> = ({
   type,
   propertyName,
   onSave,
+  isLoading,
 }: PropertyInputProps) => {
   const [inputValue, setInputValue] = useState<string | number>(value);
 
@@ -43,7 +45,7 @@ export const PropertyInput: FC<PropertyInputProps> = ({
   };
 
   return (
-    <InlineEdit onCancel={onCancel} onSave={handleSave}>
+    <InlineEdit isLoading={isLoading} onCancel={onCancel} onSave={handleSave}>
       <Input
         className="w-64"
         data-testid="value-input"

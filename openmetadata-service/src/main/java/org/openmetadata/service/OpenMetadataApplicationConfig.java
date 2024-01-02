@@ -17,16 +17,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
-import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.api.configuration.ApplicationConfiguration;
-import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
-import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -35,6 +31,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
@@ -79,9 +76,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("applicationConfig")
-  private ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
-
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
@@ -94,16 +88,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
 
-  @JsonProperty("extensionConfiguration")
-  private ExtensionConfiguration extensionConfiguration;
-
   @Valid
   @NotNull
   @JsonProperty("web")
-  private WebConfiguration webConfiguration = new WebConfiguration();
-
-  @JsonProperty("changeEventConfig")
-  private ChangeEventConfiguration changeEventConfiguration;
+  private OMWebConfiguration webConfiguration = new OMWebConfiguration();
 
   @Override
   public String toString() {

@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreads } from 'interface/feed.interface';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 
 export interface EntityTasksProps {
   data: {
@@ -26,6 +25,5 @@ export interface EntityTasksProps {
   entityFqn: string;
   entityType: EntityType;
   entityTaskType: EntityField.TAGS | EntityField.DESCRIPTION;
-  entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }

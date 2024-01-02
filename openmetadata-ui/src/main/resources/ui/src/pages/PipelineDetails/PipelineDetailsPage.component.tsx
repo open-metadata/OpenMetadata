@@ -12,33 +12,34 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from 'components/PipelineDetails/PipelineDetails.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Paging } from '../../generated/type/paging';
 import {
   addFollower,
   getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
-} from 'rest/pipelineAPI';
-import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
-import { Paging } from '../../generated/type/paging';
+  updatePipelinesVotes,
+} from '../../rest/pipelineAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -46,20 +47,26 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
-  const { pipelineFQN } = useParams<{ pipelineFQN: string }>();
+  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );
 
+  const decodedPipelineFQN = useMemo(
+    () => getDecodedFqn(pipelineFQN),
+    [pipelineFQN]
+  );
+
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
   const [isError, setIsError] = useState(false);
 
@@ -70,6 +77,8 @@ const PipelineDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const { followers = [] } = pipelineDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -134,7 +143,7 @@ const PipelineDetailsPage = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: pipelineFQN,
+            entityName: decodedPipelineFQN,
           })
         );
       }
@@ -143,39 +152,53 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await addFollower(pipelineId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setFollowers([...followers, ...newValue]);
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+  const followPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await addFollower(pipelineId, USERId);
+        const { newValue } = res.changeDescription.fieldsAdded[0];
+        const newFollowers = [...(followers ?? []), ...newValue];
+        setPipelineDetails((prev) => {
+          return { ...prev, followers: newFollowers };
+        });
 
-  const unFollowPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await removeFollower(pipelineId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-follow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
+
+  const unFollowPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await removeFollower(pipelineId, USERId);
+        const { oldValue } = res.changeDescription.fieldsDeleted[0];
+        setPipelineDetails((prev) => ({
+          ...prev,
+          followers: followers.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        }));
+
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-unfollow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
@@ -189,7 +212,10 @@ const PipelineDetailsPage = () => {
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({ ...res, tags: res.tags ?? [] });
+      setPipelineDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -230,6 +256,39 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = (version?: number) => {
+    setPipelineDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updatePipelinesVotes(id, data);
+      const details = await getPipelineByFqn(pipelineFQN, defaultFields);
+      setPipelineDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updatePipelineDetailsState = useCallback((data) => {
+    const updatedData = data as Pipeline;
+
+    setPipelineDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
@@ -247,7 +306,7 @@ const PipelineDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('pipeline', pipelineFQN)}
+        {getEntityMissingError('pipeline', decodedPipelineFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -261,17 +320,19 @@ const PipelineDetailsPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
-      followers={followers}
+      handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
-      pipelineFQN={pipelineFQN}
+      pipelineFQN={decodedPipelineFQN}
       settingsUpdateHandler={settingsUpdateHandler}
       taskUpdateHandler={onTaskUpdate}
       unFollowPipelineHandler={unFollowPipeline}
+      updatePipelineDetailsState={updatePipelineDetailsState}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };
 
-export default observer(PipelineDetailsPage);
+export default PipelineDetailsPage;

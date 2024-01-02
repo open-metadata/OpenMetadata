@@ -15,16 +15,20 @@ package org.openmetadata.service.resources.topics;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -64,7 +68,6 @@ import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
@@ -123,7 +126,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
-    MessageSchema schema = new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
+    MessageSchema schema =
+        new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER1_REF)
@@ -146,10 +150,11 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
+        .withMessageSchema(
+            new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
-    ChangeDescription change = getChangeDescription(topic.getVersion());
+    ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
@@ -161,7 +166,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 
-    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -234,7 +239,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMessageSchema(schema.withSchemaFields(fields))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
-    ChangeDescription change = getChangeDescription(topic.getVersion());
+    ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
@@ -244,7 +249,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
-    patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -276,7 +281,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0);
-    Field field = getField("first_name", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Field field =
+        getField("first_name", FieldDataType.STRING, null)
+            .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
@@ -294,7 +301,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withRetentionTime(1.0)
             .withRetentionSize(1.0);
     Field nestedField =
-        getField("testNested", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+        getField("testNested", FieldDataType.STRING, null)
+            .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
     create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
     assertResponse(
@@ -332,7 +340,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    CreateMessagingService createService =
+        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a topic without domain and ensure it inherits domain from the parent
@@ -340,8 +349,75 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a messaging service with owner data consumer
+    MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createMessagingService =
+        serviceTest
+            .createRequest(getEntityName(test))
+            .withOwner(DATA_CONSUMER.getEntityReference());
+    MessagingService service = serviceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create topic under it
+    createEntity(
+        createRequest("topic").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    Field invalidField = getField("field", FieldDataType.STRING, null).withTags(listOf(invalidTag));
+    MessageSchema invalidSchema =
+        new MessageSchema()
+            .withSchemaText(SCHEMA_TEXT)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(listOf(invalidField));
+    CreateTopic create = createRequest(getEntityName(test)).withMessageSchema(invalidSchema);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    Field validField = getField("field", FieldDataType.STRING, null);
+    MessageSchema validSchema =
+        new MessageSchema()
+            .withSchemaText(SCHEMA_TEXT)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(listOf(validField));
+    create.setMessageSchema(validSchema);
+    Topic entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setMessageSchema(invalidSchema);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
   @Override
-  public Topic validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
+  public Topic validateGetWithDifferentFields(Topic topic, boolean byName)
+      throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "";
     topic =
@@ -360,13 +436,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return topic;
   }
 
-  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
@@ -374,7 +452,10 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Override
   public CreateTopic createRequest(String name) {
-    return new CreateTopic().withName(name).withService(getContainer().getFullyQualifiedName()).withPartitions(1);
+    return new CreateTopic()
+        .withName(name)
+        .withService(getContainer().getFullyQualifiedName())
+        .withPartitions(1);
   }
 
   @Override
@@ -388,7 +469,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
+  public void validateCreatedEntity(
+      Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
@@ -404,14 +486,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
     if (fieldName.equals("cleanupPolicies")) {
       @SuppressWarnings("unchecked")
       List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
-      List<CleanupPolicy> actualCleanupPolicies = JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
+      List<CleanupPolicy> actualCleanupPolicies =
+          JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
       assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
     } else if (fieldName.equals("schemaType")) {
       SchemaType expectedSchemaType = (SchemaType) expected;
@@ -428,17 +511,23 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
 
-  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders) throws HttpResponseException {
+  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {
     List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
-    return new Field().withName(name).withDataType(fieldDataType).withDescription(name).withTags(tags);
+    return new Field()
+        .withName(name)
+        .withDataType(fieldDataType)
+        .withDescription(name)
+        .withTags(tags);
   }
 
-  private static void assertFields(List<Field> expectedFields, List<Field> actualFields) throws HttpResponseException {
+  private static void assertFields(List<Field> expectedFields, List<Field> actualFields)
+      throws HttpResponseException {
     if (expectedFields == actualFields) {
       return;
     }
@@ -455,7 +544,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     }
   }
 
-  private static void assertField(Field expectedField, Field actualField) throws HttpResponseException {
+  private static void assertField(Field expectedField, Field actualField)
+      throws HttpResponseException {
     assertNotNull(actualField.getFullyQualifiedName());
     assertTrue(
         expectedField.getName().equals(actualField.getName())

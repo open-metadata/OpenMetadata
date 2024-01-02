@@ -26,6 +26,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
@@ -38,12 +39,14 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def __init__(self, config: SupersetConnection):
         self.config = config
         self.service_connection = self.config
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
         self.generated_auth_token = None
@@ -85,12 +88,14 @@ class SupersetAPIClient:
     def __init__(self, config: SupersetConnection):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
 
@@ -111,7 +116,9 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard count")
         return 0
 
-    def fetch_dashboards(self, current_page: int, page_size: int):
+    def fetch_dashboards(
+        self, current_page: int, page_size: int
+    ) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -133,7 +140,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return None
+        return SupersetDashboardCount()
 
     def fetch_total_charts(self) -> int:
         """
@@ -153,7 +160,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the chart count")
         return 0
 
-    def fetch_charts(self, current_page: int, page_size: int):
+    def fetch_charts(self, current_page: int, page_size: int) -> SupersetChart:
         """
         Fetch charts
 
@@ -174,14 +181,14 @@ class SupersetAPIClient:
                 return chart_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
-        return None
+            logger.warning("Failed to fetch the charts list")
+        return SupersetChart()
 
     def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
         return response
 
-    def fetch_datasource(self, datasource_id: str):
+    def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
         Fetch data source
 
@@ -198,10 +205,11 @@ class SupersetAPIClient:
                 return datasource_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
-        return None
+            logger.warning("Failed to fetch the datasource list")
 
-    def fetch_database(self, database_id: str):
+        return SupersetDatasource()
+
+    def fetch_database(self, database_id: str) -> ListDatabaseResult:
         """
         Fetch database
 
@@ -219,4 +227,4 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")
-        return None
+        return ListDatabaseResult()

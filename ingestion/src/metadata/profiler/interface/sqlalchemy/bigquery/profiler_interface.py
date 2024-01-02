@@ -18,7 +18,6 @@ from sqlalchemy import Column, inspect
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 
 
 class BigQueryProfilerInterface(SQAProfilerInterface):
@@ -33,6 +32,9 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         for key, value in columns.items():
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
+                # pylint: disable=protected-access
+                col._set_parent(self.table.__table__)
+                # pylint: enable=protected-access
                 columns_list.append(col)
             else:
                 col = self._get_struct_columns(
@@ -43,6 +45,10 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         session = kwargs.get("session")
         table = kwargs["table"]
 

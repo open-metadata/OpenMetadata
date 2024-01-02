@@ -19,6 +19,7 @@ export enum ServiceCategory {
   ML_MODEL_SERVICES = 'mlmodelServices',
   METADATA_SERVICES = 'metadataServices',
   STORAGE_SERVICES = 'storageServices',
+  SEARCH_SERVICES = 'searchServices',
 }
 
 export enum ServiceCategoryPlural {
@@ -29,20 +30,5 @@ export enum ServiceCategoryPlural {
   mlmodelService = 'mlmodelServices',
   metadataService = 'metadataServices',
   storageService = 'storageServices',
-}
-
-export enum IngestionType {
-  BIGQUERY = 'bigquery',
-  BIGQUERY_USAGE = 'bigquery-usage',
-  REDSHIFT = 'redshift',
-  REDSHIFT_USAGE = 'redshift-usage',
-  SNOWFLAKE = 'snowflake',
-  SNOWFLAKE_USAGE = 'snowflake-usage',
-  HIVE = 'hive',
-  IMPALA = 'impala',
-  MSSQL = 'mssql',
-  MYSQL = 'mysql',
-  POSTGRES = 'postgres',
-  TRINO = 'trino',
-  VERTICA = 'vertica',
+  searchService = 'searchServices',
 }

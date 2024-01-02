@@ -13,20 +13,24 @@
 
 package org.openmetadata.service.jdbi3;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 
-public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
-  public DatabaseServiceRepository(CollectionDAO dao) {
+@Slf4j
+public class DatabaseServiceRepository
+    extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
+  public DatabaseServiceRepository() {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
         Entity.DATABASE_SERVICE,
-        dao,
-        dao.dbServiceDAO(),
+        Entity.getCollectionDAO().dbServiceDAO(),
         DatabaseConnection.class,
+        "",
         ServiceType.DATABASE);
+    supportsSearch = true;
   }
 }

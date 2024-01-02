@@ -21,11 +21,7 @@ import pytest
 from pandas import DataFrame
 
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatusType,
-    TestCaseResult,
-    TestCaseStatus,
-)
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -74,198 +70,409 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_value_length_to_be_between",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-            (TestCaseResult, "8", "14", TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "8",
+                "14",
+                TestCaseStatus.Failed,
+                4000.0,
+                2000.0,
+                66.67,
+                33.33,
+            ),
         ),
         (
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-            (TestCaseResult, "2", "3", TestCaseStatus.Success),
+            (TestCaseResult, "2", "3", TestCaseStatus.Success, 6000.0, 0.0, 100.0, 0.0),
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                6000.0,
+                0.0,
+                100.0,
+                0.0,
+            ),
         ),
         (
             "test_case_column_value_max_to_be_between",
             "columnValueMaxToBeBetween",
             "COLUMN",
-            (TestCaseResult, "31.0", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "31.0",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_max_to_be_between_no_min",
             "columnValueMaxToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Failed),
+            (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_column_value_mean_to_be_between",
             "columnValueMeanToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30.5", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_mean_to_be_between_no_max",
             "columnValueMeanToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_median_to_be_between",
             "columnValueMedianToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30.5", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_min_to_be_between",
             "columnValueMinToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30.0", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "30.0",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_min_to_be_between_no_min",
             "columnValueMinToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_stddev_to_be_between",
             "columnValueStdDevToBeBetween",
             "COLUMN",
-            (TestCaseResult, "0.500062511721192", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "0.500062511721192",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_stddev_to_be_between_no_min",
             "columnValueStdDevToBeBetween",
             "COLUMN",
-            (TestCaseResult, None, None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_value_in_set",
             "columnValuesToBeInSet",
             "COLUMN",
-            (TestCaseResult, "4000", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Success,
+                4000.0,
+                2000.0,
+                66.67,
+                33.33,
+            ),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "2000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "2000",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "4000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_values_not_in_set",
             "columnValuesToBeNotInSet",
             "COLUMN",
-            (TestCaseResult, "4000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Failed,
+                2000.0,
+                4000.0,
+                33.33,
+                66.67,
+            ),
         ),
         (
             "test_case_column_sum_to_be_between",
             "columnValuesSumToBeBetween",
             "COLUMN",
-            (TestCaseResult, "122000.0", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "122000.0",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_column_values_to_be_between",
             "columnValuesToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30.0", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "30.0",
+                None,
+                TestCaseStatus.Success,
+                6000.0,
+                0.0,
+                100.0,
+                0.0,
+            ),
         ),
         (
             "test_case_column_values_to_be_not_null",
             "columnValuesToBeNotNull",
             "COLUMN",
-            (TestCaseResult, "2000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "2000",
+                None,
+                TestCaseStatus.Failed,
+                4000.0,
+                2000.0,
+                66.67,
+                33.33,
+            ),
         ),
         (
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-            (TestCaseResult, "4000", "0", TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "4000",
+                "0",
+                TestCaseStatus.Failed,
+                0.0,
+                4000.0,
+                0.0,
+                100.0,
+            ),
         ),
         (
             "test_case_column_values_to_match_regex",
             "columnValuesToMatchRegex",
             "COLUMN",
-            (TestCaseResult, "6000", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "6000",
+                None,
+                TestCaseStatus.Success,
+                6000.0,
+                0.0,
+                100.0,
+                0.0,
+            ),
         ),
         (
             "test_case_column_values_to_not_match_regex",
             "columnValuesToNotMatchRegex",
             "COLUMN",
-            (TestCaseResult, "0", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "0",
+                None,
+                TestCaseStatus.Success,
+                6000.0,
+                0.0,
+                100.0,
+                0.0,
+            ),
         ),
         (
             "test_case_table_column_count_to_be_between",
             "tableColumnCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "7", None, TestCaseStatus.Success),
+            (TestCaseResult, "7", None, TestCaseStatus.Success, None, None, None, None),
         ),
         (
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "7", None, TestCaseStatus.Failed),
+            (TestCaseResult, "7", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
             "tableColumnNameToExist",
             "TABLE",
-            (TestCaseResult, "1", None, TestCaseStatus.Success),
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
         ),
         (
             "test_case_column_to_match_set",
             "tableColumnToMatchSet",
             "TABLE",
-            (
-                TestCaseResult,
-                "0",
-                None,
-                TestCaseStatus.Failed,
-            ),
+            (TestCaseResult, "0", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_column_to_match_set_ordered",
             "tableColumnToMatchSet",
             "TABLE",
-            (TestCaseResult, None, None, TestCaseStatus.Failed),
+            (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_custom_sql_query_failed_dl",
             "tableCustomSQLQuery",
             "TABLE",
-            (TestCaseResult, None, None, TestCaseStatus.Failed),
+            (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_custom_sql_query_success_dl",
             "tableCustomSQLQuery",
             "TABLE",
-            (TestCaseResult, None, None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_table_row_count_to_be_between",
             "tableRowCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "6000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "6000",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_table_row_count_to_be_equal",
             "tableRowCountToEqual",
             "TABLE",
-            (TestCaseResult, "6000", None, TestCaseStatus.Failed),
+            (
+                TestCaseResult,
+                "6000",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_table_row_inserted_count_to_be_between",
             "tableRowInsertedCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "2000", None, TestCaseStatus.Success),
+            (
+                TestCaseResult,
+                "2000",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
     ],
 )
@@ -277,10 +484,18 @@ def test_suite_validation_datalake(
     request,
 ):
     """Generic test runner for test validations"""
-    import pandas as pd
 
     test_case = request.getfixturevalue(test_case_name)
-    type_, val_1, val_2, status = expected
+    (
+        type_,
+        val_1,
+        val_2,
+        status,
+        passed_rows,
+        failed_rows,
+        passed_percentage,
+        failed_percentage,
+    ) = expected
 
     test_handler_obj = import_test_case_class(
         test_type,
@@ -302,12 +517,12 @@ def test_suite_validation_datalake(
         assert res.testResultValue[0].value == val_1
     if val_2:
         assert res.testResultValue[1].value == val_2
-
+    if passed_rows:
+        assert res.passedRows == passed_rows
+    if failed_rows:
+        assert res.failedRows == failed_rows
+    if passed_percentage:
+        assert round(res.passedRowsPercentage, 2) == passed_percentage
+    if failed_percentage:
+        assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
-
-    if res.testCaseStatus == TestCaseStatus.Failed:
-        assert (
-            res.testCaseFailureStatus.testCaseFailureStatusType
-            == TestCaseFailureStatusType.New
-        )
-        assert res.testCaseFailureStatus.updatedAt is not None

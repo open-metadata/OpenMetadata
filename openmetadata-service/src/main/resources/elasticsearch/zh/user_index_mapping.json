@@ -1,4 +1,25 @@
 {
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      },
+      "analyzer": {
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
+      }
+    }
+  },
   "mappings": {
     "properties": {
       "id": {
@@ -9,12 +30,16 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           }
         }
       },
       "fullyQualifiedName": {
         "type": "text"
+      },
+      "fqnParts": {
+        "type": "keyword"
       },
       "displayName": {
         "type": "keyword",
@@ -43,6 +68,43 @@
       },
       "isAdmin": {
         "type": "text"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "teams": {
         "properties": {

@@ -11,26 +11,27 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Col, Row, Select, Space } from 'antd';
+import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { DatabaseServiceType } from 'generated/entity/data/database';
-import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 import {
   BETA_SERVICES,
   excludedService,
-  serviceTypes,
   SERVICE_CATEGORY_OPTIONS,
 } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { DatabaseServiceType } from '../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../../../generated/entity/services/pipelineService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
+import ServiceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Searchbar from '../../common/searchbar/Searchbar';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -46,6 +47,7 @@ const SelectServiceType = ({
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
+  const serviceTypes = ServiceUtilClassBase.getSupportedServiceFromList();
 
   const handleConnectorSearchTerm = (value: string) => {
     setConnectorSearchTerm(value);
@@ -116,49 +118,40 @@ const SelectServiceType = ({
           onSearch={handleConnectorSearchTerm}
         />
 
-        <Row
-          className="m-t-md col-gap-md m-l-2"
-          data-testid="select-service"
-          gutter={[0, 16]}>
+        <Row className="service-list-container" data-testid="select-service">
           {filteredConnectors.map((type) => (
-            <Col
-              className={classNames(
-                'relative p-xs cursor-pointer border-1 rounded-6',
-                {
-                  'border-primary': type === selectServiceType,
-                }
-              )}
+            <Button
+              className={classNames('service-box p-xs d-block border', {
+                'border-primary': type === selectServiceType,
+              })}
               data-testid={type}
-              flex="100px"
               key={type}
               onClick={() => handleServiceTypeClick(type)}>
-              <Space
-                className="w-full justify-center items-center"
-                direction="vertical">
-                <div className="tw-mb-2.5">
-                  <div data-testid="service-icon">
-                    {getServiceLogo(type || '', 'tw-h-9')}
-                  </div>
-                  <div className="tw-absolute tw-top-0 tw-right-1.5">
-                    {type === selectServiceType && (
-                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
-                    )}
-                  </div>
-                </div>
-                <p className="break-word text-center">
-                  {getServiceName(type)}
-                  {BETA_SERVICES.includes(
-                    type as DatabaseServiceType | PipelineServiceType
-                  ) ? (
-                    <Badge
-                      className="service-beta-tag"
-                      color={PRIMERY_COLOR}
-                      count={t('label.beta')}
-                    />
-                  ) : null}
-                </p>
-              </Space>
-            </Col>
+              <div data-testid="service-icon">
+                {getServiceLogo(type || '', 'h-9')}
+              </div>
+              <div className="absolute" style={{ right: '4px', top: '0px' }}>
+                {type === selectServiceType && (
+                  <SVGIcons
+                    alt="checkbox"
+                    height="14px"
+                    icon={Icons.CHECKBOX_PRIMARY}
+                  />
+                )}
+              </div>
+              <p className="w-full text-center m-t-md">
+                {getServiceName(type)}
+                {BETA_SERVICES.includes(
+                  type as DatabaseServiceType | PipelineServiceType
+                ) ? (
+                  <Badge
+                    className="service-beta-tag"
+                    color={PRIMERY_COLOR}
+                    count={t('label.beta')}
+                  />
+                ) : null}
+              </p>
+            </Button>
           ))}
         </Row>
 

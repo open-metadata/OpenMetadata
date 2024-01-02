@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestSuites } from 'rest/testAPI';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getListTestSuites } from '../../../rest/testAPI';
 import { TestSuites } from './TestSuites.component';
 
 const testSuitePermission = {
@@ -30,16 +30,16 @@ const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testSuite: testSuitePermission,
     },
   })),
 }));
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    ...jest.requireActual('rest/testAPI'),
+    ...jest.requireActual('../../../rest/testAPI'),
     getListTestSuites: jest
       .fn()
       .mockImplementation(() =>
@@ -53,29 +53,29 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    ));
-});
+jest.mock(
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ type }) => (
+        <div data-testid={`error-placeholder-type-${type}`}>
+          ErrorPlaceHolder.component
+        </div>
+      ));
+  }
+);
+
+const mockProps = {
+  summaryPanel: <div>SummaryPanel.component</div>,
+};
 
 describe('TestSuites component', () => {
   it('component should render', async () => {
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
     const tableHeader = await screen.findAllByRole('columnheader');
     const labels = tableHeader.map((header) => header.textContent);
 
@@ -95,23 +95,25 @@ describe('TestSuites component', () => {
   it('should send testSuiteType executable in api, if active tab is tables', async () => {
     const mockGetListTestSuites = getListTestSuites as jest.Mock;
 
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
 
     expect(
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: false,
+      limit: 15,
       testSuiteType: 'executable',
     });
   });
 
-  it('pagination should visible if total is grater than 10', async () => {
+  it('pagination should visible if total is grater than 15', async () => {
     (getListTestSuites as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: [], paging: { total: 15 } })
+      Promise.resolve({ data: [], paging: { total: 16 } })
     );
 
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
 
     expect(
       await screen.findByText('NextPrevious.component')
@@ -121,7 +123,7 @@ describe('TestSuites component', () => {
   // TestSuite type test
   it('add test suite button should be visible, if type is testSuite', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('add-test-suite-btn')).toBeInTheDocument();
   });
@@ -130,13 +132,15 @@ describe('TestSuites component', () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
     const mockGetListTestSuites = getListTestSuites as jest.Mock;
 
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: false,
+      limit: 15,
       testSuiteType: 'logical',
     });
   });
@@ -144,7 +148,7 @@ describe('TestSuites component', () => {
   it('should render no data placeholder, if there is no permission', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
     testSuitePermission.ViewAll = false;
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('error-placeholder-type-PERMISSION')

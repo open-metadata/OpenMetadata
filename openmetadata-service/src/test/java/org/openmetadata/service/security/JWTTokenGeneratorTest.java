@@ -24,8 +24,10 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JWTTokenGeneratorTest {
-  protected static final String rsaPrivateKeyPath = ResourceHelpers.resourceFilePath("private_key.der");
-  protected static final String rsaPublicKeyPath = ResourceHelpers.resourceFilePath("public_key.der");
+  protected static final String rsaPrivateKeyPath =
+      ResourceHelpers.resourceFilePath("private_key.der");
+  protected static final String rsaPublicKeyPath =
+      ResourceHelpers.resourceFilePath("public_key.der");
   protected JWTTokenConfiguration jwtTokenConfiguration;
   protected JWTTokenGenerator jwtTokenGenerator;
 
@@ -46,7 +48,8 @@ class JWTTokenGeneratorTest {
             .withEmail("ingestion-bot@open-metadata.org")
             .withName("ingestion-bot")
             .withDisplayName("ingestion-bot");
-    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
     DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertEquals("ingestion-bot", jwt.getClaims().get("sub").asString());
     Date date = jwt.getExpiresAt();
@@ -66,7 +69,8 @@ class JWTTokenGeneratorTest {
   private DecodedJWT decodedJWT(String token) {
     RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
     Algorithm algorithm = Algorithm.RSA256(publicKey, null);
-    JWTVerifier verifier = JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJwtissuer()).build();
+    JWTVerifier verifier =
+        JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJwtissuer()).build();
     return verifier.verify(token);
   }
 }

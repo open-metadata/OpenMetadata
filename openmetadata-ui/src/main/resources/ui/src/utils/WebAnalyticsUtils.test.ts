@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AnalyticsData } from 'components/WebAnalytics/WebAnalytics.interface';
-import { postWebAnalyticEvent } from 'rest/WebAnalyticsAPI';
+import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
+import { postWebAnalyticEvent } from './../rest/WebAnalyticsAPI';
 import {
   getAnalyticInstance,
   getReferrerPath,
@@ -97,7 +97,7 @@ describe('Web Analytics utils', () => {
   });
 
   it('trackCustomEvent should call postWebAnalyticEvent', () => {
-    trackCustomEvent(MOCK_ANALYTICS_DATA);
+    trackCustomEvent(MOCK_ANALYTICS_DATA, 'test');
 
     expect(postWebAnalyticEvent).toHaveBeenCalledWith(CUSTOM_EVENT_PAYLOAD);
   });

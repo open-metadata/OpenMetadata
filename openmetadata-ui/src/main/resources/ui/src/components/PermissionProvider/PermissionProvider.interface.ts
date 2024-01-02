@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -25,6 +26,10 @@ export type IngestionServicePermission = {
   [key: string]: OperationPermission;
 };
 
+export interface PermissionProviderProps {
+  children: ReactNode;
+}
+
 export enum ResourceEntity {
   ALL = 'all',
   BOT = 'bot',
@@ -34,6 +39,7 @@ export enum ResourceEntity {
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
+  SEARCH_SERVICE = 'searchService',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   FEED = 'feed',
@@ -67,6 +73,12 @@ export enum ResourceEntity {
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',
+  SEARCH_INDEX = 'searchIndex',
+  DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
+  STORED_PROCEDURE = 'storedProcedure',
+  APPLICATION = 'application',
+  PERSONA = 'persona',
 }
 
 export interface PermissionContextType {

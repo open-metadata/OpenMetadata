@@ -33,7 +33,7 @@ import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
-  private static Fernet instance = new Fernet();
+  private static final Fernet instance = new Fernet();
   private String fernetKey;
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
@@ -55,7 +55,8 @@ public class Fernet {
 
   public void setFernetKey(OpenMetadataApplicationConfig config) {
     FernetConfiguration fernetConfiguration = config.getFernetConfiguration();
-    if (fernetConfiguration != null && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
+    if (fernetConfiguration != null
+        && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
       setFernetKey(fernetConfiguration.getFernetKey());
     }
   }
@@ -96,7 +97,8 @@ public class Fernet {
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];
       Token token = Token.fromString(str);
-      List<Key> keys = Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
+      List<Key> keys =
+          Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
       return token.validateAndDecrypt(keys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);

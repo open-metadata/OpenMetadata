@@ -20,8 +20,8 @@
       },
       "om_ngram": {
         "tokenizer": "ngram",
-        "min_gram": 2,
-        "max_gram": 3
+        "min_gram": 3,
+        "max_gram": 10
       }
     },
     "filter": {
@@ -43,7 +43,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -54,12 +55,16 @@
       "fullyQualifiedName": {
         "type": "text"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -69,7 +74,9 @@
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "index_options": "freqs"
       },
       "teamType": { 
         "type": "text"
@@ -86,6 +93,52 @@
       },
       "href": {
         "type": "text"
+      },
+      "email": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "users": {
         "properties": {

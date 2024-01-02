@@ -38,15 +38,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
+  generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../Loader/Loader';
+import './search-dropdown.less';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
-import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,
@@ -56,10 +58,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   selectedKeys,
   highlight = false,
   showProfilePicture = false,
+  fixedOrderOptions = false,
   onChange,
   onGetInitialOptions,
   onSearch,
+  index,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
@@ -69,38 +74,49 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    // Separating selected options to show on top
-
     // Filtering out selected options
     const selectedOptionsObj = options.filter((option) =>
       selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
     );
 
-    const selectedOptionKeys =
-      getSearchDropdownLabels(
-        selectedOptionsObj,
-        true,
-        highlight ? searchText : '',
-        showProfilePicture
-      ) || [];
+    if (fixedOrderOptions) {
+      return options.map((item) => ({
+        key: item.key,
+        label: generateSearchDropdownLabel(
+          item,
+          selectedOptionsObj.indexOf(item) !== -1,
+          highlight ? searchText : '',
+          showProfilePicture
+        ),
+      }));
+    } else {
+      // Separating selected options to show on top
+      const selectedOptionKeys =
+        getSearchDropdownLabels(
+          selectedOptionsObj,
+          true,
+          highlight ? searchText : '',
+          showProfilePicture
+        ) || [];
 
-    // Filtering out unselected options
-    const unselectedOptions = options.filter(
-      (option) =>
-        !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
-    );
+      // Filtering out unselected options
+      const unselectedOptions = options.filter(
+        (option) =>
+          !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+      );
 
-    // Labels for unselected options
-    const otherOptions =
-      getSearchDropdownLabels(
-        unselectedOptions,
-        false,
-        highlight ? searchText : '',
-        showProfilePicture
-      ) || [];
+      // Labels for unselected options
+      const otherOptions =
+        getSearchDropdownLabels(
+          unselectedOptions,
+          false,
+          highlight ? searchText : '',
+          showProfilePicture
+        ) || [];
 
-    return [...selectedOptionKeys, ...otherOptions];
-  }, [options, selectedOptions]);
+      return [...selectedOptionKeys, ...otherOptions];
+    }
+  }, [options, selectedOptions, fixedOrderOptions]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
@@ -157,6 +173,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
+      const entityLabel = index && tabsInfo[index]?.label;
+      const isDomainKey = searchKey.startsWith('domain');
       if (isSuggestionsLoading) {
         return (
           <Row align="middle" className="p-y-sm" justify="center">
@@ -172,12 +190,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       ) : (
         <Row align="middle" className="m-y-sm" justify="center">
           <Col>
-            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
+            <Typography.Text className="m-x-sm">
+              {isDomainKey && entityLabel
+                ? t('message.no-domain-assigned-to-entity', {
+                    entity: entityLabel,
+                  })
+                : t('message.no-data-available')}
+            </Typography.Text>
           </Col>
         </Row>
       );
     },
-    [isSuggestionsLoading, options, selectedOptions]
+    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
   );
 
   const dropdownCardComponent = useCallback(

@@ -31,10 +31,6 @@ const mockShowModal: ExportData = {
   onExport: jest.fn().mockImplementation(() => Promise.resolve(dummyTeamsCSV)),
 };
 
-jest.mock('utils/TimeUtils', () => ({
-  getCurrentLocaleDate: jest.fn().mockReturnValue('01/06/2023'),
-}));
-
 const ConsumerComponent = () => {
   const { showModal } = useEntityExportModalProvider();
 

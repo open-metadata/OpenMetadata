@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/data/table';
 import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
-import { formatUsersResponse } from 'utils/APIUtils';
-import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { searchData } from '../../../rest/miscAPI';
+import { getUsers } from '../../../rest/userAPI';
+import { formatUsersResponse } from '../../../utils/APIUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -35,9 +39,11 @@ export const UserSelectableList = ({
   children,
   popoverProps,
   multiSelect = true,
+  filterCurrentUser = false,
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -57,27 +63,34 @@ export const UserSelectableList = ({
           EntityType.USER
         );
 
+        if (filterCurrentUser) {
+          const user = data.find((user) => user.id === currentUser?.id);
+          if (user) {
+            data.splice(data.indexOf(user), 1);
+          }
+        }
+
         return { data, paging: { total: res.data.hits.total.value } };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
       }
     } else {
       try {
-        const { data, paging } = await getUsers(
-          '',
-          PAGE_SIZE_MEDIUM,
-          after
-            ? {
-                after,
-              }
-            : undefined,
-          undefined,
-          false
-        );
+        const { data, paging } = await getUsers({
+          limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
+          isBot: false,
+        });
         const filterData = getEntityReferenceListFromEntities(
           data,
           EntityType.USER
         );
+        if (filterCurrentUser) {
+          const user = filterData.find((user) => user.id === currentUser?.id);
+          if (user) {
+            filterData.splice(filterData.indexOf(user), 1);
+          }
+        }
 
         return { data: filterData, paging };
       } catch (error) {
@@ -114,15 +127,13 @@ export const UserSelectableList = ({
         />
       }
       open={popupVisible}
-      overlayClassName="user-select-popover card-shadow"
+      overlayClassName="user-select-popover p-0"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>

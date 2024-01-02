@@ -47,4 +47,9 @@ class ILikeCount(StaticMetric):
             raise AttributeError(
                 "ILike Count requires an expression to be set: add_props(expression=...)(Metrics.ILIKE_COUNT)"
             )
-        return SumFn(case([(column(self.col.name).ilike(self.expression), 1)], else_=0))
+        return SumFn(
+            case(
+                [(column(self.col.name, self.col.type).ilike(self.expression), 1)],
+                else_=0,
+            )
+        )

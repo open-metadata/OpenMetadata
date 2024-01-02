@@ -29,12 +29,12 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -44,9 +44,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -60,6 +63,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -70,6 +74,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -78,15 +83,17 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
-    // TODO add system glossary
-    super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-    supportsEmptyDescription = false;
+    super(
+        Entity.GLOSSARY,
+        Glossary.class,
+        GlossaryResource.GlossaryList.class,
+        "glossaries",
+        GlossaryResource.FIELDS);
     supportsSearchIndex = true;
   }
 
@@ -118,7 +125,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
-    System.out.println("Setup glossaries done");
   }
 
   @Test
@@ -129,29 +135,39 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Add reviewer USER1 in PATCH request
     String origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF));
-    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    ChangeDescription change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
-    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    change =
+        getChangeDescription(
+            glossary,
+            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
+    glossary =
+        patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove a reviewer USER1 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
-    fieldDeleted(change, "reviewers", List.of(USER1_REF));
-    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    change =
+        getChangeDescription(
+            glossary,
+            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
   void patch_renameSystemGlossary_400() throws IOException {
     // Renaming of system glossary and terms are not allowed
-    CreateGlossary create = createRequest("renameGlossaryNotAllowed").withProvider(ProviderType.SYSTEM);
+    CreateGlossary create =
+        createRequest("renameGlossaryNotAllowed").withProvider(ProviderType.SYSTEM);
     Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
@@ -165,7 +181,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertResponse(
         () -> renameGlossaryAndCheck(glossary, "new.renameGlossaryNotAllowed"),
         Status.BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityRenameNotAllowed("renameGlossaryNotAllowed", Entity.GLOSSARY));
+        CatalogExceptionMessage.systemEntityRenameNotAllowed(
+            "renameGlossaryNotAllowed", Entity.GLOSSARY));
   }
 
   @Test
@@ -187,7 +204,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Create a Classification with the same name as glossary and assign it to a table
     ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
     TagResourceTest tagResourceTest = new TagResourceTest();
-    CreateClassification createClassification = classificationResourceTest.createRequest("renameGlossary");
+    CreateClassification createClassification =
+        classificationResourceTest.createRequest("renameGlossary");
     classificationResourceTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
     Tag tag = tagResourceTest.createTag("t1", "renameGlossary", null);
 
@@ -213,11 +231,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertTagPrefixAbsent(table.getColumns().get(0).getTags(), "renameGlossary.t2");
 
     // Ensure classification tag with the same name is not changed after renaming glossary
-    assertTrue(table.getTags().stream().anyMatch(t -> EntityUtil.tagLabelMatch.test(t, EntityUtil.toTagLabel(tag))));
+    assertTrue(
+        table.getTags().stream()
+            .anyMatch(t -> EntityUtil.tagLabelMatch.test(t, EntityUtil.toTagLabel(tag))));
 
     //
-    // Change the glossary renameGlossary to newRenameGlossary and ensure the children FQNs are changed
-    // Also ensure the table tag label names are also changed
+    // Change the glossary renameGlossary to newRenameGlossary and ensure the children FQNs are
+    // changed. Also ensure the table tag label names are also changed
     //
     renameGlossaryAndCheck(glossary, "newRenameGlossary");
     table = tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
@@ -228,7 +248,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   @Test
   void patch_moveGlossaryTerm(TestInfo test) throws IOException {
     //
-    // These test move a glossary term to different parts of the glossary hierarchy and to different glossaries
+    // These test move a glossary term to different parts of the glossary hierarchy and to different
+    // glossaries
     //
 
     // Create glossary with the following hierarchy
@@ -239,7 +260,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // h  -> h1 -> h11 -> h111
     Glossary g = createEntity(createRequest("changeParent'_g"), ADMIN_AUTH_HEADERS);
     Glossary h = createEntity(createRequest("changeParent'_h"), ADMIN_AUTH_HEADERS);
-
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t'_1");
     GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_11");
@@ -257,7 +277,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
-    List<TagLabel> tagLabels = toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
+    List<TagLabel> tagLabels =
+        toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
     Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
         tableResourceTest
@@ -284,10 +305,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       {t1, h, h1, h11, h111} // Diff hierarchy and diff glossary
     };
 
+    // Moving to another glossary term as parent
+    EntityUpdater.setSessionTimeout(0); // Turn off consolidation of changes in a session
     for (int i = 0; i < scenarios.length; i++) {
       GlossaryTerm termToMove = (GlossaryTerm) scenarios[i][0];
 
-      // Moving to another glossary term as parent
       for (int j = 1; j < scenarios[i].length; j++) {
         GlossaryTerm updatedTerm;
 
@@ -302,7 +324,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           newParent = newParentTerm.getEntityReference();
         }
         LOG.info(
-            "Scenario iteration [{}, {}] move {} from glossary {} parent {} to glossary {} and parent {}",
+            "Scenario iteration [{}, {}] move the term {} from glossary:parent {}:{} to {}:{}",
             i,
             j,
             getFqn(termToMove),
@@ -317,9 +339,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Move a parent term g1.t1 to its child g1.t1.t11 should be disallowed
     assertResponse(
-        () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
+        () ->
+            glossaryTermResourceTest.moveGlossaryTerm(
+                g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
-        CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+        CatalogExceptionMessage.invalidGlossaryTermMove(
+            t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+
+    EntityUpdater.setSessionTimeout(10 * 60 * 1000); // Turn consolidation of changes back on
   }
 
   @Test
@@ -331,7 +358,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void testImportInvalidCsv() throws IOException {
+  @SneakyThrows
+  void testImportInvalidCsv() {
     String glossaryName = "invalidCsv";
     createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
 
@@ -340,9 +368,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String record = ",g::1,dsp1,dsc1,,,,,,,";
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
+      resultsHeader, getFailedRecord(record, "[name must match \"(?U)^[\\w'\\- .&()%]+$\"]")
     };
     assertRows(result, expectedRows);
 
@@ -350,16 +379,24 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader,
+          getFailedRecord(record, entityNotFound(0, Entity.GLOSSARY_TERM, "invalidParent"))
+        };
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid tags field
     record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(7, "Tag.invalidTag"))};
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader, getFailedRecord(record, entityNotFound(7, Entity.TAG, "Tag.invalidTag"))
+        };
     assertRows(result, expectedRows);
   }
 
@@ -368,10 +405,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
     String user1 = USER1.getName();
     String user2 = USER2.getName();
-    String team1 = TEAM1.getName();
+    String team11 = TEAM11.getName();
 
-    // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags",
-    // "reviewers", "owner", "status"
+    // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references"
+    // "tags", "reviewers", "owner", "status"
     // Create two records
     List<String> createRecords =
         listOf(
@@ -379,8 +416,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
-            String.format("importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s",
+                user1, user2, "Approved"),
+            String.format(
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s",
+                user1, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -389,13 +429,17 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s",
+                user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s",
+                user1, team11, "Draft"));
 
     // Add new row to existing rows
-    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Draft");
-    testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
+    List<String> newRecords =
+        listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Approved");
+    testImportExport(
+        glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 
   private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {
@@ -427,7 +471,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public Glossary validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
+  public Glossary validateGetWithDifferentFields(Glossary entity, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -445,18 +490,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    if (expected == actual) {
-      return;
-    }
-    if (fieldName.equals("reviewers")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 
   private GlossaryTerm createGlossaryTerm(
@@ -466,7 +501,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   private GlossaryTerm createGlossaryTerm(
-      GlossaryTermResourceTest resource, Glossary glossary, GlossaryTerm parent, String name, ProviderType provider)
+      GlossaryTermResourceTest resource,
+      Glossary glossary,
+      GlossaryTerm parent,
+      String name,
+      ProviderType provider)
       throws HttpResponseException {
     CreateGlossaryTerm create =
         new CreateGlossaryTerm()
@@ -481,7 +520,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void renameGlossaryAndCheck(Glossary glossary, String newName) throws IOException {
     String oldName = glossary.getName();
     String json = JsonUtils.pojoToJson(glossary);
-    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    ChangeDescription change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     glossary.setName(newName);
     patchEntityAndCheck(glossary, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -501,7 +540,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   /** Change the parent of a glossary term to another glossary term then move it back to the previous hierarchy */
   private GlossaryTerm moveGlossaryTermAndBack(
-      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table) throws IOException {
+      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table)
+      throws IOException {
     EntityReference previousParent = term.getParent();
     EntityReference previousGlossary = term.getGlossary();
 
@@ -512,12 +552,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   private GlossaryTerm moveGlossaryTerm(
-      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table) throws IOException {
+      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table)
+      throws IOException {
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     String previousTermFqn = term.getFullyQualifiedName();
 
     // Update the parent
-    GlossaryTerm updatedTerm = glossaryTermResourceTest.moveGlossaryTerm(newGlossary, newParent, term);
+    GlossaryTerm updatedTerm =
+        glossaryTermResourceTest.moveGlossaryTerm(newGlossary, newParent, term);
     assertTagLabelsChanged(table, previousTermFqn, updatedTerm.getFullyQualifiedName());
     return updatedTerm;
   }

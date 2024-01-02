@@ -47,11 +47,11 @@ const visitAddAlertPage = () => {
   cy.wait('@alertsPage').then(({ response }) => {
     const data = response.body.data?.find((alert) => alert.provider === 'user');
 
-    if (Cypress._.isUndefined(data)) {
+    if (data) {
+      cy.get('[data-testid="create-alert"]').click();
+    } else {
       // Click on create placeholder button for alerts
       cy.get('[data-testid="add-placeholder-button"]').click();
-    } else {
-      cy.get('[data-testid="create-alert"]').click();
     }
   });
 };
@@ -61,11 +61,11 @@ describe('Alerts page should work properly', () => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/events/subscriptions', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()

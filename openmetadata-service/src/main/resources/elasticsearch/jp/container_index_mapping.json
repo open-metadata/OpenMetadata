@@ -45,16 +45,25 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "fullyQualifiedName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "fqnParts": {
+        "type": "keyword"
       },
       "displayName": {
         "type": "text",
@@ -82,6 +91,9 @@
       },
       "href": {
         "type": "text"
+      },
+      "sourceUrl": {
+        "type": "keyword"
       },
       "parent": {
         "properties": {
@@ -120,6 +132,98 @@
             "type": "text"
           }
         }
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "object"
       },
       "dataModel": {
         "properties": {
@@ -218,7 +322,7 @@
         "type": "text"
       },
       "numberOfObjects": {
-        "type": "integer"
+        "type": "double"
       },
       "size": {
         "type": "integer"
@@ -387,6 +491,12 @@
             "type": "keyword"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "serviceType": {
         "type": "keyword"

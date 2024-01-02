@@ -47,7 +47,9 @@ class NullCount(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
-        return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
+        return SumFn(
+            case([(column(self.col.name, self.col.type).is_(None), 1)], else_=0)
+        )
 
     def df_fn(self, dfs=None):
         """pandas function"""

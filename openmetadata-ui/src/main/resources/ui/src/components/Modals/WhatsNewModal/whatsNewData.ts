@@ -17,13 +17,16 @@ import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
 import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
+import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 16;
+export const LATEST_VERSION_ID = 20;
 
-export const COOKIE_VERSION = 'VERSION_1_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_2_3'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
+
+const CollateIconWithLinkMD = `[![Collate](${collateIcon})](https://www.getcollate.io/)`;
 
 export const WHATS_NEW = [
   {
@@ -138,7 +141,7 @@ export const WHATS_NEW = [
       'New Connectors': `- AWS Glue\n- DBT\n- Maria DB`,
       'User Interface': `- UI displays all the metadata changes of an entity over time as Version History. Clicking on the Version button, users can view the change log of an entity from the very beginning.\n- The UI supports setting up metadata ingestion workflows.\n- Improvements have been made in drawing the entity node details for lineage.\n- Entity link is supported for each tab on the details page.\n- Guided steps have been added for setting up ElasticSearch.\n- The entity details, search results page (Explore), landing pages, and components have been redesigned for better project structure and code maintenance.`,
       'OpenMetadata Quickstart':
-        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="tw-bg-grey-muted-lite tw-text-grey-body tw-font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
+        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="bg-grey-muted-lite text-grey-body font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
       'Helm Charts': `- Installing OpenMetadata in your cloud provider or on-premise got easier.\n- We worked on Helm charts to get the OpenMetadata and dependencies up and running on Kubernetes.`,
       'Other Features':
         '- Upgraded from JDBI 2 to JDBI 3, which will support newer versions.',
@@ -876,7 +879,7 @@ export const WHATS_NEW = [
   },
   {
     id: 16,
-    version: 'v1.1',
+    version: 'v1.1.0',
     description: 'Released on 29th Jun 2023.',
     features: [
       {
@@ -932,6 +935,197 @@ export const WHATS_NEW = [
 - Name and FQN hashing of data in the database. This reduces the length of the data being stored and indexed, allowing us for longer FQNs in the Metadata Standard.
 - Improved monitoring of the Pipeline Service Client health. Any status errors between the OpenMetadata server and the Pipeline Service Client are now surfaced in a Prometheus metric *pipelineServiceClientStatus_counter_total*
 - Added AWS OpenSearch client-specific support. This allows us to update the Elasticsearch version support up to 7.16.
+      `,
+    },
+  },
+  {
+    id: 17,
+    version: 'v1.1.1',
+    description: 'Released on 4th Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- User profile page UI / UX improvements
+- Superset Connection fixes for Basic and IAM auth type
+- Fix task flow bugs
+- UI / UX improvements for Service, Database, and Schema pages
+- Support custom cron for schedule ingestion
+`,
+      'Data Quality': `- Fix BigQuery, MSSQL, and Clickhouse profiling errors`,
+      Ingestion: `- Fixed Airflow lineage extraction
+- Added support for Databricks complex columns comments
+- Fixed Athena lineage and usage parameter validation
+- Airflow Managed APIs now support Airflow 2.6`,
+      Connectors: `- New Qliksense Connector
+- Hive supports extracting metadata directly from the metastore to speed up the execution. Users whose metastore is not exposed can still run the extraction pointing to Hive
+- Added Usage & Lineage connector for Trino
+- Impala scheme has been deprecated from Hive connector. Users can use the Impala connector instead
+- Snowflake can now ingest TRANSIENT tables
+- Added support for JSON fields in SingleStore`,
+      Backend: `- Bumped table and column names length
+- Aggregation Improvements for Search
+- Test Suite Improvements
+      `,
+    },
+  },
+  {
+    id: 18,
+    version: 'v1.1.2',
+    description: 'Released on 22nd Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Added Russian language support.
+- Supports Delete functionality for sample data.
+- Improved Schema page UX.
+- Table mentions now show Service, Schema and Database information.
+- Fixed the version history list.
+`,
+      'Data Quality': `- Added support for Postgres version 11.19.
+- Fixed MariaDB time column issues.`,
+      Ingestion: `- Improved performance when ingesting table constraints.`,
+      Connectors: `- Added JWT authentication support for Trino
+- Fixed Snowflake connection test.
+- Fixed SageMaker ingestion.
+- Added external table support for BigQuery.`,
+      Backend: `- Improved Glossary import validations.
+- Fixed Test Suite migrations and naming.
+- Fixed Classification migration.
+- Deprecated Flyway and using native migrations.
+- Improved Test Suite UI performance.
+      `,
+    },
+  },
+  {
+    id: 19,
+    version: 'v1.2.0',
+    description: 'Released on 26th Oct 2023.',
+    features: [
+      {
+        title: 'Domain',
+        description:
+          'OpenMetadata 1.2.0 release now supports the creation of Domains. Assets can be added to a Domain, and users can scope their discovery experience to one Domain. Assets can also be added as Data Products in a Domain.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/t-9G3vaSdjI',
+      },
+      {
+        title: 'Data Products',
+        description:
+          'OpenMetadata 1.2.0 release now supports data products. Assets can be added as Data Products in a Domain.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/6NgI_G38D0A',
+      },
+      {
+        title: 'Metadata Applications',
+        description:
+          'In the OpenMetadata 1.2.0 release, we support Search Index, Data Insights, and the Data Insights Report as applications. Each App represents an automation or a feature that acts on the metadata and can drive automation. Admins can install and setup the applications.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/pUS9-RevqsU',
+      },
+      {
+        title: 'Customizable Landing Page',
+        description:
+          'OpenMetadata 1.2.0 release now supports the creation of Personas. Also, landing pages can be customized with widgets for various Personas. That way, you can ensure that the OpenMetadata landing page displays what is most important for a particular data team.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Y-5cPQgzNdo',
+      },
+      {
+        title: 'Knowledge Center (Exclusively for Collate)',
+        description:
+          'Knowledge Center, where organizations can create and share Knowledge Articles with their Data Team. Custom build your knowledge articles to be specific for a Domain, Team, or Data Asset.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/DfOgeZ9f7no',
+      },
+      {
+        title: 'Cost Analysis Report (Exclusively for Collate)',
+        description:
+          'Cost Analysis Charts that captures metrics on the Last access time, Last accessed by, and so on. This helps organizations to analyze the cost based on data asset usage. This report is visible as part of the Data Insights Report.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/KI58oBHxTOU',
+      },
+    ],
+    changeLogs: {
+      'Domains and Data Products': `- Added support for Domains and Data Products.
+- Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
+- Assets can also be added as Data Products in a Domain.`,
+      'Search Index': `- Elasticsearch or Open Search connectors can now bring in the search index metadata into OpenMetadata.
+- The connector will populate the index's mapping, settings, and sample data.`,
+      'Stored Procedures': `- Added support for Stored Procedures.
+- Snowflake, Redshift, and BigQuery connectors are updated to bring stored procedure metadata into OpenMetadata.
+- The metadata workflow will bring the Stored Procedures and parse their executions to extract lineage information.`,
+      'Glossary Approval Workflow & Glossary Styling': `- Introduced a glossary approval workflow. An approval workflow is created if Reviewers are added to a glossary.
+- A task is added for reviewers to approve or reject the glossary term. The terms will show up in Draft status.
+- Only the reviewers can approve or reject the term.
+- Conversations are supported to discuss further about the terms.
+- If no reviewer is added, then the glossary terms are approved by default.
+- Introduced styling for glossary terms. Now you can add icons and color code the glossary terms for easy identification.
+- Color coding helps to visually differentiate and identify the data assets, when glossary terms are added to them.`,
+      'OpenMetadata Browser Extension': `- Updated the Chrome browser extension for OpenMetadata with the new UI.
+- Added support for Databases, Database Schemas, Tables, Dashboards, Charts, Pipelines, and Topics.`,
+      'Build Automation Applications': `- Added Applications into OpenMetadata, giving users a unique view of processes that can be scheduled and run in the platform.
+- Search Indexing and Data Insights Report have been converted into Applications.
+- UI displays all the available applications, which Admins can add or schedule.
+- We will continue to add new Applications in upcoming releases.`,
+      Lineage: `- Performance improvements made for lineage based on the new release of SQLfluff.
+- Added support for **UPDATE ... FROM** Snowflake queries
+- Added column-level lineage support for **SELECT * queries**`,
+      Connectors: `- Greenplum connector is now supported.
+- Couchbase connector is now supported.
+- Azure Data Lake Storage connector is supported ${CollateIconWithLinkMD}`,
+      'Customizable Landing Page': `- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
+- Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
+- We will add support for more widgets in upcoming releases.`,
+      [`Knowledge Center ${CollateIconWithLinkMD}`]: `- Backend APIs support creating, editing, and listing knowledge articles (with external links).
+- Knowledge articles and links can be associated with a Domain, Team, or an Entity.
+- UI support to build a Knowledge Center and expand the documentation of your company.`,
+      [`Cost Analysis Report ${CollateIconWithLinkMD}`]: `- The Usage Workflow will now also track how tables are Accessed and Updated.
+- This information will be used in the Data Insights workflow to show the evolution of your used and unused assets and compare them by size.
+- Support has been added for Snowflake, and we will continue to add more sources in upcoming releases.`,
+    },
+  },
+  {
+    id: 20,
+    version: 'v1.2.3',
+    description: 'Released on 7th Dec 2023.',
+    features: [],
+    changeLogs: {
+      Glossary: `- Improvements have been made to add assets in bulk to a glossary term
+- An Assets filter has been introduced to quickly find and add assets to a glossary term.
+- Improvements have been made with the glossary term deletion.
+`,
+      'Other Changes': `- RTL support for description and feed editor.
+
+- Display name is now supported in the Description title.
+
+- The property tagType added and can be used when suggesting tags.
+
+- Initial options updated for Tag suggestions.
+
+- The ingestion framework now supports the deletion of data models and stored procedures.
+
+- Assets can be added in bulk to Domains, Data Products, and to Teams.
+
+- OpenMetadata base server has been upgraded to Alpine 3.18.5.
+
+- The ingestion dependencies for database connections have been updated.
+
+- Improvements have been made to the data insights ingestion.
+
+- Fixed the issue with Tag version page.
+
+- Fixed the issue with task filter pipeline, which created duplicate columns.
+
+- Fixed issue with the creation of glossary terms.
+
+- Issue resolved with custom properties on glossary terms.
+
+- Fixed the missing tags issue on editing a glossary term.
+
+- Fixed the pipeline task filtering for failed status.
+
+- Fixed the issue with scroll bar in the Explore page.
+
+- UI issues with data quality test cases fixed.
+
+- Fixed the issue with ingestion bot deleting the assets assigned to data products.
       `,
     },
   },

@@ -38,11 +38,18 @@
       "description": "Owner of this database service.",
       "$ref": "../../type/entityReference.json"
     },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Database Service belongs to.",
       "type": "string"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

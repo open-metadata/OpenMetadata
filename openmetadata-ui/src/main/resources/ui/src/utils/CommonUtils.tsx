@@ -16,21 +16,15 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  getDayCron,
-  getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
   get,
   isEmpty,
-  isNil,
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
@@ -44,9 +38,12 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import { getFeedCount } from 'rest/feedsAPI';
-import AppState from '../AppState';
-import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -54,8 +51,10 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
+  getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
   getTopicDetailsPath,
@@ -67,16 +66,17 @@ import {
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../generated/entity/teams/user';
-import { Paging } from '../generated/type/paging';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
-import { getEntityFeedLink, getTitleCase } from './EntityUtils';
+import { SearchSourceAlias } from '../interface/search.interface';
+import { getFeedCount } from '../rest/feedsAPI';
+import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { serviceTypeLogo } from './ServiceUtils';
+import { history } from './HistoryUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
+import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -100,9 +100,10 @@ export const arraySorterByKey = <T extends object>(
 export const getPartialNameFromFQN = (
   fqn: string,
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
-  joinSeperator = '/'
+  joinSeparator = '/'
 ): string => {
   const arrFqn = Fqn.split(fqn);
+
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -116,8 +117,17 @@ export const getPartialNameFromFQN = (
     }
   }
 
-  return arrPartialName.join(joinSeperator);
+  return arrPartialName.join(joinSeparator);
 };
+
+/**
+ * Retrieves a partial name from a fully qualified name (FQN) for tables.
+ *
+ * @param {string} fqn - The fully qualified name. It should be a decoded string.
+ * @param {Array<FqnPart>} fqnParts - The parts of the FQN to include in the partial name. Defaults to an empty array.
+ * @param {string} joinSeparator - The separator used to join the parts of the partial name. Defaults to '/'.
+ * @return {string} The partial name derived from the FQN.
+ */
 
 export const getPartialNameFromTableFQN = (
   fqn: string,
@@ -138,6 +148,11 @@ export const getPartialNameFromTableFQN = (
 
   if (fqnParts.includes(FqnPart.Topic)) {
     // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.SearchIndexField)) {
+    // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
@@ -171,12 +186,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
-
-  return currentUser?.id || '';
-};
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
@@ -192,14 +201,13 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string) => {
-  const loggedInUser = AppState.getCurrentUserDetails();
+export const hasEditAccess = (type: string, id: string, currentUser: User) => {
   if (type === 'user') {
-    return id === loggedInUser?.id;
+    return id === currentUser.id;
   } else {
     return Boolean(
-      loggedInUser?.teams?.length &&
-        loggedInUser?.teams?.some((team) => team.id === id)
+      currentUser.teams?.length &&
+        currentUser.teams.some((team) => team.id === id)
     );
   }
 };
@@ -218,11 +226,14 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
@@ -316,7 +327,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
       .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
     arrData.unshift(entityData);
 
-    if (arrData.length > 5) {
+    if (arrData.length > 8) {
       arrData.pop();
     }
     recentlyViewed.data = arrData;
@@ -328,15 +339,11 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getActiveCatClass = (name: string, activeName = '') => {
-  return activeName === name ? 'activeCategory' : '';
-};
-
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
+    <div>
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="text-xs font-italic text-failure"
         data-testid="error-message">
         {value}
       </strong>
@@ -347,22 +354,9 @@ export const errorMsg = (value: string) => {
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
-  return (
-    <span className="d-flex tw-py-2 text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -380,7 +374,9 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo({
+    serviceType,
+  } as SearchSourceAlias);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;
@@ -500,19 +496,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   }
 };
 
-export const getEntityDeleteMessage = (entity: string, dependents: string) => {
-  if (dependents) {
-    return t('message.permanently-delete-metadata-and-dependents', {
-      entityName: getTitleCase(entity),
-      dependents,
-    });
-  } else {
-    return t('message.permanently-delete-metadata', {
-      entityName: getTitleCase(entity),
-    });
-  }
-};
-
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
@@ -524,32 +507,13 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Conversation
-  )
-    .then((res) => {
-      if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get all thread count (task + conversation)
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
       if (res) {
-        entityCallback(res.totalCount);
+        conversationCallback(res.totalCount);
       } else {
         throw t('server.entity-feed-fetch-error');
       }
@@ -566,15 +530,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-/**
- * Utility function to show pagination
- * @param paging paging object
- * @returns boolean
- */
-export const showPagination = (paging: Paging) => {
-  return !isNil(paging.after) || !isNil(paging.before);
-};
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
@@ -613,10 +568,10 @@ export const digitFormatter = (value: number) => {
 };
 
 export const getTeamsUser = (
-  data?: ExtraInfo
+  data: ExtraInfo,
+  currentUser: User
 ): Record<string, string | undefined> | undefined => {
   if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
-    const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
     const dataFound = teams?.find((team) => {
@@ -664,6 +619,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
   switch (pipelineType) {
     case PipelineType.TestSuite:
     case PipelineType.Metadata:
+    case PipelineType.Application:
       return getHourCron(value);
 
     default:
@@ -692,7 +648,9 @@ export const getLoadingStatus = (
   );
 };
 
-export const refreshPage = () => window.location.reload();
+export const refreshPage = () => {
+  history.go(0);
+};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
@@ -757,38 +715,26 @@ export const Transi18next = ({
   </Trans>
 );
 
-/**
- * It takes a string and returns a string
- * @param {FilterPatternEnum} type - FilterPatternEnum
- * @returns A function that takes in a type and returns a keyof AddIngestionState
- */
-export const getFilterTypes = (
-  type: FilterPatternEnum
-): keyof AddIngestionState => {
-  switch (type) {
-    case FilterPatternEnum.CHART:
-      return 'chartFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD:
-      return 'dashboardFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DATABASE:
-      return 'databaseFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.MLMODEL:
-      return 'mlModelFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.PIPELINE:
-      return 'pipelineFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.SCHEMA:
-      return 'schemaFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.TABLE:
-      return 'tableFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.CONTAINER:
-      return 'containerFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD_DATAMODEL:
-      return 'dataModelFilterPattern' as keyof AddIngestionState;
-    default:
-      return 'topicFilterPattern' as keyof AddIngestionState;
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: entity,
+      dependents,
+    });
+  } else {
+    return (
+      <Transi18next
+        i18nKey="message.permanently-delete-metadata"
+        renderElement={
+          <span className="font-medium" data-testid="entityName" />
+        }
+        values={{
+          entityName: entity,
+        }}
+      />
+    );
   }
 };
-
 /**
  * It takes a state and an action, and returns a new state with the action merged into it
  * @param {S} state - S - The current state of the reducer.
@@ -827,14 +773,18 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
 };
 
 /**
- * @param color have color code
+ * @param color hex have color code
  * @param opacity take opacity how much to reduce it
  * @returns hex color string
  */
-export const reduceColorOpacity = (color: string, opacity: number): string => {
-  const _opacity = Math.round(Math.min(Math.max(opacity || 1, 0), 1) * 255);
+export const reduceColorOpacity = (hex: string, opacity: number): string => {
+  hex = hex.replace(/^#/, ''); // Remove the "#" if it's there
+  hex = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex; // Expand short hex to full hex format
+  const [red, green, blue] = [0, 2, 4].map((i) =>
+    parseInt(hex.slice(i, i + 2), 16)
+  ); // Parse hex values
 
-  return color + _opacity.toString(16).toUpperCase();
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`; // Create RGBA color
 };
 
 export const getEntityDetailLink = (
@@ -844,10 +794,11 @@ export const getEntityDetailLink = (
   subTab?: string
 ) => {
   let path = '';
+  const encodedFQN = getEncodedFqn(fqn);
   switch (entityType) {
     default:
     case EntityType.TABLE:
-      path = getTableTabPath(fqn, tab, subTab);
+      path = getTableTabPath(encodedFQN, tab, subTab);
 
       break;
 
@@ -875,6 +826,11 @@ export const getEntityDetailLink = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      path = getSearchIndexTabPath(encodedFQN, tab, subTab);
+
+      break;
+
     case EntityType.DASHBOARD_DATA_MODEL:
       path = getDataModelDetailsPath(fqn, tab, subTab);
 
@@ -890,11 +846,40 @@ export const getEntityDetailLink = (
 
       break;
 
-    case EntityType.USER_NAME:
-      path = getUserPath(fqn, tab, subTab);
+    case EntityType.USER:
+      path = getUserPath(encodedFQN, tab, subTab);
+
+      break;
+
+    case EntityType.STORED_PROCEDURE:
+      path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      path = getGlossaryTermDetailsPath(fqn, tab, subTab);
 
       break;
   }
 
   return path;
 };
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map((_, index) => ({
+    key: `key${index}`,
+  }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching

@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
 mock_amundsen_config = {
@@ -191,7 +192,7 @@ class AmundsenUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_amundsen_config)
         self.amundsen = AmundsenSource.create(
             mock_amundsen_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
     def test_database_service(self):

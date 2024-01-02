@@ -16,6 +16,8 @@ Time utility functions
 from datetime import datetime, time, timedelta, timezone
 from typing import Union
 
+from metadata.utils.helpers import datetime_to_ts
+
 
 def datetime_to_timestamp(datetime_value, milliseconds=False) -> int:
     """Convert a datetime object to timestamp integer
@@ -63,9 +65,8 @@ def get_beginning_of_day_timestamp_mill(
         microseconds=microseconds,
         milliseconds=milliseconds,
     )
-    return datetime_to_timestamp(
+    return datetime_to_ts(
         datetime.combine(now_utc - delta, time.min, tzinfo=timezone.utc),
-        milliseconds=True,
     )
 
 
@@ -96,9 +97,8 @@ def get_end_of_day_timestamp_mill(
         microseconds=microseconds,
         milliseconds=milliseconds,
     )
-    return datetime_to_timestamp(
+    return datetime_to_ts(
         datetime.combine(now_utc - delta, time.max, tzinfo=timezone.utc),
-        milliseconds=True,
     )
 
 
@@ -112,3 +112,15 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
     return float(timestamp) / 1000
+
+
+def convert_timestamp_to_milliseconds(timestamp: int) -> int:
+    """convert timestamp to milliseconds
+    Args:
+        timestamp (int):
+    Retunrs:
+        int
+    """
+    if len(str(round(timestamp))) == 13:
+        return timestamp
+    return timestamp * 1000

@@ -30,8 +30,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.workflow.profiler import ProfilerWorkflow
 
 """
 Check Partitioned Table in Profiler Workflow
@@ -117,7 +117,9 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 
 class ProfilerPartitionUnitTest(TestCase):
-    @patch("metadata.profiler.api.workflow.ProfilerWorkflow._validate_service_name")
+    @patch(
+        "metadata.profiler.source.metadata.OpenMetadataSource._validate_service_name"
+    )
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
@@ -150,7 +152,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "e"
-            assert resp.partitionInterval == 30
+            assert resp.partitionInterval == 1
             assert not resp.partitionValues
         else:
             assert False
@@ -185,7 +187,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
-            assert resp.partitionInterval == 30
+            assert resp.partitionInterval == 1
             assert not resp.partitionValues
         else:
             assert False
@@ -219,7 +221,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
-            assert resp.partitionInterval == 30
+            assert resp.partitionInterval == 1
             assert not resp.partitionValues
         else:
             assert False

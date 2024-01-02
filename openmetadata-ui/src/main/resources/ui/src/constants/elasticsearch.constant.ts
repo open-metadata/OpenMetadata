@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
 import { t } from 'i18next';
-import { map } from 'lodash';
+import { map, startCase } from 'lodash';
+import { ServiceCategoryPlural } from '../enums/service.enum';
+import { SearchIndexMappingLanguage } from '../generated/configuration/elasticSearchConfiguration';
 
 export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   {
@@ -21,20 +22,20 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.table'),
   },
   {
-    value: 'topic',
-    label: t('label.topic'),
-  },
-  {
     value: 'dashboard',
     label: t('label.dashboard'),
+  },
+  {
+    value: 'topic',
+    label: t('label.topic'),
   },
   {
     value: 'pipeline',
     label: t('label.pipeline'),
   },
   {
-    value: 'mlmodel',
-    label: t('label.ml-model'),
+    value: 'searchIndex',
+    label: t('label.search-index'),
   },
   {
     value: 'user',
@@ -49,9 +50,55 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.glossary-term'),
   },
   {
+    value: 'mlmodel',
+    label: t('label.ml-model'),
+  },
+  {
     value: 'tag',
     label: t('label.tag'),
   },
+  {
+    value: 'classification',
+    label: t('label.classification'),
+  },
+  {
+    value: 'query',
+    label: t('label.query'),
+  },
+  {
+    value: 'container',
+    label: t('label.container'),
+  },
+  {
+    value: 'database',
+    label: t('label.database'),
+  },
+  {
+    value: 'databaseSchema',
+    label: t('label.database-schema'),
+  },
+  {
+    value: 'testCase',
+    label: t('label.test-case'),
+  },
+  {
+    value: 'testSuite',
+    label: t('label.test-suite'),
+  },
+  {
+    value: 'chart',
+    label: t('label.chart'),
+  },
+  {
+    value: 'dashboardDataModel',
+    label: t('label.data-model'),
+  },
+  ...map(ServiceCategoryPlural, (key, value) => ({
+    value,
+    label: startCase(key),
+  })).filter(
+    ({ value }) => ['metadataService', 'storageService'].indexOf(value) === -1
+  ),
   {
     value: 'entityReportData',
     label: t('label.data-assets-report'),
@@ -65,16 +112,16 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.user-analytics-report'),
   },
   {
-    value: 'container',
-    label: t('label.container'),
+    value: 'domain',
+    label: t('label.domain'),
   },
   {
-    value: 'query',
-    label: t('label.query'),
+    value: 'storedProcedure',
+    label: t('label.stored-procedure'),
   },
   {
-    value: 'testCase',
-    label: t('label.test-case'),
+    value: 'dataProduct',
+    label: t('label.data-product'),
   },
 ];
 

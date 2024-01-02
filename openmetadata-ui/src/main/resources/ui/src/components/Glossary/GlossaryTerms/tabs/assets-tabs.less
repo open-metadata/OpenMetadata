@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../../styles/variables.less');
+
+.ant-popover-asset {
+  .ant-popover-inner-content {
+    padding: 0;
+    overflow-y: scroll;
+  }
+}
+
+.asset-multi-menu-selector.ant-menu:not(.ant-menu-horizontal)
+  .ant-menu-item-selected {
+  background-color: transparent;
+  color: initial;
+}
+
+.asset-multi-menu-selector {
+  .ant-menu-submenu-open {
+    background: @user-profile-background;
+  }
+  .ant-menu-inline {
+    .asset-sub-menu-title {
+      width: 150px;
+    }
+    .asset-sub-menu-checkbox {
+      padding-right: 2px;
+    }
+    .ant-menu-item::after {
+      border: none;
+    }
+  }
+
+  .ant-menu-submenu-inline {
+    .ant-menu-submenu-title {
+      padding-left: 14px !important;
+    }
+    .ant-menu-sub {
+      background: @user-profile-background;
+
+      .ant-menu-item-only-child {
+        padding-left: 22px !important;
+        padding-right: 14px;
+        color: initial;
+      }
+    }
+  }
+
+  .ant-menu-submenu-selected {
+    .ant-menu-submenu-title {
+      .asset-badge-container {
+        background: @primary-color;
+        color: @white;
+      }
+    }
+  }
+
+  .asset-badge-container {
+    background: rgba(41, 41, 41, 0.1);
+    border: none;
+    padding: 2px 6px;
+  }
+}
+
+.assets-tab-container {
+  .explore-search-card {
+    .service-icon {
+      height: 16px;
+    }
+  }
+}
+
+.asset-tab-delete-notification {
+  position: sticky;
+  &.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  pointer-events: none;
+  border-radius: 10px;
+  background: #292929;
+  height: 64px;
+  width: 350px;
+  bottom: 64px;
+  opacity: 0;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity ease-in 0.1s;
+
+  & > div {
+    padding: 15px 20px;
+  }
+}

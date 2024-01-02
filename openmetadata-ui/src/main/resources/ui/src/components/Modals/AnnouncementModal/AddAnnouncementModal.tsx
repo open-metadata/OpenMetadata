@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal, Space } from 'antd';
+import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { VALIDATION_MESSAGES } from 'constants/constants';
-import { observer } from 'mobx-react';
-import React, { FC, useMemo, useState } from 'react';
+import { Moment } from 'moment';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postThread } from 'rest/feedsAPI';
-import AppState from '../../../AppState';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { postThread } from '../../../rest/feedsAPI';
+import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { getTimeZone, getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AnnouncementModal.less';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import './announcement-modal.less';
 
 interface Props {
   open: boolean;
@@ -36,31 +36,35 @@ interface Props {
   onCancel: () => void;
 }
 
+export interface CreateAnnouncement {
+  title: string;
+  description: string;
+  startTime: Moment;
+  endTime: Moment;
+}
+
 const AddAnnouncementModal: FC<Props> = ({
   open,
   onCancel,
   entityType,
   entityFQN,
 }) => {
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
-  const [title, setTitle] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
+  const { currentUser } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
 
-  const handleCreateAnnouncement = async () => {
-    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
-    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
-    if (startTime >= endTime) {
+  const handleCreateAnnouncement = async ({
+    title,
+    startTime,
+    endTime,
+    description,
+  }: CreateAnnouncement) => {
+    const startTimeMs = startTime.unix();
+    const endTimeMs = endTime.unix();
+
+    if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const announcementData: CreateThread = {
@@ -69,8 +73,8 @@ const AddAnnouncementModal: FC<Props> = ({
         about: getEntityFeedLink(entityType, entityFQN),
         announcementDetails: {
           description,
-          startTime,
-          endTime,
+          startTime: startTimeMs,
+          endTime: endTimeMs,
         },
         type: ThreadType.Announcement,
       };
@@ -108,7 +112,7 @@ const AddAnnouncementModal: FC<Props> = ({
       title={t('message.make-an-announcement')}
       width={720}
       onCancel={onCancel}>
-      <Form
+      <Form<CreateAnnouncement>
         data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
@@ -125,12 +129,7 @@ const AddAnnouncementModal: FC<Props> = ({
               min: 5,
             },
           ]}>
-          <Input
-            placeholder={t('label.announcement-title')}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <Input placeholder={t('label.announcement-title')} type="text" />
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
@@ -138,41 +137,35 @@ const AddAnnouncementModal: FC<Props> = ({
               timeZone: getTimeZone(),
             })}
             messageVariables={{ fieldName: 'startDate' }}
-            name="startDate"
+            name="startTime"
             rules={[
               {
                 required: true,
               },
             ]}>
-            <Input
-              type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
+            <DatePicker className="w-full" />
           </Form.Item>
           <Form.Item
             label={t('label.end-date-time-zone', {
               timeZone: getTimeZone(),
             })}
             messageVariables={{ fieldName: 'endtDate' }}
-            name="endtDate"
+            name="endTime"
             rules={[
               {
                 required: true,
               },
             ]}>
-            <Input
-              type="datetime-local"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
+            <DatePicker className="w-full" />
           </Form.Item>
         </Space>
-        <Form.Item label={`${t('label.description')}:`} name="description">
+        <Form.Item
+          label={`${t('label.description')}:`}
+          name="description"
+          trigger="onTextChange"
+          valuePropName="initialValue">
           <RichTextEditor
-            initialValue={description}
             placeHolder={t('message.write-your-announcement-lowercase')}
-            onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>
       </Form>
@@ -180,4 +173,4 @@ const AddAnnouncementModal: FC<Props> = ({
   );
 };
 
-export default observer(AddAnnouncementModal);
+export default AddAnnouncementModal;

@@ -12,20 +12,23 @@
  */
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import Reactions from 'components/Reactions/Reactions';
-import { ReactionOperation } from 'enums/reactions.enum';
 import { compare } from 'fast-json-patch';
-import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
 import { noop } from 'lodash';
 import React, { useState } from 'react';
+import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import Reactions from '../../../components/Reactions/Reactions';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  Post,
+  ReactionType,
+  Thread,
+} from '../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card.style.less';
 import FeedCardBodyV1 from './FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from './FeedCardHeader/FeedCardHeaderV1';
-import { ReactComponent as ThreadIcon } from '/assets/svg/thread.svg';
 
 interface ActivityFeedCardV1Props {
   post: Post;
@@ -113,22 +116,12 @@ const ActivityFeedCardV1 = ({
                   <>
                     <div className="thread-users-profile-pic">
                       {repliedUniqueUsersList.map((user) => (
-                        <UserPopOverCard key={user} userName={user}>
-                          <span
-                            className="profile-image-span cursor-pointer"
-                            data-testid="authorAvatar">
-                            <ProfilePicture
-                              id=""
-                              name={user}
-                              type="circle"
-                              width="22"
-                            />
-                          </span>
-                        </UserPopOverCard>
+                        <UserPopOverCard key={user} userName={user} />
                       ))}
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer"
+                      data-testid="thread-count"
                       onClick={!hidePopover ? showReplies : noop}>
                       <ThreadIcon width={18} />{' '}
                       <span className="text-xs p-l-xss">{postLength}</span>

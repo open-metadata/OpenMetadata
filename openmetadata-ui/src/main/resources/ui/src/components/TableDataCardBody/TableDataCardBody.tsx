@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { TagLabel } from 'generated/type/tagLabel';
 import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTagValue } from 'utils/CommonUtils';
+import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { TagLabel } from '../../generated/type/tagLabel';
+import { getTagValue } from '../../utils/CommonUtils';
 
 type Props = {
   description: string;
@@ -69,7 +69,6 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <TagsViewer
             sizeCap={3}
             tags={(tags ?? []).map((tag) => getTagValue(tag))}
-            type="border"
           />
         </div>
       )}

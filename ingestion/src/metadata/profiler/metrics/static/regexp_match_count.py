@@ -53,7 +53,17 @@ class RegexCount(StaticMetric):
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
         return SumFn(
-            case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
+            case(
+                [
+                    (
+                        column(self.col.name, self.col.type).regexp_match(
+                            self.expression
+                        ),
+                        1,
+                    )
+                ],
+                else_=0,
+            )
         )
 
     def df_fn(self, dfs):

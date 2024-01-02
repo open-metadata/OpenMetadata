@@ -10,23 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/dashboardDataModel';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isUndefined, map } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { cloneDeep, isUndefined } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  updateDataModelColumnDescription,
-  updateDataModelColumnTags,
-} from 'utils/DataModelsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/dashboardDataModel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { updateDataModelColumnDescription } from '../../../utils/DataModelsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { updateFieldTags } from '../../../utils/TableUtils';
+import Table from '../../common/Table/Table';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
@@ -36,7 +35,6 @@ const ModelTab = ({
   hasEditTagsPermission,
   onUpdate,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }: ModelTabProps) => {
   const { t } = useTranslation();
@@ -44,22 +42,17 @@ const ModelTab = ({
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
-
       const dataModelData = cloneDeep(data);
 
-      updateDataModelColumnTags(
-        dataModelData,
+      updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        selectedTags,
+        dataModelData
       );
 
       await onUpdate(dataModelData);
     },
-    [data, updateDataModelColumnTags]
+    [data, updateFieldTags]
   );
 
   const handleColumnDescriptionChange = useCallback(
@@ -85,6 +78,7 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        fixed: 'left',
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
@@ -112,7 +106,6 @@ const ModelTab = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditPermission={hasEditDescriptionPermission}
@@ -131,7 +124,6 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
@@ -153,7 +145,6 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
@@ -171,7 +162,6 @@ const ModelTab = ({
     [
       entityFqn,
       isReadOnly,
-      entityFieldThreads,
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
@@ -198,7 +188,7 @@ const ModelTab = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumnDescription.name}"`}
+          })}: "${getEntityName(editColumnDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.column'),
           })}

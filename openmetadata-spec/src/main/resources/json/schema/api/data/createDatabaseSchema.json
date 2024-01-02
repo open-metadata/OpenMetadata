@@ -29,6 +29,13 @@
       "description": "Link to the database fully qualified name where this schema is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
     "tags": {
       "description": "Tags for this table",
       "type": "array",
@@ -45,9 +52,23 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sourceUrl": {
+      "description": "Source URL of database schema.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Database Schema belongs to.",
       "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": [

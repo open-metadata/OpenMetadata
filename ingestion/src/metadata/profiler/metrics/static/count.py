@@ -18,6 +18,7 @@ Count Metric definition
 from sqlalchemy import column, func
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.count import CountFn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -41,7 +42,7 @@ class Count(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
-        return func.count(column(self.col.name))
+        return func.count(CountFn(column(self.col.name, self.col.type)))
 
     def df_fn(self, dfs=None):
         """pandas function"""

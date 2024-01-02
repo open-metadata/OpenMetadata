@@ -12,7 +12,6 @@
 """
 OpenMetadata API initialization
 """
-import pytest
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

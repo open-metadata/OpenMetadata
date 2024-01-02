@@ -185,11 +185,11 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('rest/metadataTypeAPI', () => ({
+jest.mock('../../../rest/metadataTypeAPI', () => ({
   addPropertyToEntity: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
@@ -201,20 +201,21 @@ jest.mock('rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('utils/CommonUtils', () => ({
+jest.mock('../../../utils/CommonUtils', () => ({
   errorMsg: jest.fn(),
   requiredField: jest.fn(),
 }));
 
-jest.mock('utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
+jest.mock(
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
 );
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>
@@ -223,7 +224,7 @@ jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
-jest.mock('components/common/ServiceDocPanel/ServiceDocPanel', () =>
+jest.mock('../../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
 );
 

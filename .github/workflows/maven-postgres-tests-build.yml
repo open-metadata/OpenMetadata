@@ -1,0 +1,119 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Maven Postgres Tests CI
+
+on:
+  push:
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
+      - "pom.xml"
+      - "yarn.lock"
+      - "Makefile"
+      - "bootstrap/**"
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
+      - "pom.xml"
+      - "yarn.lock"
+      - "Makefile"
+      - "bootstrap/**"
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency: 
+  group: maven-build-postgres-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  maven-postgresql-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.1
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Cache Maven dependencies
+        id: cache-output
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+ 
+      - name: Set up JDK 17
+        if: steps.cache-output.outputs.exit-code == 0
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Ubuntu dependencies
+        if: steps.cache-output.outputs.exit-code == 0
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          librdkafka-dev unixodbc-dev libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build with Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -Ppostgres-tests clean package -am
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: 'openmetadata-service/target/surefire-reports/TEST-*.xml'

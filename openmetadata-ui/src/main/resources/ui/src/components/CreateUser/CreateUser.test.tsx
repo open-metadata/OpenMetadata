@@ -17,15 +17,11 @@ import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
-jest.mock('../dropdown/DropDown', () => {
-  return jest.fn().mockReturnValue(<p>Dropdown component</p>);
-});
-
 jest.mock('../TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
 
-jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }, ref) => {
       return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;

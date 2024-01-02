@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -44,7 +43,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 class JsonUtilsTest {
   /** Test apply patch method with different operations. */
   @Test
-  void applyPatch() throws IOException {
+  void applyPatch() {
     JsonObjectBuilder teamJson = Json.createObjectBuilder();
     JsonObjectBuilder user1 = Json.createObjectBuilder();
     JsonObjectBuilder user2 = Json.createObjectBuilder();
@@ -78,18 +77,22 @@ class JsonUtilsTest {
         updated.getUsers().stream()
             .anyMatch(
                 entry ->
-                    entry.getName().equals(newUser1.getString("name")) && entry.getId().toString().equals(newUserId1)));
+                    entry.getName().equals(newUser1.getString("name"))
+                        && entry.getId().toString().equals(newUserId1)));
     assertTrue(
         updated.getUsers().stream()
             .anyMatch(
                 entry ->
-                    entry.getName().equals(newUser2.getString("name")) && entry.getId().toString().equals(newUserId2)));
+                    entry.getName().equals(newUser2.getString("name"))
+                        && entry.getId().toString().equals(newUserId2)));
 
     // Add a user with an out of index path
     final JsonPatchBuilder jsonPatchBuilder = Json.createPatchBuilder();
     jsonPatchBuilder.add("/users/4", newUser1);
     JsonException jsonException =
-        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
+        assertThrows(
+            JsonException.class,
+            () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 4"));
 
     // Delete the two users from the team
@@ -104,12 +107,14 @@ class JsonUtilsTest {
     final JsonPatchBuilder jsonPatchBuilder2 = Json.createPatchBuilder();
     jsonPatchBuilder2.remove("/users/3");
     jsonException =
-        assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
+        assertThrows(
+            JsonException.class,
+            () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
   }
 
   @Test
-  void testReadValuePassingTypeReference() throws IOException {
+  void testReadValuePassingTypeReference() {
     Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
     String json = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
     TypeReference<Map<String, String>> mapTypeReference = new TypeReference<>() {};
@@ -117,26 +122,30 @@ class JsonUtilsTest {
   }
 
   @Test
-  void testJsonWithFieldsRemoveFields() throws IOException, URISyntaxException {
+  void testJsonWithFieldsRemoveFields() throws URISyntaxException {
     HashMap authType = new HashMap();
     authType.put("username", "username");
     authType.put("password", "password");
     TableauConnection airflowConnection =
         new TableauConnection().withHostPort(new URI("localhost:3306")).withAuthType(authType);
-    TableauConnection expectedConnection = new TableauConnection().withHostPort(new URI("localhost:3306"));
-    TableauConnection actualConnection = JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
+    TableauConnection expectedConnection =
+        new TableauConnection().withHostPort(new URI("localhost:3306"));
+    TableauConnection actualConnection =
+        JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
     assertEquals(expectedConnection, actualConnection);
   }
 
   @Test
-  void testPojoToMaskedJson() throws IOException {
+  void testPojoToMaskedJson() {
     String expectedJson = "{\"name\":\"test\",\"connection\":{},\"version\":0.1,\"deleted\":false}";
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
             .withConnection(
                 new DatabaseConnection()
-                    .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword("password"))));
+                    .withConfig(
+                        new MysqlConnection()
+                            .withAuthType(new basicAuth().withPassword("password"))));
     String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
     assertEquals(expectedJson, actualJson);
   }

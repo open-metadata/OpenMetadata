@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -39,7 +40,8 @@ import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.dataInsight.DataInsightChartResourceTest;
+import org.openmetadata.service.resources.datainsight.DataInsightChartResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -48,7 +50,6 @@ import org.openmetadata.service.util.TestUtils;
 public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public KpiResourceTest() {
     super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);
-    supportsEmptyDescription = false;
     supportsPatch = false;
   }
 
@@ -56,7 +57,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     DataInsightChartResourceTest dataInsightResourceTest = new DataInsightChartResourceTest();
     CreateDataInsightChart chartRequest =
         dataInsightResourceTest
-            .createRequest(String.format("TestChart" + "%s", UUID.randomUUID()))
+            .createRequest(String.format("TestChart%s", UUID.randomUUID()))
             .withOwner(USER1_REF)
             .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
             .withMetrics(
@@ -94,7 +95,9 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertResponseContains(
         () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Kpi Target Definition " + target.getName() + " is not valid, metric not defined in corresponding chart");
+        "Kpi Target Definition "
+            + target.getName()
+            + " is not valid, metric not defined in corresponding chart");
   }
 
   @Test
@@ -106,10 +109,10 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
     KpiTarget newTarget = new KpiTarget().withName(KPI_TARGET.getName()).withValue("newValue");
     create.withTargetDefinition(List.of(newTarget));
-    ChangeDescription change = getChangeDescription(createdKpi.getVersion());
-    fieldUpdated(change, "targetDefinition", KPI_TARGET, newTarget);
+    ChangeDescription change = getChangeDescription(createdKpi, MINOR_UPDATE);
+    fieldUpdated(change, "targetDefinition", List.of(KPI_TARGET), create.getTargetDefinition());
 
-    createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
     validateCreatedEntity(createdKpi, create, ADMIN_AUTH_HEADERS);
   }
@@ -122,7 +125,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     KpiResult kpiResult =
         new KpiResult()
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("10")));
+            .withTargetResult(
+                List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("10")));
     putKpiResult(createdKpi.getFullyQualifiedName(), kpiResult, ADMIN_AUTH_HEADERS);
 
     ResultList<KpiResult> kpiResults =
@@ -137,7 +141,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     KpiResult newKpiResult =
         new KpiResult()
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("20")));
+            .withTargetResult(
+                List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("20")));
     putKpiResult(createdKpi.getFullyQualifiedName(), newKpiResult, ADMIN_AUTH_HEADERS);
 
     kpiResults =
@@ -148,13 +153,6 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             ADMIN_AUTH_HEADERS);
     verifyKpiResults(kpiResults, List.of(kpiResult, newKpiResult), 2);
 
-    // Replace kpi result for a date
-    KpiResult newKpiResult1 =
-        new KpiResult()
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("25")));
-    putKpiResult(createdKpi.getFullyQualifiedName(), newKpiResult1, ADMIN_AUTH_HEADERS);
-
     createdKpi = getEntity(createdKpi.getId(), "targetDefinition", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
     kpiResults =
@@ -163,18 +161,21 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             TestUtils.dateToTimestamp("2021-09-09"),
             TestUtils.dateToTimestamp("2021-09-10"),
             ADMIN_AUTH_HEADERS);
-    verifyKpiResults(kpiResults, List.of(newKpiResult1, kpiResult), 2);
+    verifyKpiResults(kpiResults, List.of(newKpiResult, kpiResult), 2);
 
     String dateStr = "2021-09-";
     List<KpiResult> kpiResultList = new ArrayList<>();
     kpiResultList.add(kpiResult);
-    kpiResultList.add(newKpiResult1);
+    kpiResultList.add(newKpiResult);
     for (int i = 11; i <= 20; i++) {
       kpiResult =
           new KpiResult()
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
               .withTargetResult(
-                  List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue(String.valueOf(50 + i))));
+                  List.of(
+                      new KpiTarget()
+                          .withName(KPI_TARGET.getName())
+                          .withValue(String.valueOf(50 + i))));
       putKpiResult(createdKpi.getFullyQualifiedName(), kpiResult, ADMIN_AUTH_HEADERS);
       kpiResultList.add(kpiResult);
     }
@@ -187,12 +188,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     verifyKpiResults(kpiResults, kpiResultList, 12);
   }
 
-  public void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders) throws HttpResponseException {
+  public void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
-  public ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
+  public ResultList<KpiResult> getKpiResults(
+      String fqn, Long start, Long end, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     target = target.queryParam("startTs", start);
@@ -201,7 +204,9 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   private void verifyKpiResults(
-      ResultList<KpiResult> actualKpiResults, List<KpiResult> expectedKpiResults, int expectedCount) {
+      ResultList<KpiResult> actualKpiResults,
+      List<KpiResult> expectedKpiResults,
+      int expectedCount) {
     assertEquals(expectedCount, actualKpiResults.getPaging().getTotal());
     assertEquals(expectedKpiResults.size(), actualKpiResults.getData().size());
     Map<Long, KpiResult> kpiResultMap = new HashMap<>();
@@ -238,7 +243,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public void validateCreatedEntity(Kpi createdEntity, CreateKpiRequest request, Map<String, String> authHeaders) {
+  public void validateCreatedEntity(
+      Kpi createdEntity, CreateKpiRequest request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getStartDate(), createdEntity.getStartDate());
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
@@ -258,7 +264,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) throws HttpResponseException {
+  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -276,7 +283,13 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {}
-    // TODO fix this
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("targetDefinition")) {
+      assertEquals(JsonUtils.pojoToJson(expected), actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

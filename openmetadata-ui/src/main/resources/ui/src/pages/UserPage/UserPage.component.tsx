@@ -11,148 +11,74 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import Loader from 'components/Loader/Loader';
-import Users from 'components/Users/Users.component';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import Qs from 'qs';
-import React, {
-  Dispatch,
-  SetStateAction,
+import {
+  default as React,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getUserByName, updateUserDetail } from 'rest/userAPI';
-import AppState from '../../AppState';
-import { PAGE_SIZE } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../components/Loader/Loader';
+import Users from '../../components/Users/Users.component';
 import { UserProfileTab } from '../../enums/user.enum';
 import { User } from '../../generated/entity/teams/user';
-import { useAuth } from '../../hooks/authHooks';
-import { SearchEntityHits } from '../../utils/APIUtils';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
+import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { UserAssetsDataType } from './UserPage.interface';
 
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { username, tab = UserProfileTab.ACTIVITY } =
-    useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { fqn: username } = useParams<{ fqn: string; tab: UserProfileTab }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
-  const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
-  const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
-    useState<boolean>(false);
+  const { currentUser, updateCurrentUser } = useAuthContext();
 
-  const [followingEntities, setFollowingEntities] =
-    useState<UserAssetsDataType>({
-      data: [],
-      total: 0,
-    });
-  const [ownedEntities, setOwnedEntities] = useState<UserAssetsDataType>({
-    data: [],
-    total: 0,
-  });
+  const fetchUserData = async () => {
+    try {
+      const res = await getUserByName(
+        username,
+        'profile,roles,teams,personas,defaultPersona,domain'
+      );
+      setUserData(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.entity-detail-plural', {
+            entity: t('label.user'),
+          }),
+        })
+      );
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const { page = 1 } = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substr(1)
-          : location.search
-      ),
-    [location.search]
+  const myDataQueryFilter = useMemo(() => {
+    const teamsIds = (userData.teams ?? []).map((team) => team.id);
+    const mergedIds = [
+      ...teamsIds.map((id) => `owner.id:${id}`),
+      `owner.id:${userData.id}`,
+    ].join(' OR ');
+
+    return `(${mergedIds})`;
+  }, [userData]);
+
+  const followingQueryFilter = useMemo(
+    () => `followers:${userData.id}`,
+    [userData.id]
   );
-
-  const fetchUserData = () => {
-    setUserData({} as User);
-    getUserByName(username, 'profile,roles,teams')
-      .then((res) => {
-        if (res) {
-          setUserData(res);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: 'User Details',
-          })
-        );
-        setIsError(true);
-      })
-      .finally(() => setIsLoading(false));
-  };
-
-  const getQueryFilters = (fetchOwnedEntities: boolean) => {
-    if (fetchOwnedEntities) {
-      const teamsIds = (userData.teams ?? []).map((team) => team.id);
-      const mergedIds = [
-        ...teamsIds.map((id) => `owner.id:${id}`),
-        `owner.id:${userData.id}`,
-      ].join(' OR ');
-
-      return `(${mergedIds})`;
-    } else {
-      return `followers:${userData.id}`;
-    }
-  };
-
-  const fetchEntities = async (
-    fetchOwnedEntities = false,
-    handleEntity: Dispatch<SetStateAction<UserAssetsDataType>>
-  ) => {
-    if (userData.id) {
-      setIsUserEntitiesLoading(true);
-      try {
-        const response = await searchData(
-          '',
-          Number(page),
-          PAGE_SIZE,
-          getQueryFilters(fetchOwnedEntities),
-          '',
-          '',
-          myDataSearchIndex
-        );
-        const hits = response.data.hits.hits as SearchEntityHits;
-
-        if (hits?.length > 0) {
-          const total = response.data.hits.total.value;
-          handleEntity({
-            data: hits,
-            total,
-          });
-        } else {
-          const total = 0;
-          handleEntity({
-            data: [],
-            total,
-          });
-        }
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
-          })
-        );
-      } finally {
-        setIsUserEntitiesLoading(false);
-      }
-    }
-  };
 
   const handleEntityPaginate = (page: string | number) => {
     history.push({
@@ -163,80 +89,66 @@ const UserPage = () => {
   const ErrorPlaceholder = () => {
     return (
       <div
-        className="d-flex flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
+        className="d-flex items-center justify-center h-full"
         data-testid="error">
-        <p className="tw-text-base" data-testid="error-message">
-          {t('message.no-username-available')}
-          <span className="tw-font-medium" data-testid="username">
-            {username}
-          </span>
-        </p>
+        <Typography.Paragraph className="text-base" data-testid="error-message">
+          <Transi18next
+            i18nKey="message.no-username-available"
+            renderElement={<strong data-testid="username" />}
+            values={{
+              user: username,
+            }}
+          />
+        </Typography.Paragraph>
       </div>
     );
   };
 
-  const updateUserDetails = async (data: Partial<User>) => {
-    const updatedDetails = { ...userData, ...data };
-    const jsonPatch = compare(userData, updatedDetails);
+  const updateUserDetails = useCallback(
+    async (data: Partial<User>) => {
+      const updatedDetails = { ...userData, ...data };
+      const jsonPatch = compare(userData, updatedDetails);
 
-    try {
-      const response = await updateUserDetail(userData.id, jsonPatch);
-      if (response) {
-        setUserData((prevData) => ({ ...prevData, ...response }));
-      } else {
-        throw t('message.unexpected-error');
+      try {
+        const response = await updateUserDetail(userData.id, jsonPatch);
+        if (response) {
+          if (userData.id === currentUser?.id) {
+            updateCurrentUser(response);
+          }
+          setUserData((prev) => ({ ...prev, ...response }));
+        } else {
+          throw t('message.unexpected-error');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const isLoggedinUser = (userName: string) => {
-    return userName === currentLoggedInUser?.name;
-  };
-
-  const getUserComponent = () => {
-    if (!isError && !isEmpty(userData)) {
-      return (
-        <Users
-          followingEntities={followingEntities}
-          handlePaginate={handleEntityPaginate}
-          isAdminUser={Boolean(isAdminUser)}
-          isAuthDisabled={Boolean(isAuthDisabled)}
-          isLoggedinUser={isLoggedinUser(username)}
-          isUserEntitiesLoading={isUserEntitiesLoading}
-          ownedEntities={ownedEntities}
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-          username={username}
-        />
-      );
-    } else {
-      return <ErrorPlaceholder />;
-    }
-  };
+    },
+    [userData, currentUser, updateCurrentUser]
+  );
 
   useEffect(() => {
     fetchUserData();
   }, [username]);
 
-  useEffect(() => {
-    if (tab === UserProfileTab.FOLLOWING) {
-      fetchEntities(false, setFollowingEntities);
-    }
-  }, [page, tab, userData]);
+  if (isLoading) {
+    return <Loader />;
+  }
 
-  useEffect(() => {
-    if (tab === UserProfileTab.MY_DATA) {
-      fetchEntities(true, setOwnedEntities);
-    }
-  }, [page, tab, userData]);
+  if (isError && isEmpty(userData)) {
+    return <ErrorPlaceholder />;
+  }
 
-  useEffect(() => {
-    setCurrentLoggedInUser(AppState.getCurrentUserDetails());
-  }, [AppState.nonSecureUserDetails, AppState.userDetails]);
-
-  return <>{isLoading ? <Loader /> : getUserComponent()}</>;
+  return (
+    <Users
+      handlePaginate={handleEntityPaginate}
+      queryFilters={{
+        myData: myDataQueryFilter,
+        following: followingQueryFilter,
+      }}
+      updateUserDetails={updateUserDetails}
+      userData={userData}
+    />
+  );
 };
 
-export default observer(UserPage);
+export default UserPage;

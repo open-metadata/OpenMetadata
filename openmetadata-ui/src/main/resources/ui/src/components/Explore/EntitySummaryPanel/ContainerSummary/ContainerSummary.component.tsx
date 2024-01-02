@@ -12,22 +12,23 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import classNames from 'classnames';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { SummaryEntityType } from 'enums/EntitySummary.enum';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Container } from 'generated/entity/data/container';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getTagValue } from 'utils/CommonUtils';
-import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Container } from '../../../../generated/entity/data/container';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { ContainerSummaryProps } from './ContainerSummary.interface';
@@ -36,6 +37,7 @@ function ContainerSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
+  highlights,
 }: ContainerSummaryProps) {
   const { t } = useTranslation();
 
@@ -48,7 +50,8 @@ function ContainerSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        (entityDetails as Container).dataModel?.columns
+        (entityDetails as Container).dataModel?.columns,
+        highlights
       ),
     [entityDetails]
   );
@@ -58,75 +61,28 @@ function ContainerSummary({
       <>
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Link
-                            target={info.isExternal ? '_blank' : '_self'}
-                            to={{ pathname: info.url }}>
-                            {info.value}
-                            {info.isExternal ? (
-                              <IconExternalLink width={12} />
-                            ) : null}
-                          </Link>
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="profiler-header">
-              {t('label.tag-plural')}
-            </Typography.Text>
-          </Col>
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenTagFQNs: get(
+                highlights,
+                'tag.name',
+                [] as string[]
+              ),
+            }) ?? []
+          }
+        />
 
-          <Col className="flex-grow" span={24}>
-            {entityDetails.tags && entityDetails.tags.length > 0 ? (
-              <TagsViewer
-                sizeCap={2}
-                tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
-                type="border"
-              />
-            ) : (
-              <Typography.Text className="text-grey-body">
-                {t('label.no-tags-added')}
-              </Typography.Text>
-            )}
-          </Col>
-        </Row>
         <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>

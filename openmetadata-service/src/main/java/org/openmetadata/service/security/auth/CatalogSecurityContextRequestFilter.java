@@ -33,7 +33,8 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
   @SuppressWarnings("unused")
   private CatalogSecurityContextRequestFilter() {}
 
-  public CatalogSecurityContextRequestFilter(AuthenticationConfiguration authenticationConfiguration) {
+  public CatalogSecurityContextRequestFilter(
+      AuthenticationConfiguration authenticationConfiguration) {
     /* used for testing */
   }
 
@@ -54,7 +55,8 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
       throw new AuthenticationException("Not authorized. Principal is not available");
     }
 
-    SecurityContext securityContext = new CatalogSecurityContext(principal, scheme, httpRequest.getAuthType());
+    SecurityContext securityContext =
+        new CatalogSecurityContext(principal, scheme, httpRequest.getAuthType());
     LOG.debug("SecurityContext {}", securityContext);
     requestContext.setSecurityContext(securityContext);
   }

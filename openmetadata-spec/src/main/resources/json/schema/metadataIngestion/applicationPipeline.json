@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/applicationPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationPipeline",
+  "description": "Application Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "applicationConfigType": {
+      "description": "Pipeline Source Config For Application Pipeline type. Nothing is required.",
+      "type": "string",
+      "enum": ["Application"],
+      "default": "Application"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/applicationConfigType",
+      "default": "Application"
+    },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
+    "appConfig": {
+      "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/appConfig",
+      "description": "Application configuration"
+    }
+  },
+  "additionalProperties": false
+}

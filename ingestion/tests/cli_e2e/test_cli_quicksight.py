@@ -34,7 +34,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def get_excludes_charts(self) -> List[str]:
         return []
 
-    def expected_entities(self) -> int:
+    def expected_dashboards_and_charts(self) -> int:
         return 6
 
     def expected_lineage(self) -> int:
@@ -50,7 +50,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     def expected_filtered_sink_mix(self) -> int:
-        return 6
+        return 1
 
     # Quicksight do not ingest tags
     def expected_tags(self) -> int:
@@ -63,3 +63,12 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     # Quicksight do not ingest datamodels
     def get_includes_datamodels(self) -> List[str]:
         return []
+
+    def expected_datamodel_lineage(self) -> int:
+        return 0
+
+    def expected_datamodels(self) -> int:
+        return 0
+
+    def expected_dashboards_and_charts_after_patch(self) -> int:
+        return 1

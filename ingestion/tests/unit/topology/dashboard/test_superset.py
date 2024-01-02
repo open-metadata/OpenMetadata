@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -198,7 +198,7 @@ MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     serviceType=DatabaseServiceType.Postgres,
 )
 
-EXPECTED_CHATRT_ENTITY = [
+EXPECTED_CHART_ENTITY = [
     Chart(
         id=uuid.uuid4(),
         name=37,
@@ -213,7 +213,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     name=14,
     displayName="My DASH",
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
-    charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
+    charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
@@ -249,14 +249,14 @@ class SupersetUnitTest(TestCase):
             # This already validates that the source can be initialized
             self.superset_api: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_API_CONFIG["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
 
             self.assertEqual(type(self.superset_api), SupersetAPISource)
 
             self.superset_api.context.__dict__[
                 "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE
+            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
             with patch.object(
                 SupersetAPIClient, "fetch_total_charts", return_value=1
@@ -272,14 +272,14 @@ class SupersetUnitTest(TestCase):
             # This already validates that the source can be initialized
             self.superset_db: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_DB_CONFIG["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
 
             self.assertEqual(type(self.superset_db), SupersetDBSource)
 
             self.superset_db.context.__dict__[
                 "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE
+            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
             with patch.object(Engine, "execute", return_value=mock_data["chart-db"]):
                 self.superset_db.prepare()
@@ -351,26 +351,34 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             SupersetAPISource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_api.context.__dict__["charts"] = EXPECTED_CHATRT_ENTITY
-            dashboard = self.superset_api.yield_dashboard(MOCK_DASHBOARD)
-            self.assertEqual(list(dashboard), [EXPECTED_DASH])
+            self.superset_api.context.__dict__["charts"] = [
+                chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+            ]
+            dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
+            self.assertEqual(dashboard, EXPECTED_DASH)
 
         # TEST DB SOURCE
         with patch.object(
             SupersetDBSource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_db.context.__dict__["charts"] = EXPECTED_CHATRT_ENTITY
-            dashboard = self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)
-            self.assertEqual(list(dashboard), [EXPECTED_DASH])
+            self.superset_db.context.__dict__["charts"] = [
+                chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+            ]
+            dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
+            self.assertEqual(dashboard, EXPECTED_DASH)
 
     def test_yield_dashboard_chart(self):
         # TEST API SOURCE
-        dashboard_charts = self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
-        self.assertEqual(list(dashboard_charts), [EXPECTED_CHART])
+        dashboard_charts = next(
+            self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
+        ).right
+        self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
         # TEST DB SOURCE
-        dashboard_charts = self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
-        self.assertEqual(list(dashboard_charts), [EXPECTED_CHART])
+        dashboard_charts = next(
+            self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
+        ).right
+        self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
         """

@@ -15,14 +15,13 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.slack.SlackAttachment;
 import org.openmetadata.service.events.subscription.slack.SlackMessage;
@@ -63,11 +62,14 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
+        getSmtpSettings().getOpenMetadataUrl(),
+        entityType,
+        fqn.trim().replaceAll(" ", "%20"),
+        fqn.trim());
   }
 
   @Override
-  public SlackMessage buildMessage(ChangeEvent event) throws IOException {
+  public SlackMessage buildMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {

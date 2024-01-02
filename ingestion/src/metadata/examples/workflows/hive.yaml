@@ -6,6 +6,21 @@ source:
       type: Hive
       databaseSchema: default
       hostPort: localhost:10000
+
+      # metastoreConnection:
+      #   type: Mysql
+      #   username: APP
+      #   authType:
+      #     password: password
+      #   hostPort: localhost:3306
+      #   databaseSchema: demo_hive
+
+        # type: Postgres
+        # username: APP
+        # authType:
+        #   password: password
+        # hostPort: localhost:5432
+        # database: demo_hive
   sourceConfig:
     config:
       type: DatabaseMetadata

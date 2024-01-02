@@ -15,13 +15,12 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.events.subscription.gchat.GChatMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -61,11 +60,14 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replace(" ", "%20"), fqn.trim());
+        getSmtpSettings().getOpenMetadataUrl(),
+        entityType,
+        fqn.trim().replace(" ", "%20"),
+        fqn.trim());
   }
 
   @Override
-  public GChatMessage buildMessage(ChangeEvent event) throws IOException {
+  public GChatMessage buildMessage(ChangeEvent event) {
     GChatMessage gChatMessage = new GChatMessage();
     GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
     GChatMessage.Card card = new GChatMessage.Card();
@@ -81,7 +83,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       gChatMessage.setText(headerText);
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
       String cardHeaderText =
-          String.format(headerTemplate, event.getUserName(), event.getEntityType(), (getEntity(event)).getName());
+          String.format(
+              headerTemplate,
+              event.getUserName(),
+              event.getEntityType(),
+              (getEntity(event)).getName());
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }

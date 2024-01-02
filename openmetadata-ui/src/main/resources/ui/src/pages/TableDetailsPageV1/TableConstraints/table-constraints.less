@@ -18,6 +18,11 @@
   padding: 16px;
   max-width: 300px;
   min-width: 300px;
+
+  .constraint-icon-container {
+    margin-top: 12px;
+    margin-right: 8px;
+  }
 }
 .referred-column-name {
   display: block;
@@ -26,15 +31,23 @@
 
 .constraint-primary-key {
   position: relative;
+  display: flex;
+
+  .primary-key-section-line {
+    margin-top: -2px;
+  }
   .primary-key-icon {
     position: absolute;
-    transform: translate(48px, -8px);
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
     background: white;
     height: 20px;
     width: 20px;
     border-radius: 50%;
     border: @global-border;
     padding: 2px;
+    cursor: pointer;
   }
 }
 
@@ -51,5 +64,6 @@
     border: @global-border;
     padding: 2px;
     transform: translate(-7px, -31px);
+    cursor: pointer;
   }
 }

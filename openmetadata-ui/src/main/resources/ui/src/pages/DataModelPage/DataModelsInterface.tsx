@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Paging } from 'generated/type/paging';
-import { ServicePageData } from 'pages/service';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import { Paging } from '../../generated/type/paging';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 
 export interface DataModelTableProps {
   data: Array<ServicePageData>;
   isLoading: boolean;
   paging: Paging;
   currentPage: number;
-  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
+  pagingHandler: NextPreviousProps['pagingHandler'];
 }

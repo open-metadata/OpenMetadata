@@ -8,8 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-
 """
 Tag utils Module
 """
@@ -23,6 +21,9 @@ from metadata.generated.schema.api.classification.createClassification import (
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -30,6 +31,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -41,11 +43,11 @@ logger = ingestion_logger()
 def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
-    tag_description: Optional[str],
-    classification_desciption: Optional[str],
+    tag_description: Optional[str] = None,
+    classification_description: Optional[str] = None,
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
-) -> Optional[Iterable[OMetaTagAndClassification]]:
+) -> Iterable[Either[OMetaTagAndClassification]]:
     """
     Returns the OMetaTagAndClassification object
     """
@@ -56,7 +58,7 @@ def get_ometa_tag_and_classification(
                     fqn=tag_fqn,
                     classification_request=CreateClassificationRequest(
                         name=classification_name,
-                        description=classification_desciption,
+                        description=classification_description,
                     ),
                     tag_request=CreateTagRequest(
                         classification=classification_name,
@@ -64,13 +66,18 @@ def get_ometa_tag_and_classification(
                         description=tag_description,
                     ),
                 )
-                yield classification
+                yield Either(right=classification)
                 logger.debug(
                     f"Classification {classification_name}, Tag {tag} Ingested"
                 )
             except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Error yielding tag-{tag}: {err}")
+                yield Either(
+                    left=StackTraceError(
+                        name=tag,
+                        error=f"Error yielding tag [{tag}]: [{err}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
 
 @functools.lru_cache(maxsize=512)

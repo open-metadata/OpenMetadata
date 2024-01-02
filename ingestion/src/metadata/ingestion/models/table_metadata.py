@@ -13,9 +13,11 @@ Table related pydantic definitions
 """
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.tagLabel import TagLabel
 
 
 class OMetaTableConstraints(BaseModel):
@@ -26,3 +28,19 @@ class OMetaTableConstraints(BaseModel):
     table: Table
     foreign_constraints: Optional[List[Dict]]
     constraints: Optional[List[TableConstraint]]
+
+
+class ColumnTag(BaseModel):
+    """Column FQN and Tag Label information"""
+
+    column_fqn: str
+    tag_label: TagLabel
+
+
+class ColumnDescription(BaseModel):
+    """Column FQN and description information"""
+
+    column_fqn: str
+    description: Optional[basic.Markdown] = Field(
+        None, description="Description of a column."
+    )

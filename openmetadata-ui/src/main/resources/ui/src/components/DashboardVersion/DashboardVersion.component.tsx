@@ -13,37 +13,35 @@
 
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/tagLabel';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   ChangeDescription,
-  Dashboard,
   EntityReference,
 } from '../../generated/entity/data/dashboard';
+import { TagSource } from '../../generated/type/tagLabel';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -58,6 +56,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
+  domain,
+  dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -66,16 +66,23 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
       getVersionPathWithTab(
         EntityType.DASHBOARD,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -171,9 +178,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.DASHBOARD}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -181,7 +188,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     bordered
                     columns={tableColumn}
                     data-testid="schema-table"
-                    dataSource={(currentVersionData as Dashboard)?.charts}
+                    dataSource={currentVersionData?.charts}
                     pagination={false}
                     rowKey="id"
                     size="small"
@@ -194,9 +201,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
                     permission={false}
@@ -217,16 +228,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
@@ -234,53 +242,47 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     [description, tableColumn, currentVersionData, entityPermissions]
   );
 
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
   return (
     <>
-      <div data-testid="dashboard-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
-                <DataAssetsVersionHeader
-                  breadcrumbLinks={slashedDashboardName}
-                  currentVersionData={currentVersionData}
-                  deleted={deleted}
-                  displayName={displayName}
-                  ownerDisplayName={ownerDisplayName}
-                  ownerRef={ownerRef}
-                  tierDisplayName={tierDisplayName}
-                  version={version}
-                  onVersionClick={backHandler}
-                />
-              </Col>
-              <Col span={24}>
-                <Tabs
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.DETAILS}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
-            </Row>
-          </div>
-        )}
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')} data-testid="version-data">
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedDashboardName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.DASHBOARD}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                data-testid="tabs"
+                defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
+      <EntityVersionTimeLine
+        currentVersion={version}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
     </>
   );
 };

@@ -10,18 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../../components/common/Table/Table';
+import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../enums/common.enum';
 import { CustomProperty } from '../../generated/entity/type';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import { getEntityName } from '../../utils/EntityUtils';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
@@ -31,6 +34,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   updateEntityType,
   hasAccess,
   isLoading,
+  isButtonLoading,
 }) => {
   const { t } = useTranslation();
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
@@ -52,10 +56,10 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   };
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isButtonLoading) {
       resetSelectedProperty();
     }
-  }, [isLoading]);
+  }, [isButtonLoading]);
 
   const handlePropertyUpdate = async (updatedDescription: string) => {
     const updatedProperties = customProperties.map((property) => {
@@ -155,6 +159,18 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         columns={tableColumn}
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
+        loading={isLoading}
+        locale={{
+          emptyText: (
+            <ErrorPlaceHolder
+              className="mt-xs"
+              doc={CUSTOM_PROPERTIES_DOCS}
+              heading={t('label.property')}
+              permission={hasAccess}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            />
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -168,7 +184,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         header={t('label.delete-property-name', {
           propertyName: selectedProperty.name,
         })}
-        isLoading={isLoading}
+        isLoading={isButtonLoading}
         visible={deleteCheck}
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}

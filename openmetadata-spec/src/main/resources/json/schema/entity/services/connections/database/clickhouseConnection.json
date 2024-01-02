@@ -63,6 +63,11 @@
       "description": "Clickhouse SQL connection duration.",
       "type": "integer"
     },
+    "https": {
+      "title": "Use HTTPS Protocol",
+      "description": "Use HTTPS Protocol for connection with clickhouse",
+      "type": "boolean"
+    },
     "secure": {
       "title": "Secure Connection",
       "description": "Establish secure connection with clickhouse",
@@ -71,7 +76,7 @@
     "keyfile": {
       "title": "Key File Path",
       "description": "Path to key file for establishing secure connection",
-      "type": "boolean"
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -101,6 +106,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

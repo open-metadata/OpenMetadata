@@ -12,6 +12,7 @@ source:
       type: DashboardMetadata
       dashboardFilterPattern: {}
       chartFilterPattern: {}
+      projectFilterPattern: {}
 sink:
   type: metadata-rest
   config: {}

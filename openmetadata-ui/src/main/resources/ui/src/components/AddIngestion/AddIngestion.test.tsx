@@ -17,7 +17,7 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import AddIngestion from './AddIngestion.component';
-import { AddIngestionProps } from './addIngestion.interface';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
 
 const mockAddIngestionProps: AddIngestionProps = {
   activeIngestionStep: 1,
@@ -41,27 +41,22 @@ const mockAddIngestionProps: AddIngestionProps = {
   onFocus: jest.fn(),
 };
 
-jest.mock('./Steps/ConfigureIngestion', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onNext }) => (
-      <div onClick={onNext}>ConfigureIngestion.component</div>
-    ));
-});
-
 jest.mock('@rjsf/core', () => ({
   Form: jest.fn().mockImplementation(() => <div>RJSF_Form.component</div>),
 }));
 
-jest.mock('../common/DBTConfigFormBuilder/DBTConfigFormBuilder', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DBTConfigFormBuilder.component</div>);
-});
-
 jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
+
+jest.mock(
+  '../../components/IngestionWorkflowForm/IngestionWorkflowForm',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>Ingestion workflow form</div>);
+  }
+);
 
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {
@@ -73,28 +68,10 @@ describe('Test AddIngestion component', () => {
     );
     const configureIngestion = await findByText(
       container,
-      'ConfigureIngestion.component'
+      'Ingestion workflow form'
     );
 
     expect(addIngestionContainer).toBeInTheDocument();
     expect(configureIngestion).toBeInTheDocument();
-  });
-
-  it('should render DBT Config step for database services', async () => {
-    const { container } = render(
-      <AddIngestion
-        {...mockAddIngestionProps}
-        activeIngestionStep={2}
-        pipelineType={PipelineType.Metadata}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-      />
-    );
-
-    const dbtConfigFormBuilder = await findByText(
-      container,
-      'DBTConfigFormBuilder.component'
-    );
-
-    expect(dbtConfigFormBuilder).toBeInTheDocument();
   });
 });

@@ -13,8 +13,7 @@ Test Column Name Scanner
 """
 from unittest import TestCase
 
-from metadata.pii.models import TagType
-from metadata.pii.ner_scanner import NERScanner
+from metadata.pii.scanners.ner_scanner import NERScanner
 
 
 class NERScannerTest(TestCase):
@@ -42,14 +41,14 @@ class NERScannerTest(TestCase):
                     "saratimithi@godesign.com",
                     "heroldsean@google.com",
                 ]
-            ).tag,
-            TagType.SENSITIVE,
+            ).tag_fqn,
+            "PII.Sensitive",
         )
         self.assertEqual(
             self.ner_scanner.scan(
                 ["im ok", "saratimithi@godesign.com", "not sensitive"]
-            ).tag,
-            TagType.SENSITIVE,
+            ).tag_fqn,
+            "PII.Sensitive",
         )
 
     def test_scanner_nonsensitive(self):
@@ -60,6 +59,6 @@ class NERScannerTest(TestCase):
                     "Alaska",
                     "Netherfield Lea Street",
                 ]
-            ).tag,
-            TagType.NONSENSITIVE,
+            ).tag_fqn,
+            "PII.NonSensitive",
         )

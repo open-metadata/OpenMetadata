@@ -13,36 +13,34 @@
 
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import React, {
   createContext,
   FC,
-  ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../components/Loader/Loader';
+import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from 'rest/permissionAPI';
-import AppState from '../../AppState';
-import { REDIRECT_PATHNAME } from '../../constants/constants';
-import {
-  getUrlPathnameExpiryAfterRoute,
-  isProtectedRoute,
-} from '../../utils/AuthProvider.util';
+} from '../../rest/permissionAPI';
+import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import {
   EntityPermissionMap,
   PermissionContextType,
+  PermissionProviderProps,
   ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
@@ -52,14 +50,9 @@ import {
  * Returns ResourcePermission List for loggedIn User
  * @returns PermissionMap
  */
-
 export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );
-
-interface PermissionProviderProps {
-  children: ReactNode;
-}
 
 /**
  *
@@ -70,8 +63,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
+  const { currentUser } = useAuthContext();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
+  const [loading, setLoading] = useState(false);
 
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
@@ -80,12 +75,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
 
-  // Update current user details of AppState change
-  const currentUser = useMemo(() => {
-    return AppState.getCurrentUserDetails();
-  }, [AppState.userDetails, AppState.nonSecureUserDetails]);
-
-  const redirectToStoredPath = () => {
+  const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
@@ -94,90 +84,96 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       });
       history.push(urlPathname);
     }
-  };
+  }, [history]);
 
   /**
    * Fetch permission for logged in user
    */
-  const fetchLoggedInUserPermissions = async () => {
+  const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
       redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [setLoading, setPermissions, redirectToStoredPath]);
 
-  const fetchEntityPermission = async (
-    resource: ResourceEntity,
-    entityId: string
-  ) => {
-    const entityPermission = entitiesPermission[entityId];
-    if (entityPermission) {
-      return entityPermission;
-    } else {
-      const response = await getEntityPermissionById(resource, entityId);
-      const operationPermission = getOperationPermissions(response);
-      setEntitiesPermission((prev) => ({
-        ...prev,
-        [entityId]: operationPermission,
-      }));
+  const fetchEntityPermission = useCallback(
+    async (resource: ResourceEntity, entityId: string) => {
+      const entityPermission = entitiesPermission[entityId];
+      if (entityPermission) {
+        return entityPermission;
+      } else {
+        const response = await getEntityPermissionById(resource, entityId);
+        const operationPermission = getOperationPermissions(response);
+        setEntitiesPermission((prev) => ({
+          ...prev,
+          [entityId]: operationPermission,
+        }));
 
-      return operationPermission;
-    }
-  };
+        return operationPermission;
+      }
+    },
+    [entitiesPermission, setEntitiesPermission]
+  );
 
-  const fetchEntityPermissionByFqn = async (
-    resource: ResourceEntity,
-    entityFqn: string
-  ) => {
-    const entityPermission = entitiesPermission[entityFqn];
-    if (entityPermission) {
-      return entityPermission;
-    } else {
-      const response = await getEntityPermissionByFqn(resource, entityFqn);
-      const operationPermission = getOperationPermissions(response);
-      setEntitiesPermission((prev) => ({
-        ...prev,
-        [entityFqn]: operationPermission,
-      }));
+  const fetchEntityPermissionByFqn = useCallback(
+    async (resource: ResourceEntity, entityFqn: string) => {
+      const entityPermission = entitiesPermission[entityFqn];
+      if (entityPermission) {
+        return entityPermission;
+      } else {
+        const response = await getEntityPermissionByFqn(resource, entityFqn);
+        const operationPermission = getOperationPermissions(response);
+        setEntitiesPermission((prev) => ({
+          ...prev,
+          [entityFqn]: operationPermission,
+        }));
 
-      return operationPermission;
-    }
-  };
+        return operationPermission;
+      }
+    },
+    [entitiesPermission, setEntitiesPermission]
+  );
 
-  const fetchResourcePermission = async (resource: ResourceEntity) => {
-    const resourcePermission = resourcesPermission[resource];
-    if (resourcePermission) {
-      return resourcePermission;
-    } else {
-      const response = await getResourcePermission(resource);
-      const operationPermission = getOperationPermissions(response);
-      /**
-       * Store resource permission if it's not exits
-       */
-      setResourcesPermission((prev) => ({
-        ...prev,
-        [resource]: operationPermission,
-      }));
+  const fetchResourcePermission = useCallback(
+    async (resource: ResourceEntity) => {
+      const resourcePermission = resourcesPermission[resource];
+      if (resourcePermission) {
+        return resourcePermission;
+      } else {
+        const response = await getResourcePermission(resource);
+        const operationPermission = getOperationPermissions(response);
+        /**
+         * Store resource permission if it's not exits
+         */
+        setResourcesPermission((prev) => ({
+          ...prev,
+          [resource]: operationPermission,
+        }));
 
-      return operationPermission;
-    }
-  };
+        return operationPermission;
+      }
+    },
+    [resourcesPermission, setResourcesPermission]
+  );
 
-  const resetPermissions = () => {
+  const resetPermissions = useCallback(() => {
     setEntitiesPermission({} as EntityPermissionMap);
     setPermissions({} as UIPermission);
     setResourcesPermission({} as UIPermission);
-  };
+  }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
 
   useEffect(() => {
     /**
      * Only fetch permissions if current user is present
      */
-    if (isProtectedRoute(location.pathname) && !isEmpty(currentUser)) {
+    if (!isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
     }
     if (isEmpty(currentUser)) {
@@ -185,19 +181,28 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   }, [currentUser]);
 
+  const contextValues = useMemo(
+    () => ({
+      permissions,
+      getEntityPermission: fetchEntityPermission,
+      getResourcePermission: fetchResourcePermission,
+      getEntityPermissionByFqn: fetchEntityPermissionByFqn,
+    }),
+    [
+      permissions,
+      fetchEntityPermission,
+      fetchResourcePermission,
+      fetchEntityPermissionByFqn,
+    ]
+  );
+
   return (
-    <PermissionContext.Provider
-      value={{
-        permissions,
-        getEntityPermission: fetchEntityPermission,
-        getResourcePermission: fetchResourcePermission,
-        getEntityPermissionByFqn: fetchEntityPermissionByFqn,
-      }}>
-      {children}
+    <PermissionContext.Provider value={contextValues}>
+      {loading ? <Loader /> : children}
     </PermissionContext.Provider>
   );
 };
 
 export const usePermissionProvider = () => useContext(PermissionContext);
 
-export default observer(PermissionProvider);
+export default PermissionProvider;

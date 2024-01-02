@@ -15,14 +15,18 @@ import logging
 import time
 from unittest import TestCase
 
+from requests.utils import quote
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -41,8 +45,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+
+QUERY_CHECKSUM = fqn.get_query_checksum("select * from awesome")
 
 
 class OMetaESTest(TestCase):
@@ -75,6 +82,19 @@ class OMetaESTest(TestCase):
             )
         ),
     )
+    another_service = CreateDatabaseServiceRequest(
+        name="another-test-service-es",
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                authType=BasicAuth(
+                    password="password",
+                ),
+                hostPort="http://localhost:1234",
+            )
+        ),
+    )
     service_type = "databaseService"
 
     @classmethod
@@ -85,13 +105,23 @@ class OMetaESTest(TestCase):
         logging.info("Checking ES index status...")
         tries = 0
 
-        res = None
-        while not res and tries <= 5:  # Kill in 5 seconds
-            res = cls.metadata.es_search_from_fqn(
+        table_res = None
+        query_res = None
+        while not table_res and not query_res and tries <= 5:  # Kill in 5 seconds
+            table_res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
             )
-            if not res:
+            query_res = cls.metadata.es_search_from_fqn(
+                entity_type=Query,
+                fqn_search_string=fqn.build(
+                    metadata=None,
+                    entity_type=Query,
+                    service_name="test-service-es",
+                    query_checksum=QUERY_CHECKSUM,
+                ),
+            )
+            if not table_res or query_res:
                 tries += 1
                 time.sleep(1)
 
@@ -125,6 +155,32 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
+        # Create queries for the given service
+        query = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=cls.service_entity.fullyQualifiedName,
+            processedLineage=True,  # Only 1 with processed lineage
+        )
+        cls.metadata.create_or_update(query)
+
+        query2 = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from another_awesome"),
+            service=cls.service_entity.fullyQualifiedName,
+        )
+        cls.metadata.create_or_update(query2)
+
+        # Create queries for another service
+        cls.another_service_entity = cls.metadata.create_or_update(
+            data=cls.another_service
+        )
+
+        another_query = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=cls.another_service_entity.fullyQualifiedName,
+            processedLineage=True,
+        )
+        cls.metadata.create_or_update(another_query)
+
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
 
@@ -147,9 +203,19 @@ class OMetaESTest(TestCase):
             hard_delete=True,
         )
 
-    # Disabling this test because it fails with
-    # this pr: https://github.com/open-metadata/OpenMetadata/pull/11879
-    # and failure is repoducible only with docker deployment
+        another_service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqn=cls.another_service.name.__root__
+            ).id.__root__
+        )
+
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=another_service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
     def test_es_search_from_service_table(self):
         """
         We can fetch tables from a service
@@ -211,3 +277,17 @@ class OMetaESTest(TestCase):
         )
 
         self.assertIsNone(res)
+
+    def test_get_query_with_lineage_filter(self):
+        """Check we are building the proper filter"""
+        res = self.metadata.get_query_with_lineage_filter("my_service")
+        expected = (
+            '{"query": {"bool": {"must": [{"term": {"processedLineage": true}},'
+            ' {"term": {"service.name.keyword": "my_service"}}]}}}'
+        )
+        self.assertEqual(res, quote(expected))
+
+    def test_get_queries_with_lineage(self):
+        """Check the payload from ES"""
+        res = self.metadata.es_get_queries_with_lineage(self.service.name.__root__)
+        self.assertIn(QUERY_CHECKSUM, res)

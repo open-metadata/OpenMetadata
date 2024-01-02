@@ -12,11 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import AddGlossary from 'components/AddGlossary/AddGlossary.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ERROR_MESSAGE } from 'constants/constants';
 import React, {
   FunctionComponent,
   useCallback,
@@ -26,10 +21,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { addGlossaries } from 'rest/glossaryAPI';
-import { getIsErrorMatch } from 'utils/CommonUtils';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_MESSAGE } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { addGlossaries } from '../../rest/glossaryAPI';
+import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';

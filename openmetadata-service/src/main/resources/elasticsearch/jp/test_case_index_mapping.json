@@ -56,7 +56,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -67,6 +68,9 @@
       "fullyQualifiedName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "fqnParts": {
+        "type": "keyword"
       },
       "displayName": {
         "type": "text",
@@ -84,13 +88,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "entityLink": {
         "type": "text"
@@ -159,13 +157,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer_jp"
           },
           "entityType": {
             "type": "keyword"
@@ -180,6 +172,19 @@
             }
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "owner": {
         "properties": {

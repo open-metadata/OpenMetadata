@@ -13,6 +13,12 @@
         "Datalake"
       ],
       "default": "Datalake"
+    },
+    "localConfig": {
+      "title": "Local Config",
+      "description": "Local config source where no extra information needs to be sent.",
+      "type": "object",
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -26,6 +32,9 @@
       "title": "DataLake Configuration Source",
       "description": "Available sources to fetch files.",
       "oneOf": [
+        {
+          "$ref": "#/definitions/localConfig"
+        },
         {
           "$ref": "datalake/azureConfig.json"
         },
@@ -69,6 +78,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

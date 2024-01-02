@@ -15,21 +15,23 @@ import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
-import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
-import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
-import { ServiceCategory } from 'enums/service.enum';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
-import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
-import { customValidate, transformErrors } from 'utils/formUtils';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { ConfigData } from '../../../interface/service.interface';
+import { getPipelineServiceHostIp } from '../../../rest/ingestionPipelineAPI';
+import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
+import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
+import DescriptionFieldTemplate from '../../JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from '../../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
+import AsyncSelectWidget from '../../JsonSchemaWidgets/AsyncSelectWidget';
+import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
+import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
 
@@ -43,6 +45,8 @@ interface Props extends FormProps {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+  showTestConnection?: boolean;
+  useSelectWidget?: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -60,6 +64,8 @@ const FormBuilder: FunctionComponent<Props> = ({
   serviceCategory,
   serviceType,
   serviceName,
+  showTestConnection = true,
+  useSelectWidget = false,
   ...props
 }: Props) => {
   const { isAirflowAvailable } = useAirflowStatus();
@@ -70,6 +76,12 @@ const FormBuilder: FunctionComponent<Props> = ({
   );
 
   const [hostIp, setHostIp] = useState<string>();
+
+  const widgets = {
+    PasswordWidget: PasswordWidget,
+    autoComplete: AsyncSelectWidget,
+    ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
+  };
 
   const fetchHostIp = async () => {
     try {
@@ -114,7 +126,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      customValidate={customValidate}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
@@ -129,26 +140,27 @@ const FormBuilder: FunctionComponent<Props> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      widgets={{ PasswordWidget: PasswordWidget }}
+      widgets={widgets}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
-        <div className="text-grey-muted tw-text-center">
+        <div className="text-grey-muted text-center">
           {t('message.no-config-available')}
         </div>
       )}
       {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
-          className="d-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
           data-testid="ip-address">
-          <div className="tw-self-center">
+          <div className="self-center">
             {t('message.airflow-host-ip-address', { hostIp })}
           </div>
         </div>
       )}
-      {!isEmpty(schema) &&
+      {showTestConnection &&
+        !isEmpty(schema) &&
         !isUndefined(localFormData) &&
         isAirflowAvailable && (
           <TestConnection
@@ -160,9 +172,9 @@ const FormBuilder: FunctionComponent<Props> = ({
             onValidateFormRequiredFields={handleRequiredFieldsValidation}
           />
         )}
-      <div className="tw-mt-6 d-flex tw-justify-between">
+      <div className="m-t-lg d-flex justify-between">
         <div />
-        <div className="tw-text-right" data-testid="buttons">
+        <div className="text-right" data-testid="buttons">
           <Button type="link" onClick={handleCancel}>
             {cancelText}
           </Button>

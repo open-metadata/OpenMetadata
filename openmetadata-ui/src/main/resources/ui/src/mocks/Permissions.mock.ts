@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
+
 export const PERMISSIONS = {
   alert: {
     Create: true,
@@ -389,3 +391,27 @@ export const PERMISSIONS = {
     EditCustomFields: true,
   },
 };
+
+export const ENTITY_PERMISSIONS = {
+  Create: true,
+  Delete: true,
+  EditAll: true,
+  EditCustomFields: true,
+  EditDataProfile: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditLineage: true,
+  EditOwner: true,
+  EditQueries: true,
+  EditSampleData: true,
+  EditTags: true,
+  EditTests: true,
+  EditTier: true,
+  ViewAll: true,
+  ViewBasic: true,
+  ViewDataProfile: true,
+  ViewQueries: true,
+  ViewSampleData: true,
+  ViewTests: true,
+  ViewUsage: true,
+} as OperationPermission;

@@ -12,14 +12,14 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
-import { Constraint, DataType } from 'generated/entity/data/table';
-import { LabelType, State, TagSource } from 'generated/type/schema';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../enums/entity.enum';
+import { Constraint, DataType } from '../../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../../generated/type/schema';
 import TableTags from './TableTags.component';
 
-jest.mock('utils/FeedElementUtils', () => ({
+jest.mock('../../utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
     .fn()
     .mockReturnValue(
@@ -27,7 +27,7 @@ jest.mock('utils/FeedElementUtils', () => ({
     ),
 }));
 
-jest.mock('pages/TasksPage/EntityTasks/EntityTasks.component', () => {
+jest.mock('../../pages/TasksPage/EntityTasks/EntityTasks.component', () => {
   return jest.fn().mockImplementation(() => <div>EntityTasks</div>);
 });
 
@@ -106,7 +106,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();

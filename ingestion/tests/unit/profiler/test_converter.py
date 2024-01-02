@@ -17,18 +17,16 @@ from unittest.mock import patch
 from uuid import UUID
 
 from pytest import mark
-from sqlalchemy import Column as SQAColumn
-from sqlalchemy.sql.sqltypes import INTEGER, String
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 
 
-@patch("metadata.profiler.orm.converter.get_orm_schema", return_value="schema")
-@patch("metadata.profiler.orm.converter.get_orm_database", return_value="database")
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
 @mark.parametrize(
     "column_definition, table_name",
     [
@@ -87,8 +85,8 @@ def test_snowflake_case_sensitive_orm(
         assert hasattr(orm_table, name)
 
 
-@patch("metadata.profiler.orm.converter.get_orm_schema", return_value="schema")
-@patch("metadata.profiler.orm.converter.get_orm_database", return_value="database")
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
 def test_metadata_column(mock_schema, mock_database):
     """Test that snowflake case sensitive orm table
     are enforced correctly

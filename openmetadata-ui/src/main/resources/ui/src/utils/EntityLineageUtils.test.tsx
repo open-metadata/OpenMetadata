@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
+import { Edge } from 'reactflow';
 import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   getDashboardDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
-} from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
-import { Edge } from 'reactflow';
+} from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
@@ -58,7 +58,6 @@ import {
   getEdgeStyle,
   getEdgeType,
   getEntityLineagePath,
-  getParamByEntityType,
   getRemovedNodeData,
   getUpdatedEdge,
   getUpdatedEdgeWithPipeline,
@@ -68,7 +67,7 @@ import {
   isTracedEdge,
 } from './EntityLineageUtils';
 
-describe.skip('Test EntityLineageUtils utility', () => {
+describe('Test EntityLineageUtils utility', () => {
   it('findUpstreamDownStreamEdge function should work properly', () => {
     const upstreamData = findUpstreamDownStreamEdge(
       MOCK_LINEAGE_DATA.upstreamEdges,
@@ -313,22 +312,6 @@ describe.skip('Test EntityLineageUtils utility', () => {
     expect(isColumnTracedFalsy).toBeFalsy();
   });
 
-  it('returns the correct parameter for table entity types - getParamByEntityType', () => {
-    expect(getParamByEntityType(EntityType.TABLE)).toEqual('datasetFQN');
-  });
-
-  it('returns the correct parameter for other entity types - getParamByEntityType', () => {
-    expect(getParamByEntityType(EntityType.TOPIC)).toEqual('topicFQN');
-    expect(getParamByEntityType(EntityType.PIPELINE)).toEqual('pipelineFQN');
-    expect(getParamByEntityType(EntityType.MLMODEL)).toEqual('mlModelFqn');
-    expect(getParamByEntityType(EntityType.DASHBOARD)).toEqual('dashboardFQN');
-    expect(getParamByEntityType(EntityType.DATABASE)).toEqual('databaseFQN');
-    expect(getParamByEntityType(EntityType.DATABASE_SCHEMA)).toEqual(
-      'databaseSchemaFQN'
-    );
-    expect(getParamByEntityType(EntityType.ALERT)).toEqual('entityFQN');
-  });
-
   it('should return the correct lineage path for the given entity type and FQN', () => {
     expect(getEntityLineagePath(EntityType.TABLE, 'myTable')).toEqual(
       getTableTabPath('myTable', 'lineage')
@@ -345,7 +328,6 @@ describe.skip('Test EntityLineageUtils utility', () => {
     expect(getEntityLineagePath(EntityType.MLMODEL, 'myModel')).toEqual(
       getMlModelPath('myModel', 'lineage')
     );
-    expect(getEntityLineagePath(EntityType.TABLE, 'myDataset')).toEqual('');
   });
 
   it('getChildMap should return valid map object', () => {
@@ -356,7 +338,7 @@ describe.skip('Test EntityLineageUtils utility', () => {
     const expectedStyle = {
       opacity: 1,
       strokeWidth: 2,
-      stroke: '#B02AAC',
+      stroke: '#2196f3',
     };
 
     expect(getEdgeStyle(true)).toEqual(expectedStyle);

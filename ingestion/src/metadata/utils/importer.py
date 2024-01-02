@@ -14,7 +14,7 @@ Helpers to import python classes and modules dynamically
 import importlib
 import traceback
 from enum import Enum
-from typing import Callable, Optional, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -23,11 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.ingestion.api.bulk_sink import BulkSink
-from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import utils_logger
 
@@ -89,7 +85,7 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[T]:
+def import_from_module(key: str) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """

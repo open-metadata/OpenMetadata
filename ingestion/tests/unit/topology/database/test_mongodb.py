@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
@@ -116,50 +117,47 @@ MOCK_JSON_TABLE_DATA = [
     {"name": "onkar", "age": 26, "is_married": True},
 ]
 
-MOCK_CREATE_TABLE = [
-    CreateTableRequest(
-        name="random_table",
-        tableType=TableType.Regular,
-        columns=[
-            Column(
-                name="name",
-                displayName="name",
-                dataType=DataType.STRING,
-                dataLength=1,
-                dataTypeDisplay=DataType.STRING.value,
-            ),
-            Column(
-                name="age",
-                displayName="age",
-                dataType=DataType.INT,
-                dataLength=1,
-                dataTypeDisplay=DataType.INT.value,
-            ),
-            Column(
-                name="is_married",
-                displayName="is_married",
-                dataType=DataType.BOOLEAN,
-                dataLength=1,
-                dataTypeDisplay=DataType.BOOLEAN.value,
-            ),
-            Column(
-                name="address",
-                displayName="address",
-                dataType=DataType.RECORD,
-                dataTypeDisplay=DataType.RECORD.value,
-                children=[
-                    Column(
-                        name="line",
-                        dataType=DataType.STRING,
-                        dataTypeDisplay=DataType.STRING.value,
-                    )
-                ],
-            ),
-        ],
-        tableConstraints=None,
-        databaseSchema="local_mongodb.default.default",
-    )
-]
+MOCK_CREATE_TABLE = CreateTableRequest(
+    name="random_table",
+    tableType=TableType.Regular,
+    columns=[
+        Column(
+            name="name",
+            displayName="name",
+            dataType=DataType.STRING,
+            dataTypeDisplay=DataType.STRING.value,
+        ),
+        Column(
+            name="age",
+            displayName="age",
+            dataType=DataType.INT,
+            dataTypeDisplay=DataType.INT.value,
+        ),
+        Column(
+            name="is_married",
+            displayName="is_married",
+            dataType=DataType.BOOLEAN,
+            dataTypeDisplay=DataType.BOOLEAN.value,
+        ),
+        Column(
+            name="address",
+            displayName="address",
+            dataType=DataType.JSON,
+            dataTypeDisplay=DataType.JSON.value,
+            children=[
+                Column(
+                    name="line",
+                    dataType=DataType.STRING,
+                    dataTypeDisplay=DataType.STRING.value,
+                    displayName="line",
+                )
+            ],
+        ),
+    ],
+    tableConstraints=None,
+    databaseSchema="local_mongodb.default.default",
+)
+
 
 EXPECTED_DATABASE_NAMES = ["default"]
 
@@ -200,11 +198,15 @@ class MongoDBUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mongo_config)
         self.mongo_source = MongodbSource.create(
             mock_mongo_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.mongo_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE
-        self.mongo_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.mongo_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.mongo_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())
@@ -232,6 +234,7 @@ class MongoDBUnitTest(TestCase):
         with patch.object(
             MongodbSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA
         ):
-            assert MOCK_CREATE_TABLE == list(
-                self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])
+            assert (
+                MOCK_CREATE_TABLE
+                == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right
             )

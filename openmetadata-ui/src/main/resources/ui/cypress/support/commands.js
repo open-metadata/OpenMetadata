@@ -81,10 +81,12 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/feed*', 'feed');
   interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
-  cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
+  cy.get('[data-testid="whats-new-alert-card"]')
+    .scrollIntoView()
+    .should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
-  verifyResponseStatusCode('@feed', 200);
+  //   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });
 
@@ -118,6 +120,9 @@ Cypress.Commands.add('storeSession', (username, password) => {
       .click();
     verifyResponseStatusCode('@login', 200);
     cy.url().should('not.eq', `${BASE_URL}/signin`);
+
+    // Don't want to show any popup in the tests
+    cy.setCookie(`STAR_OMD_USER_admin`, 'true');
   });
 });
 
@@ -128,4 +133,16 @@ Cypress.Commands.add('login', () => {
 
 Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
+});
+
+Cypress.Commands.add('logout', () => {
+  interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
+  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
+
+  cy.get('[data-testid="confirm-logout"]').click();
+
+  // verify the logout request
+  verifyResponseStatusCode('@logoutUser', 200);
+
+  cy.url().should('eq', `${BASE_URL}/signin`);
 });

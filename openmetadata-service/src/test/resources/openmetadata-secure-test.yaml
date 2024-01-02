@@ -23,6 +23,7 @@ server:
     - type: http
       port: 0
 
+
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
 # is strongly recommended running https instead. Note that only
@@ -90,33 +91,28 @@ logging:
   level: INFO
   appenders:
     - type: console
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-    - type: file
-      currentLogFilename: './logs/openmetadata.log'
-      archivedLogFilenamePattern: './logs/openmetadata-%d-%i.log.gz'
-      archive: true
-      archivedFileCount: 7
-      maxFileSize: '1MiB'
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      logFormat: "%level %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing
-  driverClass: com.postgresql.Driver
+  driverClass: org.postgresql.Driver
   # the username and password
   user: test
   password:
   # the JDBC URL; the database is called openmetadata_test_db
-  url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:postgresql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
+  extensionPath: ""
 
 #elasticsearch:
 #  host: localhost
 #  port: 0
 
 secretsManagerConfiguration:
-  secretsManager: noop
+  secretsManager: db
 
 
 health:
@@ -133,6 +129,7 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
+    - "hello.world"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"
@@ -219,20 +216,10 @@ email:
   enableSmtpServer : false
   emailingEntity: ""
   supportUrl: ""
-  openMetadataUrl: ""
+  openMetadataUrl: "http://localhost:8585"
   senderMail: ""
   serverEndpoint: ""
   serverPort: ""
   username: ""
   password: ""
   transportationStrategy: "SMTP_TLS"
-
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ""
-    customMonogramUrlPath: ""
-  loginConfig:
-    maxLoginFailAttempts: 3
-    accessBlockTime: 600
-    jwtTokenExpiryTime: 3600
-  

@@ -13,12 +13,12 @@
 # Resolve links - $0 may be a softlink
 PRG="${0}"
 debug="$2"
-ignoreFileChecksum="$3"
+force=false
 
-if [ -n "${ignoreFileChecksum+x}" ]; then
-  ignoreFileChecksum=true
+if [ -z "$3" ]; then
+  force=false
 else
-  ignoreFileChecksum=false
+  force=true
 fi
 
 while [ -h "${PRG}" ]; do
@@ -33,7 +33,7 @@ done
 
 BOOTSTRAP_DIR=`dirname ${PRG}`
 CONFIG_FILE_PATH=${BOOTSTRAP_DIR}/../conf/openmetadata.yaml
-SCRIPT_ROOT_DIR="${BOOTSTRAP_DIR}/sql"
+NATIVE_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/migrations/native"
 
 # Which java to use
 if [ -z "${JAVA_HOME}" ]; then
@@ -60,12 +60,12 @@ execute() {
   if  [ ${debug} ] ; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
   fi
-  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1} -ignoreCheckSum ${ignoreFileChecksum}  -${debug}
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} --${1} -force ${force}  -${debug}
 }
 
 printUsage() {
     cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [debug] [ignoreFileChecksum]
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [debug] [force]
    create           : Creates the tables. The target database should be empty
    migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
    info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
@@ -81,7 +81,7 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
    check-connection : Checks if a connection can be successfully obtained for the target database
    rotate           : Rotate the Fernet Key defined in $FERNET_KEY
    debug            : Enable Debugging Mode to get more info
-   ignoreFileChecksum : Ignore Checksum forces Server Migration for already run migration to be run again
+   force            : Forces the server Migration to be ran, even if already ran
 EOF
 }
 

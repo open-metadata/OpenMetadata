@@ -18,7 +18,12 @@ import { isEmpty } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pluralize } from '../../../utils/CommonUtils';
-import { getCron, getStateValue } from '../../../utils/CronUtils';
+import {
+  getCron,
+  getQuartzCronExpression,
+  getStateValue,
+} from '../../../utils/CronUtils';
+import './cron-editor.less';
 import {
   getDayOptions,
   getHourOptions,
@@ -70,7 +75,10 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { onChange } = props;
 
     setCronValue(getCron(state) ?? value);
-    onChange(getCron(state) ?? value);
+    const cronExp = props.isQuartzCron
+      ? getQuartzCronExpression(state)
+      : getCron(state);
+    onChange(cronExp ?? value);
   };
 
   const onPeriodSelect = (value: string) => {
@@ -293,7 +301,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
               {getHourSelect(selectedDayOption, (value: number) =>
                 onDayOptionSelect(value, 'hour')
               )}
-              <span className="tw-mx-2 tw-self-center">:</span>
+              <span className="m-x-sm self-center">:</span>
               {getMinuteSelect(selectedDayOption, (value: number) =>
                 onDayOptionSelect(value, 'min')
               )}
@@ -321,7 +329,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
                 {getHourSelect(selectedWeekOption, (value: number) =>
                   onWeekOptionSelect(value, 'hour')
                 )}
-                <span className="tw-mx-2 tw-self-center">:</span>
+                <span className="m-x-sm self-center">:</span>
                 {getMinuteSelect(selectedWeekOption, (value: number) =>
                   onWeekOptionSelect(value, 'min')
                 )}

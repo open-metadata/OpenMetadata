@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { Typography } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import {
   TaskType,
   Thread,
@@ -51,16 +52,16 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     const newValue = task?.newValue;
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 text-grey-muted">
+        <div className="border border-main p-xs rounded-4 m-y-xss m-b-sm">
+          <Typography.Text className="text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
-          </span>
+          </Typography.Text>
         </div>
       );
     } else {
       return (
         <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
+          className="border border-main p-xs rounded-4 m-y-xss m-b-sm"
           diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
         />
       );
@@ -81,11 +82,11 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 text-grey-muted">
+      <Typography.Text className="text-grey-muted p-xs">
         {t('label.no-entity', { entity: t('label.suggestion') })}
-      </span>
+      </Typography.Text>
     ) : (
-      <DiffView className="tw-p-2" diffArr={diffs} />
+      <DiffView className="p-xs" diffArr={diffs} />
     );
   };
 
@@ -109,7 +110,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onTextChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex border border-main rounded-4 m-b-md">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}
@@ -125,7 +126,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex border border-main rounded-4 m-b-md">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}

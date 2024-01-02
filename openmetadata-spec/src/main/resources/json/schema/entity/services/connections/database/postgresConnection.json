@@ -63,6 +63,12 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to postgres database.",
@@ -84,12 +90,6 @@
       "description": "Custom OpenMetadata Classification name for Postgres policy tags.",
       "type": "string",
       "default": "PostgresPolicyTags"
-    },
-    "ingestAllDatabases": {
-      "title": "Ingest All Databases",
-      "description": "Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.",
-      "type": "boolean",
-      "default": false
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -123,6 +123,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

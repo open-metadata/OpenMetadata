@@ -88,14 +88,6 @@ describe('Test SchemaTab Component', () => {
         hasTagEditAccess
         columnName="columnName"
         columns={mockColumns}
-        entityFieldThreads={[
-          {
-            entityLink:
-              '<#E::table::sample_data.ecommerce_db.shopify.raw_customer::columns::comments::tags>',
-            count: 4,
-            entityField: 'columns::comments::tags',
-          },
-        ]}
         entityFqn="mlflow_svc.eta_predictions"
         isReadOnly={false}
         joins={mockjoins}

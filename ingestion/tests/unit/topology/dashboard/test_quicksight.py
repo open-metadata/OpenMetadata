@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
 mock_file_path = (
@@ -160,16 +161,20 @@ class QuickSightUnitTest(TestCase):
         self.quicksight.dashboard_url = (
             "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
         )
-        self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
-        self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.quicksight.context.__dict__[
+            "dashboard"
+        ] = MOCK_DASHBOARD.fullyQualifiedName.__root__
+        self.quicksight.context.__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
         results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            if isinstance(result, CreateDashboardRequest):
-                dashboard_list.append(result)
+            if isinstance(result, Either) and result.right:
+                dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     @pytest.mark.order(2)

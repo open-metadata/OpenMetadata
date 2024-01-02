@@ -22,6 +22,7 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   data: MOCK_TABLE_DATA,
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
+  isFetchingAllTeamAdvancedDetails: false,
 };
 
 const mockShowErrorToast = jest.fn();
@@ -33,11 +34,11 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
 
-jest.mock('utils/TeamUtils', () => ({
+jest.mock('../../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('rest/teamsAPI', () => ({
+jest.mock('../../../rest/teamsAPI', () => ({
   updateTeam: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
@@ -46,15 +47,15 @@ jest.mock('rest/teamsAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('utils/RouterUtils', () => ({
+jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 

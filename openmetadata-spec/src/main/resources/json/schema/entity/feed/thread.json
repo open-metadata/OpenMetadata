@@ -15,6 +15,8 @@
         "UpdateDescription",
         "RequestTag",
         "UpdateTag",
+        "RequestApproval",
+        "RequestTestCaseFailureResolution",
         "Generic"
       ],
       "javaEnums": [
@@ -29,6 +31,12 @@
         },
         {
           "name": "UpdateTag"
+        },
+        {
+          "name": "RequestApproval"
+        },
+        {
+          "name": "RequestTestCaseFailureResolution"
         },
         {
           "name": "Generic"
@@ -73,6 +81,10 @@
         "newValue": {
           "description": "The new value object that was accepted to complete the task.",
           "type": "string"
+        },
+        "testCaseResolutionStatusId": {
+            "description": "The test case resolution status id for which the task is created.",
+            "$ref": "../../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["id", "assignees", "type"],
@@ -117,7 +129,7 @@
       "type": "object",
       "properties": {
         "description": {
-          "description": "Announcement description in markdown format. See markdown support for more details.",
+          "description": "Announcement description in Markdown format. See markdown support for more details.",
           "type": "string"
         },
         "startTime": {
@@ -142,7 +154,7 @@
           "$ref": "../../type/basic.json#/definitions/uuid"
         },
         "message": {
-          "description": "Message in markdown format. See markdown support for more details.",
+          "description": "Message in Markdown format. See Markdown support for more details.",
           "type": "string"
         },
         "postTs": {
@@ -175,7 +187,7 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "threadTs": {
-      "description": "Timestamp of the when the first post created the thread in Unix epoch time milliseconds.",
+      "description": "Timestamp of the first post created the thread in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "about": {
@@ -208,7 +220,7 @@
       "default": false
     },
     "message": {
-      "description": "The main message of the thread in markdown format.",
+      "description": "The main message of the thread in Markdown format.",
       "type": "string"
     },
     "postsCount": {

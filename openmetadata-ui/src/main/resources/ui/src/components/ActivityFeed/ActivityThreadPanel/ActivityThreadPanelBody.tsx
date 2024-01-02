@@ -14,15 +14,13 @@
 import { Button, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllFeeds } from 'rest/feedsAPI';
-import AppState from '../../../AppState';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
   Thread,
@@ -31,14 +29,15 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getEntityField } from '../../../utils/FeedUtils';
+import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
@@ -57,6 +56,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadType,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -139,8 +139,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     setConfirmationState(data);
   };
 
-  const entityField = getEntityField(threadLink);
-
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
   };
@@ -166,10 +164,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   };
 
   const onPostThread = (value: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name ?? '',
       about: threadLink,
     };
     createThread(data);
@@ -211,7 +208,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCancel && onCancel();
+        onCancel?.();
       }
     };
     document.addEventListener('keydown', escapeKeyHandler);
@@ -238,14 +235,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            className="tw-px-4 tw-shadow-sm"
-            entityField={entityField as string}
+            entityLink={selectedThread?.about ?? threadLink}
             noun={
               isConversationType
                 ? t('label.conversation-plural')
                 : t('label.task-plural')
             }
-            onCancel={() => onCancel && onCancel()}
+            onCancel={() => onCancel?.()}
             onShowNewConversation={
               threads.length > 0 && isUndefined(selectedThread)
                 ? onShowNewConversation
@@ -259,21 +255,21 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             className="w-full justify-end p-r-xs m-t-xs"
             size={4}>
             <Switch size="small" onChange={onSwitchChange} />
-            <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
+            <span>{t('label.closed-task-plural')}</span>
           </Space>
         )}
 
+        {/* When user selects a thread will show that particular thread from here */}
         {!isUndefined(selectedThread) ? (
           <Fragment>
             <Button
-              className="tw-mb-3 tw-ml-2"
+              className="m-b-sm p-0"
               size="small"
               type="link"
               onClick={onBack}>
               {t('label.back')}
             </Button>
             <ActivityThread
-              className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}
               selectedThread={selectedThread}
               updateThreadHandler={onUpdateThread}
@@ -283,47 +279,42 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         ) : (
           <Fragment>
             {showNewConversation || isEqual(threads.length, 0) ? (
-              <Fragment>
+              <>
                 {isConversationType && (
-                  <Fragment>
-                    <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
+                  <Space className="w-full" direction="vertical">
+                    <Typography.Paragraph>
                       {t('message.new-conversation')}
-                    </p>
+                    </Typography.Paragraph>
                     <ActivityFeedEditor
-                      buttonClass="tw-mr-4"
-                      className="tw-ml-5 tw-mr-2"
                       placeHolder={t('message.enter-a-field', {
                         field: t('label.message-lowercase'),
                       })}
                       onSave={onPostThread}
                     />
-                  </Fragment>
+                  </Space>
                 )}
-                {isTaskType && (
+                {(isAnnouncementType || isTaskType) && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography.Paragraph>
-                      {isTaskClosed
-                        ? t('message.no-closed-task')
-                        : t('message.no-open-task')}
-                    </Typography.Paragraph>
+                    {isTaskType ? (
+                      <Typography.Paragraph>
+                        {isTaskClosed
+                          ? t('message.no-closed-task')
+                          : t('message.no-open-task')}
+                      </Typography.Paragraph>
+                    ) : (
+                      <Typography.Paragraph data-testid="announcement-error">
+                        {t('message.no-announcement-message')}
+                      </Typography.Paragraph>
+                    )}
                   </ErrorPlaceHolder>
                 )}
-                {isAnnouncementType && (
-                  <ErrorPlaceHolder
-                    className="mt-24"
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography.Paragraph data-testid="announcement-error">
-                      {t('message.no-announcement-message')}
-                    </Typography.Paragraph>
-                  </ErrorPlaceHolder>
-                )}
-              </Fragment>
+              </>
             ) : null}
             {isAnnouncementType ? (
               <AnnouncementThreads
-                className={classNames({ 'tw-p-4': !className }, className)}
+                className={classNames(className)}
                 editAnnouncementPermission={editAnnouncementPermission}
                 postFeed={postFeed}
                 selectedThreadId={selectedThreadId}
@@ -335,7 +326,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               />
             ) : (
               <ActivityThreadList
-                className={classNames({ 'tw-p-4': !className }, className)}
+                className={classNames(className)}
                 postFeed={postFeed}
                 selectedThreadId={selectedThreadId}
                 threads={threads}
@@ -354,10 +345,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         )}
       </div>
-      <DeleteConfirmationModal
+      <ConfirmationModal
+        bodyText={t('message.confirm-delete-message')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('message.delete-message-question-mark')}
         visible={confirmationState.state}
-        onDelete={onPostDelete}
-        onDiscard={onDiscard}
+        onCancel={onDiscard}
+        onConfirm={onPostDelete}
       />
     </Fragment>
   );

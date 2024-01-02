@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AnnouncementDetails } from 'generated/entity/feed/thread';
+import { AnnouncementDetails } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardBodyV1Props {
   isEditPost: boolean;

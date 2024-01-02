@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { reduce } from 'lodash';
+import { TagFilterOptions, TagsData } from 'Models';
+import { TableTagsProps } from '../../components/TableTags/TableTags.interface';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 
 export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
   reduce(
@@ -27,3 +28,48 @@ export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
     },
     { Classification: [] as TagLabel[], Glossary: [] as TagLabel[] }
   );
+
+const extractTags = (item: TagsData, allTags: TagFilterOptions[]) => {
+  if (item?.tags?.length) {
+    item.tags.forEach((tag) => {
+      allTags.push({
+        text: tag.tagFQN,
+        value: tag.tagFQN,
+        source: tag.source,
+      });
+    });
+  }
+
+  if (item?.children?.length) {
+    item.children.forEach((child) => {
+      extractTags(child, allTags);
+    });
+  }
+};
+
+export const getAllTags = (data: TagsData[]) => {
+  return data.reduce((allTags, item) => {
+    extractTags(item, allTags);
+
+    return allTags;
+  }, [] as TagFilterOptions[]);
+};
+
+export const searchTagInData = (
+  tagToSearch: string | number | boolean,
+  data: TagsData
+) => {
+  if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
+    return true;
+  }
+
+  if (data.children?.length) {
+    for (const child of data.children) {
+      if (searchTagInData(tagToSearch, child)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};

@@ -26,6 +26,12 @@ DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
 DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
 
+DBT_FILE_NAMES_LIST = [
+    DBT_CATALOG_FILE_NAME,
+    DBT_MANIFEST_FILE_NAME,
+    DBT_RUN_RESULTS_FILE_NAME,
+]
+
 
 class SkipResourceTypeEnum(Enum):
     """
@@ -80,6 +86,7 @@ class DbtCommonEnum(Enum):
     OWNER = "owner"
     NODES = "nodes"
     SOURCES = "sources"
+    SOURCE = "source"
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"

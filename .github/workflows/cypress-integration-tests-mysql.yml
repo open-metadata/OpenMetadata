@@ -15,15 +15,16 @@
 name: MySQL Cypress Integration Tests
 
 on:
-  push:
-    branches:
-      - main 
-      - '0.[0-9]+.[0-9]+'
-      - '1.[0-9]+[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
+  workflow_dispatch:
+  schedule:
+    - cron: '30 0 * * *'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
     paths-ignore:
       - 'openmetadata-docs/**'
 
@@ -36,15 +37,31 @@ concurrency:
 
 jobs:
   cypress-ci-mysql:
+    if: |
+        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+            || ( github.event_name == 'pull_request_target'
+                 && contains(github.event.pull_request.labels.*.name, 'e2e')
+                 && github.event.pull_request.draft == false
+               )
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        job: [0, 1, 2]
+        parallel-machine: [1, 2, 3, 4]
     environment: test
     steps:
-
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
+            docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        uses: lewagon/wait-on-check-action@v1.3.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -89,12 +106,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Generating Data Models
         run: |
@@ -106,19 +123,21 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d mysql
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
+        timeout-minutes: 120
         with:
-          install: false
+          install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          group: Tests with database mysql
+          group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
+          CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

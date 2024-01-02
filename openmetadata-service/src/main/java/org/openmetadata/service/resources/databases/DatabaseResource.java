@@ -47,19 +47,24 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
@@ -71,15 +76,15 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension,domain";
+  static final String FIELDS =
+      "owner,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,sourceHash";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
+    super.addHref(uriInfo, db);
     Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
-    Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
-    Entity.withHref(uriInfo, db.getDomain());
     return db;
   }
 
@@ -90,8 +95,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Database.class, new DatabaseRepository(dao), authorizer);
+  public DatabaseResource(Authorizer authorizer) {
+    super(Entity.DATABASE, authorizer);
   }
 
   public static class DatabaseList extends ResultList<Database> {
@@ -110,7 +115,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of databases",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseList.class)))
       })
   public ResultList<Database> list(
       @Context UriInfo uriInfo,
@@ -125,16 +133,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tables after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -142,10 +154,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -158,13 +170,17 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of database versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -178,12 +194,17 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
   public Database get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -195,8 +216,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -210,12 +230,17 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
       })
   public Database getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the database", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the database",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -229,8 +254,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -244,21 +268,25 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database for instance {id} and version {version} is " + "not found")
+            description = "Database for instance {id} and version {version} is not found")
       })
   public Database getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Database version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -271,12 +299,16 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDatabase create) {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database);
   }
@@ -287,22 +319,26 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       operationId = "patchDatabase",
       summary = "Update a database",
       description = "Update an existing database using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -315,11 +351,15 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The updated database ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDatabase create) {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database);
   }
@@ -337,7 +377,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -345,9 +386,96 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportDatabase",
+      summary = "Export database in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importDatabase",
+      summary =
+          "Import database schemas from CSV to update database schemas (no creation " + "allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid VoteRequest request) {
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -355,7 +483,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "deleteDatabaseByFQN",
       summary = "Delete a database by fully qualified name",
-      description = "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
+      description =
+          "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
@@ -367,11 +496,17 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the database", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(
+              description = "Fully qualified name of the database",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+          String fqn) {
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -384,17 +519,110 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Database. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Database.class)))
       })
   public Response restoreDatabase(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Database getDatabase(CreateDatabase create, String user) throws IOException {
-    return copy(new Database(), create, user)
+  @PUT
+  @Path("/{id}/databaseProfilerConfig")
+  @Operation(
+      operationId = "addDataProfilerConfig",
+      summary = "Add database profile config",
+      description = "Add database profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Database ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Database addDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid DatabaseProfilerConfig databaseProfilerConfig) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Database database = repository.addDatabaseProfilerConfig(id, databaseProfilerConfig);
+    return addHref(uriInfo, database);
+  }
+
+  @GET
+  @Path("/{id}/databaseProfilerConfig")
+  @Operation(
+      operationId = "getDataProfilerConfig",
+      summary = "Get database profile config",
+      description = "Get database profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Database ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Database getDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Database database = repository.find(id, Include.NON_DELETED);
+    return addHref(
+        uriInfo,
+        database.withDatabaseProfilerConfig(repository.getDatabaseProfilerConfig(database)));
+  }
+
+  @DELETE
+  @Path("/{id}/databaseProfilerConfig")
+  @Operation(
+      operationId = "delete DataProfilerConfig",
+      summary = "Delete database profiler config",
+      description = "delete database profile config to the database.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Database profiler config",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Database deleteDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Database database = repository.deleteDatabaseProfilerConfig(id);
+    return addHref(uriInfo, database);
+  }
+
+  private Database getDatabase(CreateDatabase create, String user) {
+    return repository
+        .copy(new Database(), create, user)
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
-        .withRetentionPeriod(create.getRetentionPeriod());
+        .withSourceUrl(create.getSourceUrl())
+        .withRetentionPeriod(create.getRetentionPeriod())
+        .withSourceHash(create.getSourceHash());
   }
 }

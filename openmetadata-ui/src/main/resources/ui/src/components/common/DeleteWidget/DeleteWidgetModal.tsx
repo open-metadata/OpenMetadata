@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Radio, RadioChangeEvent, Space } from 'antd';
+import {
+  Button,
+  Form,
+  Modal,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Typography,
+} from 'antd';
+import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, {
@@ -19,20 +28,25 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { deleteEntity } from 'rest/miscAPI';
-import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { deleteEntity } from '../../../rest/miscAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
-  getEntityDeleteMessage,
-  Transi18next,
-} from '../../../utils/CommonUtils';
-import { getTitleCase } from '../../../utils/EntityUtils';
+  getDeleteMessage,
+  prepareEntityType,
+} from '../../../utils/DeleteWidgetModalUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
+import './delete-widget-modal.style.less';
+import {
+  DeleteType,
+  DeleteWidgetFormFields,
+  DeleteWidgetModalProps,
+} from './DeleteWidget.interface';
+
+export const DELETE_CONFIRMATION_TEXT = 'DELETE';
 
 const DeleteWidgetModal = ({
   allowSoftDelete = true,
@@ -47,180 +61,199 @@ const DeleteWidgetModal = ({
   prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
+  successMessage,
+  deleteOptions,
+  onDelete,
+  isDeleting = false,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const [entityDeleteState, setEntityDeleteState] =
-    useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
-  const [name, setName] = useState<string>('');
-  const [value, setValue] = useState<DeleteType>(
+  const [form] = Form.useForm();
+  const [deleteConfirmationText, setDeleteConfirmationText] =
+    useState<string>('');
+  const [deletionType, setDeletionType] = useState<DeleteType>(
     allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
   );
   const [isLoading, setIsLoading] = useState(false);
+  const deleteTextInputRef = useRef<InputRef>(null);
 
-  const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = t('message.soft-delete-message-for-entity', {
-      entity: entityName,
-    });
-    const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
+  const DELETE_OPTION = useMemo(
+    () => [
+      {
+        title: `${t('label.delete')} ${entityType} “${entityName}”`,
+        description: `${getDeleteMessage(
+          entityName,
+          entityType,
+          true
+        )} ${softDeleteMessagePostFix}`,
+        type: DeleteType.SOFT_DELETE,
+        isAllowed: allowSoftDelete,
+      },
+      {
+        title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
+        description: (
+          <>
+            {deleteMessage ?? getDeleteMessage(entityName, entityType)}
+            {hardDeleteMessagePostFix}
+          </>
+        ),
+        type: DeleteType.HARD_DELETE,
+        isAllowed: true,
+      },
+    ],
+    [
+      entityType,
+      entityName,
+      softDeleteMessagePostFix,
+      allowSoftDelete,
+      deleteMessage,
+      hardDeleteMessagePostFix,
+    ]
+  );
 
-    return softDelete ? softDeleteText : hardDeleteText;
-  };
+  const handleOnChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setDeleteConfirmationText(e.target.value);
+  }, []);
 
-  const DELETE_OPTION = [
-    {
-      title: `${t('label.delete')} ${entityType} “${entityName}”`,
-      description: `${prepareDeleteMessage(true)} ${softDeleteMessagePostFix}`,
-      type: DeleteType.SOFT_DELETE,
-      isAllowd: allowSoftDelete,
-    },
-    {
-      title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
-      description: `${
-        deleteMessage || prepareDeleteMessage()
-      } ${hardDeleteMessagePostFix}`,
-      type: DeleteType.HARD_DELETE,
-      isAllowd: true,
-    },
-  ];
-
-  const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value);
-  };
-
-  const handleOnEntityDelete = (softDelete = true) => {
-    setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
-  };
-
-  const handleOnEntityDeleteCancel = () => {
-    setEntityDeleteState(ENTITY_DELETE_STATE);
-    setName('');
-    setValue(DeleteType.SOFT_DELETE);
+  const handleOnEntityDeleteCancel = useCallback(() => {
+    setDeleteConfirmationText('');
+    setDeletionType(
+      allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
+    );
     onCancel();
-  };
+  }, [onCancel, allowSoftDelete]);
 
-  const prepareEntityType = () => {
-    const services = [
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.DATABASE_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.METADATA_SERVICE,
-      EntityType.STORAGE_SERVICE,
-      EntityType.MLMODEL_SERVICE,
-    ];
+  const isDeleteTextPresent = useMemo(() => {
+    return (
+      deleteConfirmationText === DELETE_CONFIRMATION_TEXT &&
+      (deletionType === DeleteType.SOFT_DELETE ||
+        deletionType === DeleteType.HARD_DELETE)
+    );
+  }, [deleteConfirmationText, deletionType]);
 
-    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
-
-    if (services.includes((entityType || '') as EntityType)) {
-      return `services/${entityType}s`;
-    } else if (entityType === EntityType.GLOSSARY) {
-      return `glossaries`;
-    } else if (entityType === EntityType.POLICY) {
-      return 'policies';
-    } else if (entityType === EntityType.KPI) {
-      return entityType;
-    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
-      return `dashboard/datamodels`;
-    } else if (dataQuality.includes(entityType as EntityType)) {
-      return `dataQuality/${entityType}s`;
-    } else if (entityType === EntityType.SUBSCRIPTION) {
-      return `events/${entityType}s`;
-    } else {
-      return `${entityType}s`;
-    }
-  };
-
-  const handleOnEntityDeleteConfirm = () => {
-    setIsLoading(false);
-    setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-    deleteEntity(
-      prepareType ? prepareEntityType() : entityType,
-      entityId ?? '',
-      Boolean(isRecursiveDelete),
-      !entityDeleteState.softDelete
-    )
-      .then((res) => {
-        if (res.status === 200) {
-          setTimeout(() => {
-            handleOnEntityDeleteCancel();
-            showSuccessToast(
+  const handleOnEntityDeleteConfirm = useCallback(
+    async ({ deleteType }: DeleteWidgetFormFields) => {
+      try {
+        setIsLoading(true);
+        const response = await deleteEntity(
+          prepareType ? prepareEntityType(entityType) : entityType,
+          entityId ?? '',
+          Boolean(isRecursiveDelete),
+          deleteType === DeleteType.HARD_DELETE
+        );
+        if (response.status === 200) {
+          showSuccessToast(
+            successMessage ??
               t('server.entity-deleted-successfully', {
                 entity: startCase(entityType),
               })
+          );
+          if (afterDeleteAction) {
+            afterDeleteAction(
+              deletionType === DeleteType.SOFT_DELETE,
+              response.data.version
             );
-
-            if (afterDeleteAction) {
-              afterDeleteAction();
-            } else {
-              setTimeout(() => {
-                history.push('/');
-              }, 500);
-            }
-          }, 1000);
+          }
         } else {
           showErrorToast(t('server.unexpected-response'));
         }
-      })
-      .catch((error: AxiosError) => {
+      } catch (error) {
         showErrorToast(
-          error,
+          error as AxiosError,
           t('server.delete-entity-error', {
             entity: entityName,
           })
         );
-      })
-      .finally(() => {
-        handleOnEntityDeleteCancel();
+      } finally {
+        if (isDeleteTextPresent) {
+          handleOnEntityDeleteCancel();
+        }
         setIsLoading(false);
-      });
-  };
+      }
+    },
+    [
+      entityType,
+      entityId,
+      isRecursiveDelete,
+      deletionType,
+      afterDeleteAction,
+      entityName,
+      handleOnEntityDeleteCancel,
+      isDeleteTextPresent,
+    ]
+  );
 
-  const isNameMatching = useCallback(() => {
-    return (
-      name === 'DELETE' &&
-      (value === DeleteType.SOFT_DELETE || value === DeleteType.HARD_DELETE)
-    );
-  }, [name]);
-
-  const onChange = (e: RadioChangeEvent) => {
+  const onChange = useCallback((e: RadioChangeEvent) => {
     const value = e.target.value;
-    setValue(value);
-    handleOnEntityDelete(value === DeleteType.SOFT_DELETE);
-  };
+    setDeletionType(value);
+  }, []);
 
   useEffect(() => {
-    setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
-    setEntityDeleteState({
-      ...ENTITY_DELETE_STATE,
-      softDelete: allowSoftDelete,
-    });
+    let timeout: number;
+
+    if (visible) {
+      // using setTimeout here as directly calling focus() doesn't focus element after first time
+      timeout = window.setTimeout(() => {
+        deleteTextInputRef.current?.focus();
+      }, 1);
+    }
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [visible, deleteTextInputRef]);
+
+  useEffect(() => {
+    setDeletionType(
+      allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
+    );
   }, [allowSoftDelete]);
+
+  const handleConfirmClick = useCallback(() => form.submit(), []);
 
   const footer = useMemo(() => {
     return (
       <Space data-testid="footer" size={8}>
         <Button
           data-testid="discard-button"
-          disabled={entityDeleteState.loading === 'waiting'}
+          disabled={isLoading}
           type="link"
           onClick={handleOnEntityDeleteCancel}>
           {t('label.cancel')}
         </Button>
+
         <Button
           data-testid="confirm-button"
-          disabled={!isNameMatching()}
-          loading={entityDeleteState.loading === 'waiting'}
+          disabled={!isDeleteTextPresent}
+          htmlType="submit"
+          loading={isLoading}
           type="primary"
-          onClick={handleOnEntityDeleteConfirm}>
+          onClick={handleConfirmClick}>
           {t('label.confirm')}
         </Button>
       </Space>
     );
-  }, [entityDeleteState, isNameMatching]);
+  }, [handleOnEntityDeleteCancel, isDeleteTextPresent, isLoading]);
+
+  useEffect(() => {
+    // Resetting the form values on visibility change
+    // Using setFieldsValue instead of resetValue as the default value to be set
+    // is dynamic i.e. dependent on allowSoftDelete prop which sets it to undefined
+    // if reset using resetValue
+    form.setFieldsValue({
+      deleteType: allowSoftDelete
+        ? DeleteType.SOFT_DELETE
+        : DeleteType.HARD_DELETE,
+      deleteTextInput: '',
+    });
+  }, [visible]);
+
+  useEffect(() => {
+    setIsLoading(isDeleting);
+  }, [isDeleting]);
 
   return (
     <Modal
+      destroyOnClose
       closable={false}
       confirmLoading={isLoading}
       data-testid="delete-modal"
@@ -230,46 +263,63 @@ const DeleteWidgetModal = ({
       open={visible}
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
-      <Radio.Group value={value} onChange={onChange}>
-        {DELETE_OPTION.map(
-          (option) =>
-            option.isAllowd && (
-              <Radio
-                data-testid={option.type}
-                key={option.type}
-                value={option.type}>
-                <p
-                  className="tw-text-sm tw-mb-1 tw-font-medium"
-                  data-testid={`${option.type}-option`}>
-                  {option.title}
-                </p>
-                <p className="text-grey-muted tw-text-xs tw-mb-2">
-                  {option.description}
-                </p>
-              </Radio>
-            )
-        )}
-      </Radio.Group>
-      <div>
-        <div className="m-b-xss">
-          <Transi18next
-            i18nKey="message.type-delete-to-confirm"
-            renderElement={<strong />}
-          />
-        </div>
+      <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
+        <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
+          <Radio.Group onChange={onChange}>
+            {(deleteOptions ?? DELETE_OPTION).map(
+              (option) =>
+                option.isAllowed && (
+                  <Radio
+                    data-testid={option.type}
+                    key={option.type}
+                    value={option.type}>
+                    <Typography.Paragraph
+                      className="delete-widget-title break-all"
+                      data-testid={`${option.type}-option`}>
+                      {option.title}
+                    </Typography.Paragraph>
+                    <Typography.Paragraph className="text-grey-muted text-xs break-all">
+                      {option.description}
+                    </Typography.Paragraph>
+                  </Radio>
+                )
+            )}
+          </Radio.Group>
+        </Form.Item>
+        <div>
+          <div className="m-b-xss">
+            <Transi18next
+              i18nKey="message.type-delete-to-confirm"
+              renderElement={<strong />}
+            />
+          </div>
 
-        <input
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="confirmation-text-input"
-          disabled={entityDeleteState.loading === 'waiting'}
-          name="entityName"
-          placeholder={t('label.delete-uppercase')}
-          type="text"
-          value={name}
-          onChange={handleOnChange}
-        />
-      </div>
+          <Form.Item<DeleteWidgetFormFields>
+            className="m-0"
+            name="deleteTextInput"
+            rules={[
+              {
+                required: true,
+                message: t('message.please-type-text-to-confirm', {
+                  text: t('label.delete-uppercase'),
+                }),
+                type: 'enum',
+                enum: [DELETE_CONFIRMATION_TEXT],
+              },
+            ]}>
+            <Input
+              autoComplete="off"
+              data-testid="confirmation-text-input"
+              disabled={isLoading}
+              name="entityName"
+              placeholder={t('label.delete-uppercase')}
+              ref={deleteTextInputRef}
+              type="text"
+              onChange={handleOnChange}
+            />
+          </Form.Item>
+        </div>
+      </Form>
     </Modal>
   );
 };

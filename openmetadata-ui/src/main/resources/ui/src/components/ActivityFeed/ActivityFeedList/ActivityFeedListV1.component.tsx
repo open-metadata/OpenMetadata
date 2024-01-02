@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
-import { Thread } from 'generated/entity/feed/thread';
-import React, { useEffect, useState } from 'react';
-import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { Thread } from '../../../generated/entity/feed/thread';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
 import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
@@ -29,6 +33,7 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: string;
+  tab: ActivityFeedTabs;
 }
 
 const ActivityFeedListV1 = ({
@@ -40,8 +45,12 @@ const ActivityFeedListV1 = ({
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  tab,
 }: ActivityFeedListV1Props) => {
+  const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+
+  const isTaskTab = useMemo(() => tab === ActivityFeedTabs.TASKS, [tab]);
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -58,21 +67,28 @@ const ActivityFeedListV1 = ({
     return <Loader />;
   }
 
-  return (
-    <div className="feed-list-container p-y-md m-b-sm" id="feedData">
-      {entityThread.length === 0 && (
-        <div
-          className="h-full p-x-md"
-          data-testid="no-data-placeholder-container">
-          <ErrorPlaceHolder
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {emptyPlaceholderText}
-            </Typography.Paragraph>
-          </ErrorPlaceHolder>
-        </div>
-      )}
+  return isEmpty(entityThread) ? (
+    <div
+      className="h-full p-x-md"
+      data-testid="no-data-placeholder-container"
+      id="feedData">
+      <ErrorPlaceHolder
+        icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="tw-max-w-md"
+          style={{ marginBottom: '0' }}>
+          {isTaskTab && (
+            <Typography.Text strong>
+              {t('message.no-open-tasks')} <br />
+            </Typography.Text>
+          )}
+          {emptyPlaceholderText}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    </div>
+  ) : (
+    <div className="feed-list-container p-y-md" id="feedData">
       {entityThread.map((feed) => (
         <FeedPanelBodyV1
           feed={feed}

@@ -16,15 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TasksDAGView from './TasksDAGView';
 
-/**
- * mock implementation of ResizeObserver
- */
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
 const mockNodes = [
   {
     className: 'leaf-node Success',
@@ -68,7 +59,6 @@ const tasks = [
 ];
 
 const TasksDAGViewProps = {
-  selectedExec: {},
   tasks,
 };
 

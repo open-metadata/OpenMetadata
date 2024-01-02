@@ -14,20 +14,19 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { observer } from 'mobx-react';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { getEntityDetailLink } from 'utils/CommonUtils';
-import AppState from '../../../AppState';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
+import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -35,29 +34,35 @@ import {
   TaskType,
 } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { postThread } from '../../../rest/feedsAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import '../TaskPage.style.less';
+import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>();
 
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -68,16 +73,21 @@ const RequestDescription = () => {
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
+  const taskMessage = useMemo(
+    () =>
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Request description',
+      }),
+    [value, entityType, field, entityData]
+  );
 
-  const message = `Request description for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(entityFQN),
+    [entityType]
   );
 
   const back = () => history.goBack();
@@ -102,8 +112,8 @@ const RequestDescription = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message: value.title || message,
-        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+        message: value.title || taskMessage,
+        about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
             id: assignee.value,
@@ -124,8 +134,8 @@ const RequestDescription = () => {
           );
           history.push(
             getEntityDetailLink(
-              entityType as EntityType,
-              entityFQN,
+              entityType,
+              decodedEntityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
             )
@@ -138,11 +148,7 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(
-      entityType as EntityType,
-      entityFQN as string,
-      setEntityData
-    );
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -154,16 +160,21 @@ const RequestDescription = () => {
           label: getEntityName(owner),
           value: owner.id || '',
           type: owner.type,
+          name: owner.name,
         },
       ];
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
   }, [entityData]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels
@@ -174,7 +185,7 @@ const RequestDescription = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -222,6 +233,7 @@ const RequestDescription = () => {
                     },
                   ]}>
                   <Assignees
+                    disabled={Boolean(entityData.owner)}
                     options={options}
                     value={assignees}
                     onChange={setAssignees}
@@ -235,7 +247,6 @@ const RequestDescription = () => {
                   })}:`}
                   name="SuggestDescription">
                   <RichTextEditor
-                    className="tw-my-0"
                     initialValue=""
                     placeHolder={t('label.suggest-entity', {
                       entity: t('label.description'),
@@ -248,7 +259,7 @@ const RequestDescription = () => {
 
                 <Form.Item noStyle>
                   <Space
-                    className="tw-w-full tw-justify-end"
+                    className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
                     <Button type="link" onClick={back}>
@@ -289,4 +300,4 @@ const RequestDescription = () => {
   );
 };
 
-export default observer(RequestDescription);
+export default RequestDescription;

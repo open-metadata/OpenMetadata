@@ -19,15 +19,15 @@ from typing import List, cast
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.window.percentille_mixin import PercentilMixin
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.functions.median import MedianFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class FirstQuartile(StaticMetric):
+class FirstQuartile(StaticMetric, PercentilMixin):
     """
     First Quartile Metric
 
@@ -53,15 +53,15 @@ class FirstQuartile(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             # col fullname is only needed for MySQL and SQLite
-            return MedianFn(
-                column(self.col.name),
+            return self._compute_sqa_fn(
+                column(self.col.name, self.col.type),
                 self.col.table.fullname if self.col.table is not None else None,
                 0.25,
             )
 
         if is_concatenable(self.col.type):
-            return MedianFn(
-                LenFn(column(self.col.name)),
+            return self._compute_sqa_fn(
+                LenFn(column(self.col.name, self.col.type)),
                 self.col.table.fullname if self.col.table is not None else None,
                 0.25,
             )
@@ -83,7 +83,7 @@ class FirstQuartile(StaticMetric):
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = pd.concat(dfs)
+                df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
@@ -91,7 +91,7 @@ class FirstQuartile(StaticMetric):
                 )
                 return None
             # check if nan
-            first_quartile = df[self.col.name].quantile(0.25, interpolation="midpoint")
+            first_quartile = df.quantile(0.25, interpolation="midpoint")
             return None if pd.isnull(first_quartile) else first_quartile
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing First Quartile"

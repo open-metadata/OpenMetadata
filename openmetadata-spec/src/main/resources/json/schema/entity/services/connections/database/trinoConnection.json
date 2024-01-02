@@ -37,11 +37,17 @@
       "description": "Username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Trino.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/jwtAuth.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",
@@ -66,14 +72,6 @@
         "type": "string"
       }
     },
-    "params": {
-      "title": "URL Parameters",
-      "description": "URL parameters for connection to the Trino data source",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -85,6 +83,14 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "title": "Supports Usage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
     "supportsDBTExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
@@ -100,6 +106,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

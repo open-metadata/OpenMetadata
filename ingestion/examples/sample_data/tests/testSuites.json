@@ -1,7 +1,7 @@
 {
     "tests": [
         {
-            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address.TestSuite",
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address.testSuite",
             "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_address",
             "testSuiteDescription": "This is an executable test suite linked to an entity",
             "scheduleInterval": "0 0 * * MON",
@@ -16,7 +16,80 @@
                             "name": "columnCount",
                             "value": 10
                         }
-                    ]
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
                 },
                 {
                     "name": "table_column_count_between",
@@ -32,7 +105,69 @@
                             "name": "maxColValue",
                             "value": 10
                         }
-                    ]
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christine_day7"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            }
+                        ]
+                    }
                 },
                 {
                     "name": "column_value_max_to_be_between",
@@ -48,7 +183,29 @@
                             "name": "maxValueForMaxInCol",
                             "value": 100
                         }
-                    ]
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ]
+                    }
                 },
                 {
                     "name": "column_values_to_match_regex",
@@ -60,7 +217,35 @@
                             "name": "regex",
                             "value": "Doe.*"
                         }
-                    ]
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity5",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity5",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
                 },
                 {
                     "name": "column_values_to_be_between",
@@ -76,7 +261,84 @@
                             "name": "max",
                             "value": 96162
                         }
-                    ]
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
                 }
             ]
         }

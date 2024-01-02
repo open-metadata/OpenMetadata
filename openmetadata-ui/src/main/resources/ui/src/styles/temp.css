@@ -11,30 +11,21 @@
  *  limitations under the License.
  */
 
+@import '/node_modules/react-grid-layout/css/styles.css';
+@import '/node_modules/react-resizable/css/styles.css';
+
+.react-grid-item {
+  transition: all 500ms ease;
+  transition-property: left, top, width, height;
+}
+.react-grid-layout {
+  position: relative;
+  transition: height 500ms ease;
+}
+
 .main-container {
   display: flex;
   height: 100vh;
-}
-
-.profile-image {
-  display: inline-block;
-  height: 24px;
-  width: 24px;
-}
-
-.profile-image svg,
-.profile-image img {
-  display: inline-block;
-}
-
-.profile-image.circle svg,
-.profile-image.circle img {
-  border-radius: 50%;
-}
-
-.profile-image.square svg,
-.profile-image.square img {
-  border-radius: 4px;
 }
 
 .teams-dropdown {
@@ -72,7 +63,7 @@
   display: flex;
 }
 
-.svg-icon:not(.tw-hidden) {
+.svg-icon:not(.hidden) {
   display: inline-block;
 }
 
@@ -271,11 +262,9 @@
 }
 
 /* Editor CSS */
-.editor-wrapper:not(.tw-max-h-none) {
+
+.editor-wrapper:not(.max-h-none) {
   max-height: calc(100vh - 10rem);
-  /* border: 1px #8e8e8e solid;
-  border-radius: 4px;
-  padding: 10px; */
 }
 
 .editor-wrapper code,
@@ -703,23 +692,6 @@ body .public-DraftStyleDefault-ul li::marker {
 }
 body .list-option.rdw-option-active {
   box-shadow: none;
-}
-
-/* Diff style */
-
-.diff-added {
-  background: rgba(0, 131, 118, 0.2);
-  color: #008376;
-  width: fit-content;
-}
-.diff-removed {
-  color: #008376;
-  color: grey;
-  text-decoration: line-through;
-  width: fit-content;
-}
-.diff-description {
-  color: #008376;
 }
 
 /* react-slick */

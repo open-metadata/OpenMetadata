@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
-import WelcomeScreenImg from 'assets/img/welcome-screen.png';
-import { ReactComponent as CloseIcon } from 'assets/svg/close.svg';
-import { ReactComponent as LineArrowRight } from 'assets/svg/line-arrow-right.svg';
 import React, { useMemo } from 'react';
+import WelcomeScreenImg from '../../assets/img/welcome-screen.png';
+import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
+import { ReactComponent as LineArrowRight } from '../../assets/svg/line-arrow-right.svg';
 
-import AppState from 'AppState';
-import { ROUTES } from 'constants/constants';
 import { split } from 'lodash';
-import { observer } from 'mobx-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { ROUTES } from '../../constants/constants';
+import { getEntityName } from '../../utils/EntityUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;
@@ -33,24 +32,25 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const userName = useMemo(() => {
-    const user = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
 
-    return split(getEntityName(user), ' ')[0];
-  }, [AppState]);
+  const userName = useMemo(() => {
+    return split(getEntityName(currentUser), ' ')[0];
+  }, [currentUser]);
 
   return (
     <Card
-      className="welcome-screen-container"
+      className="welcome-screen-container card-body-border-none card-padding-0"
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
+          data-testid="welcome-screen-close-btn"
           icon={<CloseIcon height={12} width={12} />}
           type="text"
           onClick={onClose}
         />
       }>
-      <Row gutter={16}>
+      <Row className="p-md welcome-screen-full-height" gutter={16}>
         <Col span={12}>
           <img
             alt="welcome screen image"
@@ -60,7 +60,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           />
         </Col>
         <Col span={12}>
-          <Space direction="vertical">
+          <Space className="m-y-xlg" direction="vertical">
             <div>
               <Paragraph className="welcome-screen-header-first-line m-b-0">
                 {t('message.hi-user-welcome-to', {
@@ -89,4 +89,4 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   );
 };
 
-export default observer(WelcomeScreen);
+export default WelcomeScreen;

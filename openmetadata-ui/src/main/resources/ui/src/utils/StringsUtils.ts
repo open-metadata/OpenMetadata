@@ -179,3 +179,48 @@ export const customServiceComparator = (a: string, b: string): number => {
     return a.localeCompare(b);
   }
 };
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - String text replacing + to valid component of a Uniform Resource Identifier (URI).
+ */
+export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
+
+export const ES_RESERVED_CHARACTERS: Record<string, string> = {
+  '+': '\\+',
+  '-': '\\-',
+  '=': '\\=',
+  '&&': '\\&&',
+  '||': '\\||',
+  '>': '\\>',
+  '<': '\\<',
+  '!': '\\!',
+  '(': '\\(',
+  ')': '\\)',
+  '{': '\\{',
+  '}': '\\}',
+  '[': '\\[',
+  ']': '\\]',
+  '^': '\\^',
+  '"': '\\"',
+  '~': '\\~',
+  '*': '\\*',
+  '?': '\\?',
+  ':': '\\:',
+  '\\': '\\\\',
+  '/': '\\/',
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[+-=&&||><!(){}^"~*?:/]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
+};

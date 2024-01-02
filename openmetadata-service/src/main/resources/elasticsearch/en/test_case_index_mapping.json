@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 3,
+          "max_gram": 10,
           "filter": [
             "lowercase"
           ]
@@ -46,7 +46,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -57,6 +58,9 @@
       "fullyQualifiedName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "fqnParts": {
+        "type": "keyword"
       },
       "displayName": {
         "type": "text",
@@ -75,12 +79,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "index_options": "freqs"
       },
       "entityLink": {
         "type": "text"
@@ -149,13 +148,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer"
           },
           "entityType": {
             "type": "keyword"
@@ -170,6 +163,19 @@
             }
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "owner": {
         "properties": {

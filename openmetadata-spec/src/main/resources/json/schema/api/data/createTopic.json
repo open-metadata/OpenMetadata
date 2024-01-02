@@ -80,6 +80,10 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Topic belongs to.",
       "type": "string",
@@ -91,6 +95,16 @@
       "items" : {
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["name", "service", "partitions"],

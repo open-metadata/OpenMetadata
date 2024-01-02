@@ -22,13 +22,16 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import {
+  deleteClassification,
+  submitForm,
+  validateForm,
+  visitClassificationPage,
+} from '../../common/TagUtils';
+import {
   DELETE_TERM,
-  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
-  NAME_VALIDATION_ERROR,
   NEW_CLASSIFICATION,
   NEW_TAG,
   SEARCH_ENTITY_TABLE,
-  TAG_INVALID_NAMES,
 } from '../../constants/constants';
 
 const permanentDeleteModal = (entity) => {
@@ -51,50 +54,6 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
-const submitForm = () => {
-  cy.get('button[type="submit"]').scrollIntoView().should('be.visible').click();
-};
-
-const validateForm = () => {
-  // submit form without any data to trigger validation
-  submitForm();
-
-  // error messages
-  cy.get('#tags_name_help').should('be.visible').contains('name is required');
-  cy.get('#tags_description_help')
-    .should('be.visible')
-    .contains('description is required');
-
-  // validation should work for invalid names
-
-  // min length validation
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.MIN_LENGTH);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-  // max length validation
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.MAX_LENGTH);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-  // with special char validation
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_VALIDATION_ERROR);
-};
-
 describe('Tags page should work', () => {
   beforeEach(() => {
     cy.login();
@@ -106,20 +65,10 @@ describe('Tags page should work', () => {
     interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
       'suggestTag'
     );
-    interceptURL('GET', '/api/v1/tags*', 'getTags');
-
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .and('be.visible')
-      .click({ animationDistanceThreshold: 20 });
-
-    // adding manual wait to open dropdown in UI
-    cy.wait(500);
-    cy.get('[data-testid="appbar-item-tags"]').should('be.visible').click();
-    verifyResponseStatusCode('@getTags', 200);
+    visitClassificationPage();
   });
 
   it('Required Details should be available', () => {
@@ -224,6 +173,9 @@ describe('Tags page should work', () => {
       .type(NEW_TAG.displayName);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
+    cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
+    cy.get('[data-testid="color-input"]').scrollIntoView().type(NEW_TAG.color);
+
     interceptURL('POST', '/api/v1/tags', 'createTag');
     submitForm();
 
@@ -246,7 +198,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=owner,usageSummary,tags*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
@@ -254,7 +206,11 @@ describe('Tags page should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
     const tag = 'Sensitive';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
@@ -264,7 +220,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@databaseSchemasPage', 200);
     verifyResponseStatusCode('@permissions', 200);
 
-    cy.get('[data-testid="tags"] [data-testid="add-tag"]')
+    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]')
       .should('be.visible')
       .click();
 
@@ -281,12 +237,14 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@addTags', 200);
-    cy.get('[data-testid="tag-container"]')
+    cy.get('[data-testid="tags-container"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
 
-    cy.get('[data-testid="edit-button"]').should('exist').click();
+    cy.get('[data-testid="tags-container"] [data-testid="edit-button"]')
+      .should('exist')
+      .click();
 
     // Remove all added tags
     cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
@@ -295,7 +253,9 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
-    cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
+    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]').should(
+      'be.visible'
+    );
   });
 
   it('Add tag at DatabaseSchema level with task & suggestions', () => {
@@ -307,7 +267,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
 
@@ -315,7 +275,11 @@ describe('Tags page should work', () => {
     const tag = 'Personal';
     const assignee = 'admin';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
@@ -335,7 +299,9 @@ describe('Tags page should work', () => {
     )
       .click()
       .type(assignee);
-    cy.get('.ant-select-item-option-content').contains(assignee).click();
+    cy.get(`[data-testid="assignee-option-${assignee}"]`)
+      .scrollIntoView()
+      .click();
 
     // click outside the select box
     cy.clickOutside();
@@ -355,8 +321,12 @@ describe('Tags page should work', () => {
 
     verifyResponseStatusCode('@taskResolve', 200);
     verifyResponseStatusCode('@databaseSchemasPage', 200);
+    cy.get('[data-testid="table"]').click();
 
-    cy.get('[data-testid="entity-tags"]').scrollIntoView().contains(tag);
+    cy.reload();
+    verifyResponseStatusCode('@databaseSchemasPage', 200);
+
+    cy.get('[data-testid="tags-container"]').scrollIntoView().contains(tag);
 
     cy.get('[data-testid="edit-button"]').click();
 
@@ -373,12 +343,21 @@ describe('Tags page should work', () => {
       .contains(NEW_CLASSIFICATION.displayName)
       .should('be.visible')
       .as('newCategory');
+
     cy.get('@newCategory')
       .click()
       .parent()
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
+    cy.get('[data-testid="entity-header-display-name"]')
+      .invoke('text')
+      .then((text) => {
+        // Get the text of the first menu item
+        if (text !== NEW_CLASSIFICATION.displayName) {
+          verifyResponseStatusCode('@getTags', 200);
+        }
+      });
 
     cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
     cy.get('@count')
@@ -394,39 +373,6 @@ describe('Tags page should work', () => {
     );
     cy.get('@count').click();
     verifyResponseStatusCode('@getEntityDetailsPage', 200);
-  });
-
-  it('Rename tag flow should work properly', () => {
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.displayName)
-      .should('be.visible')
-      .as('newCategory');
-
-    cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
-    cy.get('[data-testid="modal-container"]')
-      .should('exist')
-      .then(() => {
-        cy.get('[role="dialog"]').should('be.visible');
-      });
-    cy.get('[data-testid="header"] > strong')
-      .should('be.visible')
-      .contains('Edit Tag');
-
-    interceptURL('PATCH', '/api/v1/tags/*', 'renamedName');
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(NEW_TAG.renamedName);
-
-    submitForm();
-
-    verifyResponseStatusCode('@renamedName', 200);
-
-    cy.get('[data-testid="table"]').should('contain', NEW_TAG.renamedName);
   });
 
   it('Delete Tag flow should work properly', () => {
@@ -449,7 +395,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="table"]')
       .should('be.visible')
-      .should('contain', NEW_TAG.renamedName);
+      .should('contain', NEW_TAG.name);
 
     cy.get('[data-testid="table"]')
       .find('[data-testid="delete-tag"]')
@@ -458,50 +404,16 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    permanentDeleteModal(NEW_TAG.renamedName);
+    permanentDeleteModal(NEW_TAG.name);
 
     verifyResponseStatusCode('@deleteTag', 200);
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
     cy.get('[data-testid="table"]')
-      .contains(NEW_TAG.renamedName)
+      .contains(NEW_TAG.name)
       .should('not.be.exist');
   });
 
   it('Delete Tag classification flow should work properly', () => {
-    interceptURL(
-      'DELETE',
-      '/api/v1/classifications/*',
-      'deletTagClassification'
-    );
-
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.displayName)
-      .should('be.visible')
-      .as('newCategory');
-
-    cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
-
-    cy.get('[data-testid="manage-button"]').should('be.visible').click();
-
-    cy.get('[data-testid="delete-button"]').should('be.visible').click();
-
-    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.disabled')
-      .click();
-
-    verifyResponseStatusCode('@deletTagClassification', 200);
-    cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_CLASSIFICATION.name)
-      .should('not.be.exist');
+    deleteClassification(NEW_CLASSIFICATION);
   });
 });

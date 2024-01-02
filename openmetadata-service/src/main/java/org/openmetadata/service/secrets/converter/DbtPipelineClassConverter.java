@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtAzureConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
@@ -26,7 +27,13 @@ import org.openmetadata.service.util.JsonUtils;
 public class DbtPipelineClassConverter extends ClassConverter {
 
   private static final List<Class<?>> DBT_CONFIG_CLASSES =
-      List.of(DbtCloudConfig.class, DbtGCSConfig.class, DbtHttpConfig.class, DbtLocalConfig.class, DbtS3Config.class);
+      List.of(
+          DbtCloudConfig.class,
+          DbtGCSConfig.class,
+          DbtHttpConfig.class,
+          DbtLocalConfig.class,
+          DbtS3Config.class,
+          DbtAzureConfig.class);
 
   public DbtPipelineClassConverter() {
     super(DbtPipeline.class);
@@ -36,7 +43,8 @@ public class DbtPipelineClassConverter extends ClassConverter {
   public Object convert(Object object) {
     DbtPipeline dbtPipeline = (DbtPipeline) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(dbtPipeline.getDbtConfigSource(), DBT_CONFIG_CLASSES).ifPresent(dbtPipeline::setDbtConfigSource);
+    tryToConvertOrFail(dbtPipeline.getDbtConfigSource(), DBT_CONFIG_CLASSES)
+        .ifPresent(dbtPipeline::setDbtConfigSource);
 
     return dbtPipeline;
   }

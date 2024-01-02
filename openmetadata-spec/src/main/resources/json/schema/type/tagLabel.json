@@ -20,9 +20,20 @@
     "tagFQN": {
       "$ref": "#/definitions/tagFQN"
     },
+    "name": {
+      "description": "Name of the tag or glossary term.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this tag.",
+      "type": "string"
+    },
     "description": {
       "description": "Description for the tag label.",
       "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../type/basic.json#/definitions/style"
     },
     "source": {
       "description": "Label is from Tags or Glossary.",

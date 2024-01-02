@@ -1,0 +1,188 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../styles/variables.less');
+
+@lineage-sidebar-width: 100px;
+
+.custom-react-flow {
+  .react-flow__node-input.selectable.selected {
+    box-shadow: none;
+  }
+}
+
+.custom-node-header {
+  margin: -2px -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 4px;
+  position: relative;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.custom-node-header-tracing {
+  border: 1px solid @primary-color;
+  .react-flow__handle {
+    border-color: @primary-color;
+  }
+}
+.custom-node-header-active {
+  border-color: @primary-color;
+}
+
+.custom-node-column-lineage {
+  background: @body-bg-color;
+  border: 1px solid;
+  border-radius: 4px;
+
+  .custom-node-column-lineage-body {
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    position: relative;
+
+    .custom-node-column-container {
+      padding: 4px;
+      border-radius: 4px;
+      position: relative;
+    }
+  }
+}
+.custom-node-column-lineage-normal {
+  border-bottom: 1px solid @border-color;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.custom-edge-pipeline-button.ant-btn {
+  background-color: @body-bg-color;
+}
+
+.custom-node {
+  .custom-node-header-active {
+    .react-flow__handle {
+      opacity: 0;
+    }
+    .custom-lineage-heading {
+      color: @white;
+    }
+  }
+}
+
+.custom-control-search-box {
+  width: 400px;
+  height: 32px;
+}
+.ant-select.custom-control-search-box-edit-mode {
+  margin-left: @lineage-sidebar-width;
+}
+.custom-control-fit-screen-button {
+  border: 1px solid @border-color;
+  border-radius: 4px;
+  background-color: @body-bg-color;
+}
+.custom-control-zoom-slide {
+  display: flex;
+  column-gap: 8px;
+  height: 32px;
+  width: 150px;
+}
+.custom-node-expand-button {
+  top: -14px;
+  left: -12px;
+  cursor: pointer;
+  z-index: 1;
+}
+.load-more-node {
+  border: 3.5px dashed #1890ff;
+  border-radius: 18px;
+  text-align: center;
+  color: #1890ff;
+  font-weight: 600;
+  .load-more-node-sizes {
+    color: #37352f;
+  }
+}
+
+.control-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-control-edit-button {
+  display: block !important;
+  border: 1px solid @border-color;
+  background-color: @body-bg-color;
+  &.active {
+    background-color: @primary-color;
+  }
+}
+
+.custom-lineage-heading {
+  color: @text-grey-muted;
+}
+
+.suggestion-node-item {
+  position: absolute;
+  left: -10px;
+  min-width: 230px;
+  width: max-content;
+  z-index: 20;
+  background-color: @white;
+  color: @text-color-secondary;
+}
+
+.lineage-card .react-flow__edge.animated path {
+  animation: none;
+}
+
+.entity-lineage.sidebar {
+  height: 110%;
+  background: @white;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: @lineage-sidebar-width;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 8px;
+  transform: translateX(100%);
+  display: none;
+  border-right: 1px solid @border-color;
+  transition: transform 0.3s ease-out;
+}
+
+.entity-lineage.sidebar.open {
+  transform: translateX(0);
+  display: block;
+  padding-top: 20px;
+}
+
+.lineage-card.full-screen-lineage {
+  top: @navbar-height;
+  left: @sidebar-width;
+  position: fixed !important;
+  width: calc(100vw - @sidebar-width);
+  height: calc(100vh - @navbar-height);
+}
+
+.lineage-node-remove-btn {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  cursor: pointer;
+}

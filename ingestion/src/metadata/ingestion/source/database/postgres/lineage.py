@@ -11,14 +11,17 @@
 """
 Postgres lineage module
 """
+import traceback
+from datetime import datetime
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresScheme,
 )
-from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.postgres.pgspider.lineage import (
     get_lineage_from_multi_tenant_table,
@@ -49,24 +52,13 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                 )
             """
 
-    def next_record(self) -> Iterable[AddLineageRequest]:
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
-        for table_queries in self.get_table_query():
-            for table_query in table_queries.queries:
-                lineages = get_lineage_by_query(
-                    self.metadata,
-                    query=table_query.query,
-                    service_name=table_query.serviceName,
-                    database_name=table_query.databaseName,
-                    schema_name=table_query.databaseSchema,
-                    dialect=Dialect.POSTGRES,
-                )
 
-                for lineage_request in lineages or []:
-                    yield lineage_request
+        yield from super()._iter()
 
         if self.service_connection.scheme == PostgresScheme.pgspider_psycopg2:
             lineages = get_lineage_from_multi_tenant_table(
@@ -77,3 +69,30 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
 
             for lineage_request in lineages or []:
                 yield lineage_request
+
+    def process_table_query(self) -> Iterable[TableQuery]:
+        """
+        Process Query
+        """
+        try:
+            with get_connection(self.service_connection).connect() as conn:
+                rows = conn.execute(self.get_sql_statement())
+                for row in rows:
+                    row = dict(row)
+                    try:
+                        yield TableQuery(
+                            query=row["query_text"],
+                            userName=row["usename"],
+                            analysisDate=datetime.now(),
+                            aborted=self.get_aborted_status(row),
+                            databaseName=self.get_database_name(row),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(row),
+                            duration=row.get("duration"),
+                        )
+                    except Exception as err:
+                        logger.debug(traceback.format_exc())
+                        logger.error(str(err))
+        except Exception as err:
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())

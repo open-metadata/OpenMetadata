@@ -21,11 +21,13 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.profiler.orm.types.custom_array import CustomArray
+from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
+from metadata.profiler.orm.types.custom_image import CustomImage
+from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
-from metadata.profiler.orm.types.hex_byte_string import HexByteString
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
-from metadata.utils.sqa_like_column import Type
 
 
 class CustomTypes(TypeRegistry):
@@ -34,6 +36,9 @@ class CustomTypes(TypeRegistry):
     BYTEA = ByteaToHex
     ARRAY = CustomArray
     TIMESTAMP = CustomTimestamp
+    IMAGE = CustomImage
+    IP = CustomIP
+    SQADATETIMERANGE = CustomDateTimeRange
 
 
 class Dialects(Enum):
@@ -51,11 +56,12 @@ class Dialects(Enum):
     ClickHouse = "clickhouse"
     Databricks = "databricks"
     Db2 = "db2"
+    Doris = "pydoris"
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"
     Hana = "hana"
-    Hive = b"hive"  # Hive requires bytes
+    Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
     MariaDB = "mariadb"
@@ -88,7 +94,9 @@ NOT_COMPUTE = {
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
+    CustomTypes.SQADATETIMERANGE.value.__name__,
 }
+FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
     DataType.INT.value,
@@ -128,8 +136,8 @@ def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
-    if isinstance(_type, Type):
-        return _type.name in DATATIME_SET
+    if isinstance(_type, DataType):
+        return _type.value in DATATIME_SET
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
@@ -141,8 +149,8 @@ def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
-    if isinstance(_type, Type):
-        return _type.name in QUANTIFIABLE_SET
+    if isinstance(_type, DataType):
+        return _type.value in QUANTIFIABLE_SET
     return is_numeric(_type) or is_integer(_type)
 
 
@@ -151,6 +159,6 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
-    if isinstance(_type, Type):
-        return _type.name in CONCATENABLE_SET
+    if isinstance(_type, DataType):
+        return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)

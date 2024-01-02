@@ -13,16 +13,18 @@ This module defines the CLI commands for OpenMetada
 """
 import argparse
 import logging
-import pathlib
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 from metadata.__version__ import get_metadata_version
+from metadata.cli.app import run_app
 from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.insight import run_insight
+from metadata.cli.lineage import run_lineage
 from metadata.cli.openmetadata_dag_config_migration import (
     run_openmetadata_dag_config_migration,
 )
@@ -31,6 +33,7 @@ from metadata.cli.openmetadata_imports_migration import (
 )
 from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
+from metadata.cli.usage import run_usage
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger, set_loggers_level
 
@@ -39,6 +42,7 @@ logger = cli_logger()
 
 class MetadataCommands(Enum):
     INGEST = "ingest"
+    USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
     DOCKER = "docker"
@@ -46,8 +50,21 @@ class MetadataCommands(Enum):
     RESTORE = "restore"
     WEBHOOK = "webhook"
     INSIGHT = "insight"
+    LINEAGE = "lineage"
+    APP = "app"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
+
+
+RUN_PATH_METHODS = {
+    MetadataCommands.INGEST.value: run_ingest,
+    MetadataCommands.USAGE.value: run_usage,
+    MetadataCommands.LINEAGE.value: run_lineage,
+    MetadataCommands.INSIGHT.value: run_insight,
+    MetadataCommands.PROFILE.value: run_profiler,
+    MetadataCommands.TEST.value: run_test,
+    MetadataCommands.APP.value: run_app,
+}
 
 
 OM_IMPORTS_MIGRATION = """
@@ -96,7 +113,7 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         "-c",
         "--config",
         help="path to the config file",
-        type=pathlib.Path,
+        type=Path,
         required=True,
     )
 
@@ -106,7 +123,7 @@ def create_openmetadata_imports_migration_args(parser: argparse.ArgumentParser):
         "-d",
         "--dir-path",
         default="/opt/airflow/dags",
-        type=pathlib.Path,
+        type=Path,
         help="Path to the DAG folder. Default to `/opt/airflow/dags`",
     )
 
@@ -122,7 +139,7 @@ def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParse
         "-d",
         "--dir-path",
         default="/opt/airflow/dag_generated_configs",
-        type=pathlib.Path,
+        type=Path,
         help="Path to the DAG folder. Default to `/opt/airflow/dag_generated_configs`",
     )
 
@@ -135,7 +152,7 @@ def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParse
 
 def docker_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Docker
+    Additional Parser Arguments for Docker
     """
     parser.add_argument(
         "--start", help="Start release docker containers", action="store_true"
@@ -160,14 +177,14 @@ def docker_args(parser: argparse.ArgumentParser):
         "-f",
         "--file-path",
         help="Path to Local docker-compose.yml",
-        type=pathlib.Path,
+        type=Path,
         required=False,
     )
     parser.add_argument(
         "-env-file",
         "--env-file-path",
         help="Path to env file containing the environment variables",
-        type=pathlib.Path,
+        type=Path,
         required=False,
     )
     parser.add_argument(
@@ -188,7 +205,7 @@ def docker_args(parser: argparse.ArgumentParser):
 
 def webhook_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Webhook
+    Additional Parser Arguments for Webhook
     """
     parser.add_argument(
         "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
@@ -198,7 +215,7 @@ def webhook_args(parser: argparse.ArgumentParser):
 
 def backup_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Backup
+    Additional Parser Arguments for Backup
     """
     parser.add_argument(
         "-H", "--host", help="Host that runs the database", required=True
@@ -229,7 +246,12 @@ def backup_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--output",
         help="Local path to store the backup",
-        type=pathlib.Path,
+        type=Path,
+        default=None,
+    )
+    parser.add_argument(
+        "--filename",
+        help="Filename to store the backup",
         default=None,
     )
     parser.add_argument(
@@ -255,7 +277,7 @@ def backup_args(parser: argparse.ArgumentParser):
 
 def restore_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Restore
+    Additional Parser Arguments for Restore
     """
     parser.add_argument(
         "-H",
@@ -294,7 +316,7 @@ def restore_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--input",
         help="Local backup file path for restore",
-        type=pathlib.Path,
+        type=Path,
         required=True,
     )
 
@@ -312,7 +334,7 @@ def restore_args(parser: argparse.ArgumentParser):
 
 def add_metadata_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Metadata
+    Additional Parser Arguments for Metadata
     """
     parser.add_argument(
         "-v", "--version", action="version", version=get_metadata_version()
@@ -337,6 +359,15 @@ def get_parser(args=None):
         sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
     )
     create_common_config_parser_args(
+        sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.USAGE.value,
+            help="Workflow to check the query logs of a database service.",
+        )
+    )
+    create_common_config_parser_args(
         sub_parser.add_parser(
             MetadataCommands.PROFILE.value,
             help="Workflow for profiling Table sources into Metadata",
@@ -345,6 +376,12 @@ def get_parser(args=None):
     create_common_config_parser_args(
         sub_parser.add_parser(
             MetadataCommands.TEST.value, help="Workflow for running test suites"
+        )
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.APP.value,
+            help="Workflow for running external applications",
         )
     )
     create_openmetadata_imports_migration_args(
@@ -391,13 +428,16 @@ def get_parser(args=None):
     return parser.parse_args(args)
 
 
-def metadata(args=None):  # pylint: disable=too-many-branches
+def metadata(args=None):
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
     config_file = contains_args.get("config")
+    path = None
+    if config_file:
+        path = Path(config_file).expanduser()
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     elif contains_args.get("log_level"):
@@ -405,14 +445,9 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     else:
         set_loggers_level(logging.INFO)
 
-    if metadata_workflow == MetadataCommands.INGEST.value:
-        run_ingest(config_path=config_file)
-    if metadata_workflow == MetadataCommands.INSIGHT.value:
-        run_insight(config_path=config_file)
-    if metadata_workflow == MetadataCommands.PROFILE.value:
-        run_profiler(config_path=config_file)
-    if metadata_workflow == MetadataCommands.TEST.value:
-        run_test(config_path=config_file)
+    if metadata_workflow in RUN_PATH_METHODS:
+        RUN_PATH_METHODS[metadata_workflow](path)
+
     if metadata_workflow == MetadataCommands.BACKUP.value:
         run_backup(
             common_backup_obj_instance=BackupRestoreArgs(
@@ -426,6 +461,7 @@ def metadata(args=None):  # pylint: disable=too-many-branches
                 schema=contains_args.get("schema"),
             ),
             output=contains_args.get("output"),
+            filename=contains_args.get("filename"),
             upload_destination_type=contains_args.get("upload_destination_type"),
             upload=contains_args.get("upload"),
         )

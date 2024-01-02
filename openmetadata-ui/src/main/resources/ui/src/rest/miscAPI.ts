@@ -12,21 +12,18 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
-import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
+import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
-import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
   SearchResponse,
 } from '../interface/search.interface';
-import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
 import APIClient from './index';
 
@@ -58,24 +55,9 @@ export const searchData = <SI extends SearchIndex>(
   });
 };
 
-export const getOwnershipCount = (
-  ownership: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=${ownership}:${getCurrentUserId()}&from=${0}&size=${0}`
-  );
-};
-
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
     '/system/config/auth'
-  );
-
-  return response.data;
-};
-export const getApplicationConfig = async () => {
-  const response = await APIClient.get<ApplicationConfiguration>(
-    '/system/config/applicationConfig'
   );
 
   return response.data;
@@ -118,8 +100,11 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
       SearchIndex.CONTAINER,
+      SearchIndex.STORED_PROCEDURE,
+      SearchIndex.DASHBOARD_DATA_MODEL,
       SearchIndex.GLOSSARY,
       SearchIndex.TAG,
+      SearchIndex.SEARCH_INDEX,
     ],
   };
 
@@ -265,7 +250,7 @@ export const deleteEntity = async (
     recursive: isRecursive,
   };
 
-  return APIClient.delete(`/${entityType}/${entityId}`, {
+  return APIClient.delete<{ version?: number }>(`/${entityType}/${entityId}`, {
     params,
   });
 };
@@ -282,11 +267,24 @@ export const getAdvancedFieldOptions = (
   });
 };
 
-export const getAdvancedFieldDefaultOptions = (
+/**
+ * Retrieves the aggregate field options based on the provided parameters.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
-  field: string
+  field: string,
+  value: string,
+  q: string
 ) => {
-  const params = { index, field };
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const params = { index, field, value: withWildCardValue, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -307,14 +305,8 @@ export const getEntityCount = async (
   return response.data;
 };
 
-export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
-
-  return response.data;
-};
-
 export const fetchMarkdownFile = async (filePath: string) => {
-  let baseURL = '/';
+  let baseURL;
 
   try {
     const url = new URL(filePath);

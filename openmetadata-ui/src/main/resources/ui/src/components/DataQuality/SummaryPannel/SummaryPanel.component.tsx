@@ -11,53 +11,20 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { AxiosError } from 'axios';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { INITIAL_TEST_SUMMARY } from 'constants/TestSuite.constant';
-import { TestSummary } from 'generated/tests/testSuite';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTestCaseExecutionSummary } from 'rest/testAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
-export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
+export const SummaryPanel: FC<SummaryPanelProps> = ({
+  testSummary: summary,
+  isLoading = false,
+}: SummaryPanelProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
-  const { testCase: testCasePermission } = permissions;
-
-  const [summary, setSummary] = useState<TestSummary>();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchTestSummary = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getTestCaseExecutionSummary();
-      setSummary(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (
-      isUndefined(testSummary) &&
-      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic)
-    ) {
-      fetchTestSummary();
-    } else {
-      setSummary(testSummary ?? INITIAL_TEST_SUMMARY);
-      setIsLoading(false);
-    }
-  }, [testCasePermission]);
 
   return (
     <Row wrap gutter={[16, 16]}>
-      <Col flex="25%">
+      <Col span={6}>
         <SummaryCard
           className="h-full"
           isLoading={isLoading}
@@ -67,7 +34,7 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
           value={summary?.total ?? 0}
         />
       </Col>
-      <Col flex="25%">
+      <Col span={6}>
         <SummaryCard
           isLoading={isLoading}
           title={t('label.success')}
@@ -76,7 +43,7 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
           value={summary?.success ?? 0}
         />
       </Col>
-      <Col flex="25%">
+      <Col span={6}>
         <SummaryCard
           isLoading={isLoading}
           title={t('label.aborted')}
@@ -85,7 +52,7 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
           value={summary?.aborted ?? 0}
         />
       </Col>
-      <Col flex="25%">
+      <Col span={6}>
         <SummaryCard
           isLoading={isLoading}
           title={t('label.failed')}

@@ -25,13 +25,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/TimeUtils', () => ({
-  getUTCDateTime: jest.fn(),
-  getLocaleDateFromTimeStamp: jest.fn(),
-  getTimeZone: jest.fn(),
-}));
-
-jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 

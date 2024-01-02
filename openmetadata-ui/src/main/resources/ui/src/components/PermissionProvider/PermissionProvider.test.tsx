@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import AppState from 'AppState';
-import { User } from 'generated/entity/teams/user';
 import React from 'react';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from 'rest/permissionAPI';
+} from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
 
-jest.mock('rest/permissionAPI', () => ({
+jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
@@ -37,13 +35,25 @@ jest.mock('rest/permissionAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
+}));
+
+let currentUser: { id: string; name: string } | null = {
+  id: '123',
+  name: 'Test User',
+};
+
+jest.mock('../Auth/AuthProviders/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn().mockImplementation(() => ({
+      currentUser,
+    })),
+  };
+});
+
 describe('PermissionProvider', () => {
   it('Should render children and call apis when current user is present', async () => {
-    const currentUser = { id: '123', name: 'Test User' };
-    const getUserDetailsSpy = jest
-      .spyOn(AppState, 'getCurrentUserDetails')
-      .mockReturnValue(currentUser as User);
-
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
@@ -56,16 +66,11 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
 
-    expect(screen.getByTestId('children')).toBeInTheDocument();
-
-    getUserDetailsSpy.mockRestore();
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
   });
 
   it('Should not call apis when current user is undefined', async () => {
-    const getUserDetailsSpy = jest
-      .spyOn(AppState, 'getCurrentUserDetails')
-      .mockReturnValue(undefined);
-
+    currentUser = null;
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
@@ -77,7 +82,5 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionById).not.toHaveBeenCalled();
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
-
-    getUserDetailsSpy.mockRestore();
   });
 });

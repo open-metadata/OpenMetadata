@@ -26,16 +26,18 @@ public class PipelineServiceStatusJobHandler {
   public static final String JOB_CONTEXT_METER_REGISTRY = "meterRegistry";
   public static final String JOB_CONTEXT_CLUSTER_NAME = "clusterName";
 
+  private final PipelineServiceClientConfiguration config;
   private final PipelineServiceClient pipelineServiceClient;
   private final PrometheusMeterRegistry meterRegistry;
   private final String clusterName;
   private final Integer healthCheckInterval;
   private final Scheduler scheduler = new StdSchedulerFactory().getScheduler();
 
-  private static PipelineServiceStatusJobHandler INSTANCE;
+  private static PipelineServiceStatusJobHandler instance;
 
-  private PipelineServiceStatusJobHandler(PipelineServiceClientConfiguration config, String clusterName)
-      throws SchedulerException {
+  private PipelineServiceStatusJobHandler(
+      PipelineServiceClientConfiguration config, String clusterName) throws SchedulerException {
+    this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
     this.clusterName = clusterName;
@@ -43,16 +45,16 @@ public class PipelineServiceStatusJobHandler {
     this.scheduler.start();
   }
 
-  public static PipelineServiceStatusJobHandler create(PipelineServiceClientConfiguration config, String clusterName) {
-    if (INSTANCE != null) return INSTANCE;
+  public static PipelineServiceStatusJobHandler create(
+      PipelineServiceClientConfiguration config, String clusterName) {
+    if (instance != null) return instance;
 
     try {
-      INSTANCE = new PipelineServiceStatusJobHandler(config, clusterName);
+      instance = new PipelineServiceStatusJobHandler(config, clusterName);
     } catch (Exception ex) {
       LOG.error("Failed to initialize the Pipeline Service Status Handler");
     }
-
-    return INSTANCE;
+    return instance;
   }
 
   private JobDetail jobBuilder() {
@@ -72,17 +74,24 @@ public class PipelineServiceStatusJobHandler {
   private Trigger getTrigger() {
     return TriggerBuilder.newTrigger()
         .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(healthCheckInterval).repeatForever())
+        .withSchedule(
+            SimpleScheduleBuilder.simpleSchedule()
+                .withIntervalInSeconds(healthCheckInterval)
+                .repeatForever())
         .build();
   }
 
   public void addPipelineServiceStatusJob() {
-    try {
-      JobDetail jobDetail = jobBuilder();
-      Trigger trigger = getTrigger();
-      scheduler.scheduleJob(jobDetail, trigger);
-    } catch (Exception ex) {
-      LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
+    // Only register the job to listen to the status if the Pipeline Service Client is indeed
+    // enabled
+    if (config.getEnabled().equals(Boolean.TRUE)) {
+      try {
+        JobDetail jobDetail = jobBuilder();
+        Trigger trigger = getTrigger();
+        scheduler.scheduleJob(jobDetail, trigger);
+      } catch (Exception ex) {
+        LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
+      }
     }
   }
 }

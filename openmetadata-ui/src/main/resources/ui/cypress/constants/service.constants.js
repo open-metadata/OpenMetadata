@@ -10,8 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { uuid } from './constants';
+import { SERVICE_TYPE, uuid } from './constants';
 const uniqueID = uuid();
+
+export const SERVICE_CATEGORIES = {
+  DATABASE_SERVICES: 'databaseServices',
+  MESSAGING_SERVICES: 'messagingServices',
+  PIPELINE_SERVICES: 'pipelineServices',
+  DASHBOARD_SERVICES: 'dashboardServices',
+  ML_MODEL_SERVICES: 'mlmodelServices',
+  STORAGE_SERVICES: 'storageServices',
+  METADATA_SERVICES: 'metadataServices',
+  SEARCH_SERVICES: 'searchServices',
+};
 
 export const REDSHIFT = {
   serviceType: 'Redshift',
@@ -27,4 +38,35 @@ export const MYSQL = {
   tableName: 'team_entity',
   description: `This is Mysql-ct-test-${uniqueID} description`,
   database: 'Database',
+};
+
+export const VISIT_SERVICE_PAGE_DETAILS = {
+  [SERVICE_TYPE.Database]: {
+    settingsMenuId: 'services.databases',
+    serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
+  },
+  [SERVICE_TYPE.Messaging]: {
+    settingsMenuId: 'services.messaging',
+    serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
+  },
+  [SERVICE_TYPE.Dashboard]: {
+    settingsMenuId: 'services.dashboards',
+    serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
+  },
+  [SERVICE_TYPE.Pipeline]: {
+    settingsMenuId: 'services.pipelines',
+    serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+  },
+  [SERVICE_TYPE.MLModels]: {
+    settingsMenuId: 'services.mlModels',
+    serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
+  },
+  [SERVICE_TYPE.Storage]: {
+    settingsMenuId: 'services.storages',
+    serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+  },
+  [SERVICE_TYPE.Search]: {
+    settingsMenuId: 'services.search',
+    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  },
 };

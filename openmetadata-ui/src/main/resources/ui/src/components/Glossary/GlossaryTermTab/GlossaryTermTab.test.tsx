@@ -11,54 +11,103 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import { mockedGlossaryTerms, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
+import {
+  fireEvent,
+  getAllByTestId,
+  getAllByText,
+  getByTestId,
+  getByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
+import {
+  mockedGlossaryTerms,
+  MOCK_PERMISSIONS,
+} from '../../../mocks/Glossary.mock';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
-jest.mock('rest/glossaryAPI', () => ({
+const mockOnAddGlossaryTerm = jest.fn();
+const mockRefreshGlossaryTerms = jest.fn();
+const mockOnEditGlossaryTerm = jest.fn();
+
+const mockProps1 = {
+  childGlossaryTerms: [],
+  isGlossary: false,
+  permissions: MOCK_PERMISSIONS,
+  refreshGlossaryTerms: mockRefreshGlossaryTerms,
+  selectedData: mockedGlossaryTerms[0],
+  termsLoading: false,
+  onAddGlossaryTerm: mockOnAddGlossaryTerm,
+  onEditGlossaryTerm: mockOnEditGlossaryTerm,
+};
+
+const mockProps2 = {
+  ...mockProps1,
+  childGlossaryTerms: mockedGlossaryTerms,
+};
+
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
       <p data-testid="description">{markdown}</p>
     ))
 );
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onClick }) => (
+      <div onClick={onClick}>ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('../../Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div>Loader</div>)
+);
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
+}));
 
 describe('Test GlossaryTermTab component', () => {
-  it('No data placeholder should visible if there is no data', async () => {
-    (getGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    await act(async () => {
-      render(
-        <GlossaryTermTab
-          childGlossaryTerms={[]}
-          isGlossary={false}
-          permissions={MOCK_PERMISSIONS}
-          refreshGlossaryTerms={jest.fn()}
-          selectedData={mockedGlossaryTerms[0]}
-          termsLoading={false}
-          onAddGlossaryTerm={jest.fn()}
-          onEditGlossaryTerm={jest.fn()}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+  it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
+    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+      wrapper: MemoryRouter,
     });
 
+    expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should call the onAddGlossaryTerm fn onClick of add button in ErrorPlaceHolder', () => {
+    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
+
+    expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
+  });
+
+  it('should contain all necessary fields value in table when glossary data is not empty', async () => {
+    const { container } = render(<GlossaryTermTab {...mockProps2} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(getByTestId(container, 'Clothing')).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        'message.adding-new-entity-is-easy-just-give-it-a-spin'
-      )
+      getByText(container, 'description of Business Glossary.Sales')
     ).toBeInTheDocument();
+
+    expect(getAllByText(container, 'OwnerLabel')).toHaveLength(2);
+
+    expect(getAllByTestId(container, 'add-classification')).toHaveLength(1);
+    expect(getAllByTestId(container, 'edit-button')).toHaveLength(2);
   });
 });

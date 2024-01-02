@@ -38,8 +38,16 @@
       "description": "SQL Query definition.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
+    "query_type": {
+      "description": "SQL query type",
+      "type": "string"
+    },
+    "exclude_usage": {
+      "description": "Flag to check if query is to be excluded while processing usage",
+      "type": "boolean"
+    },
     "duration": {
-      "description": "How long did the query took to run in seconds.",
+      "description": "How long did the query took to run in milliseconds.",
       "type": "number"
     },
     "users": {
@@ -49,6 +57,14 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
+    "usedBy" : {
+      "description": "List of users who ran the query but does not exist in OpenMetadata.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "queryDate": {
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -56,8 +72,21 @@
     "queryUsedIn": {
       "description": "list of entities to which the query is joined.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "triggeredBy": {
+      "description": "Entity that triggered the query. E.g., a Stored Procedure or a Pipeline Task.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "processedLineage": {
+      "description": "Flag if this query has already been successfully processed for lineage",
+      "type": "boolean",
+      "default": false
+    },
+    "service": {
+      "description": "Link to the database service fully qualified name where this query has been run",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
-  "required": ["query"],
+  "required": ["query", "service"],
   "additionalProperties": false
 }

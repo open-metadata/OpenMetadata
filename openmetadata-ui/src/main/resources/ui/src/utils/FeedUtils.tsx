@@ -17,21 +17,12 @@ import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
 import React from 'react';
-import {
-  deletePostById,
-  deleteThread,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from 'rest/feedsAPI';
-import {
-  getSearchedUsers,
-  getSuggestions,
-  getUserSuggestions,
-  searchData,
-} from 'rest/miscAPI';
+import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
+import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
+import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -40,7 +31,8 @@ import {
   entityLinkRegEx,
   EntityRegEx,
   entityRegex,
-  entityUrlMap,
+  EntityUrlMapType,
+  ENTITY_URL_MAP,
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
@@ -49,21 +41,41 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import { User } from '../generated/entity/teams/user';
 import {
   EntityFieldThreadCount,
   EntityFieldThreads,
   EntityThreadField,
 } from '../interface/feed.interface';
 import {
+  deletePostById,
+  deleteThread,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '../rest/feedsAPI';
+import {
+  getSearchedUsers,
+  getSuggestions,
+  getUserSuggestions,
+  searchData,
+} from '../rest/miscAPI';
+import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
+  getRandomColor,
 } from './CommonUtils';
+import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
+import Fqn from './Fqn';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from './ProfilerUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
-import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -81,7 +93,7 @@ export const getEntityField = (entityLink: string) => {
 export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
+    relativeDay: getRelativeCalendar(feed.updatedAt || 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 
@@ -153,54 +165,78 @@ export const getThreadField = (
 };
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
+  if (entityType === EntityType.GLOSSARY_TERM) {
+    return `${document.location.protocol}//${document.location.host}/glossary/${entityFqn}`;
+  } else if (entityType === EntityType.TAG) {
+    const classificationFqn = Fqn.split(entityFqn);
+
+    return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  }
+
   return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
 };
 
-export async function suggestions(searchTerm: string, mentionChar: string) {
+export async function suggestions(
+  searchTerm: string,
+  mentionChar: string
+): Promise<MentionSuggestionsItem[]> {
   if (mentionChar === '@') {
     let atValues = [];
+
     if (!searchTerm) {
       const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
       const hits = data.data.hits.hits;
 
-      atValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
-
-        return {
-          id: hit._id,
-          value: getEntityPlaceHolder(
+      atValues = await Promise.all(
+        hits.map(async (hit) => {
+          const entityType = hit._source.entityType;
+          const name = getEntityPlaceHolder(
             `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
-          ),
-          link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
-            hit._source.name
-          ),
-        };
-      });
+          );
+
+          return {
+            id: hit._id,
+            value: name,
+            link: buildMentionLink(
+              ENTITY_URL_MAP[entityType as EntityUrlMapType],
+              hit._source.name
+            ),
+            type:
+              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
+            name: hit._source.name,
+          };
+        })
+      );
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = await getUserSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      atValues = hits.map((hit: any) => {
-        const entityType = hit._source.entityType;
 
-        return {
-          id: hit._id,
-          value: getEntityPlaceHolder(
+      atValues = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        hits.map(async (hit: any) => {
+          const entityType = hit._source.entityType;
+          const name = getEntityPlaceHolder(
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
-          ),
-          link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
-            hit._source.name
-          ),
-        };
-      });
+          );
+
+          return {
+            id: hit._id,
+            value: name,
+            link: buildMentionLink(
+              ENTITY_URL_MAP[entityType as EntityUrlMapType],
+              hit._source.name
+            ),
+            type:
+              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
+            name: hit._source.name,
+          };
+        })
+      );
     }
 
-    return atValues;
+    return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
     if (!searchTerm) {
@@ -209,6 +245,11 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source,
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -217,6 +258,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     } else {
@@ -225,6 +269,11 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
       hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
+        const breadcrumbs = getEntityBreadcrumbs(
+          hit._source as SearchedDataProps['data'][number]['_source'],
+          entityType as EntityType,
+          false
+        );
 
         return {
           id: hit._id,
@@ -233,6 +282,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             entityType,
             getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
+          type: entityType,
+          name: hit._source.displayName || hit._source.name,
+          breadcrumbs,
         };
       });
     }
@@ -241,14 +293,51 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   }
 }
 
-export async function matcher(
-  searchTerm: string,
-  renderList: (matches: string[], search: string) => void,
-  mentionChar: string
-) {
-  const matches = await suggestions(searchTerm, mentionChar);
-  renderList(matches, searchTerm);
-}
+/**
+ *
+ * @param item  - MentionSuggestionsItem
+ * @param user - User
+ * @returns HTMLDIVELEMENT
+ */
+export const userMentionItemWithAvatar = (
+  item: MentionSuggestionsItem,
+  user?: User
+) => {
+  const wrapper = document.createElement('div');
+  const profileUrl =
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user?.profile?.images
+    ) ?? '';
+
+  const { color, character } = getRandomColor(item.name);
+
+  ReactDOM.render(
+    <div className="d-flex gap-2">
+      <div className="mention-profile-image">
+        {profileUrl ? (
+          <img
+            alt={item.name}
+            data-testid="profile-image"
+            referrerPolicy="no-referrer"
+            src={profileUrl}
+          />
+        ) : (
+          <div
+            className="flex-center flex-shrink align-middle mention-avatar"
+            data-testid="avatar"
+            style={{ backgroundColor: color }}>
+            <span>{character}</span>
+          </div>
+        )}
+      </div>
+      <span className="d-flex items-center truncate w-56">{item.name}</span>
+    </div>,
+    wrapper
+  );
+
+  return wrapper;
+};
 
 const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
@@ -280,7 +369,7 @@ export const getBackendFormat = (message: string) => {
   const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
   const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
-  const urlEntries = Object.entries(entityUrlMap);
+  const urlEntries = Object.entries(ENTITY_URL_MAP);
 
   mentionList.forEach((m, i) => {
     const updatedDetails = mentionDetails[i].slice(-2);
@@ -387,8 +476,8 @@ export const getEntityFieldDisplay = (entityField: string) => {
   if (entityField && entityField.length) {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
-      <span className="tw-px-1">
-        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+      <span className="p-x-xss">
+        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
       </span>
     );
 
@@ -483,7 +572,7 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE) {
+  if (entityType === EntityType.TABLE || entityType === EntityType.TEST_CASE) {
     displayName = getPartialNameFromTableFQN(
       entityFQN,
       [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
@@ -497,13 +586,17 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
       EntityType.DASHBOARD_SERVICE,
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
+      EntityType.METADATA_SERVICE,
+      EntityType.STORAGE_SERVICE,
+      EntityType.SEARCH_SERVICE,
       EntityType.TYPE,
       EntityType.MLMODEL,
     ].includes(entityType as EntityType)
   ) {
     displayName = getPartialNameFromFQN(entityFQN, ['service']);
   } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM, EntityType.DOMAIN].includes(
       entityType as EntityType
     )
   ) {
@@ -522,6 +615,9 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
 export const MarkdownToHTMLConverter = new Showdown.Converter({
   strikethrough: true,
+  tables: true,
+  tasklists: true,
+  simpleLineBreaks: true,
 });
 
 export const getFeedPanelHeaderText = (

@@ -12,20 +12,28 @@
  */
 
 import { render } from '@testing-library/react';
-import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React from 'react';
+import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
-jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
-    );
-});
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () => {
+    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+  }
+);
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <p data-testid="entity-summary-details">
+          EntitySummaryDetails component
+        </p>
+      );
+  }
+);
 
 describe('Test TableDataCardBody Component', () => {
   const extraInfo = [

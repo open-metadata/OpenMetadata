@@ -21,7 +21,7 @@ import {
 } from '../../mocks/SummaryListItems.mock';
 import SummaryListItem from './SummaryListItems.component';
 
-jest.mock('../../../../common/rich-text-editor/RichTextEditorPreviewer', () =>
+jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -29,7 +29,7 @@ jest.mock('../../../../common/rich-text-editor/RichTextEditorPreviewer', () =>
     ))
 );
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
+jest.mock('../../../../Tag/TagsViewer/TagsViewer', () =>
   jest
     .fn()
     .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)

@@ -17,8 +17,11 @@ import {
   screen,
   waitForElement,
 } from '@testing-library/react';
-import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import React from 'react';
+import {
+  CSVImportResult,
+  Status,
+} from '../../../generated/type/csvImportResult';
 import { EntityImport } from './EntityImport.component';
 let mockCsvImportResult = {
   dryRun: true,
@@ -46,10 +49,13 @@ const mockIncorrectCsvContent = `parent,name*,displayName,description*,synonyms,
 ,,Glossary2 term2,Glossary2 term2,Description data.,,,,
 `;
 
-jest.mock('components/IngestionStepper/IngestionStepper.component', () => {
-  return jest.fn().mockImplementation(() => <div>Stepper</div>);
-});
-jest.mock('components/Loader/Loader', () => {
+jest.mock(
+  '../../../components/IngestionStepper/IngestionStepper.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Stepper</div>);
+  }
+);
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('./ImportStatus/ImportStatus.component', () => ({

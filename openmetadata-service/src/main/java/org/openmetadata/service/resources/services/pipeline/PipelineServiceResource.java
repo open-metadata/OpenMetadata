@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -56,17 +55,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/pipelineServices")
@@ -81,15 +76,13 @@ public class PipelineServiceResource
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
-    Entity.withHref(uriInfo, service.getOwner());
+    super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getPipelines());
-    Entity.withHref(uriInfo, service.getDomain());
     return service;
   }
 
-  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
+  public PipelineServiceResource(Authorizer authorizer) {
+    super(Entity.PIPELINE_SERVICE, authorizer, ServiceType.PIPELINE);
   }
 
   @Override
@@ -114,7 +107,9 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "List of pipeline services",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceList.class)))
       })
   public ResultList<PipelineService> list(
       @Context UriInfo uriInfo,
@@ -124,16 +119,25 @@ public class PipelineServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -141,12 +145,9 @@ public class PipelineServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    ListFilter filter = new ListFilter(include);
-    ResultList<PipelineService> pipelineServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return addHref(uriInfo, decryptOrNullify(securityContext, pipelineServices));
+          Include include) {
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -160,13 +161,19 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {id} is not found")
       })
   public PipelineService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -177,9 +184,9 @@ public class PipelineServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    PipelineService pipelineService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include) {
+    PipelineService pipelineService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, pipelineService);
   }
 
@@ -194,13 +201,19 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {fqn} is not found")
       })
   public PipelineService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the pipeline service", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline service",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Parameter(
@@ -213,10 +226,9 @@ public class PipelineServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     PipelineService pipelineService =
-        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     return decryptOrNullify(securityContext, pipelineService);
   }
 
@@ -231,14 +243,17 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "Successfully updated the service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class)))
       })
   public PipelineService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PipelineService service = repository.addTestConnectionResult(id, testConnectionResult);
@@ -255,13 +270,17 @@ public class PipelineServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of pipeline service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -269,9 +288,10 @@ public class PipelineServiceResource
             .map(
                 json -> {
                   try {
-                    PipelineService pipelineService = JsonUtils.readValue((String) json, PipelineService.class);
+                    PipelineService pipelineService =
+                        JsonUtils.readValue((String) json, PipelineService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -291,21 +311,24 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "pipeline service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Pipeline service for instance {id} and version " + "{version} is not found")
+            description = "Pipeline service for instance {id} and version {version} is not found")
       })
   public PipelineService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "pipeline service version number in the form `major`" + ".`minor`",
+              description = "pipeline service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     PipelineService pipelineService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, pipelineService);
   }
@@ -320,12 +343,15 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipelineService create) {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
@@ -336,18 +362,22 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
+      description =
+          "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreatePipelineService update) {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
@@ -360,22 +390,26 @@ public class PipelineServiceResource
       operationId = "patchPipelineService",
       summary = "Update a pipeline service",
       description = "Update an existing pipeline service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -385,15 +419,18 @@ public class PipelineServiceResource
       operationId = "deletePipelineService",
       summary = "Delete a pipeline service by Id",
       description =
-          "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
+          "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -401,8 +438,9 @@ public class PipelineServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -416,20 +454,28 @@ public class PipelineServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pipeline service for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the pipeline service", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the pipeline service",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
+          String fqn) {
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -443,16 +489,20 @@ public class PipelineServiceResource
             responseCode = "200",
             description = "Successfully restored the PipelineService ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineService.class)))
       })
   public Response restorePipelineService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private PipelineService getService(CreatePipelineService create, String user) throws IOException {
-    return copy(new PipelineService(), create, user)
+  private PipelineService getService(CreatePipelineService create, String user) {
+    return repository
+        .copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

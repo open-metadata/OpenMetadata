@@ -60,18 +60,16 @@ public class OperationContext {
     return getOperations("View", exclude);
   }
 
-  public static List<MetadataOperation> getEditOperations(MetadataOperation... exclude) {
-    return getOperations("Edit", exclude);
-  }
-
-  private static List<MetadataOperation> getOperations(String startsWith, MetadataOperation... exclude) {
+  private static List<MetadataOperation> getOperations(
+      String startsWith, MetadataOperation... exclude) {
     List<MetadataOperation> list = CommonUtil.listOf(MetadataOperation.values());
     return getOperations(list, startsWith, exclude);
   }
 
   public static List<MetadataOperation> getOperations(
       String entityType, String startsWith, MetadataOperation... exclude) {
-    List<MetadataOperation> list = ResourceRegistry.getResourceDescriptor(entityType).getOperations();
+    List<MetadataOperation> list =
+        ResourceRegistry.getResourceDescriptor(entityType).getOperations();
     return getOperations(list, startsWith, exclude);
   }
 
@@ -79,18 +77,23 @@ public class OperationContext {
       List<MetadataOperation> list, String startsWith, MetadataOperation... exclude) {
     List<MetadataOperation> excludeList = CommonUtil.listOf(exclude);
     if (!excludeList.isEmpty()) {
-      list.remove(MetadataOperation.ALL); // If any operation is excluded then 'All' operation is also excluded
+      list.remove(
+          MetadataOperation
+              .ALL); // If any operation is excluded then 'All' operation is also excluded
     }
 
     for (MetadataOperation e : excludeList) {
       list.remove(e);
       if (isViewOperation(e)) { // Any view operation is excluded, then 'VIEW_ALL' is also excluded
         list.remove(MetadataOperation.VIEW_ALL);
-      } else if (isEditOperation(e)) { // Any edit operation is excluded, then 'EDIT_ALL' is also excluded
+      } else if (isEditOperation(
+          e)) { // Any edit operation is excluded, then 'EDIT_ALL' is also excluded
         list.remove(MetadataOperation.EDIT_ALL);
       }
     }
     // Only include operation name that starts with given string filter out the others
-    return list.stream().filter(operation -> operation.value().startsWith(startsWith)).collect(Collectors.toList());
+    return list.stream()
+        .filter(operation -> operation.value().startsWith(startsWith))
+        .collect(Collectors.toList());
   }
 }

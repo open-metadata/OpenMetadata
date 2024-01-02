@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
@@ -37,6 +37,10 @@ export const PAGE_HEADERS = {
   USERS: {
     header: i18n.t('label.user-plural'),
     subHeader: i18n.t('message.page-sub-header-for-users'),
+  },
+  PERSONAS: {
+    header: i18n.t('label.persona-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-persona'),
   },
   TEAMS: {
     header: i18n.t('label.team-plural'),
@@ -78,6 +82,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.storage-plural'),
     subHeader: i18n.t('message.page-sub-header-for-storages'),
   },
+  SEARCH_SERVICES: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),
@@ -118,8 +126,48 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.container-plural'),
     }),
   },
+  STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.stored-procedure-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.stored-procedure-plural'),
+    }),
+  },
+  SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.search-index-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.search-index-plural'),
+    }),
+  },
+  GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.glossary-term'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.glossary-term'),
+    }),
+  },
+  DATABASE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database'),
+    }),
+  },
+  DATABASE_SCHEMA_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database-schema'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database-schema'),
+    }),
+  },
   BOTS: {
     header: i18n.t('label.bot-plural'),
     subHeader: i18n.t('message.page-sub-header-for-bots'),
+  },
+  APPLICATION: {
+    header: i18n.t('label.extend-open-meta-data'),
+    subHeader: i18n.t('message.application-to-improve-data'),
+  },
+  CUSTOM_PAGE: {
+    header: i18n.t('label.customize-entity', {
+      entity: i18n.t('label.landing-page'),
+    }),
+    subHeader: i18n.t('message.page-sub-header-for-customize-landing-page'),
   },
 };

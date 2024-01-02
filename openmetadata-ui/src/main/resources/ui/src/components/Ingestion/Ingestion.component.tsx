@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, lowerCase } from 'lodash';
+import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Searchbar from '../common/searchbar/Searchbar';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -49,6 +51,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   handleIngestionDataChange,
   pipelineNameColWidth,
   containerClassName,
+  isAirflowAvailable = true,
+  isLoading,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -76,13 +80,16 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const [ingestionData, setIngestionData] =
     useState<Array<IngestionPipeline>>(ingestionList);
-  const [servicePermission, setServicePermission] =
+  const [ingestionPipelinesPermission, setIngestionPipelinesPermission] =
     useState<IngestionServicePermission>();
 
-  const fetchServicePermission = async () => {
+  const fetchIngestionPipelinesPermission = async () => {
     try {
       const promises = ingestionList.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+        getEntityPermissionByFqn(
+          ResourceEntity.INGESTION_PIPELINE,
+          getEncodedFqn(item.name)
+        )
       );
       const response = await Promise.allSettled(promises);
 
@@ -94,7 +101,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         };
       }, {});
 
-      setServicePermission(permissionData);
+      setIngestionPipelinesPermission(permissionData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -134,7 +141,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
 
     setIngestionData(data);
-    handleIngestionDataChange && handleIngestionDataChange(data);
+    !isUndefined(handleIngestionDataChange) && handleIngestionDataChange(data);
   };
 
   const showAddIngestionButton = useMemo(
@@ -150,28 +157,28 @@ const Ingestion: React.FC<IngestionProps> = ({
   }, [searchText, ingestionList]);
 
   useEffect(() => {
-    fetchServicePermission();
-  }, []);
+    fetchIngestionPipelinesPermission();
+  }, [ingestionList]);
 
   const getIngestionTab = () => {
     return (
-      <div
+      <Row
         className={classNames('mt-4', containerClassName ?? '')}
         data-testid="ingestion-details-container">
-        <div className="d-flex">
+        <Col span={24}>
           {!isRequiredDetailsAvailable && (
-            <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 d-flex tw-items-center tw-gap-1">
-              <ExclamationCircleOutlined />
-              <p>
-                {t('message.no-service-connection-details-message', {
-                  serviceName,
-                })}
-              </p>
-            </div>
+            <Alert
+              showIcon
+              className="mb-4"
+              message={t('message.no-service-connection-details-message', {
+                serviceName,
+              })}
+              type="error"
+            />
           )}
-        </div>
-        <div className="d-flex tw-justify-between">
-          <div className="tw-w-4/12">
+        </Col>
+        <Col className="d-flex justify-between" span={24}>
+          <div className="w-max-400 w-full">
             {searchText || !isEmpty(ingestionData) ? (
               <Searchbar
                 placeholder={`${t('message.search-for-ingestion')}...`}
@@ -194,29 +201,36 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </div>
-        </div>
-        <IngestionListTable
-          airflowEndpoint={airflowEndpoint}
-          deleteSelection={deleteSelection}
-          deployIngestion={deployIngestion}
-          handleDeleteSelection={handleDeleteSelection}
-          handleEnableDisableIngestion={handleEnableDisableIngestion}
-          handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-          ingestionData={ingestionData}
-          isRequiredDetailsAvailable={isRequiredDetailsAvailable}
-          paging={paging}
-          permissions={permissions}
-          pipelineNameColWidth={pipelineNameColWidth}
-          pipelineType={pipelineType}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          servicePermission={servicePermission}
-          triggerIngestion={triggerIngestion}
-          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-        />
-      </div>
+        </Col>
+        <Col span={24}>
+          <IngestionListTable
+            airflowEndpoint={airflowEndpoint}
+            deleteSelection={deleteSelection}
+            deployIngestion={deployIngestion}
+            handleDeleteSelection={handleDeleteSelection}
+            handleEnableDisableIngestion={handleEnableDisableIngestion}
+            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+            ingestionData={ingestionData}
+            ingestionPipelinesPermission={ingestionPipelinesPermission}
+            isLoading={isLoading}
+            isRequiredDetailsAvailable={isRequiredDetailsAvailable}
+            paging={paging}
+            permissions={permissions}
+            pipelineNameColWidth={pipelineNameColWidth}
+            pipelineType={pipelineType}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            triggerIngestion={triggerIngestion}
+            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          />
+        </Col>
+      </Row>
     );
   };
+
+  if (!isAirflowAvailable) {
+    return <ErrorPlaceHolderIngestion />;
+  }
 
   return (
     <div data-testid="ingestion-container">

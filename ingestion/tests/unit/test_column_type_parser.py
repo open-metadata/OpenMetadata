@@ -16,11 +16,9 @@ import logging
 import os
 from unittest import TestCase
 
-import pytest
-
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.utils.datalake.datalake_utils import fetch_col_types
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -115,18 +113,18 @@ def test_check_datalake_type():
     import pandas as pd  # pylint: disable=import-outside-toplevel
 
     assert_col_type_dict = {
-        "column1": DataType.INT.value,
-        "column2": DataType.STRING.value,
-        "column3": DataType.BOOLEAN.value,
-        "column4": DataType.FLOAT.value,
-        "column5": DataType.STRING.value,
-        "column6": DataType.STRING.value,
-        "column7": DataType.INT.value,
-        "column8": DataType.STRING.value,
-        "column9": DataType.STRING.value,
+        "column1": DataType.INT,
+        "column2": DataType.STRING,
+        "column3": DataType.BOOLEAN,
+        "column4": DataType.FLOAT,
+        "column5": DataType.STRING,
+        "column6": DataType.STRING,
+        "column7": DataType.INT,
+        "column8": DataType.STRING,
+        "column9": DataType.STRING,
+        "column10": DataType.JSON,
+        "column11": DataType.ARRAY,
     }
     df = pd.read_csv("ingestion/tests/unit/test_column_type_parser.csv")
     for column_name in df.columns.values.tolist():
-        assert assert_col_type_dict.get(column_name) == DatalakeSource.fetch_col_types(
-            df, column_name
-        )
+        assert assert_col_type_dict.get(column_name) == fetch_col_types(df, column_name)

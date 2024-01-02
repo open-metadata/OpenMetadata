@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { SearchIndex } from 'enums/search.enum';
-import { DashboardServiceType } from 'generated/entity/data/dashboard';
+import { SearchIndex } from '../../../enums/search.enum';
+import { TokenType } from '../../../generated/auth/personalAccessToken';
+import { DashboardServiceType } from '../../../generated/entity/data/dashboard';
 import {
   DashboardSearchSource,
   PipelineSearchSource,
   TableSearchSource,
   TopicSearchSource,
-} from 'interface/search.interface';
+} from '../../../interface/search.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export const mockUserData = {
   id: 'd6764107-e8b4-4748-b256-c86fecc66064',
@@ -1029,4 +1030,12 @@ export const mockEntityData: {
   ],
   total: 6,
   currPage: 1,
+};
+export const mockAccessData = {
+  expiryDate: 1701714886101,
+  jwtToken: 'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5Mmot',
+  token: '4946956adf3a8d646',
+  tokenName: 'test',
+  tokenType: TokenType.PersonalAccessToken,
+  userId: '445291f4d62c1bae',
 };

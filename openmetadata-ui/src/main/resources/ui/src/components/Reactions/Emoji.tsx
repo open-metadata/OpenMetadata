@@ -14,14 +14,13 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
-import { observer } from 'mobx-react';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
 import useImage from '../../hooks/useImage';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 
 interface EmojiProps {
   reaction: ReactionType;
@@ -38,6 +37,7 @@ const Emoji: FC<EmojiProps> = ({
   onReactionSelect,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -49,12 +49,6 @@ const Emoji: FC<EmojiProps> = ({
   );
 
   const { image } = useImage(`emojis/${reactionObject?.reaction}.png`);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   // check if current user has reacted with emoji
   const isReacted = reactionList.some(
@@ -82,14 +76,12 @@ const Emoji: FC<EmojiProps> = ({
     const moreList = reactedUserList.slice(8);
 
     return (
-      <p
-        className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
-        data-testid="popover-content">
+      <p className="w-44 m-0 p-0" data-testid="popover-content">
         {`${visibleList.join(', ')}`}
         {hasMore
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
           : ''}{' '}
-        <span className="tw-font-semibold">
+        <span className="font-semibold">
           {t('message.reacted-with-emoji', { type: reactionType })}
         </span>
       </p>
@@ -100,6 +92,17 @@ const Emoji: FC<EmojiProps> = ({
     setReactionType(reaction);
     setIsClicked(false);
   }, [reaction]);
+
+  const element = React.createElement(
+    'g-emoji',
+    {
+      alias: reactionObject?.alias,
+      className: 'd-flex',
+      'data-testid': 'emoji',
+      'fallback-src': image,
+    },
+    reactionObject?.emoji
+  );
 
   return (
     <Popover
@@ -118,18 +121,7 @@ const Emoji: FC<EmojiProps> = ({
         size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: `<g-emoji
-          alias={${reactionObject?.alias}}
-          className="d-flex"
-          data-testid="emoji"
-          fallback-src={${image}}>
-          ${reactionObject?.emoji}
-        </g-emoji>`,
-          }}
-        />
-
+        {element}
         <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
           {reactionList.length}
         </span>
@@ -138,4 +130,4 @@ const Emoji: FC<EmojiProps> = ({
   );
 };
 
-export default observer(Emoji);
+export default Emoji;

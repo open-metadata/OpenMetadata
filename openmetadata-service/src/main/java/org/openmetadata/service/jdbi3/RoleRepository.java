@@ -18,8 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
@@ -30,44 +28,46 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.RoleResource;
-import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
-  public RoleRepository(CollectionDAO dao) {
-    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES);
+  public RoleRepository() {
+    super(
+        RoleResource.COLLECTION_PATH,
+        Entity.ROLE,
+        Role.class,
+        Entity.getCollectionDAO().roleDAO(),
+        POLICIES,
+        POLICIES);
   }
 
   @Override
-  public Role setFields(Role role, Fields fields) throws IOException {
-    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
-    role.setTeams(fields.contains("teams") ? getTeams(role) : null);
-    return role.withUsers(fields.contains("users") ? getUsers(role) : null);
-  }
-
-  private List<EntityReference> getPolicies(@NonNull Role role) throws IOException {
-    List<EntityRelationshipRecord> result = findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
-    return EntityUtil.populateEntityReferences(result, Entity.POLICY);
-  }
-
-  private List<EntityReference> getUsers(@NonNull Role role) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
-    return EntityUtil.populateEntityReferences(records, Entity.USER);
-  }
-
-  private List<EntityReference> getTeams(@NonNull Role role) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
-    return EntityUtil.populateEntityReferences(records, Entity.TEAM);
+  public void setFields(Role role, Fields fields) {
+    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : role.getPolicies());
+    role.setTeams(fields.contains("teams") ? getTeams(role) : role.getTeams());
+    role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
   }
 
   @Override
-  public void restorePatchAttributes(Role original, Role updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
+  public void clearFields(Role role, Fields fields) {
+    role.setPolicies(fields.contains(POLICIES) ? role.getPolicies() : null);
+    role.setTeams(fields.contains("teams") ? role.getTeams() : null);
+    role.withUsers(fields.contains("users") ? role.getUsers() : null);
+  }
+
+  private List<EntityReference> getPolicies(@NonNull Role role) {
+    return findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
+  }
+
+  private List<EntityReference> getUsers(@NonNull Role role) {
+    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
+  }
+
+  private List<EntityReference> getTeams(@NonNull Role role) {
+    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
   }
 
   /**
@@ -75,7 +75,7 @@ public class RoleRepository extends EntityRepository<Role> {
    * storeEntity method call.
    */
   @Override
-  public void prepare(Role role) throws IOException {
+  public void prepare(Role role, boolean update) {
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }
@@ -83,21 +83,17 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   /**
-   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role)} would create a policy
-   * entity reference if it does not exist.
+   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role, boolean)} would create a
+   * policy entity reference if it does not exist.
    *
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
-  @Transaction
-  public void storeEntity(Role role, boolean update) throws IOException {
+  public void storeEntity(Role role, boolean update) {
     // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null);
     store(role, update);
-    if (update) {
-      RoleCache.getInstance().invalidateRole(role.getId());
-    }
     role.withPolicies(policies);
   }
 
@@ -114,17 +110,11 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  protected void preDelete(Role entity) {
+  protected void preDelete(Role entity, String deletedBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
     }
-  }
-
-  @Override
-  protected void cleanup(Role role) throws IOException {
-    super.cleanup(role);
-    RoleCache.getInstance().invalidateRole(role.getId());
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -133,19 +123,25 @@ public class RoleRepository extends EntityRepository<Role> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
-    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies)
-        throws JsonProcessingException {
+    private void updatePolicies(
+        List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
       // Record change description
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();
       boolean changed =
           recordListChange(
-              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
+              "policies",
+              origPolicies,
+              updatedPolicies,
+              addedPolicies,
+              deletedPolicies,
+              entityReferenceMatch);
 
       if (changed) {
         // Remove all the Role to policy relationships

@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTestCaseExecutionSummary } from 'rest/testAPI';
+import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { SummaryPanel } from './SummaryPanel.component';
 
 const testCasePermission = {
@@ -31,21 +31,21 @@ const mockSummary = {
   failed: 1,
 };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
     },
   })),
 }));
-jest.mock('components/common/SummaryCard/SummaryCard.component', () => {
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
   return {
     SummaryCard: jest
       .fn()
       .mockImplementation(() => <div>SummaryCard.component</div>),
   };
 });
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getTestCaseExecutionSummary: jest
       .fn()
@@ -55,19 +55,11 @@ jest.mock('rest/testAPI', () => {
 
 describe('SummaryPanel component', () => {
   it('component should render', async () => {
-    render(<SummaryPanel />);
+    render(<SummaryPanel testSummary={mockSummary} />);
 
     const summaryCards = await screen.findAllByText('SummaryCard.component');
 
     expect(summaryCards).toHaveLength(4);
-  });
-
-  it('on page load getTestCaseExecutionSummary API should call', async () => {
-    const mockGetTestCaseExecutionSummary =
-      getTestCaseExecutionSummary as jest.Mock;
-    render(<SummaryPanel />);
-
-    expect(mockGetTestCaseExecutionSummary).toHaveBeenCalled();
   });
 
   it('should not call getTestCaseExecutionSummary API, if testSummary data is provided', async () => {
@@ -82,7 +74,7 @@ describe('SummaryPanel component', () => {
     const mockGetTestCaseExecutionSummary =
       getTestCaseExecutionSummary as jest.Mock;
     testCasePermission.ViewAll = false;
-    render(<SummaryPanel />);
+    render(<SummaryPanel testSummary={mockSummary} />);
 
     expect(mockGetTestCaseExecutionSummary).not.toHaveBeenCalled();
   });

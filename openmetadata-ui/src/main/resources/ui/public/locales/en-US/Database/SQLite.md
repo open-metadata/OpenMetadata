@@ -30,7 +30,7 @@ $$section
 ### Host Port $(id="hostPort")
 This parameter specifies the host and port of the SQLite instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
 
-If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3306` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3306` as the value.
 
 Keep it blank for in-memory databases.
 $$

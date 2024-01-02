@@ -17,11 +17,12 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -43,13 +44,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 
 @Slf4j
 public final class CommonUtil {
+
+  private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
 
   private CommonUtil() {}
 
@@ -57,14 +58,27 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    String[] classPathElements = classPath.split(File.pathSeparator);
+    List<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
+            .toList();
 
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
     }
     return resources;
+  }
+
+  /** Check if any given object falls under OM, or Collate packages */
+  public static Boolean isOpenMetadataObject(Object obj) {
+    return obj != null
+        && JAR_NAME_FILTER.stream()
+            .anyMatch(
+                Arrays.stream(obj.getClass().getPackageName().split("\\.")).toList()::contains);
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
@@ -75,7 +89,7 @@ public final class CommonUtil {
         String fileName = e.nextElement().getName();
         if (pattern.matcher(fileName).matches()) {
           retval.add(fileName);
-          LOG.info("Adding file from jar {}", fileName);
+          LOG.debug("Adding file from jar {}", fileName);
         }
       }
     } catch (Exception ignored) {
@@ -84,7 +98,8 @@ public final class CommonUtil {
     return retval;
   }
 
-  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
+  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
@@ -93,7 +108,7 @@ public final class CommonUtil {
           .map(
               path -> {
                 String relativePath = root.relativize(path).toString();
-                LOG.info("Adding directory file {}", relativePath);
+                LOG.debug("Adding directory file {}", relativePath);
                 return relativePath;
               })
           .collect(Collectors.toSet());
@@ -125,7 +140,8 @@ public final class CommonUtil {
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
-  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays) {
+  public static boolean dateInRange(
+      DateFormat dateFormat, String date, int futureDays, int pastDays) {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);
@@ -183,9 +199,12 @@ public final class CommonUtil {
     return new ArrayList<>(Arrays.asList(entries));
   }
 
-  @SneakyThrows
-  public static String getCheckSum(String input) {
-    byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
-    return Hex.encodeHexString(checksum);
+  public static URI getUri(String uri) {
+    try {
+      return new URI(uri);
+    } catch (URISyntaxException e) {
+      LOG.error("Error creating URI ", e);
+    }
+    return null;
   }
 }

@@ -41,6 +41,18 @@
         }
       },
       "required": ["oracleServiceName"]
+    },
+    "OracleTNSConnection": {
+      "title": "Oracle TNS Connection",
+      "type":"object",
+      "properties": {
+        "oracleTNSConnection": {
+          "title": "Oracle TNS Connection String",
+          "description": "Pass the full constructed TNS string, e.g., (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).",
+          "type": "string"
+        }
+      },
+      "required": ["oracleTNSConnection"]
     }
   },
   "properties": {
@@ -82,6 +94,9 @@
         },
         {
           "$ref": "#/definitions/OracleServiceName"
+        },
+        {
+          "$ref": "#/definitions/OracleTNSConnection"
         }
       ]
     },
@@ -124,8 +139,12 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "oracleConnectionType"]
+  "required": ["username", "oracleConnectionType"]
 }

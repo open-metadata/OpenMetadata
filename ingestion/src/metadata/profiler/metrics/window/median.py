@@ -19,15 +19,15 @@ from typing import List, cast
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.window.percentille_mixin import PercentilMixin
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.functions.median import MedianFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class Median(StaticMetric):
+class Median(StaticMetric, PercentilMixin):
     """
     Median Metric
 
@@ -53,15 +53,15 @@ class Median(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             # col fullname is only needed for MySQL and SQLite
-            return MedianFn(
-                column(self.col.name),
+            return self._compute_sqa_fn(
+                column(self.col.name, self.col.type),
                 self.col.table.fullname if self.col.table is not None else None,
                 0.5,
             )
 
         if is_concatenable(self.col.type):
-            return MedianFn(
-                LenFn(column(self.col.name)),
+            return self._compute_sqa_fn(
+                LenFn(column(self.col.name, self.col.type)),
                 self.col.table.fullname if self.col.table is not None else None,
                 0.5,
             )
@@ -82,14 +82,14 @@ class Median(StaticMetric):
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = pd.concat(dfs)
+                df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            median = df[self.col.name].median()
+            median = df.median()
             return None if pd.isnull(median) else median
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"

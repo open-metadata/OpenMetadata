@@ -12,14 +12,15 @@
  */
 
 import { Operation } from 'fast-json-patch';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 
 export interface PipeLineDetailsProp {
+  updatePipelineDetailsState?: (data: DataAssetWithDomains) => void;
   pipelineFQN: string;
   pipelineDetails: Pipeline;
-  followers: Array<EntityReference>;
   paging: Paging;
   fetchPipeline: () => void;
   followPipelineHandler: (fetchCount: () => void) => Promise<void>;
@@ -29,4 +30,6 @@ export interface PipeLineDetailsProp {
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
+  handleToggleDelete: (version?: number) => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

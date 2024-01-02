@@ -23,16 +23,18 @@ import { ENTITIES, uuid } from '../../constants/constants';
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/users*', 'settingsPage');
+    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
 
   describe('Add update and delete Integer custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add Integer custom property for ${entity.name}  Entities`, () => {
         interceptURL(
@@ -59,12 +61,9 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="appbar-item-settings"]')
-          .should('be.visible')
-          .click();
+        cy.get('[data-testid="app-bar-item-settings"]').click();
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);
@@ -80,7 +79,6 @@ describe('Custom Properties should work properly', () => {
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);
@@ -108,7 +106,7 @@ describe('Custom Properties should work properly', () => {
 
   describe('Add update and delete String custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add String custom property for ${entity.name} Entities`, () => {
         interceptURL(
@@ -134,7 +132,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="appbar-item-settings"]')
+        cy.get('[data-testid="app-bar-item-settings"]')
           .should('be.visible')
           .click();
         // Selecting the entity
@@ -184,7 +182,7 @@ describe('Custom Properties should work properly', () => {
 
   describe('Add update and delete Markdown custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add Markdown custom property for ${entity.name} Entities`, () => {
         interceptURL(
@@ -210,7 +208,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="appbar-item-settings"]')
+        cy.get('[data-testid="app-bar-item-settings"]')
           .should('be.visible')
           .click();
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
@@ -254,6 +252,74 @@ describe('Custom Properties should work properly', () => {
         verifyResponseStatusCode('@getEntity', 200);
         deleteCreatedProperty(propertyName);
       });
+    });
+  });
+
+  describe('Create custom properties for glossary', () => {
+    const glossaryTerm = {
+      name: 'glossaryTerm',
+      description: 'This is Glossary Term custom property',
+      integerValue: '45',
+      stringValue: 'This is string propery',
+      markdownValue: 'This is markdown value',
+      entityApiType: 'glossaryTerm',
+    };
+    const propertyName = `addcyentity${glossaryTerm.name}test${uuid()}`;
+
+    it('test custom properties in advanced search modal', () => {
+      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+
+      addCustomPropertiesForEntity(
+        propertyName,
+        glossaryTerm,
+        'Integer',
+        '45',
+        null
+      );
+
+      // Navigating to explore page
+      cy.get('[data-testid="app-bar-item-explore"]').click();
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/glossaryTerm*`,
+        'getEntity'
+      );
+      cy.get('[data-testid="glossaries-tab"]').click();
+
+      cy.get('[data-testid="advance-search-button"]').click();
+      verifyResponseStatusCode('@getEntity', 200);
+
+      // Click on field dropdown
+      cy.get('.rule--field > .ant-select > .ant-select-selector').eq(0).click();
+
+      // Select custom property fields
+      cy.get(`[title="Custom Properties"]`).eq(0).click();
+
+      // Click on field dropdown
+      cy.get('.rule--field > .ant-select > .ant-select-selector').eq(0).click();
+
+      // Verify field exists
+      cy.get(`[title="${propertyName}"]`).should('be.visible');
+    });
+
+    it(`Delete created property for glossary term entity`, () => {
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/${glossaryTerm.name}*`,
+        'getEntity'
+      );
+
+      // Selecting the entity
+      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+
+      verifyResponseStatusCode('@getEntity', 200);
+      deleteCreatedProperty(propertyName);
     });
   });
 });

@@ -12,7 +12,6 @@
 DBT source methods.
 """
 import traceback
-from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -27,18 +26,16 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -49,12 +46,15 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -87,6 +87,7 @@ from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -102,12 +103,11 @@ class DbtSource(DbtServiceSource):
     Class defines method to extract metadata from DBT
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config = self.config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.tag_classification_name = (
             self.source_config.dbtClassificationName
             if self.source_config.dbtClassificationName
@@ -115,9 +115,9 @@ class DbtSource(DbtServiceSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def test_connection(self) -> None:
         """
@@ -232,7 +232,7 @@ class DbtSource(DbtServiceSource):
 
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Create and yield tags from DBT
         """
@@ -265,9 +265,12 @@ class DbtSource(DbtServiceSource):
                         if column_tags:
                             dbt_tags_list.extend(column_tags)
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unable to process DBT tags for node: f{key} - {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name=key,
+                            error=f"Unable to process DBT tags for node: f{key} - {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
             try:
                 # Create all the tags added
@@ -287,17 +290,22 @@ class DbtSource(DbtServiceSource):
                     ],
                     classification_name=self.tag_classification_name,
                     tag_description="dbt Tags",
-                    classification_desciption="dbt classification",
+                    classification_description="dbt classification",
                 )
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception creating DBT tags: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Tags and Classification",
+                        error=f"Unexpected exception creating DBT tags: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def add_dbt_tests(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
     ) -> None:
         """
-        Method to append dbt test cases for later procssing
+        Method to append dbt test cases for later processing
         """
         self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
         self.context.dbt_tests[key][
@@ -313,20 +321,22 @@ class DbtSource(DbtServiceSource):
         )
 
     # pylint: disable=too-many-locals, too-many-branches
-    def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
+    def yield_data_models(
+        self, dbt_objects: DbtObjects
+    ) -> Iterable[Either[DataModelLink]]:
         """
         Yield the data models
         """
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
-                **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
+                **dbt_objects.dbt_manifest.nodes,
             }
             if dbt_objects.dbt_catalog:
                 catalog_entities = {
-                    **dbt_objects.dbt_catalog.nodes,
                     **dbt_objects.dbt_catalog.sources,
+                    **dbt_objects.dbt_catalog.nodes,
                 }
             self.context.data_model_links = []
             self.context.dbt_tests = {}
@@ -412,7 +422,9 @@ class DbtSource(DbtServiceSource):
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=table_fqn
+                            entity_type=Table,
+                            fqn_search_string=table_fqn,
+                            fields="sourceHash",
                         ),
                         fetch_multiple_entities=False,
                     )
@@ -422,6 +434,7 @@ class DbtSource(DbtServiceSource):
                             table_entity=table_entity,
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
+                                resourceType=manifest_node.resource_type.value,
                                 description=manifest_node.description
                                 if manifest_node.description
                                 else None,
@@ -441,18 +454,22 @@ class DbtSource(DbtServiceSource):
                                 tags=dbt_table_tags_list,
                             ),
                         )
-                        yield data_model_link
+                        yield Either(right=data_model_link)
                         self.context.data_model_links.append(data_model_link)
                     else:
                         logger.warning(
                             f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            f"Please check if the table exists and is ingested in OpenMetadata"
-                            f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
+                            "Please check if the table exists and is ingested in OpenMetadata"
+                            "Also name, database, schema of the manifest node matches with the table present "
+                            "in OpenMetadata"
                         )
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected exception parsing DBT node:{model_name} - {exc}"
+                    yield Either(
+                        left=StackTraceError(
+                            name=key,
+                            error=f"Unexpected exception parsing DBT node due to {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
 
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
@@ -569,7 +586,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_lineage(
         self, data_model_link: DataModelLink
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from upstream nodes
         """
@@ -590,16 +607,21 @@ class DbtSource(DbtServiceSource):
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
-                    yield AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__,
-                                type="table",
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__,
-                                type="table",
-                            ),
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__,
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__,
+                                    type="table",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage
+                                ),
+                            )
                         )
                     )
 
@@ -611,7 +633,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_query_lineage(
         self, data_model_link: DataModelLink
-    ) -> Iterable[AddLineageRequest]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
@@ -640,14 +662,22 @@ class DbtSource(DbtServiceSource):
                 database_name=source_elements[1],
                 schema_name=source_elements[2],
                 dialect=dialect,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
+                lineage_source=LineageSource.DbtLineage,
             )
             for lineage_request in lineages or []:
                 yield lineage_request
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to parse the query {data_model_link.datamodel.sql.__root__} to capture lineage: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=data_model_link.datamodel.sql.__root__,
+                    error=(
+                        f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
+                        f" to capture lineage: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
             )
 
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
@@ -664,34 +694,46 @@ class DbtSource(DbtServiceSource):
                 service_name, database_name, schema_name, table_name = fqn.split(
                     table_entity.fullyQualifiedName.__root__
                 )
-
                 data_model = data_model_link.datamodel
+                force_override = False
+                if (
+                    data_model.resourceType != DbtCommonEnum.SOURCE.value
+                    and self.source_config.dbtUpdateDescriptions
+                ):
+                    force_override = True
+
                 # Patch table descriptions from DBT
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
                         source=table_entity,
                         description=data_model.description.__root__,
-                        force=self.source_config.dbtUpdateDescriptions,
+                        force=force_override,
                     )
 
                 # Patch column descriptions from DBT
+                column_descriptions = []
                 for column in data_model.columns:
                     if column.description:
-                        self.metadata.patch_column_description(
-                            table=table_entity,
-                            column_fqn=fqn.build(
-                                self.metadata,
-                                entity_type=Column,
-                                service_name=service_name,
-                                database_name=database_name,
-                                schema_name=schema_name,
-                                table_name=table_name,
-                                column_name=column.name.__root__,
-                            ),
-                            description=column.description.__root__,
-                            force=self.source_config.dbtUpdateDescriptions,
+                        column_descriptions.append(
+                            ColumnDescription(
+                                column_fqn=fqn.build(
+                                    self.metadata,
+                                    entity_type=Column,
+                                    service_name=service_name,
+                                    database_name=database_name,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    column_name=column.name.__root__,
+                                ),
+                                description=column.description,
+                            )
                         )
+                self.metadata.patch_column_descriptions(
+                    table=table_entity,
+                    column_descriptions=column_descriptions,
+                    force=force_override,
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -701,7 +743,7 @@ class DbtSource(DbtServiceSource):
 
     def create_dbt_tests_definition(
         self, dbt_test: dict
-    ) -> Iterable[CreateTestDefinitionRequest]:
+    ) -> Iterable[Either[CreateTestDefinitionRequest]]:
         """
         A Method to add DBT test definitions
         """
@@ -722,22 +764,31 @@ class DbtSource(DbtServiceSource):
                         and manifest_node.column_name
                     ):
                         entity_type = EntityType.COLUMN
-                    yield CreateTestDefinitionRequest(
-                        name=manifest_node.name,
-                        description=manifest_node.description,
-                        entityType=entity_type,
-                        testPlatforms=[TestPlatform.DBT],
-                        parameterDefinition=create_test_case_parameter_definitions(
-                            manifest_node
-                        ),
-                        displayName=None,
-                        owner=None,
+                    yield Either(
+                        right=CreateTestDefinitionRequest(
+                            name=manifest_node.name,
+                            description=manifest_node.description,
+                            entityType=entity_type,
+                            testPlatforms=[TestPlatform.DBT],
+                            parameterDefinition=create_test_case_parameter_definitions(
+                                manifest_node
+                            ),
+                            displayName=None,
+                            owner=None,
+                        )
                     )
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse the node to capture tests {err}")
+            yield Either(
+                left=StackTraceError(
+                    name="Test Definition",
+                    error=f"Failed to parse the node to capture tests {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
-    def create_dbt_test_case(self, dbt_test: dict) -> Iterable[CreateTestCaseRequest]:
+    def create_dbt_test_case(
+        self, dbt_test: dict
+    ) -> Iterable[Either[CreateTestCaseRequest]]:
         """
         After test suite and test definitions have been processed, add the tests cases info
         """
@@ -750,25 +801,29 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    yield CreateTestCaseRequest(
-                        name=manifest_node.name,
-                        description=manifest_node.description,
-                        testDefinition=FullyQualifiedEntityName(
-                            __root__=manifest_node.name
-                        ),
-                        entityLink=entity_link_str,
-                        testSuite=test_suite.fullyQualifiedName,
-                        parameterValues=create_test_case_parameter_values(dbt_test),
-                        displayName=None,
-                        owner=None,
+                    yield Either(
+                        right=CreateTestCaseRequest(
+                            name=manifest_node.name,
+                            description=manifest_node.description,
+                            testDefinition=FullyQualifiedEntityName(
+                                __root__=manifest_node.name
+                            ),
+                            entityLink=entity_link_str,
+                            testSuite=test_suite.fullyQualifiedName,
+                            parameterValues=create_test_case_parameter_values(dbt_test),
+                            displayName=None,
+                            owner=None,
+                        )
                     )
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to parse the node {manifest_node.name} to capture tests {err}"
+            yield Either(
+                left=StackTraceError(
+                    name="Test Cases",
+                    error=f"Failed to parse the node to capture tests {err}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
 
-    # pylint: disable=too-many-locals
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
@@ -783,7 +838,6 @@ class DbtSource(DbtServiceSource):
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
-                test_case_failure_status = TestCaseFailureStatus()  # type: ignore
                 if dbt_test_result.status.value in [
                     item.value for item in DbtTestSuccessEnum
                 ]:
@@ -794,15 +848,6 @@ class DbtSource(DbtServiceSource):
                 ]:
                     test_case_status = TestCaseStatus.Failed
                     test_result_value = 0
-                    test_case_failure_status = TestCaseFailureStatus(
-                        testCaseFailureStatusType=TestCaseFailureStatusType.New,
-                        testCaseFailureReason=None,
-                        testCaseFailureComment=None,
-                        updatedAt=Timestamp(
-                            __root__=int(datetime.utcnow().timestamp() * 1000)
-                        ),
-                        updatedBy=None,
-                    )
 
                 # Process the Test Timings
                 dbt_test_timings = dbt_test_result.timing
@@ -817,7 +862,7 @@ class DbtSource(DbtServiceSource):
                     dbt_timestamp = self.context.run_results_generate_time.timestamp()
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=dbt_timestamp,
+                    timestamp=convert_timestamp_to_milliseconds(dbt_timestamp),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
@@ -825,7 +870,6 @@ class DbtSource(DbtServiceSource):
                             value=str(test_result_value),
                         )
                     ],
-                    testCaseFailureStatus=test_case_failure_status,
                     sampleData=None,
                     result=None,
                 )

@@ -13,33 +13,28 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CSVImportResult } from 'generated/type/csvImportResult';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
+import { VotingDataProps } from '../components/Voting/voting.interface';
+import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
-import { Glossary } from '../generated/entity/data/glossary';
+import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
+import { CSVImportResult } from '../generated/type/csvImportResult';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
-
-export type ListGlossaryTermsParams = Params & {
+export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
   parent?: string;
 };
 
 const BASE_URL = '/glossaries';
 
-export const getGlossariesList = async (params?: Params) => {
+export const getGlossariesList = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
     params,
   });
@@ -157,11 +152,10 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
-    `/glossaryTerms/${id}`,
-    patch,
-    configOptions
-  );
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${id}`, patch, configOptions);
 
   return response.data;
 };
@@ -230,6 +224,84 @@ export const getGlossaryTermsVersion = async (id: string, version: string) => {
   const url = `/glossaryTerms/${id}/versions/${version}`;
 
   const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
+};
+
+export const updateGlossaryVotes = async (
+  id: string,
+  data: VotingDataProps
+) => {
+  const response = await APIClient.put<
+    VotingDataProps,
+    AxiosResponse<Glossary>
+  >(`/glossaries/${id}/vote`, data);
+
+  return response.data;
+};
+
+export const updateGlossaryTermVotes = async (
+  id: string,
+  data: VotingDataProps
+) => {
+  const response = await APIClient.put<
+    VotingDataProps,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${id}/vote`, data);
+
+  return response.data;
+};
+
+export const validateTagAddtionToGlossary = async (
+  glossaryTerm: GlossaryTerm,
+  dryRun = false
+) => {
+  const data = {
+    dryRun: dryRun,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<BulkOperationResult>
+  >(`/glossaryTerms/${glossaryTerm.id}/tags/validate`, data);
+
+  return response.data;
+};
+
+export const addAssetsToGlossaryTerm = async (
+  glossaryTerm: GlossaryTerm,
+  assets: EntityReference[],
+  dryRun = false
+) => {
+  const data = {
+    assets: assets,
+    dryRun: dryRun,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${glossaryTerm.id}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromGlossaryTerm = async (
+  glossaryTerm: GlossaryTerm,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+    dryRun: false,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${glossaryTerm.id}/assets/remove`, data);
 
   return response.data;
 };

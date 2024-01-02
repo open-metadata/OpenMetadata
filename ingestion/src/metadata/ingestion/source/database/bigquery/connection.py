@@ -13,10 +13,10 @@
 Source connection handler
 """
 import os
+from datetime import datetime
 from functools import partial
 from typing import Optional
 
-from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 
@@ -44,6 +44,9 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: BigQueryConnection) -> str:
@@ -107,42 +110,51 @@ def test_connection(
             return policy_tags
 
     def test_tags():
-        list_project_ids = auth.default()
-        project_id = list_project_ids[1]
+        taxonomy_project_ids = []
+        if engine.url.host:
+            taxonomy_project_ids.append(engine.url.host)
+        if service_connection.taxonomyProjectId:
+            taxonomy_project_ids.extend(service_connection.taxonomyProjectId)
+        if not taxonomy_project_ids:
+            logger.info("'taxonomyProjectID' is not set, so skipping this test.")
+            return None
 
-        if isinstance(project_id, str):
-            taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{project_id}/locations/{service_connection.taxonomyLocation}"
+        taxonomy_location = service_connection.taxonomyLocation
+        if not taxonomy_location:
+            logger.info("'taxonomyLocation' is not set, so skipping this test.")
+            return None
+
+        taxonomies = []
+        for project_id in taxonomy_project_ids:
+            taxonomies.extend(
+                PolicyTagManagerClient().list_taxonomies(
+                    parent=f"projects/{project_id}/locations/{taxonomy_location}"
+                )
             )
-            return get_tags(taxonomies)
+        return get_tags(taxonomies)
 
-        if isinstance(project_id, list):
-            taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{project_id[0]}/locations/{service_connection.taxonomyLocation}"
-            )
-
-            return get_tags(taxonomies)
-
-        return None
-
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-        "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
-        "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
-        "GetTags": test_tags,
-        "GetQueries": partial(
-            test_query,
-            engine=engine,
-            statement=BIGQUERY_TEST_STATEMENT.format(
-                region=service_connection.usageLocation
+    def test_connection_inner(engine):
+        test_fn = {
+            "CheckAccess": partial(test_connection_engine_step, engine),
+            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+            "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
+            "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
+            "GetTags": test_tags,
+            "GetQueries": partial(
+                test_query,
+                engine=engine,
+                statement=BIGQUERY_TEST_STATEMENT.format(
+                    region=service_connection.usageLocation,
+                    creation_date=datetime.now().strftime("%Y-%m-%d"),
+                ),
             ),
-        ),
-    }
+        }
 
-    test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-    )
+        test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,
+            automation_workflow=automation_workflow,
+        )
+
+    test_connection_inner(engine)

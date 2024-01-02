@@ -11,9 +11,8 @@
 """
 MSSQL SQLAlchemy Helper Methods
 """
-import traceback
 
-from sqlalchemy import sql
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -26,7 +25,9 @@ from sqlalchemy.dialects.mssql.base import (
     MSString,
     MSText,
     MSVarBinary,
-    _db_plus_owner,
+    _owner_plus_db,
+    _switch_db,
+    update_wrapper,
 )
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import func
@@ -35,7 +36,7 @@ from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_ALL_VIEW_DEFINITIONS,
-    MSSQL_GET_COLUMN_COMMENTS,
+    MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -61,8 +62,39 @@ def get_table_comment(
     )
 
 
+def db_plus_owner_listing(fn):
+    def wrap(dialect, connection, schema=None, **kw):
+        schema = f"[{schema}]" if schema and "." in schema else schema
+        dbname, owner = _owner_plus_db(dialect, schema)
+        return _switch_db(
+            dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw
+        )
+
+    return update_wrapper(wrap, fn)
+
+
+def db_plus_owner(fn):
+    def wrap(dialect, connection, tablename, schema=None, **kw):
+        schema = f"[{schema}]" if schema and "." in schema else schema
+        dbname, owner = _owner_plus_db(dialect, schema)
+        return _switch_db(
+            dbname,
+            connection,
+            fn,
+            dialect,
+            connection,
+            tablename,
+            dbname,
+            owner,
+            schema,
+            **kw,
+        )
+
+    return update_wrapper(wrap, fn)
+
+
 @reflection.cache
-@_db_plus_owner
+@db_plus_owner
 def get_columns(
     self, connection, tablename, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
@@ -84,6 +116,26 @@ def get_columns(
 
     computed_cols = ischema.computed_columns
     identity_cols = ischema.identity_columns
+    sqlalchemy_metadata = MetaData()
+    extended_properties = Table(
+        "extended_properties",
+        sqlalchemy_metadata,
+        Column("major_id", Integer, primary_key=True),
+        Column("minor_id", Integer, primary_key=True),
+        Column("name", String, primary_key=True),
+        Column("value", String),
+        schema="sys",
+    )
+    sys_columns = alias(
+        Table(
+            "columns",
+            sqlalchemy_metadata,
+            Column("object_id", Integer, primary_key=True),
+            Column("name", String, primary_key=True),
+            Column("column_id", Integer, primary_key=True),
+            schema="sys",
+        )
+    )
     if owner:
         whereclause = sql.and_(
             columns.c.table_name == tablename,
@@ -94,20 +146,44 @@ def get_columns(
         whereclause = columns.c.table_name == tablename
         full_name = columns.c.table_name
 
-    join = columns.join(
-        computed_cols,
-        onclause=sql.and_(
-            computed_cols.c.object_id == func.object_id(full_name),
-            computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
-    ).join(
-        identity_cols,
-        onclause=sql.and_(
-            identity_cols.c.object_id == func.object_id(full_name),
-            identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
+    # adding the condition for fetching column comments
+    whereclause.and_(extended_properties.c.name == "MS_Description")
+
+    join = (
+        columns.join(
+            computed_cols,
+            onclause=sql.and_(
+                computed_cols.c.object_id == func.object_id(full_name),
+                computed_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            identity_cols,
+            onclause=sql.and_(
+                identity_cols.c.object_id == func.object_id(full_name),
+                identity_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            sys_columns,
+            onclause=sql.and_(
+                sys_columns.c.object_id == func.object_id(full_name),
+                sys_columns.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            extended_properties,
+            onclause=sql.and_(
+                extended_properties.c.major_id == sys_columns.c.object_id,
+                extended_properties.c.minor_id == sys_columns.c.column_id,
+            ),
+            isouter=True,
+        )
     )
 
     if self._supports_nvarchar_max:  # pylint: disable=protected-access
@@ -116,7 +192,7 @@ def get_columns(
         # tds_version 4.2 does not support NVARCHAR(MAX)
         computed_definition = sql.cast(computed_cols.c.definition, NVARCHAR(4000))
 
-    s = (  # pylint: disable=invalid-name
+    sql_qry = (
         sql.select(
             columns,
             computed_definition,
@@ -124,18 +200,17 @@ def get_columns(
             identity_cols.c.is_identity,
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
+            sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
         )
         .where(whereclause)
         .select_from(join)
         .order_by(columns.c.ordinal_position)
     )
 
-    c = connection.execution_options(  # pylint:disable=invalid-name
-        future_result=True
-    ).execute(s)
+    cursr = connection.execution_options(future_result=True).execute(sql_qry)
 
     cols = []
-    for row in c.mappings():
+    for row in cursr.mappings():
         name = row[columns.c.column_name]
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
@@ -149,9 +224,10 @@ def get_columns(
         is_identity = row[identity_cols.c.is_identity]
         identity_start = row[identity_cols.c.seed_value]
         identity_increment = row[identity_cols.c.increment_value]
+        comment = row["comment"]
 
         coltype = self.ischema_names.get(type_, None)
-        comment = None
+
         kwargs = {}
         if coltype in (
             MSString,
@@ -225,20 +301,11 @@ def get_columns(
                 }
 
         cols.append(cdict)
-    cursor = connection.execute(
-        MSSQL_GET_COLUMN_COMMENTS.format(schema_name=schema, table_name=tablename)
-    )
-    try:
-        for index, result in enumerate(cursor):
-            if result[2]:
-                cols[index]["comment"] = result[2]
-    except Exception:
-        logger.debug(traceback.format_exc())
     return cols
 
 
 @reflection.cache
-@_db_plus_owner
+@db_plus_owner
 def get_view_definition(
     self, connection, viewname, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument
@@ -249,3 +316,172 @@ def get_view_definition(
         schema=owner,
         query=MSSQL_ALL_VIEW_DEFINITIONS,
     )
+
+
+@reflection.cache
+@db_plus_owner
+def get_pk_constraint(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    This function overrides to get pk constraint
+    """
+    pkeys = []
+    tc_ = ischema.constraints
+    c_key_constaint = ischema.key_constraints.alias("C")
+
+    # Primary key constraints
+    query_ = (
+        sql.select(
+            c_key_constaint.c.column_name,
+            tc_.c.constraint_type,
+            c_key_constaint.c.constraint_name,
+        )
+        .where(
+            sql.and_(
+                tc_.c.constraint_name == c_key_constaint.c.constraint_name,
+                tc_.c.table_schema == c_key_constaint.c.table_schema,
+                c_key_constaint.c.table_name == tablename,
+                c_key_constaint.c.table_schema == owner,
+            ),
+        )
+        .order_by(tc_.c.constraint_name, c_key_constaint.c.ordinal_position)
+    )
+    cursor = connection.execution_options(future_result=True).execute(query_)
+    constraint_name = None
+    for row in cursor.mappings():
+        if "PRIMARY" in row[tc_.c.constraint_type.name]:
+            pkeys.append(row["COLUMN_NAME"])
+            if constraint_name is None:
+                constraint_name = row[c_key_constaint.c.constraint_name.name]
+    return {"constrained_columns": pkeys, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    raise NotImplementedError()
+
+
+@reflection.cache
+@db_plus_owner
+def get_foreign_keys(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument, too-many-locals
+    """
+    This function overrides to get foreign key constraint
+    """
+    query_ = (
+        text(MSSQL_GET_FOREIGN_KEY)
+        .bindparams(
+            sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
+            sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+        )
+        .columns(
+            constraint_schema=sqltypes.Unicode(),
+            constraint_name=sqltypes.Unicode(),
+            table_schema=sqltypes.Unicode(),
+            table_name=sqltypes.Unicode(),
+            constrained_column=sqltypes.Unicode(),
+            referred_table_schema=sqltypes.Unicode(),
+            referred_table_name=sqltypes.Unicode(),
+            referred_column=sqltypes.Unicode(),
+        )
+    )
+
+    # group rows by constraint ID, to handle multi-column FKs
+    fkeys = []
+
+    def fkey_rec():
+        return {
+            "name": None,
+            "constrained_columns": [],
+            "referred_schema": None,
+            "referred_table": None,
+            "referred_columns": [],
+            "options": {},
+        }
+
+    fkeys = util.defaultdict(fkey_rec)
+
+    for row_ in connection.execute(query_).fetchall():
+        (
+            _,  # constraint schema
+            rfknm,
+            _,  # ordinal position
+            scol,
+            rschema,
+            rtbl,
+            rcol,
+            # TODO: we support match=<keyword> for foreign keys so
+            # we can support this also, PG has match=FULL for example
+            # but this seems to not be a valid value for SQL Server
+            _,  # match rule
+            fkuprule,
+            fkdelrule,
+        ) = row_
+
+        rec = fkeys[rfknm]
+        rec["name"] = rfknm
+
+        if fkuprule != "NO ACTION":
+            rec["options"]["onupdate"] = fkuprule
+
+        if fkdelrule != "NO ACTION":
+            rec["options"]["ondelete"] = fkdelrule
+
+        if not rec["referred_table"]:
+            rec["referred_table"] = rtbl
+            if schema is not None or owner != rschema:
+                if dbname:
+                    rschema = dbname + "." + rschema
+                rec["referred_schema"] = rschema
+
+        local_cols, remote_cols = (
+            rec["constrained_columns"],
+            rec["referred_columns"],
+        )
+
+        local_cols.append(scol)
+        remote_cols.append(rcol)
+
+    return list(fkeys.values())
+
+
+@reflection.cache
+@db_plus_owner_listing
+def get_table_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
+    tables = ischema.tables
+    query_ = (
+        sql.select(tables.c.table_name)
+        .where(
+            sql.and_(
+                tables.c.table_schema == owner,
+                tables.c.table_type == "BASE TABLE",
+            )
+        )
+        .order_by(tables.c.table_name)
+    )
+    table_names = [r[0] for r in connection.execute(query_)]
+    return table_names
+
+
+@reflection.cache
+@db_plus_owner_listing
+def get_view_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
+    tables = ischema.tables
+    query_ = (
+        sql.select(tables.c.table_name)
+        .where(
+            sql.and_(
+                tables.c.table_schema == owner,
+                tables.c.table_type == "VIEW",
+            )
+        )
+        .order_by(tables.c.table_name)
+    )
+    view_names = [r[0] for r in connection.execute(query_)]
+    return view_names

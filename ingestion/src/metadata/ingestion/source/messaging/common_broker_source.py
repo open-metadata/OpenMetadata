@@ -25,15 +25,18 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import SchemaType, Topic
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -42,6 +45,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -65,9 +69,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
@@ -89,7 +93,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic(
         self, topic_details: BrokerTopicDetails
-    ) -> Iterable[CreateTopicRequest]:
+    ) -> Iterable[Either[CreateTopicRequest]]:
         try:
             schema_type_map = {
                 key.lower(): value.value
@@ -100,7 +104,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service.fullyQualifiedName.__root__,
+                service=self.context.messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas
@@ -136,14 +140,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
+            yield Either(right=topic)
             self.register_record(topic_request=topic)
-            yield topic
 
         except Exception as exc:
-            error = f"Unexpected exception to yield topic [{topic_details}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(topic_details.topic_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     @staticmethod
     def add_properties_to_topic_from_resource(
@@ -205,11 +212,18 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
-    ) -> TopicSampleData:
+    ) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
-        if self.context.topic and self.generate_sample_data:
+        topic_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Topic,
+            service_name=self.context.messaging_service,
+            topic_name=self.context.topic,
+        )
+        topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
+        if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
             try:
@@ -221,20 +235,24 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
                 messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch sample data from topic {topic_name}: {exc}"
+                yield Either(
+                    left=StackTraceError(
+                        name=topic_details.topic_name,
+                        error=f"Failed to fetch sample data from topic {topic_name}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
                 )
             else:
                 if messages:
                     for message in messages:
                         try:
+
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(
                                     value,
-                                    self.context.topic.messageSchema.schemaText,
-                                    self.context.topic.messageSchema.schemaType,
+                                    topic_entity.messageSchema.schemaText,
+                                    topic_entity.messageSchema.schemaType,
                                 )
                             )
                         except Exception as exc:
@@ -243,9 +261,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             )
             if self.consumer_client:
                 self.consumer_client.unsubscribe()
-            yield OMetaTopicSampleData(
-                topic=self.context.topic,
-                sample_data=TopicSampleData(messages=sample_data),
+            yield Either(
+                right=OMetaTopicSampleData(
+                    topic=topic_entity,
+                    sample_data=TopicSampleData(messages=sample_data),
+                )
             )
 
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):

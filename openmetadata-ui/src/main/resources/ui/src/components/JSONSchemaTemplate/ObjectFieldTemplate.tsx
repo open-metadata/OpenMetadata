@@ -18,10 +18,10 @@ import {
 } from '@rjsf/utils';
 import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
-import { ADVANCED_PROPERTIES } from 'constants/Services.constant';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ADVANCED_PROPERTIES } from '../../constants/Services.constant';
 import './object-field-template.less';
 
 const { Panel } = Collapse;
@@ -107,8 +107,8 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
           <>
             <Collapse
               className="advanced-properties-collapse"
-              expandIconPosition="right">
-              <Panel header={t('label.advanced')} key="1">
+              expandIconPosition="end">
+              <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
                 {advancedProperties.map((element, index) => (
                   <div
                     className={classNames('property-wrapper', {

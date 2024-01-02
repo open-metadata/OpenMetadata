@@ -49,6 +49,7 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
@@ -56,6 +57,7 @@ import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 @Slf4j
 public final class JsonUtils {
@@ -65,7 +67,9 @@ public final class JsonUtils {
   private static final ObjectMapper OBJECT_MAPPER;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
-  private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
+  private static final JsonSchemaFactory schemaFactory =
+      JsonSchemaFactory.getInstance(VersionFlag.V7);
+  private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON";
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -87,17 +91,21 @@ public final class JsonUtils {
 
   private JsonUtils() {}
 
-  public static String pojoToJson(Object o) throws JsonProcessingException {
+  public static String pojoToJson(Object o) {
     if (o == null) {
       return null;
     }
     return pojoToJson(o, false);
   }
 
-  public static String pojoToJson(Object o, boolean prettyPrint) throws JsonProcessingException {
-    return prettyPrint
-        ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
-        : OBJECT_MAPPER.writeValueAsString(o);
+  public static String pojoToJson(Object o, boolean prettyPrint) {
+    try {
+      return prettyPrint
+          ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
+          : OBJECT_MAPPER.writeValueAsString(o);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   public static JsonStructure getJsonStructure(Object o) {
@@ -110,31 +118,51 @@ public final class JsonUtils {
     return map;
   }
 
-  public static <T> T readValue(String json, Class<T> clz) throws IOException {
-    if (json == null) {
-      return null;
+  public static <T> T readValue(String json, String clazzName) {
+    try {
+      return (T) readValue(json, Class.forName(clazzName));
+    } catch (ClassNotFoundException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
-    return OBJECT_MAPPER.readValue(json, clz);
   }
 
-  public static <T> T readValue(String json, TypeReference<T> valueTypeRef) throws IOException {
+  public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {
       return null;
     }
-    return OBJECT_MAPPER.readValue(json, valueTypeRef);
+    try {
+      return OBJECT_MAPPER.readValue(json, clz);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static <T> T readValue(String json, TypeReference<T> valueTypeRef) {
+    if (json == null) {
+      return null;
+    }
+    try {
+      return OBJECT_MAPPER.readValue(json, valueTypeRef);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   /** Read an array of objects of type {@code T} from json */
-  public static <T> List<T> readObjects(String json, Class<T> clz) throws IOException {
+  public static <T> List<T> readObjects(String json, Class<T> clz) {
     if (json == null) {
       return Collections.emptyList();
     }
     TypeFactory typeFactory = OBJECT_MAPPER.getTypeFactory();
-    return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
+    try {
+      return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   /** Read an object of type {@code T} from json */
-  public static <T> List<T> readObjects(List<String> jsons, Class<T> clz) throws IOException {
+  public static <T> List<T> readObjects(List<String> jsons, Class<T> clz) {
     if (jsons == null) {
       return Collections.emptyList();
     }
@@ -146,17 +174,11 @@ public final class JsonUtils {
   }
 
   public static <T> T convertValue(Object object, Class<T> clz) {
-    if (object == null) {
-      return null;
-    }
-    return OBJECT_MAPPER.convertValue(object, clz);
+    return object == null ? null : OBJECT_MAPPER.convertValue(object, clz);
   }
 
   public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
-    if (object == null) {
-      return null;
-    }
-    return OBJECT_MAPPER.convertValue(object, toValueTypeRef);
+    return object == null ? null : OBJECT_MAPPER.convertValue(object, toValueTypeRef);
   }
 
   /** Applies the patch on original object and returns the updated object */
@@ -167,31 +189,32 @@ public final class JsonUtils {
     // -----------------------------------------------------------
     // JSON patch modification 1 - Reorder the operations
     // -----------------------------------------------------------
-    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the following operation:
+    // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the
+    // following operation:
     // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
     // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
     // {"op":"remove","path":"/tags/1"}
     // {"op":"remove","path":"/tags/2"}
     // Removes second array element in a 3 array field /tags/1
-    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the second element and
-    // now array of length 2 and there is no third element to remove. The patch operation fails with "array index not
-    // found error".
+    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the
+    // second element and now array of length 2 and there is no third element to remove. The patch
+    // operation fails with "array index not found error".
     //
     // The same applies to add operation as well. Example, the following operation:
     // {"op":"add","path":"/tags/2"}
     // {"op":"add","path":"/tags/1"}
-    // It will try to add element in index 2 before adding element in index 1 and the patch operation fails with
-    // "contains no element for index 1" error.
+    // It will try to add element in index 2 before adding element in index 1 and the patch
+    // operation fails with "contains no element for index 1" error.
     //
-    // Reverse sorting the remove operations and sorting all the other operations including "add" by "path" fields
-    // before applying the patch as a workaround.
+    // Reverse sorting the remove operations and sorting all the other operations including "add" by
+    // "path" fields before applying the patch as a workaround.
     //
     // ---------------------------------------------------------------------
     // JSON patch modification 2 - Ignore operations related to href patch
     // ---------------------------------------------------------------------
     // Another important modification to patch operation:
-    // Ignore all the patch operations related to the href path as href path is read only and is auto generated
-    // by removing those operations from patch operation array
+    // Ignore all the patch operations related to the href path as href path is read only and is
+    // auto generated by removing those operations from patch operation array
     //
     JsonArray array = patch.toJsonArray();
     List<JsonObject> removeOperations = new ArrayList<>();
@@ -276,7 +299,7 @@ public final class JsonUtils {
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
   }
 
-  public static JsonPatch getJsonPatch(Object v1, Object v2) throws JsonProcessingException {
+  public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonValue source = readJson(JsonUtils.pojoToJson(v1));
     JsonValue dest = readJson(JsonUtils.pojoToJson(v2));
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
@@ -302,10 +325,15 @@ public final class JsonUtils {
   }
 
   /** Get all the fields types and entity types from OpenMetadata JSON schema definition files. */
-  public static List<Type> getTypes() throws IOException {
+  public static List<Type> getTypes() {
     // Get Field Types
     List<Type> types = new ArrayList<>();
-    List<String> jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/type/.*\\.json$");
+    List<String> jsonSchemas;
+    try {
+      jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/type/.*\\.json$");
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to read JSON resources at .*json/schema/type", e);
+    }
     for (String jsonSchema : jsonSchemas) {
       try {
         types.addAll(JsonUtils.getFieldTypes(jsonSchema));
@@ -315,7 +343,12 @@ public final class JsonUtils {
     }
 
     // Get Entity Types
-    jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/entity/.*\\.json$");
+    try {
+      jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/entity/.*\\.json$");
+    } catch (IOException e) {
+      throw new UnhandledServerException(
+          "Failed to read JSON resources at .*json/schema/entity", e);
+    }
     for (String jsonSchema : jsonSchemas) {
       try {
         Type entityType = JsonUtils.getEntityType(jsonSchema);
@@ -333,10 +366,16 @@ public final class JsonUtils {
    * Get all the fields types from the `definitions` section of a JSON schema file that are annotated with "$comment"
    * field set to "@om-field-type".
    */
-  public static List<Type> getFieldTypes(String jsonSchemaFile) throws IOException {
-    JsonNode node =
-        OBJECT_MAPPER.readTree(
-            Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+  public static List<Type> getFieldTypes(String jsonSchemaFile) {
+    JsonNode node;
+    try {
+      node =
+          OBJECT_MAPPER.readTree(
+              Objects.requireNonNull(
+                  JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+    }
     if (node.get("definitions") == null) {
       return Collections.emptyList();
     }
@@ -370,10 +409,16 @@ public final class JsonUtils {
    * Get all the fields types from the `definitions` section of a JSON schema file that are annotated with "$comment"
    * field set to "@om-entity-type".
    */
-  public static Type getEntityType(String jsonSchemaFile) throws IOException {
-    JsonNode node =
-        OBJECT_MAPPER.readTree(
-            Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+  public static Type getEntityType(String jsonSchemaFile) {
+    JsonNode node;
+    try {
+      node =
+          OBJECT_MAPPER.readTree(
+              Objects.requireNonNull(
+                  JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+    }
     if (!JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)) {
       return null;
     }
@@ -404,14 +449,23 @@ public final class JsonUtils {
   }
 
   /** Serialize object removing all the fields annotated with @{@link MaskedField} */
-  public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
-    return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
+  public static String pojoToMaskedJson(Object entity) {
+    try {
+      return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   /** Serialize object removing all the fields annotated with @{@link ExposedField} */
-  public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
-    String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
-    return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
+  public static <T> T toExposedEntity(Object entity, Class<T> clazz) {
+    String jsonString;
+    try {
+      jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
+      return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   public static ObjectNode getObjectNode(String key, JsonNode value) {
@@ -423,16 +477,51 @@ public final class JsonUtils {
     return OBJECT_MAPPER.createObjectNode();
   }
 
-  public static JsonNode readTree(String extensionJson) throws JsonProcessingException {
-    return OBJECT_MAPPER.readTree(extensionJson);
+  public static JsonNode readTree(String extensionJson) {
+    try {
+      return OBJECT_MAPPER.readTree(extensionJson);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static <T> T treeToValue(JsonNode jsonNode, Class<T> classType) {
+    try {
+      return OBJECT_MAPPER.treeToValue(jsonNode, classType);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
   }
 
   /** Compared the canonicalized JSON representation of two object to check if they are equals or not */
-  public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
-    ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
-    JsonNode obj1sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));
-    JsonNode obj2sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj2));
-    return OBJECT_MAPPER.writeValueAsString(obj1sorted).equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
+  public static boolean areEquals(Object obj1, Object obj2) {
+    try {
+      ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
+      JsonNode obj1sorted =
+          mapper
+              .reader()
+              .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+              .readTree(pojoToJson(obj1));
+      JsonNode obj2sorted =
+          mapper
+              .reader()
+              .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+              .readTree(pojoToJson(obj2));
+      return OBJECT_MAPPER
+          .writeValueAsString(obj1sorted)
+          .equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  @SneakyThrows
+  public static <T> T deepCopy(T original, Class<T> clazz) {
+    // Serialize the original object to JSON
+    String json = pojoToJson(original);
+
+    // Deserialize the JSON back into a new object of the specified class
+    return OBJECT_MAPPER.readValue(json, clazz);
   }
 
   static class SortedNodeFactory extends JsonNodeFactory {
@@ -440,5 +529,38 @@ public final class JsonUtils {
     public ObjectNode objectNode() {
       return new ObjectNode(this, new TreeMap<>());
     }
+  }
+
+  public static <T> T extractValue(String jsonResponse, String... keys) {
+    JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
+
+    // Traverse the JSON structure using keys
+    for (String key : keys) {
+      jsonNode = jsonNode.path(key);
+    }
+
+    // Extract the final value
+    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+  }
+
+  public static <T> T extractValue(JsonNode jsonNode, String... keys) {
+    // Traverse the JSON structure using keys
+    for (String key : keys) {
+      jsonNode = jsonNode.path(key);
+    }
+
+    // Extract the final value
+    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+  }
+
+  private static Class<?> getValueClass(JsonNode jsonNode) {
+    return switch (jsonNode.getNodeType()) {
+      case ARRAY, OBJECT -> JsonNode.class; // Adjust as needed for your use case
+      case BINARY -> byte[].class;
+      case BOOLEAN -> Boolean.class;
+      case NUMBER -> Number.class;
+      case STRING -> String.class;
+      case MISSING, NULL, POJO -> Object.class;
+    };
   }
 }

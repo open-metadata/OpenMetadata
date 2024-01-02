@@ -12,22 +12,23 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+import json
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, Tuple, Union
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    DataType,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -40,45 +41,45 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
+    StorageContainerConfig,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.models import (
-    DatalakeTableSchemaWrapper,
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.storage.storage_service import (
+    OPENMETADATA_TEMPLATE_FILE_NAME,
 )
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.file.base import ReadException
+from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
-    SupportedTypes,
-    clean_dataframe,
     fetch_dataframe,
+    get_columns,
+    get_file_format_type,
 )
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
 
-DATALAKE_DATA_TYPES = {
-    **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
-    "object": DataType.STRING.value,
-    **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT.value),
-    "bool": DataType.BOOLEAN.value,
-    **dict.fromkeys(
-        ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
-    ),
-}
+OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -87,35 +88,33 @@ class DatalakeSource(DatabaseServiceSource):
     Database metadata from Datalake Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
 
         self.client = self.connection.client
         self.table_constraints = None
-        self.data_models = {}
-        self.dbt_tests = {}
         self.database_source_state = set()
-
+        self.config_source = self.service_connection.configSource
         self.connection_obj = self.connection
         self.test_connection()
+        self.reader = get_reader(config_source=self.config_source, client=self.client)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatalakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatalakeConnection):
             raise InvalidSourceException(
                 f"Expected DatalakeConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -129,14 +128,18 @@ class DatalakeSource(DatabaseServiceSource):
         database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service,
+            )
         )
 
     def fetch_gcs_bucket_names(self):
@@ -144,8 +147,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=bucket.name,
             )
             if filter_by_schema(
@@ -164,8 +167,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=bucket["Name"],
             )
             if filter_by_schema(
@@ -183,19 +186,19 @@ class DatalakeSource(DatabaseServiceSource):
         return schema names
         """
         bucket_name = self.service_connection.bucketName
-        if isinstance(self.service_connection.configSource, GCSConfig):
+        if isinstance(self.config_source, GCSConfig):
             if bucket_name:
                 yield bucket_name
             else:
                 yield from self.fetch_gcs_bucket_names()
 
-        if isinstance(self.service_connection.configSource, S3Config):
+        if isinstance(self.config_source, S3Config):
             if bucket_name:
                 yield bucket_name
             else:
                 yield from self.fetch_s3_bucket_names()
 
-        if isinstance(self.service_connection.configSource, AzureConfig):
+        if isinstance(self.config_source, AzureConfig):
             yield from self.get_container_names()
 
     def get_container_names(self) -> Iterable[str]:
@@ -212,8 +215,8 @@ class DatalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema["name"],
             )
             if filter_by_schema(
@@ -229,28 +232,26 @@ class DatalakeSource(DatabaseServiceSource):
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
+            )
         )
-
-    def _list_s3_objects(self, **kwargs) -> Iterable:
-        try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(**kwargs):
-                yield from page.get("Contents", [])
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield s3 object: {exc}")
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Optional[Iterable[Tuple[str, str]]]:
+    ) -> Iterable[Tuple[str, TableType]]:
         """
         Handle table and views.
 
@@ -259,331 +260,177 @@ class DatalakeSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        bucket_name = self.context.database_schema.name.__root__
+        bucket_name = self.context.database_schema
         prefix = self.service_connection.prefix
+        try:
+            metadata_config_response = self.reader.read(
+                path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                bucket_name=bucket_name,
+                verbose=False,
+            )
+            content = json.loads(metadata_config_response)
+            metadata_entry = StorageContainerConfig.parse_obj(content)
+        except ReadException:
+            metadata_entry = None
         if self.source_config.includeTables:
-            if isinstance(self.service_connection.configSource, GCSConfig):
+            if isinstance(self.config_source, GCSConfig):
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
                     table_name = self.standardize_table_name(bucket_name, key.name)
                     # adding this condition as the gcp blobs also contains directory, which we can filter out
-                    if table_name.endswith("/") or not self.check_valid_file_type(
-                        key.name
-                    ):
+                    if self.filter_dl_table(table_name):
+                        continue
+                    file_extension = get_file_format_type(
+                        key_name=key.name, metadata_entry=metadata_entry
+                    )
+                    if table_name.endswith("/") or not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
 
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
-                        )
-                        continue
-
-                    yield table_name, TableType.Regular
-            if isinstance(self.service_connection.configSource, S3Config):
+                    yield table_name, TableType.Regular, file_extension
+            if isinstance(self.config_source, S3Config):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-                for key in self._list_s3_objects(**kwargs):
+                for key in list_s3_objects(self.client, **kwargs):
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
-                        )
+                    if self.filter_dl_table(table_name):
                         continue
-                    if not self.check_valid_file_type(key["Key"]):
+                    file_extension = get_file_format_type(
+                        key_name=key["Key"], metadata_entry=metadata_entry
+                    )
+                    if not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
 
-                    yield table_name, TableType.Regular
-            if isinstance(self.service_connection.configSource, AzureConfig):
+                    yield table_name, TableType.Regular, file_extension
+            if isinstance(self.config_source, AzureConfig):
                 container_client = self.client.get_container_client(bucket_name)
 
                 for file in container_client.list_blobs(
                     name_starts_with=prefix or None
                 ):
                     table_name = self.standardize_table_name(bucket_name, file.name)
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Object Filtered Out",
-                        )
+                    if self.filter_dl_table(table_name):
                         continue
-                    if not self.check_valid_file_type(file.name):
+                    file_extension = get_file_format_type(
+                        key_name=file.name, metadata_entry=metadata_entry
+                    )
+                    if not file_extension:
                         logger.debug(
                             f"Object filtered due to unsupported file type: {file.name}"
                         )
                         continue
-                    yield file.name, TableType.Regular
+                    yield table_name, TableType.Regular, file_extension
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
         """
-        table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
-        columns = []
+        table_name, table_type, table_extension = table_name_and_type
+        schema_name = self.context.database_schema
         try:
             table_constraints = None
-            connection_args = self.service_connection.configSource.securityConfig
             data_frame = fetch_dataframe(
-                config_source=self.service_connection.configSource,
+                config_source=self.config_source,
                 client=self.client,
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
+                    file_extension=table_extension,
                 ),
-                connection_kwargs=connection_args,
             )
-            columns = self.get_columns(data_frame[0])
+
+            # If no data_frame (due to unsupported type), ignore
+            columns = get_columns(data_frame[0]) if data_frame else None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    databaseSchema=fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=schema_name,
+                    ),
+                    fileFormat=table_extension.value if table_extension else None,
                 )
-                yield table_request
+                yield Either(right=table_request)
                 self.register_record(table_request=table_request)
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
-
-    @staticmethod
-    def _parse_complex_column(
-        data_frame,
-        column,
-        final_column_list: List[Column],
-        complex_col_dict: dict,
-        processed_complex_columns: set,
-    ) -> None:
-        """
-        This class parses the complex columns
-
-        for example consider this data:
-            {
-                "level1": {
-                    "level2":{
-                        "level3": 1
-                    }
-                }
-            }
-
-        pandas would name this column as: _##level1_##level2_##level3
-        (_## being the custom separator)
-
-        this function would parse this column name and prepare a Column object like
-        Column(
-            name="level1",
-            dataType="RECORD",
-            children=[
-                Column(
-                    name="level2",
-                    dataType="RECORD",
-                    children=[
-                        Column(
-                            name="level3",
-                            dataType="INT",
-                        )
-                    ]
+            yield Either(
+                left=StackTraceError(
+                    name="Table",
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
                 )
-            ]
-        )
-        """
-        try:
-            # pylint: disable=bad-str-strip-call
-            column_name = str(column).strip(COMPLEX_COLUMN_SEPARATOR)
-            col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
-            parent_col: Optional[Column] = None
-            root_col: Optional[Column] = None
-
-            # here we are only processing col_hierarchy till [:-1]
-            # because all the column/node before -1 would be treated
-            # as a record and the column at -1 would be the column
-            # having a primitive datatype
-            # for example if col_hierarchy is ("image", "properties", "size")
-            # then image would be the record having child properties which is
-            # also a record  but the "size" will not be handled in this loop
-            # as it will be of primitive type for ex. int
-            for index, col_name in enumerate(col_hierarchy[:-1]):
-
-                if complex_col_dict.get(col_hierarchy[: index + 1]):
-                    # if we have already seen this column fetch that column
-                    parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
-                else:
-                    # if we have not seen this column than create the column and
-                    # append to the parent if available
-                    intermediate_column = Column(
-                        name=truncate_column_name(col_name),
-                        displayName=col_name,
-                        dataType=DataType.RECORD.value,
-                        children=[],
-                        dataTypeDisplay=DataType.RECORD.value,
-                    )
-                    if parent_col:
-                        parent_col.children.append(intermediate_column)
-                        root_col = parent_col
-                    parent_col = intermediate_column
-                    complex_col_dict[col_hierarchy[: index + 1]] = parent_col
-
-            # prepare the leaf node
-            # use String as default type
-            data_type = DataType.STRING.value
-            if hasattr(data_frame[column], "dtypes"):
-                data_type = DATALAKE_DATA_TYPES.get(
-                    data_frame[column].dtypes.name, DataType.STRING.value
-                )
-            leaf_column = Column(
-                name=col_hierarchy[-1],
-                dataType=data_type,
-                dataTypeDisplay=data_type,
             )
-            parent_col.children.append(leaf_column)
 
-            # finally add the top level node in the column list
-            if col_hierarchy[0] not in processed_complex_columns:
-                processed_complex_columns.add(col_hierarchy[0])
-                final_column_list.append(root_col or parent_col)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
-
-    @staticmethod
-    def fetch_col_types(data_frame, column_name):
-        data_type = DATALAKE_DATA_TYPES.get(
-            data_frame[column_name].dtypes.name, DataType.STRING.value
-        )
-        if data_type == DataType.FLOAT.value:
-            try:
-                if data_frame[column_name].dropna().any():
-                    if isinstance(data_frame[column_name].iloc[0], dict):
-                        return DataType.JSON.value
-                    if isinstance(data_frame[column_name].iloc[0], str):
-                        return DataType.STRING.value
-            except Exception as err:
-                logger.warning(
-                    f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
-                )
-                logger.debug(traceback.format_exc())
-        return data_type
-
-    @staticmethod
-    def get_columns(data_frame: list):
-        """
-        method to process column details
-        """
-        data_frame = clean_dataframe(data_frame)
-        cols = []
-        complex_col_dict = {}
-
-        processed_complex_columns = set()
-        if hasattr(data_frame, "columns"):
-            df_columns = list(data_frame.columns)
-            for column in df_columns:
-                if COMPLEX_COLUMN_SEPARATOR in column:
-                    DatalakeSource._parse_complex_column(
-                        data_frame,
-                        column,
-                        cols,
-                        complex_col_dict,
-                        processed_complex_columns,
-                    )
-                else:
-                    # use String by default
-                    data_type = DataType.STRING.value
-                    try:
-                        if hasattr(data_frame[column], "dtypes"):
-                            data_type = DatalakeSource.fetch_col_types(
-                                data_frame, column_name=column
-                            )
-
-                        parsed_string = {
-                            "dataTypeDisplay": data_type,
-                            "dataType": data_type,
-                            "name": truncate_column_name(column),
-                            "displayName": column,
-                        }
-                        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-                        cols.append(Column(**parsed_string))
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Unexpected exception parsing column [{column}]: {exc}"
-                        )
-        complex_col_dict.clear()
-        return cols
-
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """We don't bring tag information"""
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def standardize_table_name(
         self, schema: str, table: str  # pylint: disable=unused-argument
     ) -> str:
         return table
 
-    def check_valid_file_type(self, key_name):
-        for supported_types in SupportedTypes:
-            if key_name.endswith(supported_types.value):
-                return True
+    def filter_dl_table(self, table_name: str):
+        """Filters Datalake Tables based on filterPattern"""
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+        if filter_by_table(
+            self.config.sourceConfig.config.tableFilterPattern,
+            table_fqn
+            if self.config.sourceConfig.config.useFqnForFiltering
+            else table_name,
+        ):
+            self.status.filter(
+                table_fqn,
+                OBJECT_FILTERED_OUT_MESSAGE,
+            )
+            return True
         return False
 
     def close(self):
-        if isinstance(self.service_connection.configSource, AzureConfig):
+        if isinstance(self.config_source, AzureConfig):
             self.client.close()

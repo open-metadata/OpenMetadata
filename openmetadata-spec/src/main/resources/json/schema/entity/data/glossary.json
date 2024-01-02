@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Glossary",
   "description": "This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Glossary",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -95,6 +96,13 @@
     "domain" : {
       "description": "Domain the Glossary belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name", "description"],

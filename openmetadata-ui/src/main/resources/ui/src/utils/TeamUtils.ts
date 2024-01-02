@@ -13,6 +13,10 @@
 
 import { t } from 'i18next';
 import { cloneDeep, isNil, isUndefined, omit } from 'lodash';
+import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import {
   EntityReference,
@@ -84,4 +88,41 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
     policies: getEntityValue(policies),
     users: getEntityValue(users),
   } as CreateTeam;
+};
+
+/**
+ * To get webhook svg icon
+ * @param item webhook key
+ * @returns SvgComponent
+ */
+export const getWebhookIcon = (item: SUBSCRIPTION_WEBHOOK): SvgComponent => {
+  switch (item) {
+    case SUBSCRIPTION_WEBHOOK.SLACK:
+      return SlackIcon;
+
+    case SUBSCRIPTION_WEBHOOK.G_CHAT:
+      return GChatIcon;
+
+    default:
+      return MsTeamsIcon;
+  }
+};
+export const getTeamOptionsFromType = (parentType: TeamType) => {
+  switch (parentType) {
+    case TeamType.Organization:
+      return [
+        TeamType.BusinessUnit,
+        TeamType.Division,
+        TeamType.Department,
+        TeamType.Group,
+      ];
+    case TeamType.BusinessUnit:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Division:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Department:
+      return [TeamType.Department, TeamType.Group];
+    case TeamType.Group:
+      return [TeamType.Group];
+  }
 };

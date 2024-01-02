@@ -15,6 +15,7 @@ Define Length function
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
@@ -48,6 +49,8 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.IbmDbSa)
 @compiles(LenFn, Dialects.Db2)
 @compiles(LenFn, Dialects.Hana)
+@compiles(LenFn, Dialects.Druid)
+@compiles(LenFn, Dialects.Doris)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
@@ -60,4 +63,13 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handles lenght function for ClickHouse"""
+    if isinstance(element.clauses.clauses[0].type, sqltypes.Enum):
+        return "length(cast(%s, 'String'))" % compiler.process(element.clauses, **kw)
     return "length(%s)" % compiler.process(element.clauses, **kw)
+
+
+@compiles(LenFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    if isinstance(element.clauses.clauses[0].type, (sqltypes.TEXT, sqltypes.NVARCHAR)):
+        return "LEN(CAST(%s as [nvarchar]))" % compiler.process(element.clauses, **kw)
+    return "LEN(%s)" % compiler.process(element.clauses, **kw)

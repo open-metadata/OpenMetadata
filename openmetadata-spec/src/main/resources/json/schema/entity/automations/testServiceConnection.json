@@ -29,6 +29,9 @@
         },
         {
           "$ref": "../services/storageService.json#/definitions/storageConnection"
+        },
+        {
+          "$ref": "../services/searchService.json#/definitions/searchConnection"
         }
       ]
     },
@@ -47,7 +50,7 @@
     },
     "secretsManagerProvider": {
       "$ref": "../../security/secrets/secretsManagerProvider.json",
-      "default": "noop"
+      "default": "db"
     }
   },
   "additionalProperties": false

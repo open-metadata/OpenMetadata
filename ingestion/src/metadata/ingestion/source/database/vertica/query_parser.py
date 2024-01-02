@@ -17,14 +17,12 @@ from typing import Iterable
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.database.vertica.queries import VERTICA_LIST_DATABASES
@@ -45,7 +43,7 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: VerticaConnection = config.serviceConnection.__root__.config
@@ -53,7 +51,7 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
             raise InvalidSourceException(
                 f"Expected VerticaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_table_query(self) -> Iterable[TableQuery]:
         database = self.config.serviceConnection.__root__.config.database

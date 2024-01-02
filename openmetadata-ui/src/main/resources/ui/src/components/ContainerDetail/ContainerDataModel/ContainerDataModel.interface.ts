@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ThreadType } from 'generated/api/feed/createThread';
-import { Container } from 'generated/entity/data/container';
-import { EntityFieldThreads } from 'interface/feed.interface';
 import { ReactNode } from 'react';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { Container } from '../../../generated/entity/data/container';
 
 export type CellRendered<T, K extends keyof T> = (
   value: T[K],
@@ -27,7 +26,6 @@ export interface ContainerDataModelProps {
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
-  entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;
 }

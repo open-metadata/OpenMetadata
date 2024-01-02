@@ -50,8 +50,12 @@ src/generated/
 
 
 # Assets
+*.gif
 *.svg
 *.png
 *.ico
 *.ttf
 *.md
+
+# Snapshots
+*.snap

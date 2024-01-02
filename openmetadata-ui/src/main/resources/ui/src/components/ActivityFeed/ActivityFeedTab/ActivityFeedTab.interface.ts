@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/table';
-import { EntityReference } from 'generated/entity/type';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/entity/type';
 
 export type FeedKeys = 'all' | 'mentions' | 'tasks';
+export type TaskFilter = 'open' | 'close';
 
 export enum ActivityFeedTabs {
   ALL = 'all',
@@ -24,6 +25,7 @@ export enum ActivityFeedTabs {
 
 export interface ActivityFeedTabBasicProps {
   fqn: string;
+  isForFeedTab?: boolean;
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
   owner?: EntityReference;

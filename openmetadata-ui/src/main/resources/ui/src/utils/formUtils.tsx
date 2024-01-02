@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormProps } from '@rjsf/core';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Divider,
@@ -20,27 +19,30 @@ import {
   InputNumber,
   Select,
   Switch,
+  TooltipProps,
 } from 'antd';
+import { TooltipPlacement } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
-import { AsyncSelectListProps } from 'components/AsyncSelectList/AsyncSelectList.interface';
-import FilterPattern from 'components/common/FilterPattern/FilterPattern';
-import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { UserSelectableListProps } from 'components/common/UserSelectableList/UserSelectableList.interface';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { UserSelectDropdownProps } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
-import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
-import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import { VALID_OBJECT_KEY_REGEX } from 'constants/regex.constants';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
+import React, { Fragment, ReactNode } from 'react';
+import AsyncSelectList from '../components/AsyncSelectList/AsyncSelectList';
+import { AsyncSelectListProps } from '../components/AsyncSelectList/AsyncSelectList.interface';
+import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import FilterPattern from '../components/common/FilterPattern/FilterPattern';
+import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
+import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
+import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
+import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
+import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
+import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
+import FormItemLabel from '../components/Form/FormItemLabel';
+import SliderWithInput from '../components/SliderWithInput/SliderWithInput';
+import { SliderWithInputProps } from '../components/SliderWithInput/SliderWithInput.interface';
+import { FieldProp, FieldTypes } from '../interface/FormUtils.interface';
 import TagSuggestion, {
   TagSuggestionProps,
-} from 'pages/TasksPage/shared/TagSuggestion';
-import React, { Fragment, ReactNode } from 'react';
+} from '../pages/TasksPage/shared/TagSuggestion';
 import i18n from './i18next/LocalUtil';
 
 export const getField = (field: FieldProp) => {
@@ -48,6 +50,7 @@ export const getField = (field: FieldProp) => {
     label,
     name,
     type,
+    helperText,
     required,
     props = {},
     rules = [],
@@ -64,7 +67,10 @@ export const getField = (field: FieldProp) => {
   if (required) {
     fieldRules = [
       ...fieldRules,
-      { required, message: i18n.t('label.field-required', { field: name }) },
+      {
+        required,
+        message: i18n.t('label.field-required', { field: startCase(name) }),
+      },
     ];
   }
 
@@ -87,10 +93,10 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.NUMBER:
       fieldElement = (
         <InputNumber
-          {...props}
           id={id}
           placeholder={placeholder}
           size="small"
+          {...props}
         />
       );
 
@@ -170,6 +176,10 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+    case FieldTypes.COLOR_PICKER:
+      fieldElement = <ColorPicker />;
+
+      break;
 
     default:
       break;
@@ -184,7 +194,16 @@ export const getField = (field: FieldProp) => {
         })}
         id={id}
         key={id}
-        label={label}
+        label={
+          <FormItemLabel
+            align={props.tooltipAlign as TooltipProps['align']}
+            helperText={helperText}
+            label={label}
+            overlayClassName={props.overlayClassName as string}
+            overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
+            placement={props.tooltipPlacement as TooltipPlacement}
+          />
+        }
         name={name}
         rules={fieldRules}
         {...internalFormItemProps}
@@ -229,32 +248,4 @@ export const transformErrors: ErrorTransformer = (errors) => {
   });
 
   return compact(errorRet);
-};
-
-export const customValidate: FormProps['customValidate'] = (
-  formData,
-  errors
-) => {
-  const { connectionArguments = {}, connectionOptions = {} } = formData;
-
-  const connectionArgumentsKeys = Object.keys(connectionArguments);
-  const connectionOptionsKeys = Object.keys(connectionOptions);
-
-  const connectionArgumentsHasError = connectionArgumentsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  const connectionOptionsHasError = connectionOptionsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  if (connectionArgumentsHasError && errors?.connectionArguments) {
-    errors.connectionArguments?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  if (connectionOptionsHasError && errors?.connectionOptions) {
-    errors.connectionOptions?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  return errors;
 };

@@ -14,7 +14,7 @@ Test we map correctly struct columns for BQ
 """
 
 from metadata.generated.schema.entity.data.table import Column
-from metadata.profiler.orm.converter import _TYPE_MAP
+from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
 
 
@@ -56,7 +56,7 @@ def test_map_struct():
         }
     )
 
-    type_ = bigquery_type_mapper(_TYPE_MAP, column)
+    type_ = bigquery_type_mapper(CommonMapTypes()._TYPE_MAP, column)
     assert (
         type_.__repr__()
         == "STRUCT(col1=String(), col2=STRUCT(col3=String(), col4=STRUCT(col5=CustomArray(<DataType.STRING: 'STRING'>))))"

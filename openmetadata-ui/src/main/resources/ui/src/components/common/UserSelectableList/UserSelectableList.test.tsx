@@ -10,17 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { UserSelectableList } from './UserSelectableList.component';
 
 const mockOnUpdate = jest.fn();
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/userAPI', () => ({
+  getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 5 } }),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 5 } }),
 }));
 
-describe('SelectableList Component Test', () => {
+jest.mock('../SelectableList/SelectableList.component', () => ({
+  SelectableList: jest.fn().mockReturnValue(<div>selectable-list</div>),
+}));
+
+describe('UserSelectableList Component Test', () => {
   it('should render disabled button if no permission', () => {
     render(
       <UserSelectableList
@@ -33,5 +41,35 @@ describe('SelectableList Component Test', () => {
     act(() => {
       expect(screen.getByTestId('add-user')).toBeDisabled();
     });
+  });
+
+  it('should render enabled button if has permission', () => {
+    render(
+      <UserSelectableList
+        hasPermission
+        selectedUsers={[]}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    act(() => {
+      expect(screen.getByTestId('add-user')).toBeEnabled();
+    });
+  });
+
+  it('should render selectablelist if click on add-user', () => {
+    render(
+      <UserSelectableList
+        hasPermission
+        selectedUsers={[]}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-user'));
+    });
+
+    expect(screen.getByText('selectable-list')).toBeInTheDocument();
   });
 });
