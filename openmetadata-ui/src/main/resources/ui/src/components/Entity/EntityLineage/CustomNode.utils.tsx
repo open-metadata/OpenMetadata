@@ -19,6 +19,24 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.sv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { EdgeTypeEnum } from './EntityLineage.interface';
 
+export const getHandleByType = (
+  isConnectable: HandleProps['isConnectable'],
+  position: Position,
+  type: HandleType,
+  className?: string,
+  id?: string
+) => {
+  return (
+    <Handle
+      className={className}
+      id={id}
+      isConnectable={isConnectable}
+      position={position}
+      type={type}
+    />
+  );
+};
+
 export const getColumnHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
@@ -41,24 +59,6 @@ export const getColumnHandle = (
       </Fragment>
     );
   }
-};
-
-export const getHandleByType = (
-  isConnectable: HandleProps['isConnectable'],
-  position: Position,
-  type: HandleType,
-  className?: string,
-  id?: string
-) => {
-  return (
-    <Handle
-      className={className}
-      id={id}
-      isConnectable={isConnectable}
-      position={position}
-      type={type}
-    />
-  );
 };
 
 export const getExpandHandle = (
@@ -96,6 +96,11 @@ export const getCollapseHandle = (
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      data-testid={
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'downstream-collapse-handle'
+          : 'upstream-collapse-handle'
+      }
       icon={<MinusIcon className="lineage-expand-icon" />}
       shape="circle"
       size="small"

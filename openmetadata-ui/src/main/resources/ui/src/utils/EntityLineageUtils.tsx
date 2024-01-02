@@ -932,3 +932,25 @@ export const getUpdatedColumnsFromEdge = (
 
   return [];
 };
+
+export const createNewEdge = (edge: Edge) => {
+  const { data } = edge;
+  const selectedEdge: AddLineage = {
+    edge: {
+      fromEntity: {
+        id: data.edge.fromEntity.id,
+        type: data.edge.fromEntity.type,
+      },
+      toEntity: {
+        id: data.edge.toEntity.id,
+        type: data.edge.toEntity.type,
+      },
+    },
+  };
+
+  const updatedCols = getColumnLineageData(data.edge.columns, edge);
+  selectedEdge.edge.lineageDetails = getLineageDetailsObject(edge);
+  selectedEdge.edge.lineageDetails.columnsLineage = updatedCols;
+
+  return selectedEdge;
+};

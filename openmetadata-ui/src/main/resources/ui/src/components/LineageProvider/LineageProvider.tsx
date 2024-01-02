@@ -50,14 +50,13 @@ import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   createEdges,
+  createNewEdge,
   createNodes,
   getAllTracedColumnEdge,
   getAllTracedNodes,
   getClassifiedEdge,
-  getColumnLineageData,
   getConnectedNodesEdges,
   getLayoutedElements,
-  getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
   getLoadingStatusValue,
@@ -264,98 +263,78 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edge: Edge,
     confirmDelete: boolean
   ): Promise<void> => {
-    if (confirmDelete && entityLineage) {
-      const { data } = edge;
-      const edgeData: EdgeData = {
-        fromEntity: data.edge.fromEntity.type,
-        fromId: data.edge.fromEntity.id,
-        toEntity: data.edge.toEntity.type,
-        toId: data.edge.toEntity.id,
-      };
-
-      await removeLineageHandler(edgeData);
-
-      const updatedEdges = entityLineage.edges?.filter(
-        (item) =>
-          !(
-            item.fromEntity.id === edgeData.fromId &&
-            item.toEntity.id === edgeData.toId
-          )
-      );
-
-      setEntityLineage((prev) => {
-        return {
-          ...prev,
-          edges: updatedEdges,
-        };
-      });
-
-      const newNodes = createNodes(
-        entityLineage.nodes ?? [],
-        updatedEdges ?? []
-      );
-      const newEdges = createEdges(
-        entityLineage.nodes ?? [],
-        updatedEdges ?? []
-      );
-
-      setNodes(newNodes);
-      setEdges(newEdges);
+    if (!confirmDelete || !entityLineage) {
+      return;
     }
+
+    const { data } = edge;
+    const edgeData: EdgeData = {
+      fromEntity: data.edge.fromEntity.type,
+      fromId: data.edge.fromEntity.id,
+      toEntity: data.edge.toEntity.type,
+      toId: data.edge.toEntity.id,
+    };
+
+    await removeLineageHandler(edgeData);
+    const updatedEdges = entityLineage.edges?.filter(
+      (item) =>
+        !(
+          item.fromEntity.id === edgeData.fromId &&
+          item.toEntity.id === edgeData.toId
+        )
+    );
+
+    setEntityLineage((prev) => ({
+      ...prev,
+      edges: updatedEdges,
+    }));
+
+    const newNodes = createNodes(entityLineage.nodes ?? [], updatedEdges ?? []);
+    const newEdges = createEdges(entityLineage.nodes ?? [], updatedEdges ?? []);
+
+    setNodes(newNodes);
+    setEdges(newEdges);
   };
 
   const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
-    if (confirmDelete && entityLineage) {
-      const { data } = edge;
-      const selectedEdge: AddLineage = {
-        edge: {
-          fromEntity: {
-            id: data.edge.fromEntity.id,
-            type: data.edge.fromEntity.type,
-          },
-          toEntity: {
-            id: data.edge.toEntity.id,
-            type: data.edge.toEntity.type,
-          },
-        },
-      };
-
-      const updatedCols = getColumnLineageData(data.edge.columns, edge);
-      selectedEdge.edge.lineageDetails = getLineageDetailsObject(edge);
-      selectedEdge.edge.lineageDetails.columnsLineage = updatedCols;
-
-      await addLineageHandler(selectedEdge);
-
-      const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
-        if (
-          obj.fromEntity.id === data.edge.fromEntity.id &&
-          obj.toEntity.id === data.edge.toEntity.id
-        ) {
-          return {
-            ...obj,
-            columns: updatedCols,
-          };
-        }
-
-        return obj;
-      });
-
-      setEntityLineage((prev) => {
-        return {
-          ...prev,
-          edges: updatedEdgeWithColumns,
-        };
-      });
-
-      const updatedEdges = createEdges(
-        entityLineage.nodes ?? [],
-        updatedEdgeWithColumns
-      );
-
-      setEdges(updatedEdges);
-
-      setShowDeleteModal(false);
+    if (!confirmDelete || !entityLineage) {
+      return;
     }
+
+    const { data } = edge;
+    const selectedEdge = createNewEdge(edge);
+    const updatedCols = selectedEdge.edge.lineageDetails?.columnsLineage ?? [];
+    await addLineageHandler(selectedEdge);
+
+    const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
+      if (
+        obj.fromEntity.id === data.edge.fromEntity.id &&
+        obj.toEntity.id === data.edge.toEntity.id
+      ) {
+        return {
+          ...obj,
+          columns: updatedCols,
+        };
+      }
+
+      return obj;
+    });
+
+    setEntityLineage((prev) => {
+      return {
+        ...prev,
+        edges: updatedEdgeWithColumns,
+      };
+    });
+
+    const updatedEdges = createEdges(
+      entityLineage.nodes ?? [],
+      updatedEdgeWithColumns
+    );
+
+    setEdges(updatedEdges);
+
+    setShowDeleteModal(false);
   };
 
   const removeNodeHandler = useCallback(

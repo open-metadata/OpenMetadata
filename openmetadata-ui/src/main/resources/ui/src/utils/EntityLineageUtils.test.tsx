@@ -20,6 +20,7 @@ import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
+  createNewEdge,
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
@@ -431,5 +432,77 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
+  });
+
+  describe('createNewEdge', () => {
+    it('should create a new edge with the correct properties', () => {
+      const edge = {
+        data: {
+          edge: {
+            fromEntity: {
+              id: 'fromEntityId',
+              type: 'fromEntityType',
+            },
+            toEntity: {
+              id: 'toEntityId',
+              type: 'toEntityType',
+            },
+            columns: [],
+          },
+        },
+      };
+
+      const result = createNewEdge(edge as Edge);
+
+      expect(result.edge.fromEntity.id).toEqual('fromEntityId');
+      expect(result.edge.fromEntity.type).toEqual('fromEntityType');
+      expect(result.edge.toEntity.id).toEqual('toEntityId');
+      expect(result.edge.toEntity.type).toEqual('toEntityType');
+      expect(result.edge.lineageDetails).toBeDefined();
+      expect(result.edge.lineageDetails?.columnsLineage).toBeDefined();
+    });
+
+    it('should update the columns lineage details correctly', () => {
+      const edge = {
+        data: {
+          edge: {
+            fromEntity: {
+              id: 'table1',
+              type: 'table',
+            },
+            toEntity: {
+              id: 'table2',
+              type: 'table',
+            },
+            columns: [
+              { name: 'column1', type: 'type1' },
+              { name: 'column2', type: 'type2' },
+            ],
+          },
+        },
+      };
+
+      const result = createNewEdge(edge as Edge);
+
+      expect(result).toEqual({
+        edge: {
+          fromEntity: {
+            id: 'table1',
+            type: 'table',
+          },
+          toEntity: {
+            id: 'table2',
+            type: 'table',
+          },
+          lineageDetails: {
+            columnsLineage: [],
+            description: '',
+            pipeline: undefined,
+            source: undefined,
+            sqlQuery: '',
+          },
+        },
+      });
+    });
   });
 });
