@@ -529,6 +529,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ) and (GOOGLE_CREDENTIALS in os.environ):
+            del os.environ[GOOGLE_CREDENTIALS]
             for temp_file_path in self.temp_credentials_file_path:
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
