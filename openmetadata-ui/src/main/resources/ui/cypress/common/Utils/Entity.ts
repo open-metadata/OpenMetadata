@@ -11,70 +11,16 @@
  *  limitations under the License.
  */
 import { DELETE_TERM } from '../../constants/constants';
-import { EntityType } from '../../new-tests/base/EntityClass';
+import {
+  EntityType,
+  EXPLORE_PAGE_TABS,
+  SEARCH_INDEX,
+} from '../../constants/Entity.interface';
 import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
 } from '../common';
-
-const EXPLORE_PAGE_TABS: Record<
-  Exclude<
-    EntityType,
-    | EntityType.DashboardService
-    | EntityType.DatabaseService
-    | EntityType.MessagingService
-    | EntityType.SearchService
-    | EntityType.MlModelService
-    | EntityType.StorageService
-    | EntityType.PipelineService
-    | EntityType.Database
-    | EntityType.DatabaseSchema
-    | EntityType.GlossaryTerm
-  >,
-  string
-> = {
-  [EntityType.Dashboard]: 'Dashboard',
-  [EntityType.DataModel]: 'dashboard data models',
-  [EntityType.Pipeline]: 'Pipeline',
-  [EntityType.Topic]: 'Topic',
-  [EntityType.MlModel]: 'ML Model',
-  [EntityType.Container]: 'Container',
-  [EntityType.SeachIndex]: 'Search Index',
-  [EntityType.Table]: 'Table',
-  [EntityType.StoreProcedure]: 'Store Procedure',
-  [EntityType.Glossary]: 'Glossary',
-  [EntityType.Domain]: 'Domain',
-};
-
-export const SEARCH_INDEX: Record<
-  Exclude<
-    EntityType,
-    | EntityType.DashboardService
-    | EntityType.DatabaseService
-    | EntityType.MessagingService
-    | EntityType.SearchService
-    | EntityType.MlModelService
-    | EntityType.StorageService
-    | EntityType.PipelineService
-    | EntityType.Database
-    | EntityType.DatabaseSchema
-    | EntityType.GlossaryTerm
-  >,
-  string
-> = {
-  [EntityType.Dashboard]: 'dashboard_search_index',
-  [EntityType.DataModel]: 'dashboard_data_model_search_index',
-  [EntityType.Pipeline]: 'pipeline_search_index',
-  [EntityType.Topic]: 'topic_search_index',
-  [EntityType.MlModel]: 'mlmodel_search_index',
-  [EntityType.Container]: 'container_search_index',
-  [EntityType.SeachIndex]: 'search_entity_search_index',
-  [EntityType.Table]: 'table_search_index',
-  [EntityType.StoreProcedure]: 'store_procedure_search_index',
-  [EntityType.Glossary]: 'glossary_search_index',
-  [EntityType.Domain]: 'domain_search_index',
-};
 
 /**
  * create full hierarchy of database service (service > database > schema > tables)

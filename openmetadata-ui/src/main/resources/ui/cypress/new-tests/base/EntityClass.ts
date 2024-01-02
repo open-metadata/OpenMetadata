@@ -52,45 +52,8 @@ import {
 import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
 import { addTier, removeTier } from '../../common/Utils/Tier';
 import { uuid } from '../../constants/constants';
-
-export enum EntityType {
-  Table = 'tables',
-  StoreProcedure = 'storedProcedures',
-  Topic = 'topics',
-  Dashboard = 'dashboards',
-  Pipeline = 'pipelines',
-  Container = 'containers',
-  MlModel = 'mlmodels',
-  Domain = 'domains',
-  Glossary = 'glossaries',
-  GlossaryTerm = 'glossaryTerms',
-  SeachIndex = 'searchIndexes',
-  DatabaseService = 'services/databaseServices',
-  DashboardService = 'services/dashboardServices',
-  StorageService = 'services/storageServices',
-  MlModelService = 'services/mlmodelServices',
-  PipelineService = 'services/pipelineServices',
-  MessagingService = 'services/messagingServices',
-  SearchService = 'services/searchServices',
-  Database = 'databases',
-  DatabaseSchema = 'databaseSchemas',
-  DataModel = 'dashboard/datamodels',
-}
-
-export const CustomPropertyTypeList = [
-  EntityType.Database,
-  EntityType.DatabaseSchema,
-  EntityType.Table,
-  EntityType.StoreProcedure,
-  EntityType.Topic,
-  EntityType.Dashboard,
-  EntityType.Pipeline,
-  EntityType.Container,
-  EntityType.MlModel,
-  EntityType.GlossaryTerm,
-  EntityType.Database,
-  EntityType.SeachIndex,
-];
+import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
+import { EntityType } from '../../constants/Entity.interface';
 
 const description =
   // eslint-disable-next-line max-len
@@ -280,7 +243,7 @@ class EntityClass {
       });
 
       // Create custom property only for supported entities
-      if (CustomPropertyTypeList.includes(this.endPoint)) {
+      if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
         createCustomPropertyForEntity({
           property: this.intergerPropertyDetails,
           type: this.endPoint,
@@ -339,7 +302,7 @@ class EntityClass {
       });
 
       // Delete custom property only for supported entities
-      if (CustomPropertyTypeList.includes(this.endPoint)) {
+      if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
         deleteCustomPropertyForEntity({
           property: this.intergerPropertyDetails,
           type: this.endPoint,
