@@ -228,6 +228,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Relationship.APPLIED_TO);
   }
 
+  @Override
+  protected void postDelete(TestCase test) {
+    // If we delete the test case, we need to clean up the resolution ts
+    daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
+  }
+
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
@@ -277,14 +283,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return storedTestCaseResolutionStatus;
     }
 
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+
     // if the test case resolution is null or resolved then we'll create a new one
-    return new TestCaseResolutionStatus()
-        .withStateId(UUID.randomUUID())
-        .withTimestamp(System.currentTimeMillis())
-        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
-        .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTestCaseReference(testCase.getEntityReference());
+    TestCaseResolutionStatus status =
+        new TestCaseResolutionStatus()
+            .withStateId(UUID.randomUUID())
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withTestCaseReference(testCase.getEntityReference());
+
+    return testCaseResolutionStatusRepository.createNewRecord(
+        status, null, testCase.getFullyQualifiedName());
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(

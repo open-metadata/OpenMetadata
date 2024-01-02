@@ -153,7 +153,8 @@ public class TestCaseResolutionStatusRepository
       } else if (recordEntity
           .getTestCaseResolutionStatusType()
           .equals(TestCaseResolutionStatusTypes.Resolved)) {
-        // We have an open task and we are passing a resolved status type (i.e. we are marking it as
+        // We have an open task, and we are passing a resolved status type (i.e. we are marking it
+        // as
         // resolved). This scenario is when the test case resolution status is being sent through
         // the API (and not resolving an open task)
         Resolved resolved =

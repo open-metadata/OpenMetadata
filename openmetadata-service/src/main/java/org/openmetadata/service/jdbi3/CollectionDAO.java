@@ -3605,6 +3605,10 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
+    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
