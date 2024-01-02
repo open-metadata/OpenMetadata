@@ -42,7 +42,7 @@ describe('EmptyWidgetPlaceholder component', () => {
     });
 
     expect(
-      screen.getByTestId('empty-widget-placeholder-card')
+      screen.getByTestId(LandingPageWidgetKeys.ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
     expect(screen.getByTestId('remove-widget-button')).toBeInTheDocument();

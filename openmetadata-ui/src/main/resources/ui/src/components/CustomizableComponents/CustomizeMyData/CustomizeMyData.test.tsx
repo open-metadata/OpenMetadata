@@ -94,11 +94,6 @@ jest.mock('../../../rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() => mockUserData),
 }));
 
-jest.mock('../../../AppState', () => ({
-  userDetails: mockUserData,
-  users: [mockUserData],
-}));
-
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
   useHistory: jest.fn().mockImplementation(() => ({
