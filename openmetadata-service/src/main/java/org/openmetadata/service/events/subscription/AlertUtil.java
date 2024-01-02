@@ -247,14 +247,7 @@ public final class AlertUtil {
       }
 
       if (triggerChangeEvent) {
-        // Ignore the event since change description is null
-        if (event.getChangeDescription() != null) {
-          filteredEvents.add(event);
-        } else {
-          LOG.debug(
-              "Email Publisher Event Will be Ignored Since Change Description is null. Received Event: {}",
-              event);
-        }
+        filteredEvents.add(event);
       }
     }
     return filteredEvents;

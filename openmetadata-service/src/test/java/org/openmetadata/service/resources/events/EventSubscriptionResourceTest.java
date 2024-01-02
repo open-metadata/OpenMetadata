@@ -139,14 +139,14 @@ public class EventSubscriptionResourceTest
   @Test
   void put_updateEndpointURL(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    LOG.info("creating webhook in disabled state");
     String uri = "http://invalidUnknowHost";
     Webhook genericWebhook = getWebhook(uri);
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
             .withEnabled(true)
             .withSubscriptionType(CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK)
-            .withSubscriptionConfig(genericWebhook);
+            .withSubscriptionConfig(genericWebhook)
+            .withRetries(0);
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // Wait for webhook to be marked as failed
@@ -447,8 +447,8 @@ public class EventSubscriptionResourceTest
     }
 
     Awaitility.await()
-        .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(iteration * 100L))
+        .pollInterval(Duration.ofMillis(10000L))
+        .atMost(Duration.ofMillis(iteration * 1000L))
         .untilTrue(receivedAllEvents(expected, callbackEvents));
     if (expected.size() > callbackEvents.size()) { // Failed to receive all the events
       expected.forEach(
@@ -557,6 +557,8 @@ public class EventSubscriptionResourceTest
         .withSubscriptionConfig(getWebhook(uri))
         .withEnabled(true)
         .withBatchSize(10)
+        .withRetries(0)
+        .withPollInterval(0)
         .withAlertType(CreateEventSubscription.AlertType.CHANGE_EVENT);
   }
 

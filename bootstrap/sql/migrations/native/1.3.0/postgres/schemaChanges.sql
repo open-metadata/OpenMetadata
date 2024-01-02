@@ -84,5 +84,6 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     id VARCHAR(36) NOT NULL,
     extension VARCHAR(256) NOT NULL,
     json jsonb NOT NULL,
-    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
+    UNIQUE(id, extension)
 );

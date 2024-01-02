@@ -68,5 +68,6 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     id VARCHAR(36) NOT NULL,
     extension VARCHAR(256) NOT NULL,
     json JSON NOT NULL,
-    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    UNIQUE(id, extension)
 );

@@ -269,7 +269,8 @@ public class EventSubscriptionResource
   public Response createEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateEventSubscription request) {
+      @Valid CreateEventSubscription request)
+      throws SchedulerException {
     EventSubscription eventSub =
         getEventSubscription(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
@@ -556,7 +557,9 @@ public class EventSubscriptionResource
         .withFilteringRules(create.getFilteringRules())
         .withSubscriptionType(create.getSubscriptionType())
         .withSubscriptionConfig(create.getSubscriptionConfig())
-        .withProvider(create.getProvider());
+        .withProvider(create.getProvider())
+        .withRetries(create.getRetries())
+        .withPollInterval(create.getPollInterval());
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {

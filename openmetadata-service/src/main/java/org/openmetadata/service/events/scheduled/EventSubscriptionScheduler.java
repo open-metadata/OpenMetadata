@@ -18,15 +18,18 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -47,8 +50,6 @@ public class EventSubscriptionScheduler {
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
-  private static final ConcurrentHashMap<UUID, AbstractEventConsumer> alertJobMap =
-      new ConcurrentHashMap<>();
 
   private EventSubscriptionScheduler() throws SchedulerException {
     this.alertsScheduler.start();
@@ -72,8 +73,8 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  @SneakyThrows
-  public void addSubscriptionPublisher(EventSubscription eventSubscription) {
+  public void addSubscriptionPublisher(EventSubscription eventSubscription)
+      throws SchedulerException {
     if (Objects.requireNonNull(eventSubscription.getAlertType())
         == CreateEventSubscription.AlertType.CHANGE_EVENT) {
       AbstractEventConsumer publisher = AlertUtil.getNotificationsPublisher(eventSubscription);
@@ -95,7 +96,6 @@ public class EventSubscriptionScheduler {
         // Schedule the Job
         alertsScheduler.scheduleJob(jobDetail, trigger);
       }
-      alertJobMap.put(eventSubscription.getId(), publisher);
       LOG.info(
           "Webhook publisher subscription started as {} : status {}",
           eventSubscription.getName(),
@@ -119,7 +119,7 @@ public class EventSubscriptionScheduler {
   private Trigger trigger(EventSubscription eventSubscription) {
     return TriggerBuilder.newTrigger()
         .withIdentity(eventSubscription.getId().toString(), ALERT_TRIGGER_GROUP)
-        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(10))
+        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(3))
         .startNow()
         .build();
   }
@@ -128,49 +128,19 @@ public class EventSubscriptionScheduler {
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
-  private AbstractEventConsumer getPublisher(UUID id) {
-    return alertJobMap.get(id);
-  }
-
   @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     if (Objects.requireNonNull(eventSubscription.getAlertType())
         == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      if (Boolean.TRUE.equals(
-          eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
-        // If there was a previous webhook either in disabled state or stopped due
-        // to errors, update it and restart publishing
-        AbstractEventConsumer previousPublisher = getPublisher(eventSubscription.getId());
-        if (previousPublisher == null) {
-          if (!ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
-            addSubscriptionPublisher(eventSubscription);
-          }
-          return;
-        }
-
-        // Update the existing publisher
-        deleteEventSubscriptionPublisher(eventSubscription);
+      // Remove Existing Subscription Publisher
+      deleteEventSubscriptionPublisher(eventSubscription);
+      if (Boolean.TRUE.equals(eventSubscription.getEnabled())
+          && (!eventSubscription.getSubscriptionType().equals(ACTIVITY_FEED))) {
         addSubscriptionPublisher(eventSubscription);
-      } else {
-        // Remove the webhook publisher
-        removeProcessorForEventSubscription(
-            eventSubscription.getId(),
-            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
       }
     } else {
       throw new IllegalArgumentException(INVALID_ALERT);
-    }
-  }
-
-  @Transaction
-  @SneakyThrows
-  public void removeProcessorForEventSubscription(UUID id, SubscriptionStatus reasonForRemoval) {
-    AbstractEventConsumer publisher = alertJobMap.get(id);
-    if (publisher != null) {
-      alertsScheduler.deleteJob(publisher.getJobDetail().getKey());
-      publisher.getEventSubscription().setStatusDetails(reasonForRemoval);
-      LOG.info("Alert publisher deleted for {}", publisher.getEventSubscription().getName());
     }
   }
 
@@ -179,24 +149,60 @@ public class EventSubscriptionScheduler {
       throws SchedulerException {
     if (Objects.requireNonNull(deletedEntity.getAlertType())
         == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      AbstractEventConsumer publisher = alertJobMap.remove(deletedEntity.getId());
-      if (publisher != null) {
-        alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
-        alertsScheduler.unscheduleJob(
-            new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
-        LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
-      }
+      alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
+      alertsScheduler.unscheduleJob(
+          new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+      LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
     } else {
       throw new IllegalArgumentException(INVALID_ALERT);
     }
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID id) {
-    AbstractEventConsumer publisher = alertJobMap.get(id);
-    if (publisher != null) {
-      return publisher.getEventSubscription().getStatusDetails();
+    EventSubscription eventSubscription = getEventSubscriptionFromScheduledJob(id);
+    if (eventSubscription == null) {
+      EntityRepository<? extends EntityInterface> subscriptionRepository =
+          Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+      EventSubscription subscription =
+          (EventSubscription)
+              subscriptionRepository.get(null, id, subscriptionRepository.getFields("id"));
+      if (subscription != null && (Boolean.FALSE.equals(subscription.getEnabled()))) {
+        return new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
+      }
+    } else {
+      return eventSubscription.getStatusDetails();
     }
     return null;
+  }
+
+  public EventSubscription getEventSubscriptionFromScheduledJob(UUID id) {
+    try {
+      JobDetail jobDetail =
+          alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
+      if (jobDetail != null) {
+        return ((EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY));
+      }
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id);
+    }
+    return null;
+  }
+
+  public EventSubscription putInJobDataMap(UUID subscriptionID, String key, Object obj) {
+    try {
+      JobDetail jobDetail =
+          alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
+      if (jobDetail != null) {
+        jobDetail.getJobDataMap().put(key, obj);
+        return ((EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY));
+      }
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to get Event Subscription from Job, Subscription Id : {}, Exception: ",
+          subscriptionID.toString(),
+          ex);
+    }
+    throw new UnhandledServerException("Cannot find Job Data Map for give Subscription");
   }
 
   public static void shutDown() throws SchedulerException {

@@ -229,7 +229,6 @@ public class SubscriptionUtil {
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
-      publisher.setNextBackOff();
       publisher.setAwaitingRetry(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() == 200) {

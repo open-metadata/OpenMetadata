@@ -446,6 +446,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String entityType,
       Double prevVersion) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
         .withEventType(EventType.ENTITY_UPDATED)

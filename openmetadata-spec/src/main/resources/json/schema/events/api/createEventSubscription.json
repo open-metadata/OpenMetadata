@@ -63,6 +63,16 @@
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "retries": {
+      "description": "Number of times to retry callback on failure. (Default 3).",
+      "type": "integer",
+      "default": 3
+    },
+    "pollInterval": {
+      "description": "Poll Interval in seconds.",
+      "type": "integer",
+      "default": 10
     }
   },
   "required": ["name", "alertType", "subscriptionType"],

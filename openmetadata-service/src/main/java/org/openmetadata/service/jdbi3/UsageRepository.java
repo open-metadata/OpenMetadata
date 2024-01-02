@@ -211,6 +211,7 @@ public class UsageRepository {
   private ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
         .withEventType(EventType.ENTITY_UPDATED)
