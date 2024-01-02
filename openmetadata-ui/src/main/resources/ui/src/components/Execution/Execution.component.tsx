@@ -46,6 +46,7 @@ import './execution.less';
 import Searchbar from '../common/searchbar/Searchbar';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
+
 interface ExecutionProps {
   pipelineFQN: string;
   tasks: Task[];
