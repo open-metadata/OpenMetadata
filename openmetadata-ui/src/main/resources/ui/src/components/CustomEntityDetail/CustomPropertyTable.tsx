@@ -89,7 +89,12 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => getEntityName(record),
-        sorter: (col1, col2) => col1.name.localeCompare(col2.name),
+        sorter: (col1, col2) => {
+          const name1 = getEntityName(col1);
+          const name2 = getEntityName(col2);
+
+          return name1.localeCompare(name2);
+        },
       },
       {
         title: t('label.type'),
