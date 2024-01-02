@@ -305,7 +305,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     }
 
     // Publish Events
-    alertMetrics.withTotalEvents(batch.size());
+    alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
     publishEvents(batch);
 
     // Commit the Offset
