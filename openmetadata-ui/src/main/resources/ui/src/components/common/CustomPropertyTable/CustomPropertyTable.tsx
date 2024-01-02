@@ -172,6 +172,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         key: 'name',
         width: 200,
         render: (_, record) => getEntityName(record),
+        sorter: (col1, col2) => col1.name.localeCompare(col2.name),
       },
       {
         title: t('label.value'),
