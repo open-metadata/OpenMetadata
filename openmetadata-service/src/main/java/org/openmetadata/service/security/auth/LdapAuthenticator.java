@@ -38,15 +38,15 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -61,7 +61,7 @@ import org.springframework.util.CollectionUtils;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
-  static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection SSL";
+  static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
   private RoleRepository roleRepository;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
@@ -79,8 +79,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.roleRepository = new RoleRepository(jdbi.onDemand(CollectionDAO.class));
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache();
@@ -89,43 +89,37 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
+    LDAPConnectionPool connectionPool;
     try {
       if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
         LdapUtil ldapUtil = new LdapUtil();
         SSLUtil sslUtil =
             new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
-
-        try (LDAPConnection connection =
+        LDAPConnection connection =
             new LDAPConnection(
                 sslUtil.createSSLSocketFactory(),
                 connectionOptions,
                 ldapConfiguration.getHost(),
                 ldapConfiguration.getPort(),
                 ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword())) {
-          // Use the connection here.
-          return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
-        } catch (GeneralSecurityException e) {
-          LOG.error(LDAP_ERR_MSG, e);
-          throw new IllegalStateException(LDAP_ERR_MSG, e);
-        }
+                ldapConfiguration.getDnAdminPassword());
+        // Use the connection here.
+        connectionPool = new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
       } else {
-        try (LDAPConnection conn =
+        LDAPConnection conn =
             new LDAPConnection(
                 ldapConfiguration.getHost(),
                 ldapConfiguration.getPort(),
                 ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword())) {
-          return new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
-        } catch (LDAPException e) {
-          LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
-          throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection", e);
-        }
+                ldapConfiguration.getDnAdminPassword());
+        connectionPool = new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
       }
-    } catch (LDAPException e) {
+    } catch (LDAPException | GeneralSecurityException e) {
+      LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
       throw new IllegalStateException(LDAP_ERR_MSG, e);
     }
+    return connectionPool;
   }
 
   @Override
@@ -133,19 +127,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(loginRequest.getEmail());
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser.getEmail(), storedUser, loginRequest.getPassword());
-    User omUser = checkAndCreateUser(storedUser.getEmail(), storedUser.getFullyQualifiedName(), storedUser.getName());
+    User omUser =
+        checkAndCreateUser(
+            storedUser.getEmail(), storedUser.getFullyQualifiedName(), storedUser.getName());
     return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
-  }
-
-  private User checkAndCreateUser(String email) {
-    // Check if the user exists in OM Database
-    try {
-      return userRepository.getByName(
-          null, email.split("@")[0], userRepository.getFields("id,name,email"));
-    } catch (EntityNotFoundException ex) {
-      // User does not exist
-      return userRepository.create(null, getUserForLdap(email));
-    }
   }
 
   /**
@@ -161,15 +146,20 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private User checkAndCreateUser(String email, String userName, String userDn) throws IOException {
     // Check if the user exists in OM Database
     try {
-      User omUser = userRepository.getByName(null, userName, userRepository.getFields("id,name,email,roles"));
+      User omUser =
+          userRepository.getByName(null, userName, userRepository.getFields("id,name,email,roles"));
       getRoleForLdap(omUser, userDn, Boolean.TRUE);
       return omUser;
     } catch (EntityNotFoundException ex) {
       // User does not exist
-      return userRepository.create(null, getUserForLdap(email, userName, userDn, Boolean.FALSE));
+      return userRepository.create(null, getUserForLdap(email, userName, userDn));
     } catch (LDAPException e) {
-      LOG.error("An error occurs when reassigning roles for an LDAP user({}): {}", userName, e.getMessage(), e);
-      throw new RuntimeException(e);
+      LOG.error(
+          "An error occurs when reassigning roles for an LDAP user({}): {}",
+          userName,
+          e.getMessage(),
+          e);
+      throw new UnhandledServerException(e.getMessage());
     }
   }
 
@@ -224,7 +214,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public User lookUserInProvider(String email) {
     try {
-      Filter filter;
+      Filter emailFilter =
           Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), email));
       SearchRequest searchRequest =
           new SearchRequest(
@@ -242,7 +232,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
         if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(emailAttr.getValue(), userNameAttr.getValue()).withName(userDN);
+          return getUserForLdap(email).withName(userDN);
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, LDAP_MISSING_ATTR);
         }
@@ -270,39 +260,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         .withAuthenticationMechanism(null);
   }
 
-  /**
-   * Generating a new user object for ldap Getting user's name from attribute instead of separating from email
-   *
-   * @param email user's email address
-   * @param userName user's name
-   * @return new user object for ldap
-   * @author Eric Wen@2023-07-16 17:23:57
-   */
-  private User getUserForLdap(String email, String userName) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(userName)
-        .withFullyQualifiedName(userName)
-        .withEmail(email)
-        .withIsBot(false)
-        .withUpdatedBy(userName)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
-        .withAuthenticationMechanism(null);
-  }
-
-  /**
-   * Generating a new user object for ldap Getting user's name from attribute instead of separating from email Reassign
-   * roles for user according to it's ldap group
-   *
-   * @param email user's email address
-   * @param userName user's name
-   * @param userDn the dn of user from ldap
-   * @param reAssignRole flag to decide whether to reassign roles
-   * @return new user object for ldap with roles
-   * @author Eric Wen@2023-07-16 17:23:57
-   */
-  private User getUserForLdap(String email, String userName, String userDn, Boolean reAssignRole) {
+  private User getUserForLdap(String email, String userName, String userDn) {
     User user =
         new User()
             .withId(UUID.randomUUID())
@@ -316,11 +274,13 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             .withAuthenticationMechanism(null);
 
     try {
-      this.getRoleForLdap(user, userDn, reAssignRole);
+      getRoleForLdap(user, userDn, false);
     } catch (LDAPException | JsonProcessingException e) {
-      throw new RuntimeException(e);
+      LOG.error(
+          "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
+          user.getName(),
+          e.getMessage());
     }
-
     return user;
   }
 
@@ -344,12 +304,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             userDn);
     SearchRequest searchRequest =
         new SearchRequest(
-            ldapConfiguration.getGroupBaseDN(), SearchScope.SUB, searchFilter, ldapConfiguration.getAllAttributeName());
+            ldapConfiguration.getGroupBaseDN(),
+            SearchScope.SUB,
+            searchFilter,
+            ldapConfiguration.getAllAttributeName());
     SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
 
     // if user don't belong to any group, assign empty role list to it
     if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
-      if (reAssign) {
+      if (Boolean.TRUE.equals(reAssign)) {
         user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
         UserUtil.addOrUpdateUser(user);
       }
@@ -358,7 +321,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
     // get the role mapping from LDAP configuration
     ObjectMapper objectMapper = new ObjectMapper();
-    Map<String, List<String>> roleMapping = objectMapper.readValue(ldapConfiguration.getAuthRolesMapping(), Map.class);
+    Map<String, List<String>> roleMapping =
+        objectMapper.readValue(ldapConfiguration.getAuthRolesMapping(), Map.class);
 
     List<EntityReference> roleReferenceList = new ArrayList<>();
 
@@ -375,7 +339,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           } else {
             // Check if the role exists in OM Database
             try {
-              Role roleOm = roleRepository.getByName(null, roleName, roleRepository.getFields("id,name"));
+              Role roleOm =
+                  roleRepository.getByName(null, roleName, roleRepository.getFields("id,name"));
               EntityReference entityReference = new EntityReference();
               BeanUtils.copyProperties(roleOm, entityReference);
               entityReference.setType(Entity.ROLE);
@@ -383,8 +348,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             } catch (EntityNotFoundException ex) {
               // Role does not exist
               LOG.error("Role {} does not exist in OM Database", roleName);
-            } catch (IOException e) {
-              throw new RuntimeException(e);
             }
           }
         }
@@ -403,24 +366,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                 .values());
     user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
 
-    if (reAssign) {
-      // Re-assign the roles to the user
+    if (Boolean.TRUE.equals(reAssign)) {
       UserUtil.addOrUpdateUser(user);
     }
   }
 
-  /**
-   * get the roles which should be reassigned from ldap mapping role list and remove the roles which should be
-   * reassigned from user's old role list
-   *
-   * @param user user object that should be reassigned roles
-   * @param mapRoleList the roles mapping from user's ldap groups
-   * @param adminFlag whether user is admin in ldap groups
-   * @return role list that should be reassigned to user
-   */
-  private List<EntityReference> getReassignRoles(User user, List<EntityReference> mapRoleList, Boolean adminFlag) {
+  private List<EntityReference> getReassignRoles(
+      User user, List<EntityReference> mapRoleList, Boolean adminFlag) {
     Set<String> reassignRolesSet = ldapConfiguration.getAuthReassignRoles();
-
     // if setting indicates that all roles should be reassigned, just return the mapping roles
     if (!reassignRolesSet.contains(ldapConfiguration.getAllAttributeName())) {
       // if the ldap mapping roles shouldn't be reassigned, remove it
@@ -432,7 +385,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           }
         }
       }
-
       // if the old role shouldn't be reassigned, add it to the mapping list
       List<EntityReference> oldRoleList = user.getRoles();
       if (!CollectionUtils.isEmpty(oldRoleList)) {
@@ -442,7 +394,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           }
         }
       }
-
       // check whether to reassign Admin or not
       if (reassignRolesSet.contains(ldapConfiguration.getRoleAdminName())) {
         user.setIsAdmin(adminFlag);
@@ -450,7 +401,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } else {
       user.setIsAdmin(adminFlag);
     }
-
     return mapRoleList;
   }
 

@@ -431,5 +431,4 @@ public class EmailUtil {
     }
     return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
   }
-
 }
