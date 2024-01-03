@@ -133,9 +133,6 @@ UPDATE dbservice_entity de
 SET de.json = JSON_REMOVE(de.json, '$.connection.config.useUnityCatalog')
 WHERE de.serviceType IN ('Databricks','UnityCatalog');
 
--- Update Change Event Table
-ALTER TABLE change_event ADD COLUMN offset INT AUTO_INCREMENT PRIMARY KEY;
-
 -- Add new table for event subscription extensions
 CREATE TABLE IF NOT EXISTS change_event_consumers (
     id VARCHAR(36) NOT NULL,
@@ -148,7 +145,8 @@ CREATE TABLE IF NOT EXISTS change_event_consumers (
 
 DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
 
-ALTER TABLE change_event_consumers ADD COLUMN offset INT AUTO_INCREMENT;
+-- Update Change Event Table
+ALTER TABLE change_event ADD COLUMN offset INT AUTO_INCREMENT;
 
 CREATE TABLE IF NOT EXISTS consumers_dlq (
     id VARCHAR(36) NOT NULL,
