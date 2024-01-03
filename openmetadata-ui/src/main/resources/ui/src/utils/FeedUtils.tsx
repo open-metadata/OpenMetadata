@@ -226,7 +226,7 @@ export async function suggestions(
             value: name,
             link: buildMentionLink(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              hit._source.name
+              getEncodedFqn(hit._source.fullyQualifiedName ?? '')
             ),
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
