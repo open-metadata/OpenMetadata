@@ -53,11 +53,11 @@ jobs:
       - name: Set Project ID Environment variable
         id: cypress-project-id
         run: |
-          if [ "${{ github.event_name }}" == "pull_request_target" ]; then
-            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          else
-            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          fi
+          if [ "${{ github.event_name }}" == "schedule" ]; then  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+          else  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+          fi  
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
