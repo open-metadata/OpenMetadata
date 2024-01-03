@@ -593,7 +593,7 @@ export const visitEntityDetailsPage = ({
           ).type(serviceName);
           verifyResponseStatusCode('@explorePageSearch', 200);
           cy.get(
-            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
+            `[data-testid="drop-down-menu"] [data-testid="${serviceName.tolowerCase()}"]`
           ).click();
           cy.get(
             `[data-testid="drop-down-menu"] [data-testid="update-btn"]`

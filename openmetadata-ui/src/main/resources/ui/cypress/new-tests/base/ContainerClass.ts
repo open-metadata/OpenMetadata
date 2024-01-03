@@ -12,8 +12,9 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { EntityType } from '../../constants/Entity.interface';
 import { STORAGE_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class ContainerClass extends EntityClass {
   containerName: string;

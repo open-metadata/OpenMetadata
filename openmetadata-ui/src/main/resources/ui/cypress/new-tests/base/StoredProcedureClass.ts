@@ -15,11 +15,12 @@ import {
   createEntityTableViaREST,
   deleteEntityViaREST,
 } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
   STORED_PROCEDURE_DETAILS,
 } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class StoreProcedureClass extends EntityClass {
   storeProcedureName: string;

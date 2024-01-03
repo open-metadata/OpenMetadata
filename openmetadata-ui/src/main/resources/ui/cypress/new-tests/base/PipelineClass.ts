@@ -12,8 +12,9 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { EntityType } from '../../constants/Entity.interface';
 import { PIPELINE_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class PipelineClass extends EntityClass {
   pipelineName: string;

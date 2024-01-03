@@ -12,11 +12,12 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   SEARCH_INDEX_DETAILS,
   SEARCH_SERVICE,
 } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class SearchIndexClass extends EntityClass {
   constructor() {

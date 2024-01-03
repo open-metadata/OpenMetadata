@@ -14,8 +14,9 @@
 import { createSingleLevelEntity } from '../../common/EntityUtils';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { SERVICE_TYPE } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { SEARCH_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class SearchServiceClass extends EntityClass {
   searchServiceName: string;

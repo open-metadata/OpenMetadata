@@ -40,7 +40,7 @@ export const EXPLORE_PAGE_TABS = {
   mlmodels: 'ml models',
   storedProcedures: 'stored procedures',
   dataProducts: 'data products',
-  dataModel: 'dashboard data model',
+  dataModel: 'dashboard data models',
   searchIndexes: 'search indexes',
 };
 

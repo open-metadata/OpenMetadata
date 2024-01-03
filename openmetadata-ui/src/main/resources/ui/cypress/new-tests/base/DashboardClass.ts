@@ -13,11 +13,12 @@
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
 import { deleteEntityViaREST } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   DASHBOARD_SERVICE,
   DASHBOARD_SERVICE_DETAILS,
 } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class DashboardClass extends EntityClass {
   dashboardName: string;

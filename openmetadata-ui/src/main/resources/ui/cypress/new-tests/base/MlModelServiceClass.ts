@@ -14,8 +14,9 @@
 import { createSingleLevelEntity } from '../../common/EntityUtils';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { SERVICE_TYPE } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { ML_MODEL_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class MlModelServiceClass extends EntityClass {
   mlModelServiceName: string;

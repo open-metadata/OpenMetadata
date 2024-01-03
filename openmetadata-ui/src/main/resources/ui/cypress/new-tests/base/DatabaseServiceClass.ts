@@ -14,8 +14,9 @@
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
 import { SERVICE_TYPE } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class DatabaseServiceClass extends EntityClass {
   databaseName: string;

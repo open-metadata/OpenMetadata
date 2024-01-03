@@ -15,8 +15,9 @@ import {
   createEntityTableViaREST,
   deleteEntityViaREST,
 } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class TableClass extends EntityClass {
   tableName: string;

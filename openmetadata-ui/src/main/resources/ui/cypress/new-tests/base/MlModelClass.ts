@@ -12,8 +12,9 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { EntityType } from '../../constants/Entity.interface';
 import { ML_MODEL_SERVICE } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class MlModelClass extends EntityClass {
   mlModelName: string;

@@ -12,11 +12,12 @@
  */
 import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   MESSAGING_SERVICE,
   TOPIC_DETAILS,
 } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class TopicClass extends EntityClass {
   constructor() {

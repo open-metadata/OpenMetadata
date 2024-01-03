@@ -15,11 +15,12 @@ import {
   deleteEntityViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   DASHBOARD_DATA_MODEL_DETAILS,
   DASHBOARD_SERVICE_DETAILS,
 } from '../../constants/EntityConstant';
-import EntityClass, { EntityType } from './EntityClass';
+import EntityClass from './EntityClass';
 
 class DashboardDataModelClass extends EntityClass {
   dashboardDataModelName: string;
