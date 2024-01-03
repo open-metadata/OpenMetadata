@@ -39,12 +39,18 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { getListTestCase, getListTestDefinitions } from '../../../rest/testAPI';
 import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields } from '../../../utils/formUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -81,6 +87,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const [testCases, setTestCases] = useState<TestCase[]>([]);
 
   const columnName = Form.useWatch('column', form);
+
+  const formFields: FieldProp[] = [
+    {
+      name: 'computePassedFailedRowCount',
+      label: t('label.compute-row-count'),
+      type: FieldTypes.SWITCH,
+      helperText: t('message.compute-row-count-helper-text'),
+      required: false,
+      props: {
+        'data-testid': 'compute-passed-failed-row-count',
+      },
+      id: 'root/computePassedFailedRowCount',
+      formItemLayout: FormItemLayout.HORIZONTAL,
+    },
+  ];
 
   const fetchAllTestDefinitions = async () => {
     try {
@@ -126,6 +147,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       (definition) => definition.fullyQualifiedName === testType
     );
   };
+  const isComputeRowCountFieldVisible = useMemo(() => {
+    const selectedDefinition = getSelectedTestDefinition();
+
+    return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
+  }, [selectedTestType, initialValue, testDefinitions]);
 
   const GenerateParamsField = useCallback(() => {
     const selectedDefinition = getSelectedTestDefinition();
@@ -140,6 +166,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     testName: string;
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
+    computePassedFailedRowCount?: boolean;
   }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
@@ -164,17 +191,19 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         length: 4,
         type: 'alphanumeric',
       })}`;
+    const description = markdownRef.current?.getEditorContent();
 
     return {
       name,
       displayName: name,
+      computePassedFailedRowCount: value.computePassedFailedRowCount,
       entityLink: generateEntityLink(
         isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
         isColumnFqn
       ),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
-      description: markdownRef.current?.getEditorContent(),
+      description: isEmpty(description) ? undefined : description,
       testSuite: '',
     };
   };
@@ -331,6 +360,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           }}
         />
       </Form.Item>
+
+      {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>

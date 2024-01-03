@@ -15,6 +15,7 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -30,9 +31,15 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../interface/FormUtils.interface';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getTestDefinitionById, updateTestCaseById } from '../../rest/testAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
+import { generateFormFields } from '../../utils/formUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/RichTextEditor/RichTextEditor';
@@ -61,6 +68,25 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     () => testCase?.entityLink.includes('::columns::'),
     [testCase]
   );
+
+  const isComputeRowCountFieldVisible = useMemo(() => {
+    return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
+  }, [selectedDefinition]);
+
+  const formFields: FieldProp[] = [
+    {
+      name: 'computePassedFailedRowCount',
+      label: t('label.compute-row-count'),
+      type: FieldTypes.SWITCH,
+      helperText: t('message.compute-row-count-helper-text'),
+      required: false,
+      props: {
+        'data-testid': 'compute-passed-failed-row-count',
+      },
+      id: 'root/computePassedFailedRowCount',
+      formItemLayout: FormItemLayout.HORIZONTAL,
+    },
+  ];
 
   const GenerateParamsField = useCallback(() => {
     if (selectedDefinition?.parameterDefinition) {
@@ -103,10 +129,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             : value,
       })
     );
+    const description = markdownRef.current?.getEditorContent();
 
     return {
       parameterValues: parameterValues as TestCaseParameterValue[],
-      description: markdownRef.current?.getEditorContent(),
+      description: isEmpty(description) ? undefined : description,
     };
   };
 
@@ -117,6 +144,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       parameterValues,
       description,
       displayName: value.displayName,
+      computePassedFailedRowCount: value.computePassedFailedRowCount,
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -179,6 +207,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         column: getNameFromFQN(
           getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
         ),
+        computePassedFailedRowCount: testCase?.computePassedFailedRowCount,
       });
 
       const isContainsColumnName = testCase.parameterValues?.find(
@@ -262,6 +291,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               }}
             />
           </Form.Item>
+          {isComputeRowCountFieldVisible
+            ? generateFormFields(formFields)
+            : null}
         </Form>
       )}
     </Modal>
