@@ -113,42 +113,42 @@ public class TestCaseResolutionStatusRepository
   public TestCaseResolutionStatus createNewRecord(
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
 
-    if (recordEntity.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.New)) {
-      // When we create a NEW incident, we need to open a task with the test case owner as the
-      // assignee. We don't need to check any past history
-      openNewTask(recordEntity);
-    } else {
-      TestCaseResolutionStatus lastIncident =
-          getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+    TestCaseResolutionStatus lastIncident =
+        getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
 
-      if (lastIncident == null) {
-        throw new RuntimeException(String.format("Cannot find the last incident status for stateId %s", recordEntity.getStateId()));
-      }
-
+    if (lastIncident != null) {
       // if we have an ongoing incident, set the stateId if the new record to be created
       recordEntity.setStateId(
           Boolean.TRUE.equals(unresolvedIncident(recordEntity))
               ? lastIncident.getStateId()
               : recordEntity.getStateId());
+    }
 
-      switch (recordEntity.getTestCaseResolutionStatusType()) {
-        case Ack -> {
-          /* nothing to do for ACK. The Owner already has the task open. It will close it when reassigning it*/
-        }
-        // If the incident is in the Assign state, it means that the owner found the right person
-        // to provide
-        // the fix. We will close the NEW task, and create a task for the new assigned person
-        case Assigned -> openAssignedTask(recordEntity, lastIncident);
-        // When the incident is Resolved, we will close the Assigned task.
-        case Resolved -> resolveTask(recordEntity, lastIncident);
-        default -> throw new IllegalArgumentException(
-            String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
+    switch (recordEntity.getTestCaseResolutionStatusType()) {
+      // When we create a NEW incident, we need to open a task with the test case owner as the
+      // assignee. We don't need to check any past history
+      case New -> openNewTask(recordEntity, lastIncident);
+      case Ack -> {
+        /* nothing to do for ACK. The Owner already has the task open. It will close it when reassigning it */
       }
+      // If the incident is in the Assign state, it means that the owner found the right person
+      // to provide
+      // the fix. We will close the NEW task, and create a task for the new assigned person
+      case Assigned -> openAssignedTask(recordEntity, lastIncident);
+      // When the incident is Resolved, we will close the Assigned task.
+      case Resolved -> resolveTask(recordEntity, lastIncident);
+      default -> throw new IllegalArgumentException(
+          String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
     return super.createNewRecord(recordEntity, extension, recordFQN);
   }
 
-  private void openNewTask(TestCaseResolutionStatus incidentStatus) {
+  private void openNewTask(TestCaseResolutionStatus incidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
+
+    if (lastIncidentStatus != null) {
+      throw new IllegalArgumentException("An existing incident cannot be moved to NEW");
+    }
+
     List<EntityReference> owners =
         EntityUtil.getEntityReferences(
             daoCollection
@@ -162,6 +162,14 @@ public class TestCaseResolutionStatusRepository
   }
 
   private void openAssignedTask(TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
+
+    if (lastIncidentStatus == null) {
+      throw new RuntimeException(String.format("Cannot find the last incident status for stateId %s", newIncidentStatus.getStateId()));
+    }
+
+    if (!List.of(TestCaseResolutionStatusTypes.New, TestCaseResolutionStatusTypes.Ack).contains(lastIncidentStatus.getTestCaseResolutionStatusType())) {
+      throw new IllegalArgumentException(String.format("Incident with state %s cannot be moved to Assigned", lastIncidentStatus.getTestCaseResolutionStatusType()));
+    }
 
     // Fetch the latest task (which comes from the NEW state) and close it
     String jsonThread =
@@ -190,6 +198,10 @@ public class TestCaseResolutionStatusRepository
   }
 
   private void resolveTask(TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
+
+    if (lastIncidentStatus == null) {
+      throw new RuntimeException(String.format("Cannot find the last incident status for stateId %s", newIncidentStatus.getStateId()));
+    }
 
     // Fetch the latest task (which comes from the NEW or ASSIGNED state) and close it
     String jsonThread =
@@ -225,6 +237,7 @@ public class TestCaseResolutionStatusRepository
             .withAssignees(assignees)
             .withType(TaskType.RequestTestCaseFailureResolution)
             .withStatus(TaskStatus.Open)
+            // TODO THIS IS IS NULL?
             .withTestCaseResolutionStatusId(incidentStatus.getId());
 
     MessageParser.EntityLink entityLink =

@@ -293,6 +293,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // if the test case resolution is null or resolved then we'll create a new one
     TestCaseResolutionStatus status =
         new TestCaseResolutionStatus()
+            .withId(UUID.randomUUID())
             .withStateId(UUID.randomUUID())
             .withTimestamp(System.currentTimeMillis())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
@@ -708,6 +709,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return super.getTaskWorkflow(threadContext);
   }
 
+  // TODO: Is this needed? cc @Harsha
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
     final TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
 
