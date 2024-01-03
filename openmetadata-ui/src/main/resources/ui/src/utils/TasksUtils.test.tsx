@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
+import { act } from '@testing-library/react';
 import { EntityType } from '../enums/entity.enum';
 import { mockTableData } from '../mocks/TableVersion.mock';
-import { getEntityTableName, getTaskMessage } from './TasksUtils';
+import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
+import { getUserSuggestions } from '../rest/miscAPI';
+import { fetchOptions, getEntityTableName, getTaskMessage } from './TasksUtils';
+
+jest.mock('../rest/miscAPI', () => ({
+  getUserSuggestions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_ASSIGNEE_DATA)),
+}));
 
 describe('Tests for DataAssetsHeaderUtils', () => {
   it('function getEntityTableName should return name if no data found', () => {
@@ -155,5 +164,59 @@ describe('Tests for getTaskMessage', () => {
     expect(updateDescriptionEntityColumnMessage).toEqual(
       'Update Description for table raw_product_catalog columns/order_id'
     );
+  });
+});
+
+describe('Tests for fetchOptions', () => {
+  it('function fetchOptions should trigger setOptions without filtered options', async () => {
+    const mockSetOptions = jest.fn();
+
+    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    );
+
+    await act(async () => {
+      fetchOptions('test_user', mockSetOptions);
+    });
+
+    expect(mockSetOptions).toHaveBeenCalledWith([
+      {
+        label: 'ashish',
+        name: 'ashish',
+        type: 'user',
+        value: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
+      },
+      {
+        label: 'ashley_king5',
+        name: 'ashley_king5',
+        type: 'user',
+        value: '0c83a592-7ced-4156-b235-01726259a0e7',
+      },
+    ]);
+  });
+
+  it('function fetchOptions should trigger setOptions with filtered options', async () => {
+    const mockSetOptions = jest.fn();
+
+    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    );
+
+    await act(async () => {
+      fetchOptions(
+        'test_user',
+        mockSetOptions,
+        '18ca6cd1-d696-4a22-813f-c7a42fc09dc4'
+      );
+    });
+
+    expect(mockSetOptions).toHaveBeenCalledWith([
+      {
+        label: 'ashley_king5',
+        name: 'ashley_king5',
+        type: 'user',
+        value: '0c83a592-7ced-4156-b235-01726259a0e7',
+      },
+    ]);
   });
 });
