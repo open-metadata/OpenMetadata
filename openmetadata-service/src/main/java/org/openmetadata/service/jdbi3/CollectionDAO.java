@@ -3593,12 +3593,12 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
-    @ConnectionAwareSqlUpdate(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
                 + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
         connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
                 + "AND json ->> 'incidentId' IS NOT NULL",
