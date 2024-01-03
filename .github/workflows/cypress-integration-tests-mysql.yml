@@ -51,7 +51,7 @@ jobs:
     environment: test
     steps:
       - name: Set Project ID Environment variable
-        id: set-cypress-project-id
+        id: cypress-project-id
         run: |
           if [ "${{ github.event_name }}" == "pull_request_target" ]; then
             echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
@@ -153,7 +153,7 @@ jobs:
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-          CYPRESS_PROJECT_ID: ${{ steps.set-cypress-project-id.outputs.PROJECT_ID }}
+          CYPRESS_PROJECT_ID: ${{ steps.cypress-project-id.outputs.PROJECT_ID }}
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
           CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
