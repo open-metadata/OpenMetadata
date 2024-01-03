@@ -1074,6 +1074,7 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
+    // TODO: UPDATE ME SHOULD BE THE STATE_ID somewhere here
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity "

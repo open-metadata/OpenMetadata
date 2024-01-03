@@ -113,10 +113,18 @@ public class TestCaseResolutionStatusRepository
   public TestCaseResolutionStatus createNewRecord(
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
 
-    TestCaseResolutionStatus lastIncident =
-        getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+    if (recordEntity.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.New)) {
+      // When we create a NEW incident, we need to open a task with the test case owner as the
+      // assignee. We don't need to check any past history
+      openNewTask(recordEntity);
+    } else {
+      TestCaseResolutionStatus lastIncident =
+          getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
 
-    if (lastIncident != null) {
+      if (lastIncident == null) {
+        throw new RuntimeException(String.format("Cannot find the last incident status for stateId %s", recordEntity.getStateId()));
+      }
+
       // if we have an ongoing incident, set the stateId if the new record to be created
       recordEntity.setStateId(
           Boolean.TRUE.equals(unresolvedIncident(recordEntity))
@@ -124,83 +132,79 @@ public class TestCaseResolutionStatusRepository
               : recordEntity.getStateId());
 
       switch (recordEntity.getTestCaseResolutionStatusType()) {
-          // When we create a NEW incident, we need to open a task with the test case owner as the
-          // assignee
-        case New -> openNewTask(recordEntity);
         case Ack -> {
           /* nothing to do for ACK. The Owner already has the task open. It will close it when reassigning it*/
         }
-          // If the incident is in the Assign state, it means that the owner found the right person
-          // to provide
-          // the fix. We will close the NEW task, and create a task for the new assigned person
-        case Assigned -> openAssignedTask(recordEntity);
-          // When the incident is Resolved, we will close the Assigned task.
-        case Resolved -> resolveTask(recordEntity);
+        // If the incident is in the Assign state, it means that the owner found the right person
+        // to provide
+        // the fix. We will close the NEW task, and create a task for the new assigned person
+        case Assigned -> openAssignedTask(recordEntity, lastIncident);
+        // When the incident is Resolved, we will close the Assigned task.
+        case Resolved -> resolveTask(recordEntity, lastIncident);
         default -> throw new IllegalArgumentException(
             String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
       }
     }
-
     return super.createNewRecord(recordEntity, extension, recordFQN);
   }
 
-  private void openNewTask(TestCaseResolutionStatus incident) {
+  private void openNewTask(TestCaseResolutionStatus incidentStatus) {
     List<EntityReference> owners =
         EntityUtil.getEntityReferences(
             daoCollection
                 .relationshipDAO()
                 .findFrom(
-                    incident.getTestCaseReference().getId(),
+                    incidentStatus.getTestCaseReference().getId(),
                     Entity.TEST_CASE,
                     Relationship.OWNS.ordinal(),
                     Entity.USER));
-    createTask(incident, owners, "New Incident");
+    createTask(incidentStatus, owners, "New Incident");
   }
 
-  private void openAssignedTask(TestCaseResolutionStatus incident) {
+  private void openAssignedTask(TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
 
     // Fetch the latest task (which comes from the NEW state) and close it
     String jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(incident.getId());
+            .fetchThreadByTestCaseResolutionStatusId(lastIncidentStatus.getId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
 
     Assigned assigned =
-        JsonUtils.convertValue(incident.getTestCaseResolutionStatusDetails(), Assigned.class);
+        JsonUtils.convertValue(newIncidentStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
     User assignee = Entity.getEntity(Entity.USER, assigned.getAssignee().getId(), "", Include.ALL);
     User updatedBy =
-        Entity.getEntity(Entity.USER, incident.getUpdatedBy().getId(), "", Include.ALL);
+        Entity.getEntity(Entity.USER, newIncidentStatus.getUpdatedBy().getId(), "", Include.ALL);
 
     CloseTask closeTask =
         new CloseTask()
             .withComment(String.format("Incident assigned to %s", assignee.getFullyQualifiedName()))
-            .withTestCaseFQN(incident.getTestCaseReference().getFullyQualifiedName());
+            .withTestCaseFQN(newIncidentStatus.getTestCaseReference().getFullyQualifiedName());
     Entity.getFeedRepository().closeTask(thread, updatedBy.getFullyQualifiedName(), closeTask);
 
     // Then create a new task for the new assignee requested by the incident owner
     createTask(
-        incident,
+        newIncidentStatus,
         Collections.singletonList(assigned.getAssignee()),
         "Incident Resolution Requested");
   }
 
-  private void resolveTask(TestCaseResolutionStatus incident) {
+  private void resolveTask(TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
 
     // Fetch the latest task (which comes from the NEW or ASSIGNED state) and close it
     String jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(incident.getId());
+            .fetchThreadByTestCaseResolutionStatusId(lastIncidentStatus.getId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
 
     Resolved resolved =
-        JsonUtils.convertValue(incident.getTestCaseResolutionStatusDetails(), Resolved.class);
+        JsonUtils.convertValue(newIncidentStatus.getTestCaseResolutionStatusDetails(), Resolved.class);
     TestCase testCase =
         Entity.getEntity(
-            Entity.TEST_CASE, incident.getTestCaseReference().getId(), "", Include.ALL);
+            Entity.TEST_CASE, newIncidentStatus.getTestCaseReference().getId(), "", Include.ALL);
     User updatedBy =
-        Entity.getEntity(Entity.USER, incident.getUpdatedBy().getId(), "", Include.ALL);
+        Entity.getEntity(Entity.USER, newIncidentStatus.getUpdatedBy().getId(), "", Include.ALL);
     ResolveTask resolveTask =
         new ResolveTask()
             .withTestCaseFQN(testCase.getFullyQualifiedName())
@@ -214,28 +218,28 @@ public class TestCaseResolutionStatusRepository
   }
 
   private void createTask(
-      TestCaseResolutionStatus incident, List<EntityReference> assignees, String message) {
+      TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees, String message) {
 
     TaskDetails taskDetails =
         new TaskDetails()
             .withAssignees(assignees)
             .withType(TaskType.RequestTestCaseFailureResolution)
             .withStatus(TaskStatus.Open)
-            .withTestCaseResolutionStatusId(incident.getId());
+            .withTestCaseResolutionStatusId(incidentStatus.getId());
 
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(
-            Entity.TEST_CASE, incident.getTestCaseReference().getFullyQualifiedName());
+            Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
             .withThreadTs(System.currentTimeMillis())
             .withMessage(message)
-            .withCreatedBy(incident.getUpdatedBy().getName())
+            .withCreatedBy(incidentStatus.getUpdatedBy().getName())
             .withAbout(entityLink.getLinkString())
             .withType(ThreadType.Task)
             .withTask(taskDetails)
-            .withUpdatedBy(incident.getUpdatedBy().getName())
+            .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
             .withUpdatedAt(System.currentTimeMillis());
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
