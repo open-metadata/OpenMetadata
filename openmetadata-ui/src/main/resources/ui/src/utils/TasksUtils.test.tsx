@@ -14,17 +14,17 @@
 import { act } from '@testing-library/react';
 import { EntityType } from '../enums/entity.enum';
 import { mockTableData } from '../mocks/TableVersion.mock';
-import { ASSIGNEE_DATA } from '../mocks/Task.mock';
+import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
 import { getUserSuggestions } from '../rest/miscAPI';
 import { fetchOptions, getEntityTableName, getTaskMessage } from './TasksUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getUserSuggestions: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(ASSIGNEE_DATA)),
+    .mockImplementation(() => Promise.resolve(MOCK_ASSIGNEE_DATA)),
 }));
 
-describe.skip('Tests for DataAssetsHeaderUtils', () => {
+describe('Tests for DataAssetsHeaderUtils', () => {
   it('function getEntityTableName should return name if no data found', () => {
     const entityName = getEntityTableName(
       EntityType.TABLE,
@@ -79,7 +79,7 @@ const taskDescriptionMessage = {
   startMessage: 'Request Description',
 };
 
-describe.skip('Tests for getTaskMessage', () => {
+describe('Tests for getTaskMessage', () => {
   it('function getTaskMessage should return task message for tags', () => {
     // entity request task message
     const requestTagsEntityMessage = getTaskMessage(taskTagMessage);
@@ -172,7 +172,7 @@ describe('Tests for fetchOptions', () => {
     const mockSetOptions = jest.fn();
 
     (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: ASSIGNEE_DATA })
+      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
     );
 
     await act(async () => {
@@ -199,7 +199,7 @@ describe('Tests for fetchOptions', () => {
     const mockSetOptions = jest.fn();
 
     (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: ASSIGNEE_DATA })
+      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
     );
 
     await act(async () => {

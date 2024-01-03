@@ -102,7 +102,7 @@ export const TASK_COLUMNS: Column[] = [
   },
 ];
 
-export const ASSIGNEE_DATA = {
+export const MOCK_ASSIGNEE_DATA = {
   suggest: {
     'metadata-suggest': [
       {
