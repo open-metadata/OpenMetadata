@@ -15,6 +15,7 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
+import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -24,11 +25,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -188,13 +189,17 @@ public class EventSubscriptionScheduler {
     return null;
   }
 
-  public EventSubscription putInJobDataMap(UUID subscriptionID, String key, Object obj) {
+  public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
+    int countOfEvents = Entity.getCollectionDAO().changeEventDAO().listCount();
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
       if (jobDetail != null) {
-        jobDetail.getJobDataMap().put(key, obj);
-        return ((EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY));
+        EventSubscriptionOffset offset =
+            ((EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY));
+        if (offset != null) {
+          return offset.getOffset() == countOfEvents;
+        }
       }
     } catch (Exception ex) {
       LOG.error(
@@ -202,7 +207,7 @@ public class EventSubscriptionScheduler {
           subscriptionID.toString(),
           ex);
     }
-    throw new UnhandledServerException("Cannot find Job Data Map for give Subscription");
+    return false;
   }
 
   public static void shutDown() throws SchedulerException {

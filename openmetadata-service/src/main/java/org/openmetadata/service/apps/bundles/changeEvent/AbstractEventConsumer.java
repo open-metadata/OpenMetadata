@@ -49,8 +49,8 @@ import org.quartz.PersistJobDataAfterExecution;
 public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Job {
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
-  private static final String OFFSET_EXTENSION = "eventSubscription.Offset";
-  private static final String METRICS_EXTENSION = "eventSubscription.metrics";
+  public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
+  public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
   private int offset = -1;
   private AlertMetrics alertMetrics;
@@ -65,7 +65,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
         (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
-    this.offset = loadInitialOffset();
+    this.offset = loadInitialOffset(context);
     this.alertMetrics = loadInitialMetrics();
     this.doInit(context);
   }
@@ -142,7 +142,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     }
   }
 
-  private int loadInitialOffset() {
+  private int loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     // If the Job Data Map has the latest offset, use it
@@ -162,6 +162,14 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
         eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
       }
       // Update the Job Data Map with the latest offset
+      context
+          .getJobDetail()
+          .getJobDataMap()
+          .put(
+              ALERT_OFFSET_KEY,
+              new EventSubscriptionOffset()
+                  .withOffset(eventSubscriptionOffset)
+                  .withTimestamp(System.currentTimeMillis()));
       return eventSubscriptionOffset;
     }
   }
@@ -307,13 +315,15 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
       batch.addAll(failedChangeEvents);
     }
 
-    // Publish Events
-    alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
-    publishEvents(batch);
+    if (!batch.isEmpty()) {
+      // Publish Events
+      alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
+      publishEvents(batch);
 
-    // Commit the Offset
-    offset += batchSize;
-    commit(jobExecutionContext);
+      // Commit the Offset
+      offset += batchSize;
+      commit(jobExecutionContext);
+    }
   }
 
   public EventSubscription getEventSubscription() {

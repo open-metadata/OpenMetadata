@@ -363,6 +363,33 @@ public class EventSubscriptionResource
   }
 
   @GET
+  @Path("/{id}/processedEvents")
+  @Operation(
+      operationId = "checkIfThePublisherProcessedALlEvents",
+      summary = "Check If the Publisher Processed All Events",
+      description =
+          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Event Subscription versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public Response checkIfThePublisherProcessedALlEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return Response.ok()
+        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
+        .build();
+  }
+
+  @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificEventSubscriptionVersion",
