@@ -511,7 +511,9 @@ export const TaskTab = ({
                       onChange={(values) =>
                         assigneesForm.setFieldValue('assignees', values)
                       }
-                      onSearch={(query) => fetchOptions(query, setOptions)}
+                      onSearch={(query) =>
+                        fetchOptions(query, setOptions, currentUser?.id)
+                      }
                     />
                   </InlineEdit>
                 </Form.Item>

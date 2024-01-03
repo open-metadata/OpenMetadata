@@ -187,7 +187,8 @@ export const getDescriptionDiff = (
 
 export const fetchOptions = (
   query: string,
-  setOptions: (value: React.SetStateAction<Option[]>) => void
+  setOptions: (value: React.SetStateAction<Option[]>) => void,
+  currentUserId?: string
 ) => {
   getUserSuggestions(query)
     .then((res) => {
@@ -198,7 +199,7 @@ export const fetchOptions = (
         type: hit._source.entityType,
       }));
 
-      setOptions(suggestOptions);
+      setOptions(suggestOptions.filter((item) => item.value !== currentUserId));
     })
     .catch((err: AxiosError) => showErrorToast(err));
 };
