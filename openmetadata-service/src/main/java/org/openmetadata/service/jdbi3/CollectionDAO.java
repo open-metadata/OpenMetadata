@@ -1564,7 +1564,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) "
                 + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
         connectionType = POSTGRES)
     void upsertSubscriberExtension(
@@ -1582,7 +1582,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, (:json :: jsonb)) "
+                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
                 + "DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void upsertFailedEvent(
