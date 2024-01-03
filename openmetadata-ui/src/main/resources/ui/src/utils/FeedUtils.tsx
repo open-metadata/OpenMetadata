@@ -248,7 +248,7 @@ export async function suggestions(
             value: name,
             link: buildMentionLink(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              hit._source.name
+              getEncodedFqn(hit._source.fullyQualifiedName ?? '')
             ),
             name: hit._source.name,
             avatarEle,
