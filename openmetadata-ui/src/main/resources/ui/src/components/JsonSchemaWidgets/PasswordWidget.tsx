@@ -13,6 +13,7 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
 import React, { FC } from 'react';
+import '../../styles/components/form.less';
 
 const PasswordWidget: FC<WidgetProps> = ({
   onFocus,
@@ -24,6 +25,7 @@ const PasswordWidget: FC<WidgetProps> = ({
     <Input.Password
       autoComplete="off"
       autoFocus={rest.autofocus}
+      className="custom-password-input"
       disabled={rest.disabled}
       id={rest.id}
       name={rest.name}
