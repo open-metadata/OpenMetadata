@@ -237,7 +237,6 @@ public class TestCaseResolutionStatusRepository
             .withAssignees(assignees)
             .withType(TaskType.RequestTestCaseFailureResolution)
             .withStatus(TaskStatus.Open)
-            // TODO THIS IS IS NULL?
             .withTestCaseResolutionStatusId(incidentStatus.getId());
 
     MessageParser.EntityLink entityLink =
