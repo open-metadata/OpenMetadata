@@ -40,6 +40,9 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -48,7 +51,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -206,6 +209,8 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         super().__init__(config, metadata)
         self.temp_credentials = None
         self.client = None
+        # Used to delete temp json file created while initializing bigquery client
+        self.temp_credentials_file_path = []
         # Upon invoking the set_project_id method, we retrieve a comprehensive
         # list of all project IDs. Subsequently, after the invokation,
         # we proceed to test the connections for each of these project IDs
@@ -237,6 +242,8 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
             test_connection_fn(
                 self.metadata, inspector_details.engine, self.service_connection
             )
+            if os.environ[GOOGLE_CREDENTIALS]:
+                self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -306,7 +313,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 left=StackTraceError(
                     name="Tags and Classifications",
                     error=f"Skipping Policy Tag ingestion due to: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -423,7 +430,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-
+        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
@@ -522,9 +529,10 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ) and (GOOGLE_CREDENTIALS in os.environ):
-            tmp_credentials_file = os.environ[GOOGLE_CREDENTIALS]
-            os.remove(tmp_credentials_file)
             del os.environ[GOOGLE_CREDENTIALS]
+            for temp_file_path in self.temp_credentials_file_path:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
 
     def _get_source_url(
         self,
@@ -635,7 +643,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 

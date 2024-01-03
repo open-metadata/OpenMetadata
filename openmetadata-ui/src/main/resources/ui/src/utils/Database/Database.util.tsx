@@ -10,22 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
+import { toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import {
   getDatabaseSchemaDetailsPath,
   NO_DATA_PLACEHOLDER,
-} from '../constants/constants';
-import { TabSpecificField } from '../enums/entity.enum';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { EntityReference } from '../generated/entity/type';
-import { UsageDetails } from '../generated/type/entityUsage';
-import { getEntityName } from '../utils/EntityUtils';
-import { getUsagePercentile } from '../utils/TableUtils';
+} from '../../constants/constants';
+import { TabSpecificField } from '../../enums/entity.enum';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { EntityReference } from '../../generated/entity/type';
+import { UsageDetails } from '../../generated/type/entityUsage';
+import { getEntityName } from '../EntityUtils';
+import { getUsagePercentile } from '../TableUtils';
+
+export const getQueryFilterForDatabase = (
+  serviceType: string,
+  databaseName: string
+) =>
+  JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [{ term: { serviceType: [toLower(serviceType)] } }],
+            },
+          },
+          {
+            bool: {
+              should: [{ term: { 'database.name.keyword': [databaseName] } }],
+            },
+          },
+        ],
+      },
+    },
+  });
 
 export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 

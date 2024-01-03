@@ -167,7 +167,7 @@ public final class RestUtil {
     }
   }
 
-  public record DeleteResponse<T>(@Getter T entity, @Getter String changeType) {
+  public record DeleteResponse<T>(T entity, String changeType) {
     public Response toResponse() {
       ResponseBuilder responseBuilder =
           Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);

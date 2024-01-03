@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -344,7 +343,7 @@ const ExplorePageV1: FunctionComponent = () => {
         const counts: Record<string, number> = {};
 
         buckets.forEach((item) => {
-          if (item && TABS_SEARCH_INDEXES.includes(item.key)) {
+          if (item && TABS_SEARCH_INDEXES.includes(item.key as SearchIndex)) {
             counts[item.key ?? ''] = item.doc_count;
           }
         });
@@ -383,10 +382,6 @@ const ExplorePageV1: FunctionComponent = () => {
     },
     [setAdvancedSearchQuickFilters, history, parsedSearch]
   );
-
-  useEffect(() => {
-    AppState.updateExplorePageTab(tab);
-  }, [tab]);
 
   return (
     <ExploreV1

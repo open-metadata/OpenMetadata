@@ -139,8 +139,8 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_dashboard_chart",
                 consumer=["dashboard_service"],
                 nullable=True,
-                cache_all=True,
-                clear_cache=True,
+                store_all_in_context=True,
+                clear_context=True,
                 use_cache=True,
             ),
             NodeStage(
@@ -149,8 +149,8 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
-                cache_all=True,
-                clear_cache=True,
+                store_all_in_context=True,
+                clear_context=True,
                 use_cache=True,
             ),
             NodeStage(

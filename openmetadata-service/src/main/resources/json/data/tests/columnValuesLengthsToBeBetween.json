@@ -19,5 +19,6 @@
       "description": "The {maxLength} for the column value. if maxLength is not included, minLength is treated as lowerBound and there will be no maximum value length",
       "dataType": "INT"
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true
 }

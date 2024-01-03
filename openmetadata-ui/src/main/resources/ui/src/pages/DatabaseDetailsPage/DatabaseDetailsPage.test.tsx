@@ -165,12 +165,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../AppState', () => {
-  return jest.fn().mockReturnValue({
-    inPageSearchText: '',
-  });
-});
-
 jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()

@@ -135,16 +135,16 @@ class XLets(BaseModel):
 
 
 def concat_dict_values(
-    d1: DefaultDict[str, List[Any]], d2: Optional[Dict[str, List[Any]]]
+    dict_1: DefaultDict[str, List[Any]], dict_2: Optional[Dict[str, List[Any]]]
 ) -> DefaultDict[str, List[Any]]:
     """
     Update d1 based on d2 values concatenating their results.
     """
-    if d2:
-        for key, value in d2.items():
-            d1[key] = d1[key] + value
+    if dict_2:
+        for key, value in dict_2.items():
+            dict_1[key] = dict_1[key] + value
 
-    return d1
+    return dict_1
 
 
 def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:

@@ -72,7 +72,7 @@ import {
   defaultFields as DashboardFields,
   fetchCharts,
 } from './DashboardDetailsUtils';
-import { DatabaseFields } from './DatabaseDetails.utils';
+import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';

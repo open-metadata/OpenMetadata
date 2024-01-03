@@ -17,6 +17,8 @@ import { capitalize, isEmpty, toString } from 'lodash';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { getUserById } from '../../../rest/userAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
 import CloseIcon from '../../Modals/CloseIcon.component';
 
@@ -36,6 +38,18 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 }: Props) => {
   const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
+  const [uname, setUname] = useState<string>('');
+
+  const fetchUserName = async (id: string) => {
+    try {
+      const userData = await getUserById(id, 'displayName');
+
+      const name: string = getEntityName(userData);
+      setUname(name);
+    } catch (err) {
+      setUname(id);
+    }
+  };
 
   const versions = useMemo(() => {
     let versionTypeList = [];
@@ -78,6 +92,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     return versionTypeList.length ? (
       versionTypeList.map((v, i) => {
         const currV = JSON.parse(v);
+        const userId: string = currV?.updatedBy;
+        fetchUserName(userId);
+        {
+          userId === 'admin' ? setUname('admin') : ' ';
+        }
         const majorVersionChecks = () => {
           return (
             isMajorVersion(
@@ -142,7 +161,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   })}
                 </div>
                 <p className="text-xs font-italic">
-                  <span className="font-medium">{currV?.updatedBy}</span>
+                  <span className="font-medium">{uname}</span>
                   <span className="text-grey-muted">
                     {' '}
                     {t('label.updated-on')}{' '}

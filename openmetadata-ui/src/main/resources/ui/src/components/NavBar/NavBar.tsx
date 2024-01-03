@@ -35,7 +35,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -322,12 +321,11 @@ const NavBar = ({
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
 
-  const handleSelectOption = useCallback(
-    (text) => {
-      AppState.inPageSearchText = text;
-    },
-    [AppState]
-  );
+  const handleSelectOption = useCallback((text: string) => {
+    history.replace({
+      search: `?withinPageSearch=${text}`,
+    });
+  }, []);
 
   return (
     <>
