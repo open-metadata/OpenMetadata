@@ -592,25 +592,11 @@ const getNodeType = (
   return EntityLineageNodeType.DEFAULT;
 };
 
-const filterNodesWithoutEdges = (
-  nodesData: EntityReference[],
-  edges: EdgeDetails[]
-) => {
-  const nodesWithEdges = nodesData.filter((node) => {
-    return edges.some((edge) => {
-      return edge.fromEntity.id === node.id || edge.toEntity.id === node.id;
-    });
-  });
-
-  return nodesWithEdges;
-};
-
 export const createNodes = (
   nodesData: EntityReference[],
   edgesData: EdgeDetails[]
 ) => {
   const uniqueNodesData = removeDuplicateNodes(nodesData);
-  const filteredNodesData = filterNodesWithoutEdges(uniqueNodesData, edgesData);
 
   // Create a new dagre graph
   const graph = new dagre.graphlib.Graph();
@@ -622,7 +608,7 @@ export const createNodes = (
   graph.setDefaultEdgeLabel(() => ({}));
 
   // Add nodes to the graph
-  filteredNodesData.forEach((node) => {
+  uniqueNodesData.forEach((node) => {
     graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   });
 
@@ -637,7 +623,7 @@ export const createNodes = (
   // Get the layout positions
   const layoutPositions = graph.nodes().map((nodeId) => graph.node(nodeId));
 
-  return filteredNodesData.map((node, index) => {
+  return uniqueNodesData.map((node, index) => {
     const position = layoutPositions[index];
     const type = getNodeType(edgesData, node.id);
 
