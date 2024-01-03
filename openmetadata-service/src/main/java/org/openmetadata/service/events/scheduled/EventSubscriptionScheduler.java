@@ -110,6 +110,7 @@ public class EventSubscriptionScheduler {
       AbstractEventConsumer consumer, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
+    dataMap.put(ALERT_OFFSET_KEY, getEventSubscriptionFromScheduledJob(eventSubscription.getId()));
     JobBuilder jobBuilder =
         JobBuilder.newJob(consumer.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)

@@ -101,7 +101,7 @@ public class EventSubscriptionResourceTest
     assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
-    details = waitForFirstEvent(webhookName, 25);
+    details = waitForFirstEvent(alert.getId(), webhookName, 25);
     assertEquals(1, details.getEvents().size());
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
@@ -176,6 +176,7 @@ public class EventSubscriptionResourceTest
             change);
 
     // Wait for webhook to be marked as failed
+    waitForAllEventToComplete(alert.getId());
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(100 * 100L))
@@ -192,7 +193,7 @@ public class EventSubscriptionResourceTest
       WebTarget target =
           getResource(String.format("%s/%s/processedEvents", collectionName, alertId.toString()));
       result = TestUtils.getWithResponse(target, Boolean.class, ADMIN_AUTH_HEADERS, 200);
-      LOG.debug("waitForAllEventToComplete alertId: {} , result: {}", alertId, result);
+      LOG.info("waitForAllEventToComplete alertId: {} , result: {}", alertId, result);
       try {
         Thread.sleep(3000L);
       } catch (InterruptedException e) {
@@ -347,22 +348,22 @@ public class EventSubscriptionResourceTest
     CreateEventSubscription w6ActionRequest = createRequest(alertName).withSubscriptionConfig(w6);
     EventSubscription w6Alert = createAndCheckEntity(w6ActionRequest, ADMIN_AUTH_HEADERS);
 
-    // Wait for events to complete
-    waitForAllEventToComplete(w1Alert.getId());
-    waitForAllEventToComplete(w2Alert.getId());
-    waitForAllEventToComplete(w3Alert.getId());
-    waitForAllEventToComplete(w4Alert.getId());
-    waitForAllEventToComplete(w5Alert.getId());
-    waitForAllEventToComplete(w6Alert.getId());
-
     // Now check state of webhooks created
-    WebhookCallbackResource.EventDetails details = waitForFirstEvent("simulate-slowServer", 25);
+    WebhookCallbackResource.EventDetails details =
+        waitForFirstEvent(w1Alert.getId(), "simulate-slowServer", 25);
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
 
     waitAndCheckForEvents(
-        "*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30);
+        w1Alert.getId(),
+        "*",
+        "*",
+        "*",
+        "*",
+        callbackEvents.peek().getTimestamp(),
+        callbackEvents,
+        30);
 
     // Check all webhook status
     assertAlertStatusSuccessWithId(w1Alert.getId());
@@ -414,7 +415,14 @@ public class EventSubscriptionResourceTest
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
     waitAndCheckForEvents(
-        "*", "*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 40);
+        healthySub.getId(),
+        "*",
+        "*",
+        "*",
+        "*",
+        callbackEvents.peek().getTimestamp(),
+        callbackEvents,
+        40);
     assertAlertStatusSuccessWithName("healthy");
   }
 
@@ -434,17 +442,20 @@ public class EventSubscriptionResourceTest
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     assertTrue(callbackEvents.size() > 0);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 50);
+    waitAndCheckForEvents(
+        createdSub.getId(), entity, null, null, null, timestamp, callbackEvents, 50);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 50);
+    waitAndCheckForEvents(
+        updatedSub.getId(), null, entity, null, null, timestamp, callbackEvents, 50);
   }
 
   public void waitAndCheckForEvents(
+      UUID alertId,
       String entityCreated,
       String entityUpdated,
       String entityRestored,
@@ -453,6 +464,7 @@ public class EventSubscriptionResourceTest
       Collection<ChangeEvent> callbackEvents,
       int iteration)
       throws HttpResponseException {
+    waitForAllEventToComplete(alertId);
     List<ChangeEvent> expected =
         getChangeEvents(
                 entityCreated,
@@ -629,7 +641,9 @@ public class EventSubscriptionResourceTest
     return new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest");
   }
 
-  public WebhookCallbackResource.EventDetails waitForFirstEvent(String endpoint, int iteration) {
+  public WebhookCallbackResource.EventDetails waitForFirstEvent(
+      UUID alertId, String endpoint, int iteration) throws HttpResponseException {
+    waitForAllEventToComplete(alertId);
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))

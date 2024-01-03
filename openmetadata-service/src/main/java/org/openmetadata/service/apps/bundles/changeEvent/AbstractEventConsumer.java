@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvent;
+import static org.openmetadata.service.events.subscription.AlertUtil.getInitialAlertOffsetFromDb;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
@@ -149,28 +150,11 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     if (jobStoredOffset != null) {
       return jobStoredOffset.getOffset();
     } else {
-      int eventSubscriptionOffset;
-      String json =
-          Entity.getCollectionDAO()
-              .eventSubscriptionDAO()
-              .getSubscriberExtension(eventSubscription.getId().toString(), OFFSET_EXTENSION);
-      if (json != null) {
-        EventSubscriptionOffset offsetFromDb =
-            JsonUtils.readValue(json, EventSubscriptionOffset.class);
-        eventSubscriptionOffset = offsetFromDb.getOffset();
-      } else {
-        eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
-      }
+      EventSubscriptionOffset eventSubscriptionOffset =
+          getInitialAlertOffsetFromDb(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
-      context
-          .getJobDetail()
-          .getJobDataMap()
-          .put(
-              ALERT_OFFSET_KEY,
-              new EventSubscriptionOffset()
-                  .withOffset(eventSubscriptionOffset)
-                  .withTimestamp(System.currentTimeMillis()));
-      return eventSubscriptionOffset;
+      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
+      return eventSubscriptionOffset.getOffset();
     }
   }
 

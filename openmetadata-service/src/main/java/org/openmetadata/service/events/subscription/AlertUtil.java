@@ -16,6 +16,7 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
 import java.util.ArrayList;
@@ -24,12 +25,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -49,6 +52,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublish
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
 import org.springframework.expression.Expression;
 
@@ -259,5 +263,21 @@ public final class AlertUtil {
       return null;
     }
     return tClass.cast(value);
+  }
+
+  public static EventSubscriptionOffset getInitialAlertOffsetFromDb(UUID eventSubscriptionId) {
+    int eventSubscriptionOffset;
+    String json =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSubscriberExtension(eventSubscriptionId.toString(), OFFSET_EXTENSION);
+    if (json != null) {
+      EventSubscriptionOffset offsetFromDb =
+          JsonUtils.readValue(json, EventSubscriptionOffset.class);
+      eventSubscriptionOffset = offsetFromDb.getOffset();
+    } else {
+      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
+    }
+    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
   }
 }
