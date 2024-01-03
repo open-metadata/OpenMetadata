@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React, {
   FC,
   HTMLAttributes,
@@ -20,6 +21,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
@@ -40,6 +42,7 @@ import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTagByName } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -48,6 +51,7 @@ import { useApplicationConfigContext } from '../../ApplicationConfigProvider/App
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../Loader/Loader';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
@@ -55,17 +59,33 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   entityFQN: string;
 }
 
-const PopoverContent: React.FC<{
+export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const { cachedEntityData, updateCachedEntityData } =
     useApplicationConfigContext();
-  const entityData = useMemo(
-    () => cachedEntityData[entityFQN],
-    [cachedEntityData, entityFQN]
-  );
+
+  const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
+    useMemo(() => {
+      const data = cachedEntityData[entityFQN];
+
+      return data
+        ? {
+            ...data,
+            name: data.name,
+            displayName: getEntityName(data),
+            id: data.id ?? '',
+            description: data.description ?? '',
+            fullyQualifiedName: getDecodedFqn(entityFQN),
+            tags: (data as Table)?.tags,
+            entityType: entityType,
+            serviceType: (data as Table).serviceType,
+          }
+        : data;
+    }, [cachedEntityData, entityFQN]);
 
   const getData = useCallback(async () => {
     const fields = 'tags,owner';
@@ -146,6 +166,11 @@ const PopoverContent: React.FC<{
 
         break;
 
+      case EntityType.TAG:
+        promise = getTagByName(entityFQN);
+
+        break;
+
       default:
         break;
     }
@@ -162,11 +187,14 @@ const PopoverContent: React.FC<{
     } else {
       setLoading(false);
     }
-  }, [entityType, entityFQN]);
+  }, [entityType, entityFQN, updateCachedEntityData]);
 
   useEffect(() => {
     const entityData = cachedEntityData[entityFQN];
-    if (!entityData) {
+
+    if (entityData) {
+      setLoading(false);
+    } else {
       getData();
     }
   }, [entityFQN]);
@@ -175,21 +203,15 @@ const PopoverContent: React.FC<{
     return <Loader size="small" />;
   }
 
+  if (isUndefined(entityData)) {
+    return <Typography.Text>{t('label.no-data-found')}</Typography.Text>;
+  }
+
   return (
     <ExploreSearchCard
       id="tabledatacard"
       showTags={false}
-      source={{
-        ...entityData,
-        name: entityData.name,
-        displayName: getEntityName(entityData),
-        id: entityData.id ?? '',
-        description: entityData.description ?? '',
-        fullyQualifiedName: getDecodedFqn(entityFQN),
-        tags: (entityData as Table).tags,
-        entityType: entityType,
-        serviceType: (entityData as Table).serviceType,
-      }}
+      source={entityData}
     />
   );
 };

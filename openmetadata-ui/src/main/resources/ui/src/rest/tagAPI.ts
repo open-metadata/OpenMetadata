@@ -108,6 +108,17 @@ export const patchClassification = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
+export const getTagByName = async (
+  name: string,
+  arrQueryFields?: string | string[]
+) => {
+  const url = getURLWithQueryFields(`tags/name/${name}`, arrQueryFields);
+
+  const response = await APIClient.get<Tag>(url);
+
+  return response.data;
+};
+
 export const createTag = async (data: CreateTag) => {
   const response = await APIClient.post<CreateTag, AxiosResponse<Tag>>(
     `/tags`,

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+export const MOCK_TAG_ENCODED_FQN = '"%22Mock.Tag%22.Tag_1"';
+
 export const mockTagList = [
   {
     id: 'e649c601-44d3-449d-bc04-fbbaf83baf19',
