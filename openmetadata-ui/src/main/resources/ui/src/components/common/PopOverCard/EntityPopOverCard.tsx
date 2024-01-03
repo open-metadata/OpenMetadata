@@ -42,7 +42,7 @@ import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTagByName } from '../../../rest/tagAPI';
+import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -82,7 +82,7 @@ export const PopoverContent: React.FC<{
             fullyQualifiedName: getDecodedFqn(entityFQN),
             tags: (data as Table)?.tags,
             entityType: entityType,
-            serviceType: (data as Table).serviceType,
+            serviceType: (data as Table)?.serviceType,
           }
         : data;
     }, [cachedEntityData, entityFQN]);
@@ -167,7 +167,7 @@ export const PopoverContent: React.FC<{
         break;
 
       case EntityType.TAG:
-        promise = getTagByName(entityFQN);
+        promise = getTagByFqn(entityFQN);
 
         break;
 

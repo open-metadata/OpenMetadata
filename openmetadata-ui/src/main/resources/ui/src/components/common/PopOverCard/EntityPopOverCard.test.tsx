@@ -14,10 +14,12 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { MOCK_TAG_ENCODED_FQN } from '../../../mocks/Tags.mock';
-import { getTagByName } from '../../../rest/tagAPI';
+import { MOCK_TAG_DATA, MOCK_TAG_ENCODED_FQN } from '../../../mocks/Tags.mock';
+import { getTagByFqn } from '../../../rest/tagAPI';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
+
+const updateCachedEntityData = jest.fn();
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
@@ -95,7 +97,7 @@ jest.mock('../../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
-  getTagByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getTagByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('../../../rest/topicsAPI', () => ({
@@ -105,7 +107,7 @@ jest.mock('../../../rest/topicsAPI', () => ({
 jest.mock('../../ApplicationConfigProvider/ApplicationConfigProvider', () => ({
   useApplicationConfigContext: jest.fn().mockImplementation(() => ({
     cachedEntityData: {},
-    updateCachedEntityData: jest.fn(),
+    updateCachedEntityData,
   })),
 }));
 
@@ -148,8 +150,29 @@ describe('Test EntityPopoverCard component', () => {
     expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
   });
 
+  it('EntityPopoverCard should show no data placeholder if api call fail', async () => {
+    (getTagByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: { message: 'Error!' },
+        },
+      })
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}
+        />
+      );
+    });
+
+    expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+  });
+
   it('EntityPopoverCard should call tags api if entity type is tag card', async () => {
-    const mockTagAPI = getTagByName as jest.Mock;
+    const mockTagAPI = getTagByFqn as jest.Mock;
 
     await act(async () => {
       render(
@@ -163,8 +186,32 @@ describe('Test EntityPopoverCard component', () => {
     expect(mockTagAPI.mock.calls[0][0]).toBe(MOCK_TAG_ENCODED_FQN);
   });
 
+  it('EntityPopoverCard should call api and trigger updateCachedEntityData in provider', async () => {
+    const mockTagAPI = getTagByFqn as jest.Mock;
+
+    (getTagByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_TAG_DATA)
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}
+        />
+      );
+    });
+
+    expect(mockTagAPI.mock.calls[0][0]).toBe(MOCK_TAG_ENCODED_FQN);
+
+    expect(updateCachedEntityData).toHaveBeenCalledWith({
+      id: MOCK_TAG_ENCODED_FQN,
+      entityDetails: MOCK_TAG_DATA,
+    });
+  });
+
   it('EntityPopoverCard should not call api if cached data is available', async () => {
-    const mockTagAPI = getTagByName as jest.Mock;
+    const mockTagAPI = getTagByFqn as jest.Mock;
 
     (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
       cachedEntityData: {
