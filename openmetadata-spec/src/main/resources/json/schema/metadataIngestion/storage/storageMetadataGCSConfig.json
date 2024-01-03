@@ -8,7 +8,7 @@
   "properties": {
     "securityConfig": {
       "title": "GCS Security Config",
-      "$ref": "../../security/credentials/awsCredentials.json"
+      "$ref": "../../security/credentials/gcpCredentials.json"
     },
     "prefixConfig": {
       "title": "Storage Metadata Prefix Config",
