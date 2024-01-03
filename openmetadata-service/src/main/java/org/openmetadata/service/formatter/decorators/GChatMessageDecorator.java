@@ -14,16 +14,15 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FeedUtils;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
@@ -93,12 +92,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), entityInterface);
+    List<Thread> thread = FeedUtils.getThreads(event, "admin");
     List<GChatMessage.Widget> widgets = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
+    for (Thread entry : thread) {
       GChatMessage.Widget widget = new GChatMessage.Widget();
-      widget.setTextParagraph(new GChatMessage.TextParagraph(entry.getValue()));
+      widget.setTextParagraph(new GChatMessage.TextParagraph(entry.getMessage()));
       widgets.add(widget);
     }
     section.setWidgets(widgets);
