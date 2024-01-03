@@ -267,7 +267,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       return;
     }
 
-    const { data } = edge;
+    const { data, target } = edge;
+
     const edgeData: EdgeData = {
       fromEntity: data.edge.fromEntity.type,
       fromId: data.edge.fromEntity.id,
@@ -276,24 +277,46 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     };
 
     await removeLineageHandler(edgeData);
-    const updatedEdges = entityLineage.edges?.filter(
-      (item) =>
-        !(
-          item.fromEntity.id === edgeData.fromId &&
-          item.toEntity.id === edgeData.toId
-        )
-    );
 
-    setEntityLineage((prev) => ({
-      ...prev,
-      edges: updatedEdges,
-    }));
+    const outgoingNode = nodes.find((n) => n.id === target);
+    if (outgoingNode) {
+      const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
+        outgoingNode,
+        nodes,
+        edges,
+        EdgeTypeEnum.DOWN_STREAM
+      );
 
-    const newNodes = createNodes(entityLineage.nodes ?? [], updatedEdges ?? []);
-    const newEdges = createEdges(entityLineage.nodes ?? [], updatedEdges ?? []);
+      const updatedNodes = (entityLineage.nodes ?? []).filter(
+        (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
+      );
+      const updatedEdges = (entityLineage.edges ?? []).filter((val) => {
+        return !connectedEdges.some(
+          (connectedEdge) => connectedEdge.data.edge === val
+        );
+      });
 
-    setNodes(newNodes);
-    setEdges(newEdges);
+      const filteredEdges =
+        updatedEdges.filter(
+          (item) =>
+            !(
+              item.fromEntity.id === edgeData.fromId &&
+              item.toEntity.id === edgeData.toId
+            )
+        ) ?? [];
+
+      setEntityLineage((prev) => ({
+        ...prev,
+        nodes: updatedNodes,
+        edges: filteredEdges,
+      }));
+
+      const newNodes = createNodes(updatedNodes ?? [], filteredEdges);
+      const newEdges = createEdges(updatedNodes ?? [], filteredEdges);
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+    }
   };
 
   const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
