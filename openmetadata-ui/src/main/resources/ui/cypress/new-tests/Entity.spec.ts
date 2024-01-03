@@ -12,6 +12,7 @@
  */
 
 import { CustomPropertyType } from '../common/Utils/CustomProperty';
+import { CustomPropertySupportedEntityList } from '../constants/CustomProperty.constant';
 import ContainerClass from './base/ContainerClass';
 import DashboardClass from './base/DashboardClass';
 import DashboardDataModelClass from './base/DataModelClass';
@@ -152,21 +153,24 @@ entities.forEach((entity) => {
       entity.removeInactiveAnnouncement();
     });
 
-    Object.values(CustomPropertyType).forEach((type) => {
-      it(`Set ${type} Custom Property `, () => {
-        entity.setCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].value
-        );
-      });
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(entity.endPoint)) {
+      Object.values(CustomPropertyType).forEach((type) => {
+        it(`Set ${type} Custom Property `, () => {
+          entity.setCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].value
+          );
+        });
 
-      it(`Update ${type} Custom Property`, () => {
-        entity.updateCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].newValue
-        );
+        it(`Update ${type} Custom Property`, () => {
+          entity.updateCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].newValue
+          );
+        });
       });
-    });
+    }
 
     it(`Soft delete`, () => {
       entity.softDeleteEntity();

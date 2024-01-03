@@ -25,13 +25,17 @@ import {
 } from '../../common/EntityUtils';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import {
+  DASHBOARD_DATA_MODEL_DETAILS,
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
+  STORED_PROCEDURE_DETAILS,
 } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   DASHBOARD_DATA_MODEL,
+  ENTITIES_DISPLAY_NAME,
   SCHEMA_AND_DATABASE_DISPLAY_NAME,
+  SERVICES,
 } from '../../constants/updateDisplayName.constant';
 
 const updateDisplayName = (displayName, apiPath) => {
@@ -82,6 +86,21 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
           entity: [data.entity],
         });
       });
+
+      // creating data model
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_DATA_MODEL_DETAILS,
+      });
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_DETAILS,
+      });
     });
   });
 
@@ -107,6 +126,16 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   beforeEach(() => {
     cy.login();
+  });
+
+  Object.entries(SERVICES).map(([serviceType, service]) => {
+    it(`${service.type}`, () => {
+      visitServiceDetailsPage(service, false);
+      updateDisplayName(
+        service.displayName,
+        `/api/v1/services/${serviceType}/*`
+      );
+    });
   });
 
   it(`dataModel`, () => {
@@ -180,6 +209,20 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
     );
     SCHEMA_AND_DATABASE_DISPLAY_NAME.schemaBreadcrumb.map((value) => {
       cy.get('[data-testid="breadcrumb"]').should('contain', value);
+    });
+  });
+
+  Object.values(ENTITIES_DISPLAY_NAME).map((entity) => {
+    it(`${entity.entity}`, () => {
+      visitEntityDetailsPage({
+        term: entity.name,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
+      updateDisplayName(entity.displayName, `/api/v1/${entity.entity}/*`);
+      entity.breadcrumb.map((value) => {
+        cy.get('[data-testid="breadcrumb"]').should('contain', value);
+      });
     });
   });
 });
