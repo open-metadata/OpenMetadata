@@ -43,10 +43,10 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Searchbar from '../common/searchbar/Searchbar';
 import './Execution.style.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
-
 interface ExecutionProps {
   pipelineFQN: string;
   tasks: Task[];
@@ -55,6 +55,7 @@ interface ExecutionProps {
 const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState(PIPELINE_EXECUTION_TABS.LIST_VIEW);
+  const [searchValue, setSearchValue] = useState<string>('create_otable');
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
@@ -130,6 +131,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     fetchPipelineStatus(startTime, endTime);
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
+  const handleSearch = (value: string) => {
+    setSearchValue(value);
+  };
+
   return (
     <Row className="h-full p-md" gutter={16}>
       <Col flex="auto">
@@ -193,11 +198,25 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
           </Col>
           <Col span={24}>
             {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-              <ListView
-                executions={executions}
-                loading={isLoading}
-                status={status}
-              />
+              <div>
+                <Row>
+                  <Col className="mb-4" span={6}>
+                    <Searchbar
+                      removeMargin
+                      placeholder="Filter by task name"
+                      searchValue={searchValue}
+                      typingInterval={500}
+                      onSearch={handleSearch}
+                    />
+                  </Col>
+                </Row>
+                <ListView
+                  executions={executions}
+                  loading={isLoading}
+                  searchString={searchValue}
+                  status={status}
+                />
+              </div>
             ) : (
               <TreeViewTab
                 endTime={endTime}
