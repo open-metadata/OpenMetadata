@@ -191,6 +191,9 @@ export const formatSearchTagsResponse = (
   }));
 };
 
+/**
+ * @deprecated getURLWithQueryFields is deprecated, Please use params to pass query parameters wherever it is required
+ */
 export const getURLWithQueryFields = (
   url: string,
   lstQueryFields?: string | string[],

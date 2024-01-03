@@ -19,6 +19,7 @@ import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -104,6 +105,14 @@ export const patchClassification = async (id: string, data: Operation[]) => {
     Operation[],
     AxiosResponse<Classification>
   >(`${BASE_URL}/${id}`, data, configOptions);
+
+  return response.data;
+};
+
+export const getTagByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Tag>(`tags/name/${fqn}`, {
+    params,
+  });
 
   return response.data;
 };
