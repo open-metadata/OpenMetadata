@@ -48,6 +48,7 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
+    Task as AirflowTask
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -144,7 +145,7 @@ class AirflowSource(PipelineServiceSource):
             for elem in dag_run_dict
         ]
 
-    def get_task_instances(self, dag_id: str, run_id: str) -> List[OMTaskInstance]:
+    def get_task_instances(self, dag_id: str, run_id: str, serialized_tasks: List[AirflowTask]) -> List[OMTaskInstance]:
         """
         We are building our own scoped TaskInstance
         class to only focus on core properties required
@@ -154,6 +155,11 @@ class AirflowSource(PipelineServiceSource):
         sources we support.
         """
         task_instance_list = None
+
+        # we use this to filter out only tasks that are present in current form of serialized dag
+        # if we wouldn't do this, ingesting pipeline status could fail as we would reference task_ids that were present
+        # in DAG at some point but are not anymore (hence they are not part of OpenMetadata Pipeline object)
+        serialized_task_ids = set([x.task_id for x in serialized_tasks])
 
         try:
             task_instance_list = (
@@ -186,7 +192,7 @@ class AirflowSource(PipelineServiceSource):
                 start_date=elem.get("start_date"),
                 end_date=elem.get("end_date"),
             )
-            for elem in task_instance_dict
+            for elem in task_instance_dict if elem.get("task_id") in serialized_task_ids
         ]
 
     def yield_pipeline_status(
@@ -200,7 +206,7 @@ class AirflowSource(PipelineServiceSource):
                     dag_run.run_id
                 ):  # Airflow dags can have old task which are turned off/commented out in code
                     tasks = self.get_task_instances(
-                        dag_id=dag_run.dag_id, run_id=dag_run.run_id
+                        dag_id=dag_run.dag_id, run_id=dag_run.run_id, serialized_tasks=pipeline_details.tasks
                     )
 
                     task_statuses = [
