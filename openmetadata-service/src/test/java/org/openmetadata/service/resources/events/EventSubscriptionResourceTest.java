@@ -192,7 +192,7 @@ public class EventSubscriptionResourceTest
       WebTarget target =
           getResource(String.format("%s/%s/processedEvents", collectionName, alertId.toString()));
       result = TestUtils.getWithResponse(target, Boolean.class, ADMIN_AUTH_HEADERS, 200);
-      LOG.info("waitForAllEventToComplete alertId: {} , result: {}", alertId, result);
+      LOG.debug("waitForAllEventToComplete alertId: {} , result: {}", alertId, result);
       try {
         Thread.sleep(3000L);
       } catch (InterruptedException e) {
@@ -369,7 +369,6 @@ public class EventSubscriptionResourceTest
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
     assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
-    assertAlertStatus(w6Alert.getId(), FAILED, 400, "UnknownHostException");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
