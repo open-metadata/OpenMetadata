@@ -52,7 +52,7 @@ public final class PipelineServiceClientFactory {
       throw new PipelineServiceClientException(
           String.format(
               "Error trying to load PipelineServiceClient %s: %s",
-              pipelineServiceClientClass, e.getMessage()));
+              pipelineServiceClientClass, e));
     }
   }
 }
