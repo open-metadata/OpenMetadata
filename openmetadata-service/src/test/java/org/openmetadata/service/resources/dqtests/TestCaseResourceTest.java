@@ -1626,7 +1626,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
-      result.setTestCaseResolutionStatusReference(null);
+      result.setIncidentId(null);
       testCaseResultMap.put(result.getTimestamp(), result);
     }
     for (TestCaseResult result : expectedTestCaseResults) {

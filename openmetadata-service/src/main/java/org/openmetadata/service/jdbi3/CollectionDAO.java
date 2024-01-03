@@ -3592,6 +3592,18 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+                + "AND json ->> 'incidentId' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> getResultsWithIncidents(@Bind("entityFQNHash") String entityFQNHash);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
