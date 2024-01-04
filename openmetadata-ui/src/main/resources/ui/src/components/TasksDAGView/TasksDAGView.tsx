@@ -11,21 +11,27 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
 import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
+  Background,
+  Controls,
   Edge,
   MarkerType,
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import {
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+} from '../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
-import TaskNode from './TaskNode';
+import TaskNode from './TaskNode/TaskNode';
+import './tasks-dag-view.style.less';
 
 export interface Props {
   tasks: Task[];
@@ -72,11 +78,12 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       );
 
       return {
-        className: classNames('leaf-node', taskStatus),
+        className: 'leaf-node',
         id: replaceSpaceWith_(task.name),
         type: getNodeType(task),
         data: {
           label: getEntityName(task),
+          taskStatus,
         },
         position: { x: 0, y: 0 },
         isConnectable: false,
@@ -114,8 +121,8 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
     <ReactFlow
       data-testid="react-flow-component"
       edges={edgesData}
-      maxZoom={2}
-      minZoom={0.5}
+      maxZoom={MAX_ZOOM_VALUE}
+      minZoom={MIN_ZOOM_VALUE}
       nodeTypes={nodeTypes}
       nodes={nodesData}
       selectNodesOnDrag={false}
@@ -125,8 +132,14 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       onInit={(reactFlowInstance) => {
         onLoad(reactFlowInstance);
       }}
-      onNodesChange={onNodesChange}
-    />
+      onNodesChange={onNodesChange}>
+      <Background gap={12} size={1} />
+      <Controls
+        className="task-dag-control-btn"
+        position="bottom-right"
+        showInteractive={false}
+      />
+    </ReactFlow>
   ) : (
     <Fragment />
   );

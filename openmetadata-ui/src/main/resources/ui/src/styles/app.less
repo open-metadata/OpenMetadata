@@ -605,35 +605,6 @@ a[href].link-text-grey,
   padding-right: 60px !important;
 }
 
-// *********  Leaf Node   **********
-
-.leaf-node.Successful .task-node {
-  border-color: @green-1;
-  background-color: @success-color;
-}
-
-.leaf-node.Failed .task-node {
-  border-color: @failed-color;
-  background-color: @error-light-color;
-}
-
-.leaf-node.Pending .task-node {
-  border-color: @primary-color;
-  background-color: @link-color;
-}
-
-.leaf-node.Successful .react-flow__handle {
-  background-color: @green-1 !important;
-}
-
-.leaf-node.Failed .react-flow__handle {
-  background-color: @failed-color !important;
-}
-
-.leaf-node.Pending .react-flow__handle {
-  background-color: @primary-color !important;
-}
-
 .ProseMirror .placeholder {
   color: @text-grey-muted !important;
 }
@@ -657,12 +628,6 @@ a[href].link-text-grey,
 }
 .react-flow__node {
   min-width: max-content;
-}
-.leaf-node .react-flow__handle {
-  background-color: @text-grey-muted;
-}
-.leaf-node.core .react-flow__handle {
-  background-color: @primary-color;
 }
 .react-flow__edge {
   pointer-events: all;
