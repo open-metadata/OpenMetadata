@@ -19,9 +19,9 @@ import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 20;
+export const LATEST_VERSION_ID = 21;
 
-export const COOKIE_VERSION = 'VERSION_1_2_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_2_4'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1127,6 +1127,26 @@ export const WHATS_NEW = [
 
 - Fixed the issue with ingestion bot deleting the assets assigned to data products.
       `,
+    },
+  },
+  {
+    id: 21,
+    version: 'v1.2.4',
+    description: 'Released on 7th Dec 2023.',
+    features: [],
+    changeLogs: {
+      Changes: `- To ensure a reliable Glossary Term Approval process, the Owner/Creator of the glossary term cannot be a Reviewer of that term.
+- Long glossary term names are truncated.
+        `,
+      Improvements: `- Fixed a redirecting issue with the Glossary page.
+- Fixed an issue with Tasks for the Dashboard charts.
+- Fixed an issue with Profiler ingestion.
+- Fixed an issue with the Version page.
+- Fixed an issue with Connection details.
+- Fixed an issue with loading the Custom Property page.
+- Fixed an issue with Search Indexing.
+- Security fixes have been made.
+        `,
     },
   },
 ];
