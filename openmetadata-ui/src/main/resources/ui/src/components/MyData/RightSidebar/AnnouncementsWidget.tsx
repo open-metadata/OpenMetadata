@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Card, Col, Row, Typography } from 'antd';
+import { Alert, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -107,7 +107,7 @@ function AnnouncementsWidget({
   }, [isAnnouncementLoading, announcements]);
 
   return (
-    <Card className="announcement-container card-widget h-full">
+    <div className="announcement-container card-widget h-full">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="font-medium m-b-sm">
@@ -116,7 +116,7 @@ function AnnouncementsWidget({
         </Col>
       </Row>
       {announcement}
-    </Card>
+    </div>
   );
 }
 
