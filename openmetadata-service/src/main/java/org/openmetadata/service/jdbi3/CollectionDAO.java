@@ -3595,15 +3595,27 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
                 + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
+                + "AND json ->> 'incidentId' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> getResultsWithIncidents(@Bind("testCaseFQNHash") String testCaseFQNHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
             "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
                 + "AND json ->> 'incidentId' IS NOT NULL",
         connectionType = POSTGRES)
-    List<String> getResultsWithIncidents(@Bind("entityFQNHash") String entityFQNHash);
+    void cleanTestCaseIncidents(@Bind("entityFQNHash") String entityFQNHash, @Bind("stateId") String stateId);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {

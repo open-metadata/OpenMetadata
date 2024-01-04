@@ -511,16 +511,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    * Check all the test case results that have an ongoing incident and get the stateId of the incident
    */
   private List<UUID> getIncidentIds(TestCase test) {
-    // TODO: make this simpler. PATCH the testCase itself, not the result.
     List<TestCaseResult> testCaseResults;
     testCaseResults =
         JsonUtils.readObjects(
             daoCollection
                 .dataQualityDataTimeSeriesDao()
-                .getResultsWithIncidents(test.getEntityFQN()),
+                .getResultsWithIncidents(FullyQualifiedName.buildHash(test.getFullyQualifiedName())),
             TestCaseResult.class);
 
-    return testCaseResults.stream().map(TestCaseResult::getIncidentId).collect(Collectors.toList());
+    return testCaseResults.stream().map(TestCaseResult::getIncidentId).collect(Collectors.toSet()).stream().toList();
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -709,7 +708,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return super.getTaskWorkflow(threadContext);
   }
 
-  // TODO: Clean me up after UI is implemented
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
     final TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
 
