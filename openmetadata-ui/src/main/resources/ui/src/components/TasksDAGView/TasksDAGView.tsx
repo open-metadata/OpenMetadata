@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 
-import { debounce } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
+  Controls,
   Edge,
   MarkerType,
   useEdgesState,
@@ -29,7 +23,6 @@ import ReactFlow, {
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
-  ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
@@ -37,8 +30,8 @@ import { replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
-import CustomTasksDAGViewControl from './CustomTasksDAGViewControl/CustomTasksDAGViewControl.component';
 import TaskNode from './TaskNode/TaskNode';
+import './tasks-dag-view.style.less';
 
 export interface Props {
   tasks: Task[];
@@ -48,11 +41,6 @@ export interface Props {
 const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   const [nodesData, setNodesData, onNodesChange] = useNodesState([]);
   const [edgesData, setEdgesData, onEdgesChange] = useEdgesState([]);
-  const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
-
-  const handleZoomLevel = debounce((value: number) => {
-    setZoomValue(value);
-  }, 150);
 
   const getNodeType = useCallback(
     (task: Task) => {
@@ -144,16 +132,13 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       onInit={(reactFlowInstance) => {
         onLoad(reactFlowInstance);
       }}
-      onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
       onNodesChange={onNodesChange}>
-      <CustomTasksDAGViewControl
-        fitViewParams={{
-          minZoom: MIN_ZOOM_VALUE,
-          maxZoom: MAX_ZOOM_VALUE,
-        }}
-        zoomValue={zoomValue}
-      />
       <Background gap={12} size={1} />
+      <Controls
+        className="task-dag-control-btn"
+        position="bottom-right"
+        showInteractive={false}
+      />
     </ReactFlow>
   ) : (
     <Fragment />
