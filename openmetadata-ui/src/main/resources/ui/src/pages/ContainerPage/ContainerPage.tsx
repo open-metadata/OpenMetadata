@@ -245,11 +245,17 @@ const ContainerPage = () => {
     }
   };
 
-  const handleUpdateContainerData = (updatedData: Container) => {
-    const jsonPatch = compare(omitBy(containerData, isUndefined), updatedData);
+  const handleUpdateContainerData = useCallback(
+    (updatedData: Container) => {
+      const jsonPatch = compare(
+        omitBy(containerData, isUndefined),
+        updatedData
+      );
 
-    return patchContainerDetails(containerData?.id ?? '', jsonPatch);
-  };
+      return patchContainerDetails(containerData?.id ?? '', jsonPatch);
+    },
+    [containerData]
+  );
 
   const handleUpdateDescription = async (updatedDescription: string) => {
     try {
@@ -418,18 +424,33 @@ const ContainerPage = () => {
     }
   };
 
-  const handleExtensionUpdate = async (updatedContainer: Container) => {
-    try {
-      const response = await handleUpdateContainerData(updatedContainer);
-      setContainerData({
-        ...response,
-        tags: sortTagsCaseInsensitive(response.tags ?? []),
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const handleExtensionUpdate = useCallback(
+    async (updatedContainer: Container) => {
+      if (isUndefined(containerData)) {
+        return;
+      }
+
+      try {
+        const response = await handleUpdateContainerData({
+          ...containerData,
+          extension: updatedContainer.extension,
+        });
+        setContainerData({
+          ...response,
+          tags: sortTagsCaseInsensitive(response.tags ?? []),
+        });
+        getEntityFeedCount();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      containerData,
+      handleUpdateContainerData,
+      getEntityFeedCount,
+      setContainerData,
+    ]
+  );
 
   const handleUpdateDataModel = async (
     updatedDataModel: Container['dataModel']
