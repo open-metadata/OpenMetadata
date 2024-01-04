@@ -1226,6 +1226,7 @@
     "assigned-you-a-new-task-lowercase": "משימה חדשה הועברה אליך",
     "assigning-team-entity-description": "הוסף {{entity}} אל {{name}}. ה{{entity}} יוכתר על ידי כל המשתמשים בצוות {{name}} וגם על ידי כל הצוותים שבתוך {{name}}",
     "at-least-one-policy": "הזן לפחות מדיניות אחת",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "ספק האימות אינו בסיסי",
     "bot-email-confirmation": "{{email}} לבוט {{botName}}",
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
