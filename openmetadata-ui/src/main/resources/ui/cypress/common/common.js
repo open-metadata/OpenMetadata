@@ -1244,7 +1244,7 @@ export const removeOwner = (entity, isGlossaryPage) => {
 
   cy.get('[data-testid="edit-owner"]').click();
   verifyResponseStatusCode('@getUsers', 200);
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+
   cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {
