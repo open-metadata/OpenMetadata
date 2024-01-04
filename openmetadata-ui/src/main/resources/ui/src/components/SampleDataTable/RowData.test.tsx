@@ -41,8 +41,28 @@ describe('Test RowData Component', () => {
     expect(await findByTestId('schema-modal')).toBeInTheDocument();
   });
 
-  it('Should render string data if data is not a tyeopf object', async () => {
+  it('Should render string data if data is not a typeof object', async () => {
     const { findByTestId } = render(<RowData data="data" />, {
+      wrapper: MemoryRouter,
+    });
+
+    const stringData = await findByTestId('string-data');
+
+    expect(stringData).toBeInTheDocument();
+  });
+
+  it('Should render string data if data value is 0', async () => {
+    const { findByTestId } = render(<RowData data={0} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const stringData = await findByTestId('string-data');
+
+    expect(stringData).toBeInTheDocument();
+  });
+
+  it('Should render string data if data value is empty string is passed', async () => {
+    const { findByTestId } = render(<RowData data="" />, {
       wrapper: MemoryRouter,
     });
 
