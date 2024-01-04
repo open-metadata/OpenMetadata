@@ -15,7 +15,6 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import React, {
   FunctionComponent,
@@ -27,7 +26,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { default as appState } from '../../AppState';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -515,7 +513,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
-    appState.inPageSearchText = '';
   }, []);
 
   const {
@@ -757,4 +754,4 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 };
 
-export default observer(withActivityFeed(DatabaseSchemaPage));
+export default withActivityFeed(DatabaseSchemaPage);

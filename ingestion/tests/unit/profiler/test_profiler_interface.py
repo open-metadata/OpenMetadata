@@ -30,6 +30,28 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
     DataStorageConfig,
     SampleDataStorageConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -40,7 +62,34 @@ from metadata.profiler.api.models import (
     ProfileSampleConfig,
     TableConfig,
 )
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.profiler_interface_factory import (
+    ProfilerInterfaceFactory,
+)
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
+    DatabricksProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.single_store.profiler_interface import (
+    SingleStoreProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
+    SnowflakeProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.trino.profiler_interface import (
+    TrinoProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
+    UnityCatalogProfilerInterface,
+)
 
 
 class ProfilerInterfaceTest(TestCase):
@@ -305,3 +354,31 @@ class ProfilerInterfaceTest(TestCase):
                 schema_config, table_fqn="demo"
             ),
         )
+
+    def test_register_many(self):
+        # Initialize factory
+        factory = ProfilerInterfaceFactory()
+
+        # Define profiles dictionary
+        profiles = {
+            DatabaseConnection.__name__: SQAProfilerInterface,
+            BigQueryConnection.__name__: BigQueryProfilerInterface,
+            SingleStoreConnection.__name__: SingleStoreProfilerInterface,
+            DatalakeConnection.__name__: PandasProfilerInterface,
+            SnowflakeConnection.__name__: SnowflakeProfilerInterface,
+            TrinoConnection.__name__: TrinoProfilerInterface,
+            UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
+            DatabricksConnection.__name__: DatabricksProfilerInterface,
+        }
+
+        # Register profiles
+        factory.register_many(profiles)
+
+        # Assert all expected interfaces are registered
+        expected_interfaces = set(profiles.keys())
+        actual_interfaces = set(factory._interface_type.keys())
+        assert expected_interfaces == actual_interfaces
+
+        # Assert profiler classes match registered interfaces
+        for interface_type, interface_class in profiles.items():
+            assert factory._interface_type[interface_type] == interface_class

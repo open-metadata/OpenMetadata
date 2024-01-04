@@ -22,11 +22,11 @@ import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
-import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
@@ -38,6 +38,7 @@ const TagsV1 = ({
   isVersionPage = false,
   tagProps,
   tooltipOverride,
+  tagType,
 }: TagsV1Props) => {
   const history = useHistory();
   const color = useMemo(
@@ -88,12 +89,12 @@ const TagsV1 = ({
 
   const redirectLink = useCallback(
     () =>
-      tag.source === TagSource.Glossary
+      (tagType ?? tag.source) === TagSource.Glossary
         ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
         : history.push(
             `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
           ),
-    [tag.source, tag.tagFQN]
+    [tagType, tag.source, tag.tagFQN]
   );
 
   const tagColorBar = useMemo(

@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
 public abstract class TotalEntitiesByTierAggregator<A, B, M, S>
@@ -27,12 +28,14 @@ public abstract class TotalEntitiesByTierAggregator<A, B, M, S>
       for (B entityTierBucket : getBuckets(entityTierBuckets)) {
         String entityTier = getKeyAsString(entityTierBucket);
         S sumEntityCount = getSumAggregations(entityTierBucket, ENTITY_COUNT);
+        Optional<Double> entityCount = getValue(sumEntityCount);
+
         timestampData.add(
             new TotalEntitiesByTier()
                 .withTimestamp(timestamp)
                 .withEntityTier(entityTier)
-                .withEntityCount(getValue(sumEntityCount)));
-        totalEntityCount = totalEntityCount + getValue(sumEntityCount);
+                .withEntityCount(entityCount.orElse(null)));
+        totalEntityCount = totalEntityCount + entityCount.orElse(0.0);
       }
       for (TotalEntitiesByTier el : timestampData) {
         if (totalEntityCount != 0.0) {
@@ -46,7 +49,7 @@ public abstract class TotalEntitiesByTierAggregator<A, B, M, S>
     return data;
   }
 
-  protected abstract Double getValue(S key);
+  protected abstract Optional<Double> getValue(S key);
 
   protected abstract S getSumAggregations(B bucket, String key);
 

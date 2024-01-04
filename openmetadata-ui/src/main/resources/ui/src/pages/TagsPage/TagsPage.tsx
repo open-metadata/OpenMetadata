@@ -39,7 +39,7 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LOADING_STATE } from '../../enums/common.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';

@@ -13,17 +13,33 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -71,13 +87,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeRelationships(Database database) {
-    EntityReference service = database.getService();
-    addRelationship(
-        service.getId(),
-        database.getId(),
-        service.getType(),
-        Entity.DATABASE,
-        Relationship.CONTAINS);
+    addServiceRelationship(database, database.getService());
   }
 
   private List<EntityReference> getSchemas(Database database) {
@@ -89,6 +99,26 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public EntityInterface getParentEntity(Database entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public String exportToCsv(String name, String user) throws IOException {
+    Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
+    DatabaseSchemaRepository repository =
+        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("database", name);
+    List<DatabaseSchema> schemas =
+        repository.listAll(repository.getFields("owner,tags,domain"), filter);
+    schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return new DatabaseCsv(database, user).exportCsv(schemas);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
+      throws IOException {
+    Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
+    DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
+    return databaseCsv.importCsv(csv, dryRun);
   }
 
   public void setFields(Database database, Fields fields) {
@@ -184,6 +214,65 @@ public class DatabaseRepository extends EntityRepository<Database> {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+    }
+  }
+
+  public static class DatabaseCsv extends EntityCsv<DatabaseSchema> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.DATABASE);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final Database database;
+
+    DatabaseCsv(Database database, String user) {
+      super(DATABASE_SCHEMA, DOCUMENTATION.getHeaders(), user);
+      this.database = database;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+      DatabaseSchema schema;
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        importFailure(printer, entityNotFound(0, DATABASE_SCHEMA, schemaFqn), csvRecord);
+        processRecord = false;
+        return;
+      }
+
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // Field 1,2,3,6,7 - database schema name, displayName, description
+      schema
+          .withName(csvRecord.get(0))
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwner(getOwner(printer, csvRecord, 3))
+          .withTags(getTagLabels(printer, csvRecord, 4))
+          .withRetentionPeriod(csvRecord.get(5))
+          .withSourceUrl(csvRecord.get(6))
+          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+      if (processRecord) {
+        createEntity(printer, csvRecord, schema);
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, DatabaseSchema entity) {
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwner(recordList, entity.getOwner());
+      addTagLabels(recordList, entity.getTags());
+      addField(recordList, entity.getRetentionPeriod());
+      addField(recordList, entity.getSourceUrl());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addRecord(csvFile, recordList);
     }
   }
 }

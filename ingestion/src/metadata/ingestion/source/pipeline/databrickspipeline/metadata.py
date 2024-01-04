@@ -30,10 +30,13 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -108,7 +111,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         f"Error building Databricks Pipeline information from {pipeline_details}."
                         f" There might be Databricks Jobs API version incompatibilities - {err}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except ValidationError as err:
@@ -116,7 +119,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name="Pipeline",
                     error=f"Error building pydantic model for {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -124,7 +127,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 left=StackTraceError(
                     name="Pipeline",
                     error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -238,7 +241,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     left=StackTraceError(
                         name=pipeline_fqn,
                         error=f"Failed to yield pipeline status: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

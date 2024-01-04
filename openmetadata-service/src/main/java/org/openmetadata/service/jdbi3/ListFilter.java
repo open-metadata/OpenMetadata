@@ -51,13 +51,14 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
-    condition = addCondition(condition, getDisabledCondition(tableName));
+    condition = addCondition(condition, getDisabledCondition());
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
     condition = addCondition(condition, getTestSuiteTypeCondition());
     condition = addCondition(condition, getTestSuiteFQNCondition());
+    condition = addCondition(condition, getEmptyTestSuiteCondition());
     condition = addCondition(condition, getDomainCondition());
     condition = addCondition(condition, getEntityFQNHashCondition());
     condition = addCondition(condition, getTestCaseResolutionStatusType());
@@ -135,15 +136,14 @@ public class ListFilter {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
   }
 
-  public String getDisabledCondition(String tableName) {
-    String disabled = queryParams.get("disabled");
-    return disabled == null ? "" : getDisabledCondition(tableName, disabled);
-  }
-
-  public String getDisabledCondition(String tableName, String disabledStr) {
+  public String getDisabledCondition() {
+    String disabledStr = queryParams.get("disabled");
+    if (disabledStr == null) {
+      return "";
+    }
     boolean disabled = Boolean.parseBoolean(disabledStr);
     String disabledCondition;
-    if (DatasourceConfig.getInstance().isMySQL()) {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       if (disabled) {
         disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";
       } else {
@@ -226,6 +226,20 @@ public class ListFilter {
       default:
         return "";
     }
+  }
+
+  private String getEmptyTestSuiteCondition() {
+    String includeEmptyTestSuites = getQueryParam("includeEmptyTestSuites");
+    if (includeEmptyTestSuites == null || Boolean.parseBoolean(includeEmptyTestSuites)) {
+      // if we want to include empty test suites, then we don't need to add a condition
+      return "";
+    }
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "!JSON_CONTAINS(json, JSON_ARRAY() , '$.testCaseResultSummary')";
+    }
+
+    return "jsonb_array_length(json#>'{testCaseResultSummary}') != 0";
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {

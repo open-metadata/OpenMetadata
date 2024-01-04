@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -20,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  lowerCase,
   set,
   sortBy,
   toLower,
@@ -29,6 +27,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -36,7 +35,10 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -45,21 +47,28 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
+  searchInColumns,
 } from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
 import {
-  getDataTypeString,
   getFilterIcon,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = ({
@@ -71,7 +80,6 @@ const SchemaTable = ({
   joins,
   isReadOnly = false,
   onThreadLinkSelect,
-  entityFqn,
   tableConstraints,
   tablePartitioned,
 }: SchemaTableProps) => {
@@ -79,20 +87,44 @@ const SchemaTable = ({
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
+  const [tablePermissions, setTablePermissions] =
+    useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
+  const decodedEntityFqn = getDecodedFqn(entityFqn);
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
   );
 
+  const fetchResourcePermission = async (entityFqn: string) => {
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TABLE,
+        entityFqn
+      );
+      setTablePermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
+      );
+    }
+  };
+
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
+
+  useEffect(() => {
+    fetchResourcePermission(entityFqn);
+  }, [entityFqn]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -158,34 +190,6 @@ const SchemaTable = ({
     }
   };
 
-  const searchInColumns = (table: Column[], searchText: string): Column[] => {
-    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
-      const isContainData =
-        lowerCase(column.name).includes(searchText) ||
-        lowerCase(column.description).includes(searchText) ||
-        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedCols, column];
-      } else if (!isUndefined(column.children)) {
-        const searchedChildren = searchInColumns(column.children, searchText);
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedCols,
-            {
-              ...column,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedCols;
-    }, [] as Column[]);
-
-    return searchedValue;
-  };
-
   const handleUpdate = (column: Column) => {
     handleEditColumn(column);
   };
@@ -226,7 +230,7 @@ const SchemaTable = ({
             fqn: record.fullyQualifiedName ?? '',
             field: record.description,
           }}
-          entityFqn={entityFqn}
+          entityFqn={decodedEntityFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
@@ -314,8 +318,8 @@ const SchemaTable = ({
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-full">
-              <div className="d-inline-flex">
+            <div className="d-inline-flex flex-column hover-icon-group">
+              <div className="inline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
@@ -339,11 +343,21 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              <Icon
-                className="hover-cell-icon text-left m-t-xss"
-                component={IconEdit}
-                onClick={() => handleEditDisplayNameClick(record)}
-              />
+              {(tablePermissions?.EditAll ||
+                tablePermissions?.EditDisplayName) && (
+                <Button
+                  className="cursor-pointer hover-cell-icon w-fit-content"
+                  data-testid="edit-displayName-button"
+                  style={{
+                    color: DE_ACTIVE_COLOR,
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                  onClick={() => handleEditDisplayNameClick(record)}>
+                  <IconEdit />
+                </Button>
+              )}
             </div>
           );
         },
@@ -389,7 +403,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -414,7 +428,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -432,7 +446,7 @@ const SchemaTable = ({
       },
     ],
     [
-      entityFqn,
+      decodedEntityFqn,
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,

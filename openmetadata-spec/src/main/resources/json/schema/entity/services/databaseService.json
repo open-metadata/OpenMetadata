@@ -51,7 +51,8 @@
         "Couchbase",
         "Greenplum",
         "Doris",
-        "UnityCatalog"
+        "UnityCatalog",
+        "DuckDb"
       ],
       "javaEnums": [
         {
@@ -164,6 +165,9 @@
         },
         {
           "name": "UnityCatalog"
+        },
+        {
+          "name": "DuckDb"
         }
         
       ]
@@ -282,6 +286,9 @@
             },
             {
               "$ref": "./connections/database/unityCatalogConnection.json"
+            },
+            {
+              "$ref": "./connections/database/duckdbConnection.json"
             }
           ]
         }

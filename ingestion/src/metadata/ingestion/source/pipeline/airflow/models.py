@@ -31,7 +31,7 @@ class AirflowBaseModel(BaseModel):
     dag_id: str
 
 
-class Task(BaseModel):
+class AirflowTask(BaseModel):
     pool: Optional[str]
     doc_md: Optional[str]
     inlets: Optional[List[Any]] = Field(alias="_inlets")
@@ -41,6 +41,7 @@ class Task(BaseModel):
     downstream_task_ids: Optional[List[str]]
     start_date: Optional[datetime]
     end_date: Optional[datetime]
+    owner: Optional[str]
 
     # Allow picking up data from key `inlets` and `_inlets`
     class Config:
@@ -48,7 +49,7 @@ class Task(BaseModel):
 
 
 class TaskList(BaseModel):
-    __root__: List[Task]
+    __root__: List[AirflowTask]
 
 
 class Dag(BaseModel):
@@ -68,6 +69,6 @@ class AirflowDagDetails(AirflowBaseModel):
     max_active_runs: Optional[int]
     description: Optional[str]
     start_date: Optional[datetime]
-    tasks: List[Task]
-    owners: Optional[Any]
+    tasks: List[AirflowTask]
+    owner: Optional[str]
     schedule_interval: Optional[str]

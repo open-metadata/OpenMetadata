@@ -19,8 +19,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 @Slf4j
 public final class ParallelStreamUtil {
@@ -34,7 +36,8 @@ public final class ParallelStreamUtil {
       CompletableFuture<T> resultFuture = CompletableFuture.supplyAsync(supplier, executor);
       return resultFuture.get();
     } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+      Thread.currentThread().interrupt();
+      throw new UnhandledServerException("Exception encountered", e);
     } catch (ExecutionException e) {
       handleExecutionException(e);
       // shouldn't reach here
@@ -55,10 +58,12 @@ public final class ParallelStreamUtil {
       return resultFuture.get(timeoutInSeconds, TimeUnit.SECONDS);
     } catch (ExecutionException e) {
       handleExecutionException(e);
-      // shouldn't reach here
-      throw new IllegalStateException("Shouldn't reach here");
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException("Shouldn't reach here"); // shouldn't reach here
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new UnhandledServerException("Exception encountered", e);
+    } catch (TimeoutException e) {
+      throw new UnhandledServerException("Exception encountered", e);
     } finally {
       LOG.debug("execute complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
       stopwatch.stop();
@@ -74,7 +79,7 @@ public final class ParallelStreamUtil {
               try {
                 return callable.call();
               } catch (Exception ex) {
-                throw new RuntimeException(ex);
+                throw new UnhandledServerException("Exception encountered", ex);
               }
             },
             executor);
@@ -93,13 +98,13 @@ public final class ParallelStreamUtil {
   private static void handleExecutionException(ExecutionException e) {
     Throwable t = e.getCause();
     if (t != null) {
-      if (t instanceof RuntimeException) {
-        throw (RuntimeException) t;
+      if (t instanceof RuntimeException runtimeException) {
+        throw runtimeException;
       } else {
-        throw new RuntimeException(t);
+        throw new UnhandledServerException("Encountered exception", t);
       }
     } else {
-      throw new RuntimeException(e);
+      throw new UnhandledServerException("Encountered exception", e);
     }
   }
 }

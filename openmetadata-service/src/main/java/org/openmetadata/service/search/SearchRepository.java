@@ -123,7 +123,7 @@ public class SearchRepository {
             s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
       }
     } catch (Exception e) {
-      throw new RuntimeException("Failed to load indexMapping.json");
+      throw new UnhandledServerException("Failed to load indexMapping.json", e);
     }
     try (InputStream in2 =
         getClass().getResourceAsStream("/elasticsearch/collate/indexMapping.json")) {
@@ -250,9 +250,9 @@ public class SearchRepository {
   public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityType;
-      if (entity instanceof ReportData) {
+      if (entity instanceof ReportData reportData) {
         // Report data type is an entity itself where each report data type has its own index
-        entityType = ((ReportData) entity).getReportDataType().toString();
+        entityType = reportData.getReportDataType().toString();
       } else {
         entityType = entity.getEntityReference().getType();
       }

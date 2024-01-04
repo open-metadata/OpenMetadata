@@ -32,7 +32,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -131,13 +130,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
-    EntityReference service = ingestionPipeline.getService();
-    addRelationship(
-        service.getId(),
-        ingestionPipeline.getId(),
-        service.getType(),
-        Entity.INGESTION_PIPELINE,
-        Relationship.CONTAINS);
+    addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
   }
 
   @Override
@@ -253,7 +246,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(
+        getLatestExtensionFromTimeSeries(
             ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
