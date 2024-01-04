@@ -16,10 +16,15 @@ import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
 import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { EntityReference } from '../../generated/entity/type';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchQuery } from '../../rest/searchAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -70,13 +75,16 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
       const dataAssets = hits.map(({ _source }) => {
         const entityName = getEntityName(_source);
+        const entityRef = getEntityReferenceFromEntity(
+          _source as EntityReference,
+          _source.entityType as EntityType
+        );
 
         return {
           label: entityName,
-          value: _source.id,
+          value: _source.fullyQualifiedName,
           reference: {
-            id: _source.id ?? '',
-            type: _source.entityType,
+            ...entityRef,
           },
           displayName: entityName,
           name: _source.name,
@@ -184,19 +192,23 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   );
 
   const handleChange: SelectProps['onChange'] = (values: string[], options) => {
-    const selectedOptions = (options as DataAssetOption[]).reduce(
-      (acc, option) => {
-        if (values.includes(option.value as string)) {
-          acc.push({ ...option, label: option.displayName });
-        }
+    if (mode) {
+      const selectedOptions = (options as DataAssetOption[]).reduce(
+        (acc, option) => {
+          if (values.includes(option.value as string)) {
+            acc.push({ ...option, label: option.displayName });
+          }
 
-        return acc;
-      },
-      [] as DataAssetOption[]
-    );
+          return acc;
+        },
+        [] as DataAssetOption[]
+      );
 
-    selectedDataAssetsRef.current = selectedOptions;
-    onChange?.(selectedOptions);
+      selectedDataAssetsRef.current = selectedOptions;
+      onChange?.(selectedOptions);
+    } else {
+      onChange?.(options as DataAssetOption);
+    }
   };
 
   return (

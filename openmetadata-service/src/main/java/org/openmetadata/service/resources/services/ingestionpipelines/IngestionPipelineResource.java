@@ -885,8 +885,6 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);

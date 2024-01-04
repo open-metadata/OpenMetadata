@@ -169,6 +169,10 @@ module.exports = {
       path: require.resolve('path-browserify'),
       fs: false,
       url: require.resolve('url/'),
+      'process/browser': require.resolve('process/browser'),
+    },
+    alias: {
+      process: 'process/browser',
     },
   },
 

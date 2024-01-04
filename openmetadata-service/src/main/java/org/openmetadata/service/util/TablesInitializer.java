@@ -395,6 +395,8 @@ public final class TablesInitializer {
     MigrationWorkflow workflow =
         new MigrationWorkflow(
             jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
+    // Initialize search repository
+    new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
