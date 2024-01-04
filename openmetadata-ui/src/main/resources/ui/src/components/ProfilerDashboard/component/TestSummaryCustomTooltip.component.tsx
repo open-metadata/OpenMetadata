@@ -23,11 +23,10 @@ const TestSummaryCustomTooltip = (
 
   return active && payload.length ? (
     <Card
-      className="custom-data-insight-tooltip"
       title={
         <Typography.Title level={5}>{payload[0].payload.name}</Typography.Title>
       }>
-      <ul className="custom-data-insight-tooltip-container">
+      <ul data-testid="test-summary-tool-tip-container">
         {data.map(([key, value]) => (
           <li
             className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
@@ -35,7 +34,9 @@ const TestSummaryCustomTooltip = (
             <span className="flex items-center text-grey-muted">
               {startCase(key)}
             </span>
-            <span className="font-medium">{value}</span>
+            <span className="font-medium" data-testid={key}>
+              {value}
+            </span>
           </li>
         ))}
       </ul>
