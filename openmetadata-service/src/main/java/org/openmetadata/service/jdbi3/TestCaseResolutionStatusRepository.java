@@ -111,6 +111,34 @@ public class TestCaseResolutionStatusRepository
     return JsonUtils.readValue(jsonThread, Thread.class);
   }
 
+  /**
+   * Ensure we are following the correct status flow
+   */
+  private void validateStatus(
+      TestCaseResolutionStatusTypes lastStatus, TestCaseResolutionStatusTypes newStatus) {
+    switch (lastStatus) {
+      case New -> {
+        /* New can go to any status */
+      }
+      case Ack -> {
+        if (newStatus.equals(TestCaseResolutionStatusTypes.New)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
+      case Assigned -> {
+        if (List.of(TestCaseResolutionStatusTypes.New, TestCaseResolutionStatusTypes.Ack)
+            .contains(newStatus)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
+      case Resolved -> {
+        if (!newStatus.equals(TestCaseResolutionStatusTypes.Resolved)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
+    }
+  }
+
   @Override
   @Transaction
   public TestCaseResolutionStatus createNewRecord(
@@ -119,18 +147,33 @@ public class TestCaseResolutionStatusRepository
     TestCaseResolutionStatus lastIncident =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
 
+    if (recordEntity.getStateId() == null) {
+      recordEntity.setStateId(UUID.randomUUID());
+    }
+
     if (lastIncident != null) {
       // if we have an ongoing incident, set the stateId if the new record to be created
       recordEntity.setStateId(
           Boolean.TRUE.equals(unresolvedIncident(recordEntity))
               ? lastIncident.getStateId()
               : recordEntity.getStateId());
+
+      validateStatus(
+          lastIncident.getTestCaseResolutionStatusType(),
+          recordEntity.getTestCaseResolutionStatusType());
     }
 
     switch (recordEntity.getTestCaseResolutionStatusType()) {
         // When we create a NEW incident, we need to open a task with the test case owner as the
         // assignee. We don't need to check any past history
-      case New -> openNewTask(recordEntity, lastIncident);
+      case New -> {
+        // If there is already an unresolved incident, return it without doing any
+        // further logic.
+        if (lastIncident != null) {
+          return getLatestRecord(lastIncident.getTestCaseReference().getFullyQualifiedName());
+        }
+        openNewTask(recordEntity);
+      }
       case Ack -> {
         /* nothing to do for ACK. The Owner already has the task open. It will close it when reassigning it */
       }
@@ -149,12 +192,7 @@ public class TestCaseResolutionStatusRepository
     return super.createNewRecord(recordEntity, extension, recordFQN);
   }
 
-  private void openNewTask(
-      TestCaseResolutionStatus incidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
-
-    if (lastIncidentStatus != null) {
-      throw new IllegalArgumentException("An existing incident cannot be moved to NEW");
-    }
+  private void openNewTask(TestCaseResolutionStatus incidentStatus) {
 
     List<EntityReference> owners =
         EntityUtil.getEntityReferences(

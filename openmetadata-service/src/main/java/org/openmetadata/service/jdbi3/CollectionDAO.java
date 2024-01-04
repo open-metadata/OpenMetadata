@@ -3615,7 +3615,8 @@ public interface CollectionDAO {
             "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
                 + "AND json ->> 'incidentId' IS NOT NULL",
         connectionType = POSTGRES)
-    void cleanTestCaseIncidents(@Bind("entityFQNHash") String entityFQNHash, @Bind("stateId") String stateId);
+    void cleanTestCaseIncidents(
+        @Bind("entityFQNHash") String entityFQNHash, @Bind("stateId") String stateId);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {

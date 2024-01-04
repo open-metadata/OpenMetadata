@@ -516,10 +516,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         JsonUtils.readObjects(
             daoCollection
                 .dataQualityDataTimeSeriesDao()
-                .getResultsWithIncidents(FullyQualifiedName.buildHash(test.getFullyQualifiedName())),
+                .getResultsWithIncidents(
+                    FullyQualifiedName.buildHash(test.getFullyQualifiedName())),
             TestCaseResult.class);
 
-    return testCaseResults.stream().map(TestCaseResult::getIncidentId).collect(Collectors.toSet()).stream().toList();
+    return testCaseResults.stream()
+        .map(TestCaseResult::getIncidentId)
+        .collect(Collectors.toSet())
+        .stream()
+        .toList();
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
