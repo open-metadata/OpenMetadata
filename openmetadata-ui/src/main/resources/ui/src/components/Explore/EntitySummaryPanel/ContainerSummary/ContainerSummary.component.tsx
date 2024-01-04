@@ -71,16 +71,10 @@ function ContainerSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ?? []
-          }
+          tags={getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )}
         />
 
         <Divider className="m-y-xs" />

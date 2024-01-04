@@ -80,15 +80,10 @@ const DataModelSummary = ({
           entityDetail={entityDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
         <Divider className="m-y-xs" />
