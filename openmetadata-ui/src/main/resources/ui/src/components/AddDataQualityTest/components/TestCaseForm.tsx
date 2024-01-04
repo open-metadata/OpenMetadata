@@ -124,7 +124,6 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const fetchAllTestCases = async () => {
     try {
       const { data } = await getListTestCase({
-        fields: 'testDefinition',
         limit: PAGE_SIZE_LARGE,
         entityLink: generateEntityLink(
           isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
@@ -134,7 +133,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       setTestCases(data);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setTestCases([]);
     }
   };
 
@@ -275,6 +274,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   return (
     <Form
+      data-testid="test-case-form"
       form={form}
       layout="vertical"
       name="tableTestForm"
@@ -294,6 +294,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             },
           ]}>
           <Select
+            data-testid="column"
             placeholder={t('label.please-select-entity', {
               entity: t('label.column-lowercase'),
             })}>
@@ -325,7 +326,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             },
           },
         ]}>
-        <Input placeholder={t('message.enter-test-case-name')} />
+        <Input
+          data-testid="test-case-name"
+          placeholder={t('message.enter-test-case-name')}
+        />
       </Form.Item>
       <Form.Item
         label={t('label.test-type')}
@@ -340,6 +344,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ]}>
         <Select
           showSearch
+          data-testid="test-type"
           options={testDefinitions.map((suite) => ({
             label: getEntityName(suite),
             value: suite.fullyQualifiedName,
@@ -365,7 +370,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
-          <Button onClick={onBack}>{t('label.back')}</Button>
+          <Button data-testid="cancel-btn" onClick={onBack}>
+            {t('label.back')}
+          </Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
             {t('label.submit')}
           </Button>
