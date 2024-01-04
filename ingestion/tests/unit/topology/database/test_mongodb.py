@@ -47,9 +47,9 @@ mock_mongo_config = {
         "serviceConnection": {
             "config": {
                 "type": "MongoDB",
-                "connectionDetails": {
-                    "connectionURI": "mongodb://ulixius:dummy_password@localhost:27017",
-                },
+                "username": "ulixius",
+                "password": "dummy_password",
+                "hostPort": "localhost:27017"
             },
         },
         "sourceConfig": {
