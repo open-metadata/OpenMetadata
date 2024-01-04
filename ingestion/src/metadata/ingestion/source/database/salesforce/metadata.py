@@ -213,7 +213,7 @@ class SalesforceSource(DatabaseServiceSource):
                     entity_type=DatabaseSchema,
                     service_name=self.context.database_service,
                     database_name=self.context.database,
-                    schema_name=self.context.database.database_schema,
+                    schema_name=self.context.database_schema,
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
