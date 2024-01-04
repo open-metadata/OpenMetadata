@@ -107,7 +107,7 @@
     <lombok.version>1.18.30</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
     <elasticsearch.version>7.17.16</elasticsearch.version>
-    <opensearch.version>2.5.0</opensearch.version>
+    <opensearch.version>2.11.1</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.19</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
