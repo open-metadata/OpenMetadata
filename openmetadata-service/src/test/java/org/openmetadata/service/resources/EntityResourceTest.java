@@ -593,7 +593,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityListWithPagination_200(TestInfo test) throws IOException {
+  protected void get_entityListWithPagination_200(TestInfo test) throws IOException {
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
