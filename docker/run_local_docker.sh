@@ -117,6 +117,11 @@ until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localh
   sleep 5
 done
 
+until curl -v --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
+  printf 'Checking if OM Server is reachable...\n'
+  sleep 5
+done
+
 curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
   --header 'Content-Type: application/json' \
