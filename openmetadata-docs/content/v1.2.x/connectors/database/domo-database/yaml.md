@@ -12,8 +12,8 @@ slug: /connectors/database/domo-database/yaml
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
+| Data Profiler      | {% icon iconName="cross" /%} |
+| Data Quality       | {% icon iconName="cross" /%} |
 | Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
@@ -21,8 +21,8 @@ slug: /connectors/database/domo-database/yaml
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
 | Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
+| Table-level  | {% icon iconName="cross" /%} |
+| Column-level | {% icon iconName="cross" /%} |
 
 {% /multiTablesWrapper %}
 
@@ -32,7 +32,6 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
