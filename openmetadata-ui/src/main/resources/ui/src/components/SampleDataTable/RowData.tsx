@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import { isNull, isObject, isUndefined } from 'lodash';
+import { isNil, isObject } from 'lodash';
 import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import SchemaModal from '../Modals/SchemaModal/SchemaModal';
@@ -25,7 +25,7 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
   const onOpen = useCallback(() => setIsFullView(true), []);
 
   const dataElementRenderer = useMemo(() => {
-    if (isUndefined(data) || isNull(data) || data === '') {
+    if (isNil(data) || data === '') {
       return (
         <Typography.Text data-testid="empty-data">
           {NO_DATA_PLACEHOLDER}
