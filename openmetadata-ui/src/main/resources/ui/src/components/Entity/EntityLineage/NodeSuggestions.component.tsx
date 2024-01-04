@@ -26,15 +26,13 @@ import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-import {
-  getEntityNodeIcon,
-  getSearchIndexFromNodeType,
-} from '../../../utils/EntityLineageUtils';
+import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
@@ -77,7 +75,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         '',
         '',
-        getSearchIndexFromNodeType(entityType)
+        (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE
       );
       setData(formatDataResponse(data.data.hits.hits));
     } catch (error) {
@@ -124,7 +122,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           label: (
             <>
               <div
-                className="d-flex items-center text-sm"
+                className="d-flex items-center"
                 key={entity.fullyQualifiedName}
                 onClick={() => {
                   onSelectHandler?.(entity as EntityReference);

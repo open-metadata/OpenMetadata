@@ -62,7 +62,7 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { edge, isColumnLineage, ...rest } = data;
+  const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
   const offset = 4;
 
   const {
@@ -79,10 +79,10 @@ export const CustomEdge = ({
     }
 
     return (
-      tracedColumns.includes(data.sourceHandle) &&
-      tracedColumns.includes(data.targetHandle)
+      tracedColumns.includes(sourceHandle) &&
+      tracedColumns.includes(targetHandle)
     );
-  }, [isColumnLineage, tracedColumns]);
+  }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
   const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
@@ -218,12 +218,20 @@ export const CustomEdge = ({
     [offset, edgeCenterX, edgeCenterY, rest, data]
   );
 
+  const dataTestId = useMemo(() => {
+    if (!isColumnLineage) {
+      return `edge-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`;
+    } else {
+      return `column-edge-${sourceHandle}-${targetHandle}`;
+    }
+  }, [edge, isColumnLineage, sourceHandle, targetHandle]);
+
   return (
     <Fragment>
       <path
         className="react-flow__edge-path"
         d={edgePath}
-        data-testid="react-flow-edge-path"
+        data-testid={dataTestId}
         id={id}
         markerEnd={markerEnd}
         style={updatedStyle}

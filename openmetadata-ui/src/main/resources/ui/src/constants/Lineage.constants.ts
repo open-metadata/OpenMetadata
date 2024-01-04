@@ -13,7 +13,7 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.75;
@@ -27,35 +27,35 @@ export const PIPELINE_EDGE_WIDTH = 200;
 
 export const entityData = [
   {
-    type: EntityType.TABLE,
+    type: SearchIndex.TABLE,
     label: t('label.table-plural'),
   },
   {
-    type: EntityType.DASHBOARD,
+    type: SearchIndex.DASHBOARD,
     label: t('label.dashboard-plural'),
   },
   {
-    type: EntityType.TOPIC,
+    type: SearchIndex.TOPIC,
     label: t('label.topic-plural'),
   },
   {
-    type: EntityType.MLMODEL,
+    type: SearchIndex.MLMODEL,
     label: t('label.ml-model-plural'),
   },
   {
-    type: EntityType.CONTAINER,
+    type: SearchIndex.CONTAINER,
     label: t('label.container-plural'),
   },
   {
-    type: EntityType.PIPELINE,
+    type: SearchIndex.PIPELINE,
     label: t('label.pipeline-plural'),
   },
   {
-    type: EntityType.SEARCH_INDEX,
+    type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
   {
-    type: EntityType.DASHBOARD_DATA_MODEL,
+    type: SearchIndex.DASHBOARD_DATA_MODEL,
     label: t('label.data-model-plural'),
   },
 ];

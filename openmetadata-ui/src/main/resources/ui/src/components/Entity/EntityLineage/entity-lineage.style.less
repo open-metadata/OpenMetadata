@@ -13,7 +13,8 @@
 
 @import (reference) url('../../../styles/variables.less');
 
-@lineage-sidebar-width: 100px;
+@lineage-sidebar-width: 110px;
+@lineage-breadcrumb-panel: 50px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -183,7 +184,7 @@
   left: @sidebar-width;
   position: fixed !important;
   width: calc(100vw - @sidebar-width);
-  height: calc(100vh - @navbar-height);
+  height: calc(100vh - (@navbar-height + @lineage-breadcrumb-panel));
 }
 
 .lineage-node-remove-btn {

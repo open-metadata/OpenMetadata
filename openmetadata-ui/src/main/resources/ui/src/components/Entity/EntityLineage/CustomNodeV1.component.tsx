@@ -67,7 +67,7 @@ const CustomNodeV1 = (props: NodeProps) => {
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
 
   const isSelected = selectedNode === node;
-  const { columns, id, testSuite, lineage } = node;
+  const { columns, id, testSuite, lineage, fullyQualifiedName } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<ModifiedColumn[]>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
@@ -156,6 +156,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           {isSelected && isEditMode ? (
             <Button
               className="lineage-node-remove-btn bg-body-hover"
+              data-testid="lineage-node-remove-btn"
               icon={
                 <SVGIcons
                   alt="times-circle"
@@ -288,7 +289,8 @@ const CustomNodeV1 = (props: NodeProps) => {
         'lineage-node p-0',
         isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
         { 'custom-node-header-tracing': isTraced }
-      )}>
+      )}
+      data-testid={`lineage-node-${fullyQualifiedName}`}>
       {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>

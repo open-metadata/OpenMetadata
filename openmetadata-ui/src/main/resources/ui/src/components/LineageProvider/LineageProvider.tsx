@@ -17,7 +17,6 @@ import { LoadingState } from 'Models';
 import React, {
   createContext,
   DragEvent,
-  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -88,11 +87,10 @@ import {
 } from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { useTourProvider } from '../TourProvider/TourProvider';
-import { LineageContextType } from './LineageProvider.interface';
-
-interface LineageProviderProps {
-  children: ReactNode;
-}
+import {
+  LineageContextType,
+  LineageProviderProps,
+} from './LineageProvider.interface';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -145,7 +143,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       try {
         const res = await getLineageDataByFQN(fqn, config, queryFilter);
         if (res) {
-          setEntityLineage(res);
+          const allNodes = uniqWith(
+            [...(res.nodes ?? []), res.entity],
+            isEqual
+          );
+          setEntityLineage({
+            ...res,
+            nodes: allNodes,
+          });
         } else {
           showErrorToast(
             t('server.entity-fetch-error', {
@@ -180,7 +185,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
 
         const allNodes = uniqWith(
-          [...(entityLineage?.nodes ?? []), ...(res.nodes ?? [])],
+          [...(entityLineage?.nodes ?? []), ...(res.nodes ?? []), res.entity],
           isEqual
         );
         const allEdges = uniqWith(
@@ -362,17 +367,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onNodeDrop = (event: DragEvent, reactFlowBounds: DOMRect) => {
     event.preventDefault();
-    const type = event.dataTransfer.getData('application/reactflow');
-    if (type.trim()) {
+    const entityType = event.dataTransfer.getData('application/reactflow');
+    if (entityType) {
       const position = reactFlowInstance?.project({
         x: event.clientX - (reactFlowBounds?.left ?? 0),
         y: event.clientY - (reactFlowBounds?.top ?? 0),
       });
-      const [label, nodeType] = type.split('-');
       const nodeId = uniqueId();
       const newNode = {
         id: nodeId,
-        nodeType,
+        nodeType: EntityLineageNodeType.DEFAULT,
         position,
         className: '',
         connectable: false,
@@ -383,6 +387,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             <div className="relative">
               <Button
                 className="lineage-node-remove-btn bg-body-hover"
+                data-testid="lineage-node-remove-btn"
                 icon={
                   <SVGIcons
                     alt="times-circle"
@@ -397,7 +402,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               />
 
               <NodeSuggestions
-                entityType={label}
+                entityType={entityType}
                 onSelectHandler={(value) => onEntitySelect(value, nodeId)}
               />
             </div>
