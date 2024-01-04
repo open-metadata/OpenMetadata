@@ -1,21 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -26,6 +10,23 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 public interface SearchIndex {
   Map<String, Object> buildESDoc();
@@ -99,6 +100,7 @@ public interface SearchIndex {
       relationshipDetails.put(
           "pipeline",
           JsonUtils.getMap(CommonUtil.nullOrEmpty(lineageDetails.getPipeline()) ? null : lineageDetails.getPipeline()));
+      relationshipDetails.put("edgeDescription", CommonUtil.nullOrEmpty(lineageDetails.getDescription()) ? null : lineageDetails.getDescription());
       if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
         List<Map<String, Object>> colummnLineageList = new ArrayList<>();
         for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
