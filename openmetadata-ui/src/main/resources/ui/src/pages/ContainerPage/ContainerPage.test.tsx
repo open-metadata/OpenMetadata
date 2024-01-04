@@ -116,10 +116,6 @@ jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('../../rest/lineageAPI', () => ({
-  getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
-
 jest.mock('../../rest/miscAPI', () => ({
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),

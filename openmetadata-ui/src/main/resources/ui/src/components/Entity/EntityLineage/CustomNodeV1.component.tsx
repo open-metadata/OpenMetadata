@@ -243,7 +243,7 @@ const CustomNodeV1 = (props: NodeProps) => {
             {isDownstreamLeafNode &&
               !isEditMode &&
               getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
-                onExpand(EdgeTypeEnum.UP_STREAM)
+                onExpand(EdgeTypeEnum.DOWN_STREAM)
               )}
           </>
         );

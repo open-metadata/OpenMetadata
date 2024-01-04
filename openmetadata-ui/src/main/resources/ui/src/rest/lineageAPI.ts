@@ -14,21 +14,7 @@
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityLineageReponse } from '../components/Lineage/Lineage.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
-import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
-
-export const getLineageByFQN = async (
-  fqn: string,
-  type: string,
-  upstreamDepth = 3,
-  downstreamDepth = 3
-) => {
-  const response = await APIClient.get<EntityLineage>(
-    `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
-  );
-
-  return response.data;
-};
 
 export const updateLineageEdge = async (edge: AddLineage) => {
   const response = await APIClient.put<AddLineage>(`/lineage`, edge);

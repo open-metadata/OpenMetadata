@@ -24,10 +24,6 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../rest/lineageAPI', () => ({
-  getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
-
 jest.mock('../../rest/miscAPI', () => ({
   addLineage: jest.fn(),
   deleteLineageEdge: jest.fn(),

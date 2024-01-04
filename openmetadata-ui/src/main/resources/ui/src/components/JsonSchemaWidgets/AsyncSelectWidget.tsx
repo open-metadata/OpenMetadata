@@ -16,16 +16,20 @@ import { SearchIndex } from '../../enums/search.enum';
 import DataAssetAsyncSelectList from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
-const AsyncSelectWidget = ({ onChange, schema }: WidgetProps) => {
+const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
   const handleChange = (value: DataAssetOption | DataAssetOption[]) => {
-    const data = value.map((item: DataAssetOption) => item.reference);
-    onChange(data);
+    if (Array.isArray(value)) {
+      const data = value.map((item: DataAssetOption) => item.reference);
+      onChange(data);
+    } else {
+      const data = value.reference;
+      onChange(data);
+    }
   };
 
   return (
     <DataAssetAsyncSelectList
-      defaultValue={schema.value}
-      mode="multiple"
+      defaultValue={props.value.fullyQualifiedName ?? ''}
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
       onChange={handleChange}

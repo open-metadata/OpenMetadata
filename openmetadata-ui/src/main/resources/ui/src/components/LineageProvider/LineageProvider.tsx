@@ -45,28 +45,25 @@ import {
   EntityLineageNodeType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
-import {
-  ColumnLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
-import { getLineageDataByFQN } from '../../rest/lineageAPI';
+import { EntityReference } from '../../generated/type/entityLineage';
+import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   createEdges,
+  createNewEdge,
   createNodes,
   getAllTracedColumnEdge,
   getAllTracedNodes,
   getClassifiedEdge,
-  getColumnLineageData,
   getConnectedNodesEdges,
   getLayoutedElements,
-  getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
   getUniqueFlowElements,
+  getUpdatedColumnsFromEdge,
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
@@ -131,7 +128,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
-  // const [entityFqn, setEntityFqn] = useState('');
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
@@ -150,12 +146,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         const res = await getLineageDataByFQN(fqn, config, queryFilter);
         if (res) {
           setEntityLineage(res);
-          const allNodes = [res.entity, ...(res.nodes ?? [])];
-          const updatedNodes = createNodes(allNodes, res.edges ?? []);
-          const updatedEdges = createEdges(allNodes, res.edges ?? []);
-
-          setNodes(updatedNodes);
-          setEdges(updatedEdges);
         } else {
           showErrorToast(
             t('server.entity-fetch-error', {
@@ -198,9 +188,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           isEqual
         );
 
-        const newNodes = createNodes(allNodes, allEdges);
-        const newEdges = createEdges(allNodes, allEdges);
-
         setEntityLineage((prev) => {
           return {
             ...prev,
@@ -208,9 +195,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             edges: allEdges,
           };
         });
-
-        setNodes(newNodes);
-        setEdges(newEdges);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -267,98 +251,91 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edge: Edge,
     confirmDelete: boolean
   ): Promise<void> => {
-    if (confirmDelete && entityLineage) {
-      const { data } = edge;
-      const edgeData: EdgeData = {
-        fromEntity: data.edge.fromEntity.type,
-        fromId: data.edge.fromEntity.id,
-        toEntity: data.edge.toEntity.type,
-        toId: data.edge.toEntity.id,
-      };
+    if (!confirmDelete || !entityLineage) {
+      return;
+    }
 
-      await removeLineageHandler(edgeData);
+    const { data, target } = edge;
 
-      const updatedEdges = entityLineage.edges?.filter(
+    const edgeData: EdgeData = {
+      fromEntity: data.edge.fromEntity.type,
+      fromId: data.edge.fromEntity.id,
+      toEntity: data.edge.toEntity.type,
+      toId: data.edge.toEntity.id,
+    };
+
+    await removeLineageHandler(edgeData);
+
+    const outgoingNode = nodes.find((n) => n.id === target);
+
+    if (outgoingNode) {
+      const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
+        outgoingNode,
+        nodes,
+        edges,
+        EdgeTypeEnum.DOWN_STREAM
+      );
+
+      const nodesToRemove = [
+        ...nodeFqn,
+        outgoingNode.data.node.fullyQualifiedName ?? '',
+      ];
+
+      const updatedNodes = (entityLineage.nodes ?? []).filter(
+        (item) => !nodesToRemove.includes(item.fullyQualifiedName ?? '')
+      );
+
+      const filteredEdges = (entityLineage.edges ?? []).filter(
         (item) =>
           !(
             item.fromEntity.id === edgeData.fromId &&
             item.toEntity.id === edgeData.toId
+          ) &&
+          !connectedEdges.some(
+            (connectedEdge) => connectedEdge.data.edge === item
           )
       );
 
-      setEntityLineage((prev) => {
-        return {
-          ...prev,
-          edges: updatedEdges,
-        };
-      });
-
-      const newNodes = createNodes(
-        entityLineage.nodes ?? [],
-        updatedEdges ?? []
-      );
-      const newEdges = createEdges(
-        entityLineage.nodes ?? [],
-        updatedEdges ?? []
-      );
-
-      setNodes(newNodes);
-      setEdges(newEdges);
+      setEntityLineage((prev) => ({
+        ...prev,
+        nodes: updatedNodes,
+        edges: filteredEdges,
+      }));
     }
   };
 
   const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
-    if (confirmDelete && entityLineage) {
-      const { data } = edge;
-      const selectedEdge: AddLineage = {
-        edge: {
-          fromEntity: {
-            id: data.edge.fromEntity.id,
-            type: data.edge.fromEntity.type,
-          },
-          toEntity: {
-            id: data.edge.toEntity.id,
-            type: data.edge.toEntity.type,
-          },
-        },
-      };
-
-      const updatedCols = getColumnLineageData(data.edge.columns, edge);
-      selectedEdge.edge.lineageDetails = getLineageDetailsObject(edge);
-      selectedEdge.edge.lineageDetails.columnsLineage = updatedCols;
-
-      await addLineageHandler(selectedEdge);
-
-      const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
-        if (
-          obj.fromEntity.id === data.edge.fromEntity.id &&
-          obj.toEntity.id === data.edge.toEntity.id
-        ) {
-          return {
-            ...obj,
-            columns: updatedCols,
-          };
-        }
-
-        return obj;
-      });
-
-      setEntityLineage((prev) => {
-        return {
-          ...prev,
-          edges: updatedEdgeWithColumns,
-        };
-      });
-
-      const updatedEdges = createEdges(
-        entityLineage.nodes ?? [],
-        updatedEdgeWithColumns
-      );
-
-      setEdges(updatedEdges);
-
-      setShowDeleteModal(false);
+    if (!confirmDelete || !entityLineage) {
+      return;
     }
+
+    const { data } = edge;
+    const selectedEdge = createNewEdge(edge);
+    const updatedCols = selectedEdge.edge.lineageDetails?.columnsLineage ?? [];
+    await addLineageHandler(selectedEdge);
+
+    const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
+      if (
+        obj.fromEntity.id === data.edge.fromEntity.id &&
+        obj.toEntity.id === data.edge.toEntity.id
+      ) {
+        return {
+          ...obj,
+          columns: updatedCols,
+        };
+      }
+
+      return obj;
+    });
+
+    setEntityLineage((prev) => {
+      return {
+        ...prev,
+        edges: updatedEdgeWithColumns,
+      };
+    });
+
+    setShowDeleteModal(false);
   };
 
   const removeNodeHandler = useCallback(
@@ -580,40 +557,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           targetNode.data.node
         );
 
-        if (columnConnection) {
-          if (!isUndefined(currentEdge)) {
-            const updatedColumns: ColumnLineage[] =
-              currentEdge.columns?.map((lineage) => {
-                if (lineage.toColumn === targetHandle) {
-                  return {
-                    ...lineage,
-                    fromColumns: [
-                      ...(lineage.fromColumns ?? []),
-                      sourceHandle ?? '',
-                    ],
-                  };
-                }
-
-                return lineage;
-              }) ?? [];
-
-            if (
-              !updatedColumns.find(
-                (lineage) => lineage.toColumn === targetHandle
-              )
-            ) {
-              updatedColumns.push({
-                fromColumns: [sourceHandle ?? ''],
-                toColumn: targetHandle ?? '',
-              });
-            }
-
-            if (newEdgeWithoutFqn.edge.lineageDetails) {
-              newEdgeWithoutFqn.edge.lineageDetails.columnsLineage =
-                updatedColumns;
-            }
-            currentEdge.columns = updatedColumns; // update current edge with new columns
+        if (columnConnection && currentEdge) {
+          const updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
+          if (newEdgeWithoutFqn.edge.lineageDetails) {
+            newEdgeWithoutFqn.edge.lineageDetails.columnsLineage =
+              updatedColumns;
           }
+          currentEdge.columns = updatedColumns; // update current edge with new columns
         }
 
         addLineageHandler(newEdgeWithoutFqn)
@@ -634,15 +584,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               ? [...(entityLineage.edges ?? []), newEdgeWithFqn.edge]
               : entityLineage.edges ?? [];
 
-            const updatedNodes = createNodes(
-              allNodes as EntityReference[],
-              allEdges
-            );
-            const updatedEdges = createEdges(
-              allNodes as EntityReference[],
-              allEdges
-            );
-
             setEntityLineage((pre) => {
               const newData = {
                 ...pre,
@@ -653,8 +594,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               return newData;
             });
 
-            setNodes(updatedNodes);
-            setEdges(updatedEdges);
             setNewAddedNode({} as Node);
           })
           .catch((err) => {
@@ -729,9 +668,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setStatus('waiting');
       setLoading(true);
 
-      const { source, target } = selectedEdge.data;
+      const { source, target } = selectedEdge;
       const existingEdge = (entityLineage.edges ?? []).find(
-        (ed) => ed.fromEntity === source && ed.toEntity === target
+        (ed) => ed.fromEntity.id === source && ed.toEntity.id === target
       );
 
       let edgeIndex = -1;
@@ -743,7 +682,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
       }
 
-      const { newEdge, updatedLineageDetails } = getNewLineageConnectionDetails(
+      const { newEdge } = getNewLineageConnectionDetails(
         selectedEdge,
         pipelineData
       );
@@ -765,32 +704,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             newEdges[edgeIndex] = existingEdge as EdgeDetails;
           }
 
-          const newData = {
+          return {
             ...pre,
             edges: newEdges,
           };
-
-          return newData;
         });
-
-        setEdges((pre) =>
-          pre.map((edge) => {
-            if (edge.id === selectedEdge.id) {
-              return {
-                ...edge,
-                animated: true,
-                data: {
-                  edge: {
-                    ...edge.data.edge,
-                    pipeline: updatedLineageDetails.pipeline,
-                  },
-                },
-              };
-            }
-
-            return edge;
-          })
-        );
       } catch (error) {
         setLoading(false);
       } finally {
@@ -799,6 +717,40 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
     },
     [selectedEdge, entityLineage]
+  );
+
+  const onEdgeDetailsUpdate = useCallback(
+    async (updatedEdgeDetails: AddLineage) => {
+      const { description, sqlQuery } =
+        updatedEdgeDetails.edge.lineageDetails ?? {};
+
+      try {
+        await updateLineageEdge(updatedEdgeDetails);
+        const updatedEdges = (entityLineage.edges ?? []).map((edge) => {
+          if (
+            edge.fromEntity.id === updatedEdgeDetails.edge.fromEntity.id &&
+            edge.toEntity.id === updatedEdgeDetails.edge.toEntity.id
+          ) {
+            return {
+              ...edge,
+              description,
+              sqlQuery,
+            };
+          }
+
+          return edge;
+        });
+        setEntityLineage((prev) => {
+          return {
+            ...prev,
+            edges: updatedEdges,
+          };
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [edges, entityLineage, selectedEdge]
   );
 
   const onColumnEdgeRemove = useCallback(() => {
@@ -830,11 +782,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           edges: updatedEdges,
         };
       });
-
-      const allNodes = createNodes(updatedNodes, updatedEdges);
-      const allEdges = createEdges(updatedNodes, updatedEdges);
-      setNodes(allNodes);
-      setEdges(allEdges);
     },
     [nodes, edges, entityLineage]
   );
@@ -844,6 +791,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       fetchLineageData(entityFqn, lineageConfig);
     }
   }, [lineageConfig, entityFqn, queryFilter]);
+
+  useEffect(() => {
+    const updatedNodes = createNodes(
+      entityLineage.nodes ?? [],
+      entityLineage.edges ?? []
+    );
+    const updatedEdges = createEdges(
+      entityLineage.nodes ?? [],
+      entityLineage.edges ?? []
+    );
+
+    setNodes(updatedNodes);
+    setEdges(updatedEdges);
+  }, [entityLineage]);
 
   const activityFeedContextValues = useMemo(() => {
     return {
@@ -915,7 +876,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onDrawerClose,
     loadChildNodesHandler,
     fetchLineageData,
-
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,
@@ -943,6 +903,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               setIsDrawerOpen(false);
               setSelectedEdge(undefined);
             }}
+            onEdgeDetailsUpdate={onEdgeDetailsUpdate}
           />
         ) : (
           <EntityInfoDrawer
@@ -955,6 +916,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       {showDeleteModal && (
         <Modal
+          data-testid="delete-edge-confirmation-modal"
           maskClosable={false}
           okText={getLoadingStatusValue(
             t('label.confirm'),

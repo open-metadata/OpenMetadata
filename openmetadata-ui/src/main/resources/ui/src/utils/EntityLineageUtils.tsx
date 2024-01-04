@@ -21,6 +21,7 @@ import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Connection,
   Edge,
   getConnectedEdges,
   getIncomers,
@@ -239,7 +240,7 @@ export const getNewLineageConnectionDetails = (
   selectedPipeline: EntityReference | undefined
 ) => {
   const { fromEntity, toEntity, sqlQuery, columns } =
-    selectedEdgeValue?.data.edge;
+    selectedEdgeValue?.data.edge ?? {};
   const updatedLineageDetails: LineageDetails = {
     sqlQuery: sqlQuery ?? '',
     columnsLineage: columns ?? [],
@@ -624,7 +625,6 @@ export const createNodes = (
 
   return uniqueNodesData.map((node, index) => {
     const position = layoutPositions[index];
-
     const type = getNodeType(edgesData, node.id);
 
     return {
@@ -782,7 +782,7 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     columns = [],
     description = '',
     pipeline,
-    source = '',
+    source,
   } = edge.data?.edge || {};
 
   return {
@@ -897,4 +897,59 @@ export const getConnectedNodesEdges = (
     edges: connectedEdges,
     nodeFqn: childNodeFqn,
   };
+};
+
+export const getUpdatedColumnsFromEdge = (
+  edgeToConnect: Edge | Connection,
+  currentEdge: EdgeDetails
+) => {
+  const { target, source, sourceHandle, targetHandle } = edgeToConnect;
+  const columnConnection = source !== sourceHandle && target !== targetHandle;
+
+  if (columnConnection) {
+    const updatedColumns: ColumnLineage[] =
+      currentEdge.columns?.map((lineage) => {
+        if (lineage.toColumn === targetHandle) {
+          return {
+            ...lineage,
+            fromColumns: [...(lineage.fromColumns ?? []), sourceHandle ?? ''],
+          };
+        }
+
+        return lineage;
+      }) ?? [];
+
+    if (!updatedColumns.find((lineage) => lineage.toColumn === targetHandle)) {
+      updatedColumns.push({
+        fromColumns: [sourceHandle ?? ''],
+        toColumn: targetHandle ?? '',
+      });
+    }
+
+    return updatedColumns;
+  }
+
+  return [];
+};
+
+export const createNewEdge = (edge: Edge) => {
+  const { data } = edge;
+  const selectedEdge: AddLineage = {
+    edge: {
+      fromEntity: {
+        id: data.edge.fromEntity.id,
+        type: data.edge.fromEntity.type,
+      },
+      toEntity: {
+        id: data.edge.toEntity.id,
+        type: data.edge.toEntity.type,
+      },
+    },
+  };
+
+  const updatedCols = getColumnLineageData(data.edge.columns, edge);
+  selectedEdge.edge.lineageDetails = getLineageDetailsObject(edge);
+  selectedEdge.edge.lineageDetails.columnsLineage = updatedCols;
+
+  return selectedEdge;
 };

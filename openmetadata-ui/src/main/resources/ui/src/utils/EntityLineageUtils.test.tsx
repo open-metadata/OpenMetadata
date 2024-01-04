@@ -12,21 +12,33 @@
  */
 
 import { Edge } from 'reactflow';
+import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { AddLineage } from '../generated/api/lineage/addLineage';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
+import { addLineage } from '../rest/miscAPI';
 import {
+  addLineageHandler,
+  createNewEdge,
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
   getClassifiedEdge,
   getColumnLineageData,
+  getConnectedNodesEdges,
   getEdgeStyle,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getUpdatedColumnsFromEdge,
   isColumnLineageTraced,
   isTracedEdge,
 } from './EntityLineageUtils';
+
+jest.mock('../rest/miscAPI', () => ({
+  addLineage: jest.fn(),
+}));
 
 describe('Test EntityLineageUtils utility', () => {
   it('getAllTracedNodes & isTracedEdge function should work properly', () => {
@@ -164,7 +176,7 @@ describe('Test EntityLineageUtils utility', () => {
       columnsLineage: [],
       description: '',
       pipeline: undefined,
-      source: '',
+      source: undefined,
     });
   });
 
@@ -226,7 +238,7 @@ describe('Test EntityLineageUtils utility', () => {
     expect(result.edge.toEntity.type).toBe('table');
   });
 
-  it.skip('should handle different scenarios for getColumnLineageData', () => {
+  it('should handle different scenarios for getColumnLineageData', () => {
     const mockEdge = {
       data: { targetHandle: 'target', sourceHandle: 'source' },
     } as Edge;
@@ -254,15 +266,243 @@ describe('Test EntityLineageUtils utility', () => {
       mockEdge
     );
 
-    // Assert
     expect(resultUndefined).toEqual([]);
     expect(resultNoMatch).toEqual(columnsDataNoMatch);
     expect(resultRemoveSource).toEqual([
-      { toColumn: 'column1', fromColumns: ['column2', 'column3'] },
+      { toColumn: 'column1', fromColumns: ['column2', 'column3', 'source'] },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
     expect(resultEmptyResult).toEqual([
+      {
+        fromColumns: ['source'],
+        toColumn: 'column1',
+      },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
+  });
+
+  it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for downstream', () => {
+    const selectedNode = { id: '1', position: { x: 0, y: 0 }, data: {} };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '2' } },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '3' } },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+      { id: '3', source: '2', target: '3' },
+    ];
+    const direction = EdgeTypeEnum.DOWN_STREAM;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(result).toHaveProperty('nodeFqn');
+
+    expect(result.nodes).toContainEqual(nodes[1]);
+    expect(result.nodes).toContainEqual(nodes[2]);
+    expect(result.edges).toContainEqual(edges[1]);
+    expect(result.edges).toContainEqual(edges[2]);
+
+    const emptyResult = getConnectedNodesEdges(selectedNode, [], [], direction);
+
+    expect(emptyResult.nodes).toEqual([]);
+    expect(emptyResult.edges).toEqual([]);
+  });
+
+  it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for upstream', () => {
+    const selectedNode = { id: '1', position: { x: 0, y: 0 }, data: {} };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '2' } },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '3' } },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+      { id: '3', source: '2', target: '3' },
+    ];
+    const direction = EdgeTypeEnum.UP_STREAM;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(result).toHaveProperty('nodeFqn');
+
+    expect(result.nodes).toEqual([]);
+    expect(result.edges).toEqual([]);
+
+    const emptyResult = getConnectedNodesEdges(selectedNode, [], [], direction);
+
+    expect(emptyResult.nodes).toEqual([]);
+    expect(emptyResult.edges).toEqual([]);
+  });
+
+  it('should call addLineage with the provided edge', async () => {
+    const edge = {
+      edge: { fromEntity: {}, toEntity: {} },
+    } as AddLineage;
+    await addLineageHandler(edge);
+
+    expect(addLineage).toHaveBeenCalledWith(edge);
+  });
+
+  it('getUpdatedColumnsFromEdge should appropriate columns', () => {
+    const edgeToConnect = {
+      source: 'dim_customer',
+      sourceHandle: 'shopId',
+      target: 'dim_client',
+      targetHandle: 'shopId',
+    };
+    const currentEdge: EdgeDetails = {
+      fromEntity: {
+        id: 'source',
+        type: 'table',
+        fqn: 'sourceFqn',
+      },
+      toEntity: {
+        id: 'target',
+        type: 'table',
+        fqn: 'targetFqn',
+      },
+      columns: [],
+    };
+
+    const result = getUpdatedColumnsFromEdge(edgeToConnect, currentEdge);
+
+    expect(result).toEqual([
+      {
+        fromColumns: ['shopId'],
+        toColumn: 'shopId',
+      },
+    ]);
+
+    currentEdge.columns = [
+      {
+        fromColumns: ['customerId'],
+        toColumn: 'customerId',
+      },
+    ];
+    const result1 = getUpdatedColumnsFromEdge(edgeToConnect, currentEdge);
+
+    expect(result1).toEqual([
+      {
+        fromColumns: ['customerId'],
+        toColumn: 'customerId',
+      },
+      {
+        fromColumns: ['shopId'],
+        toColumn: 'shopId',
+      },
+    ]);
+  });
+
+  describe('createNewEdge', () => {
+    it('should create a new edge with the correct properties', () => {
+      const edge = {
+        data: {
+          edge: {
+            fromEntity: {
+              id: 'fromEntityId',
+              type: 'fromEntityType',
+            },
+            toEntity: {
+              id: 'toEntityId',
+              type: 'toEntityType',
+            },
+            columns: [],
+          },
+        },
+      };
+
+      const result = createNewEdge(edge as Edge);
+
+      expect(result.edge.fromEntity.id).toEqual('fromEntityId');
+      expect(result.edge.fromEntity.type).toEqual('fromEntityType');
+      expect(result.edge.toEntity.id).toEqual('toEntityId');
+      expect(result.edge.toEntity.type).toEqual('toEntityType');
+      expect(result.edge.lineageDetails).toBeDefined();
+      expect(result.edge.lineageDetails?.columnsLineage).toBeDefined();
+    });
+
+    it('should update the columns lineage details correctly', () => {
+      const edge = {
+        data: {
+          edge: {
+            fromEntity: {
+              id: 'table1',
+              type: 'table',
+            },
+            toEntity: {
+              id: 'table2',
+              type: 'table',
+            },
+            columns: [
+              { name: 'column1', type: 'type1' },
+              { name: 'column2', type: 'type2' },
+            ],
+          },
+        },
+      };
+
+      const result = createNewEdge(edge as Edge);
+
+      expect(result).toEqual({
+        edge: {
+          fromEntity: {
+            id: 'table1',
+            type: 'table',
+          },
+          toEntity: {
+            id: 'table2',
+            type: 'table',
+          },
+          lineageDetails: {
+            columnsLineage: [],
+            description: '',
+            pipeline: undefined,
+            source: undefined,
+            sqlQuery: '',
+          },
+        },
+      });
+    });
   });
 });
