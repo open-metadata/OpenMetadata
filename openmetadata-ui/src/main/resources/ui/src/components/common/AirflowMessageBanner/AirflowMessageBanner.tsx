@@ -12,13 +12,21 @@
  */
 import { Space, SpaceProps, Typography } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import './airflow-message-banner.less';
 
-const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
+interface AirflowMessageBannerProps extends SpaceProps {
+  docLink?: string;
+}
+
+const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
+  className,
+  docLink,
+}) => {
   const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
   if (isAirflowAvailable || isFetchingStatus || isEmpty(reason)) {
@@ -32,7 +40,16 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       data-testid="no-airflow-placeholder"
       size={16}>
       <IconRetry className="align-middle" height={24} width={24} />
-      <Typography.Text>{reason}</Typography.Text>
+      <Typography.Text>
+        {docLink ? (
+          <>
+            {reason?.endsWith('.') ? reason?.slice(0, -1) : reason}{' '}
+            <a href={docLink}>{t('label.here-lowercase')}.</a>
+          </>
+        ) : (
+          reason
+        )}
+      </Typography.Text>
     </Space>
   );
 };

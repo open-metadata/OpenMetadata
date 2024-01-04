@@ -154,7 +154,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
   return (
     <Fragment>
-      <AirflowMessageBanner />
+      <AirflowMessageBanner docLink="https://docs.open-metadata.org/v1.2.x/deployment/ingestion/openmetadata#troubleshooting" />
       {getConfigFields()}
     </Fragment>
   );
