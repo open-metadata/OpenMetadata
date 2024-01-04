@@ -12,8 +12,6 @@
 name: MySQL Cypress Integration Tests
 
 on:
-  schedule:
-    - cron: '30 0 * * *'
   pull_request_target:
     types:
       - labeled
