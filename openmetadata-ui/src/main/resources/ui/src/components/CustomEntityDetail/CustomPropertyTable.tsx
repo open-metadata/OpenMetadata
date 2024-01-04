@@ -23,7 +23,7 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../enums/common.enum';
 import { CustomProperty } from '../../generated/entity/type';
-import { getEntityName } from '../../utils/EntityUtils';
+import { columnSorter, getEntityName } from '../../utils/EntityUtils';
 import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -89,6 +89,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => getEntityName(record),
+        sorter: columnSorter,
       },
       {
         title: t('label.type'),

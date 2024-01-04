@@ -247,15 +247,10 @@ function TableSummary({
           entityDetail={tableDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: tableDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              tableDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
         <Divider className="m-y-xs" />

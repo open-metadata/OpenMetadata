@@ -14,6 +14,8 @@ Constants required for dbt
 
 from enum import Enum
 
+DBT_RUN_RESULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 
