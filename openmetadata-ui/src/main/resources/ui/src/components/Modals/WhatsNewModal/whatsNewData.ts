@@ -1132,7 +1132,7 @@ export const WHATS_NEW = [
   {
     id: 21,
     version: 'v1.2.4',
-    description: 'Released on 7th Dec 2023.',
+    description: 'Released on 5th Jan 2024.',
     features: [],
     changeLogs: {
       Changes: `- To ensure a reliable Glossary Term Approval process, the Owner/Creator of the glossary term cannot be a Reviewer of that term.
