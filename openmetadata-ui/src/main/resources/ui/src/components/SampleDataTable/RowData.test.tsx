@@ -61,18 +61,18 @@ describe('Test RowData Component', () => {
     expect(stringData).toBeInTheDocument();
   });
 
-  it('Should render string data if data value is empty string is passed', async () => {
-    const { findByTestId } = render(<RowData data="" />, {
+  it('Should render fallback data if no data is there', async () => {
+    const { findByTestId } = render(<RowData data={null} />, {
       wrapper: MemoryRouter,
     });
 
-    const stringData = await findByTestId('string-data');
+    const emptyData = await findByTestId('empty-data');
 
-    expect(stringData).toBeInTheDocument();
+    expect(emptyData).toBeInTheDocument();
   });
 
-  it('Should render fallback data if no data is there', async () => {
-    const { findByTestId } = render(<RowData data={null} />, {
+  it('Should render fallback data if the data is empty string', async () => {
+    const { findByTestId } = render(<RowData data="" />, {
       wrapper: MemoryRouter,
     });
 

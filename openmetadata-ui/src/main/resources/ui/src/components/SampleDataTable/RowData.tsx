@@ -25,7 +25,7 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
   const onOpen = useCallback(() => setIsFullView(true), []);
 
   const dataElementRenderer = useMemo(() => {
-    if (isUndefined(data) || isNull(data)) {
+    if (isUndefined(data) || isNull(data) || data === '') {
       return (
         <Typography.Text data-testid="empty-data">
           {NO_DATA_PLACEHOLDER}
