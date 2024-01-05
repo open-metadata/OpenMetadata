@@ -37,6 +37,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
     <Card
       bodyStyle={{ height: '100%' }}
       className="h-full cursor-pointer"
+      data-testid="persona-details-card"
       onClick={handleCardClick}>
       <Space className="justify-between h-full" direction="vertical">
         <Card.Meta

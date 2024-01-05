@@ -827,6 +827,7 @@
     "relevance": "Pertinence",
     "remove": "Retirer",
     "remove-entity": "Retirer un·e {{entity}}",
+    "remove-entity-lowercase": "remove {{entity}}",
     "remove-lowercase": "remove",
     "removed": "Retiré",
     "removing-user": "Retirer un Utilisateur",
