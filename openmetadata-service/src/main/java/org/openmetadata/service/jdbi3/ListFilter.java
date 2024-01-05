@@ -236,7 +236,7 @@ public class ListFilter {
     }
 
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "!JSON_CONTAINS(json, JSON_ARRAY() , '$.testCaseResultSummary')";
+      return "JSON_LENGTH(JSON_EXTRACT(json, '$.testCaseResultSummary')) != 0";
     }
 
     return "jsonb_array_length(json#>'{testCaseResultSummary}') != 0";

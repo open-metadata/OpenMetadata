@@ -592,7 +592,13 @@ export const TaskTab = ({
                   onChange={(values) =>
                     assigneesForm.setFieldValue('assignees', values)
                   }
-                  onSearch={(query) => fetchOptions(query, setOptions)}
+                  onSearch={(query) =>
+                    fetchOptions({
+                      query,
+                      setOptions,
+                      currentUserId: currentUser?.id,
+                    })
+                  }
                 />
               </InlineEdit>
             </Form.Item>
@@ -842,7 +848,7 @@ export const TaskTab = ({
                 onChange={(values) =>
                   assigneesForm.setFieldValue('assignees', values)
                 }
-                onSearch={(query) => fetchOptions(query, setOptions)}
+                onSearch={(query) => fetchOptions({ query, setOptions })}
               />
             </Form.Item>
           </Form>

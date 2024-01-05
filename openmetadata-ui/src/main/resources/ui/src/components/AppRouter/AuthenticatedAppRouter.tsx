@@ -32,8 +32,8 @@ const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
-const MyDataPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MyDataPage/MyDataPageV1.component'))
+const MyDataPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/MyDataPage/MyDataPage.component'))
 );
 
 const TestSuiteIngestionPage = withSuspenseFallback(
@@ -403,7 +403,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
-      <Route exact component={MyDataPageV1} path={ROUTES.MY_DATA} />
+      <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
       <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />

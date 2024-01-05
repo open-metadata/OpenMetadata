@@ -263,7 +263,9 @@ export const TestCaseStatusModal = ({
                   values
                 )
               }
-              onSearch={(query) => fetchOptions(query, setOptions, true)}
+              onSearch={(query) =>
+                fetchOptions({ query, setOptions, onlyUsers: true })
+              }
             />
           </Form.Item>
         )}
