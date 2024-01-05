@@ -14,12 +14,12 @@
 // The spec is related to advance search feature
 
 import {
-  ADVANCE_SEARCH_DATABASE_SERVICE,
   advanceSearchPreRequests,
+  ADVANCE_SEARCH_DATABASE_SERVICE,
   checkAddGroupWithOperator,
   checkAddRuleWithOperator,
-  checkmust_notPaths,
   checkmustPaths,
+  checkmust_notPaths,
   CONDITIONS_MUST,
   CONDITIONS_MUST_NOT,
   FIELDS,

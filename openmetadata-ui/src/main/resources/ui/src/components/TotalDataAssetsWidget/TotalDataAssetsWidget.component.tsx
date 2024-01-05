@@ -112,7 +112,7 @@ const TotalDataAssetsWidget = ({
   return (
     <Card
       className="total-data-insight-card"
-      data-testid="entity-summary-card"
+      data-testid="total-assets-widget"
       id={DataInsightChartType.TotalEntitiesByType}
       loading={isLoading}>
       {isEditView && (
@@ -120,11 +120,16 @@ const TotalDataAssetsWidget = ({
           <Col>
             <DragOutlined
               className="drag-widget-icon cursor-pointer"
+              data-testid="drag-widget-button"
               size={14}
             />
           </Col>
           <Col>
-            <CloseOutlined size={14} onClick={handleCloseClick} />
+            <CloseOutlined
+              data-testid="remove-widget-button"
+              size={14}
+              onClick={handleCloseClick}
+            />
           </Col>
         </Row>
       )}

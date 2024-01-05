@@ -78,12 +78,12 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.20.0</version>
+            <version>1.21.0</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.14.0</version>
+            <version>1.14.2</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
