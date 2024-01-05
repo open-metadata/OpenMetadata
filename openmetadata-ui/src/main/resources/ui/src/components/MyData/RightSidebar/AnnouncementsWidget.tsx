@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Alert, Card, Col, Row, Space, Typography } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { Alert, Col, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
@@ -28,21 +27,14 @@ import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;
-  announcements: Thread[];
+  announcements?: Thread[];
 }
 
 function AnnouncementsWidget({
-  announcements,
-  isEditView,
-  handleRemoveWidget,
-  widgetKey,
+  announcements = [],
   isAnnouncementLoading = false,
 }: Readonly<AnnouncementsWidgetProps>) {
   const { t } = useTranslation();
-
-  const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, [widgetKey]);
 
   const announcement = useMemo(() => {
     if (isAnnouncementLoading) {
@@ -115,27 +107,16 @@ function AnnouncementsWidget({
   }, [isAnnouncementLoading, announcements]);
 
   return (
-    <Card className="announcement-container card-widget h-full">
+    <div className="announcement-container card-widget h-full">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="font-medium m-b-sm">
             {t('label.recent-announcement-plural')}
           </Typography.Paragraph>
         </Col>
-        {isEditView && (
-          <Col>
-            <Space>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer"
-                size={14}
-              />
-              <CloseOutlined size={14} onClick={handleCloseClick} />
-            </Space>
-          </Col>
-        )}
       </Row>
       {announcement}
-    </Card>
+    </div>
   );
 }
 

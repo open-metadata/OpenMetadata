@@ -18,7 +18,7 @@ import { HeaderProps } from './PageHeader.interface';
 
 const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
   return (
-    <div className="page-header-container">
+    <div className="page-header-container" data-testid="page-header-container">
       <Typography.Title className="heading" data-testid="heading" level={5}>
         {header}
       </Typography.Title>

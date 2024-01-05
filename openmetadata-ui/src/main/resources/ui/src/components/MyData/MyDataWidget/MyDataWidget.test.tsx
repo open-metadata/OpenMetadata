@@ -82,8 +82,8 @@ jest.mock(
 );
 
 describe('MyDataWidget component', () => {
-  it('should fetch data', () => {
-    act(() => {
+  it('should fetch data', async () => {
+    await act(async () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
     });
 
@@ -98,8 +98,8 @@ describe('MyDataWidget component', () => {
     );
   });
 
-  it.skip('should render header', () => {
-    act(() => {
+  it.skip('should render header', async () => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -110,8 +110,8 @@ describe('MyDataWidget component', () => {
     expect(screen.getByText('label.my-data')).toBeInTheDocument();
   });
 
-  it('should not render view all for 0 length data', () => {
-    act(() => {
+  it('should not render view all for 0 length data', async () => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -126,7 +126,7 @@ describe('MyDataWidget component', () => {
     (searchData as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockSearchAPIResponse)
     );
-    act(() => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -139,7 +139,7 @@ describe('MyDataWidget component', () => {
 
   it('should render table names', async () => {
     (searchData as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
-    act(() => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />

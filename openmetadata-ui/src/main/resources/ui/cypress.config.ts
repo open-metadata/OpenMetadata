@@ -14,7 +14,6 @@ import { defineConfig } from 'cypress';
 import plugins from './cypress/plugins/index.js';
 
 export default defineConfig({
-  projectId: 'a9yxci',
   viewportWidth: 1240,
   viewportHeight: 660,
   watchForFileChanges: false,

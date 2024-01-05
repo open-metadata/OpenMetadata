@@ -137,16 +137,17 @@ describe('Following data assets', () => {
   });
 
   it('following section should be present', () => {
-    cy.get('[data-testid="following-data-container"]')
+    cy.get('[data-testid="following-widget"]')
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="following-data-container"]').contains(
+    cy.get('[data-testid="following-widget"]').contains(
       'You have not followed anything yet.'
     );
-    cy.get(
-      `[data-testid="following-data-container"] .right-panel-list-item`
-    ).should('have.length', 0);
+    cy.get(`[data-testid="following-widget"] .right-panel-list-item`).should(
+      'have.length',
+      0
+    );
   });
 
   // Follow entity
