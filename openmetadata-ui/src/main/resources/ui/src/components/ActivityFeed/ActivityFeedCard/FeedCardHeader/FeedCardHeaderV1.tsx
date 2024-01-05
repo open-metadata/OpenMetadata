@@ -89,7 +89,7 @@ const FeedCardHeaderV1 = ({
     <div className={classNames('feed-header', className)}>
       <UserPopOverCard userName={createdBy} />
 
-      <div className="feed-header-content">
+      <p className="feed-header-content break-word">
         <UserPopOverCard userName={createdBy}>
           <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
             {getEntityName(user)}
@@ -105,7 +105,7 @@ const FeedCardHeaderV1 = ({
             </span>
           </Tooltip>
         )}
-      </div>
+      </p>
     </div>
   );
 };
