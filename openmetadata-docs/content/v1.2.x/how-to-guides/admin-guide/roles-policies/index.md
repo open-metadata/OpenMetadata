@@ -94,6 +94,9 @@ caption="Each Resource has its Own Set of Granular Operations"
 
 By synthesizing these components, OpenMetadata dynamically ascertains whether a user or bot can perform a particular action on a specific resource. This **fusion of RBAC and ABAC** in the hybrid model contributes to a robust and flexible access control mechanism, bolstering the security and control of your OpenMetadata environment.
 
+Watch the webinar on [Roles and Policies](https://www.youtube.com/watch?v=LvDMgElrILE)
+{% youtube videoId="LvDMgElrILE" start="0:00" end="44:50" width="560px" height="315px" /%}
+
 {%inlineCallout
   color="violet-70"
   bold="Building Blocks of Authorization: Rules, Policies, and Roles"

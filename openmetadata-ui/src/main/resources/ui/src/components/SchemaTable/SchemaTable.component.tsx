@@ -19,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  lowerCase,
   set,
   sortBy,
   toLower,
@@ -28,6 +27,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -47,13 +47,14 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
+  searchInColumns,
 } from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
 import {
-  getDataTypeString,
   getFilterIcon,
   getTableExpandableConfig,
   makeData,
@@ -79,7 +80,6 @@ const SchemaTable = ({
   joins,
   isReadOnly = false,
   onThreadLinkSelect,
-  entityFqn,
   tableConstraints,
   tablePartitioned,
 }: SchemaTableProps) => {
@@ -90,6 +90,8 @@ const SchemaTable = ({
   const [tablePermissions, setTablePermissions] =
     useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
+  const decodedEntityFqn = getDecodedFqn(entityFqn);
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -114,13 +116,16 @@ const SchemaTable = ({
       );
     }
   };
+
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
   );
+
   useEffect(() => {
     fetchResourcePermission(entityFqn);
   }, [entityFqn]);
+
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
   };
@@ -185,34 +190,6 @@ const SchemaTable = ({
     }
   };
 
-  const searchInColumns = (table: Column[], searchText: string): Column[] => {
-    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
-      const isContainData =
-        lowerCase(column.name).includes(searchText) ||
-        lowerCase(column.description).includes(searchText) ||
-        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedCols, column];
-      } else if (!isUndefined(column.children)) {
-        const searchedChildren = searchInColumns(column.children, searchText);
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedCols,
-            {
-              ...column,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedCols;
-    }, [] as Column[]);
-
-    return searchedValue;
-  };
-
   const handleUpdate = (column: Column) => {
     handleEditColumn(column);
   };
@@ -253,7 +230,7 @@ const SchemaTable = ({
             fqn: record.fullyQualifiedName ?? '',
             field: record.description,
           }}
-          entityFqn={entityFqn}
+          entityFqn={decodedEntityFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
@@ -426,7 +403,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -451,7 +428,7 @@ const SchemaTable = ({
         filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={decodedEntityFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -469,7 +446,7 @@ const SchemaTable = ({
       },
     ],
     [
-      entityFqn,
+      decodedEntityFqn,
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
