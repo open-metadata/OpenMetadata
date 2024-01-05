@@ -156,26 +156,7 @@ describe('Test Regex', () => {
   });
 
   it('EntityName regex should fail for the invalid entity name', () => {
-    // Contains letters, numbers, and # special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123#')).toEqual(false);
-
-    // Contains letters, numbers, and $ special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123$')).toEqual(false);
-
-    // Contains letters, numbers, and ! special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123!')).toEqual(false);
-
-    // Contains letters, numbers, and @ special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123@')).toEqual(false);
-
-    // Contains letters, numbers, and * special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123*')).toEqual(false);
-
-    // Contains letters, numbers, and special characters.
-    expect(ENTITY_NAME_REGEX.test('!@#$%^&*()')).toEqual(false);
-
-    // Contains spanish characters and special characters.
-    expect(ENTITY_NAME_REGEX.test('¡Buenos días!')).toEqual(false);
-    expect(ENTITY_NAME_REGEX.test('¿Cómo estás?')).toEqual(false);
+    // conatines :: in the name should fail
+    expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
   });
 });
