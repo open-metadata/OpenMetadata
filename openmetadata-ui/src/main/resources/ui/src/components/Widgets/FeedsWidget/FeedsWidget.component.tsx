@@ -215,9 +215,14 @@ const FeedsWidget = ({
               <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </>
             )}
           </Space>

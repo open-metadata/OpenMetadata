@@ -44,7 +44,7 @@ import './my-data.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-const MyDataPageV1 = () => {
+const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const { selectedPersona } = useApplicationConfigContext();
@@ -142,7 +142,15 @@ const MyDataPageV1 = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
+      // Adding announcement widget to the layout when announcements are present
+      // Since the widget wont be in the layout config of the page
+      // ok
+      [
+        ...(isEmpty(announcements)
+          ? []
+          : [customizePageClassBase.announcementWidget]),
+        ...layout,
+      ].map((widget) => (
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
             announcements: announcements,
@@ -214,4 +222,4 @@ const MyDataPageV1 = () => {
   );
 };
 
-export default MyDataPageV1;
+export default MyDataPage;
