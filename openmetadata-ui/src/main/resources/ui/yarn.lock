@@ -2979,15 +2979,15 @@
     lodash-es "^4.17.21"
     react-is "^18.2.0"
 
-"@rjsf/validator-ajv8@5.4.0":
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/validator-ajv8/-/validator-ajv8-5.4.0.tgz#e26ac6f7dff47ae5ca00bd02b49e0fc1e78d54da"
-  integrity sha512-OjWPQGU2tu+KzOgZqqsyhdiamyZPLXsChgdIQJ2sz4gMuedL2LgfNfOc6STcf01kXMXft2MoDZ9lHGlAHlv2Vw==
+"@rjsf/validator-ajv8@5.15.1":
+  version "5.15.1"
+  resolved "https://registry.yarnpkg.com/@rjsf/validator-ajv8/-/validator-ajv8-5.15.1.tgz#b748c9f351c2fc060c6c3b67d2c5d33e3aaba929"
+  integrity sha512-QEbjdpLTmDCq4pdmeNaCiMiq3CId7IJ/Iri5FI794fhH8mn8Geu5hWqisMBTbrptfGdItY4RapKvoIglQEZKOg==
   dependencies:
     ajv "^8.12.0"
     ajv-formats "^2.1.1"
-    lodash "^4.17.15"
-    lodash-es "^4.17.15"
+    lodash "^4.17.21"
+    lodash-es "^4.17.21"
 
 "@sheerun/mutationobserver-shim@^0.3.2":
   version "0.3.3"
