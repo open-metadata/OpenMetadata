@@ -1090,6 +1090,44 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void get_testCaseResultWithIncidentId(TestInfo test)
+      throws HttpResponseException, ParseException {
+
+    // We create a test case with a failure
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // We can get it via API with a list of ongoing incidents
+    TestCase result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    assertListNotEmpty(result.getIncidents());
+
+    // Resolving the status triggers resolving the task, which triggers removing the ongoing
+    // incident from the test case
+    CreateTestCaseResolutionStatus createResolvedStatus =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(
+                new Resolved()
+                    .withTestCaseFailureComment("resolved")
+                    .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
+                    .withResolvedBy(USER1_REF));
+    createTestCaseFailureStatus(createResolvedStatus);
+
+    // If we read again, the incident list will be empty
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    assertEquals(result.getIncidents(), List.of());
+  }
+
+  @Test
   void post_createTestCaseResultFailure(TestInfo test)
       throws HttpResponseException, ParseException {
     // We're going to check how each test only has a single open stateID
@@ -1489,6 +1527,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
+  }
+
+  public TestCase getTestCase(String fqn, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/name/" + fqn);
+    target = target.queryParam("fields", "incidents");
+    return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
   private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId)

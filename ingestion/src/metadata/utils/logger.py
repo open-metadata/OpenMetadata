@@ -254,9 +254,9 @@ def _(record: TableAndTests) -> str:
 
 
 @get_log_name.register
-def _(_: TestCaseResults) -> Optional[str]:
+def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return None
+    return ",".join(set(result.testCase.name.__root__ for result in record.test_results))
 
 
 @get_log_name.register
