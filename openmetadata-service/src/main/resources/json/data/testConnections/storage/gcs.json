@@ -16,6 +16,20 @@
       "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to list blobs",
       "shortCircuit": true,
       "mandatory": true
+    },
+    {
+      "name": "GetBucket",
+      "description": "Get the bucket available to the user.",
+      "errorMessage": "Failed to fetch bucket, please validate the credentials if the user has access to get bucket",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetBlob",
+      "description": "Get the blob available to the user.",
+      "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to get blob",
+      "shortCircuit": true,
+      "mandatory": true
     }
   ]
 }
