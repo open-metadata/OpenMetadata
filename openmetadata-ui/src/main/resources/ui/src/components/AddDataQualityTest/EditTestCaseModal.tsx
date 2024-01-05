@@ -16,13 +16,7 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { Table } from '../../generated/entity/data/table';
@@ -43,7 +37,6 @@ import { generateFormFields } from '../../utils/formUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../common/RichTextEditor/RichTextEditor.interface';
 import Loader from '../Loader/Loader';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
@@ -61,8 +54,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [table, setTable] = useState<Table>();
-
-  const markdownRef = useRef<EditorContentRef>();
 
   const isColumn = useMemo(
     () => testCase?.entityLink.includes('::columns::'),
@@ -129,20 +120,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             : value,
       })
     );
-    const description = markdownRef.current?.getEditorContent();
 
-    return {
-      parameterValues: parameterValues as TestCaseParameterValue[],
-      description: isEmpty(description) ? undefined : description,
-    };
+    return parameterValues as TestCaseParameterValue[];
   };
 
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
-    const { parameterValues, description } = createTestCaseObj(value);
+    const parameterValues = createTestCaseObj(value);
     const updatedTestCase = {
       ...testCase,
       parameterValues,
-      description,
+      description: isEmpty(value.description) ? undefined : value.description,
       displayName: value.displayName,
       computePassedFailedRowCount: value.computePassedFailedRowCount,
     };
@@ -281,11 +268,13 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
           {GenerateParamsField()}
 
-          <Form.Item label={t('label.description')} name="description">
+          <Form.Item
+            label={t('label.description')}
+            name="description"
+            trigger="onTextChange">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}
-              ref={markdownRef}
               style={{
                 margin: 0,
               }}

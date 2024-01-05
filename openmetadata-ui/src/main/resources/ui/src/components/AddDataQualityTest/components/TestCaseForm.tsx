@@ -17,13 +17,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
 import Qs from 'qs';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -55,7 +49,6 @@ import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
@@ -79,7 +72,6 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
-  const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition
@@ -166,6 +158,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
     computePassedFailedRowCount?: boolean;
+    description?: string;
   }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
@@ -190,7 +183,6 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         length: 4,
         type: 'alphanumeric',
       })}`;
-    const description = markdownRef.current?.getEditorContent();
 
     return {
       name,
@@ -202,7 +194,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
-      description: isEmpty(description) ? undefined : description,
+      description: isEmpty(value.description) ? undefined : value.description,
       testSuite: '',
     };
   };
@@ -355,11 +347,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       {GenerateParamsField()}
 
-      <Form.Item label={t('label.description')} name="description">
+      <Form.Item
+        label={t('label.description')}
+        name="description"
+        trigger="onTextChange">
         <RichTextEditor
           height="200px"
           initialValue={initialValue?.description || ''}
-          ref={markdownRef}
           style={{
             margin: 0,
           }}

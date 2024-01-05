@@ -63,13 +63,16 @@ import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorP
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import { TestSummaryProps } from '../profilerDashboard.interface';
+import {
+  MetricChartType,
+  TestSummaryProps,
+} from '../profilerDashboard.interface';
 import './test-summary.less';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
-  data: { [key: string]: string | number | undefined }[];
+  data: MetricChartType['data'];
 };
 
 export interface DateRangeObject {
@@ -111,7 +114,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const generateChartData = (currentData: TestCaseResult[]) => {
-    const chartData: { [key: string]: string | number | undefined }[] = [];
+    const chartData: ChartDataType['data'] = [];
     currentData.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {

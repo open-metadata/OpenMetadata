@@ -21,7 +21,11 @@ const TestSummaryCustomTooltip = (
   const { active, payload = [] } = props;
   const data = payload.length ? entries(omit(payload[0].payload, 'name')) : [];
 
-  return active && payload.length ? (
+  if (!active || payload.length === 0) {
+    return null;
+  }
+
+  return (
     <Card
       title={
         <Typography.Title level={5}>{payload[0].payload.name}</Typography.Title>
@@ -41,7 +45,7 @@ const TestSummaryCustomTooltip = (
         ))}
       </ul>
     </Card>
-  ) : null;
+  );
 };
 
 export default TestSummaryCustomTooltip;
