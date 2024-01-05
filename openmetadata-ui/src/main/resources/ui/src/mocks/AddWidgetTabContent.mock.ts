@@ -10,18 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.announcement-container {
-  .ant-card-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  .announcement-container-list {
-    overflow-y: scroll;
-    overflow-x: hidden;
-    max-height: 90%;
-    .feed-card-body {
-      padding: 0;
-    }
-  }
-}
+
+import { Document } from '../generated/entity/docStore/document';
+
+export const mockWidget: Document = {
+  id: '5bf549a2-adc7-48be-8a61-17c08aeeaa1b',
+  name: 'Following',
+  displayName: 'Following',
+  fullyQualifiedName: 'KnowledgePanel.Following',
+  description:
+    'Following KnowledgePanel shows all the Assets that the User is Following.',
+  entityType: 'KnowledgePanel',
+  data: {
+    gridSizes: ['small'],
+  },
+  updatedBy: 'admin',
+};
+
+export const mockWidgetSizes = [
+  { label: 'Small', value: 1 },
+  { label: 'Medium', value: 2 },
+];

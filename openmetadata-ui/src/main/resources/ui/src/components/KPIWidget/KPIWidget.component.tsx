@@ -216,7 +216,7 @@ const KPIWidget = ({
   return (
     <Card
       className="kpi-widget-card h-full"
-      data-testid="kpi-card"
+      data-testid="kpi-widget"
       id="kpi-charts"
       loading={isKPIListLoading || isLoading}>
       {isEditView && (
@@ -225,9 +225,14 @@ const KPIWidget = ({
             <Space align="center">
               <DragOutlined
                 className="drag-widget-icon cursor-pointer"
+                data-testid="drag-widget-button"
                 size={14}
               />
-              <CloseOutlined size={14} onClick={handleCloseClick} />
+              <CloseOutlined
+                data-testid="remove-widget-button"
+                size={14}
+                onClick={handleCloseClick}
+              />
             </Space>
           </Col>
         </Row>

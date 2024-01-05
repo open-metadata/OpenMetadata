@@ -63,6 +63,7 @@ function AddWidgetTabContent({
         <Space>
           <Typography.Text>{`${t('label.size')}:`}</Typography.Text>
           <Radio.Group
+            data-testid="size-selector-button"
             defaultValue={selectedWidgetSize}
             optionType="button"
             options={widgetSizeOptions}
@@ -74,8 +75,15 @@ function AddWidgetTabContent({
         <Row className="h-min-480" justify="center">
           <Col>
             <Space align="center" direction="vertical">
-              <Image className="p-y-md" preview={false} src={widgetImage} />
-              <Typography.Paragraph className="d-block text-center">
+              <Image
+                className="p-y-md"
+                data-testid="widget-image"
+                preview={false}
+                src={widgetImage}
+              />
+              <Typography.Paragraph
+                className="d-block text-center"
+                data-testid="widget-description">
                 {widget.description}
               </Typography.Paragraph>
               <Tooltip
@@ -84,7 +92,7 @@ function AddWidgetTabContent({
                 <Button
                   ghost
                   className="p-x-lg m-t-md"
-                  data-testid="add-widget-placeholder-button"
+                  data-testid="add-widget-button"
                   disabled={!widgetAddable}
                   icon={<PlusOutlined />}
                   type="primary"

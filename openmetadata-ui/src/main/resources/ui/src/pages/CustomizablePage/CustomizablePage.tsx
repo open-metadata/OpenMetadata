@@ -24,7 +24,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { ClientErrors } from '../../enums/axios.enum';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
@@ -96,6 +96,8 @@ export const CustomizablePage = () => {
               page: { layout: customizePageClassBase.defaultLayout },
             },
           });
+        } else {
+          showErrorToast(error as AxiosError);
         }
       } finally {
         setIsLoading(false);

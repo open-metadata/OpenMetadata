@@ -436,3 +436,18 @@ export const VISIT_ENTITIES_DATA = {
     serviceName: STORAGE_SERVICE.service.name,
   },
 };
+
+export const USER_NAME = `user${uuid()}`;
+
+export const USER_DETAILS = {
+  firstName: `first-name-${uuid()}`,
+  lastName: `last-name-${uuid()}`,
+  email: `${USER_NAME}@example.com`,
+  password: 'User@OMD123',
+};
+
+export const PERSONA_DETAILS = {
+  name: `persona-${uuid()}`,
+  displayName: `persona ${uuid()}`,
+  description: `Persona description.`,
+};

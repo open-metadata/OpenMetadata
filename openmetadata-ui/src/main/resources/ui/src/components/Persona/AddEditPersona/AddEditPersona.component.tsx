@@ -138,7 +138,7 @@ export const AddEditPersonaForm = ({
         hasPermission: true,
         children: (
           <Button
-            data-testid="add-reviewers"
+            data-testid="add-users"
             icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
             size="small"
             type="primary"
@@ -160,6 +160,7 @@ export const AddEditPersonaForm = ({
       closable={false}
       closeIcon={null}
       confirmLoading={isSaving}
+      data-testid="add-edit-persona-modal"
       okText={isEditMode ? t('label.update') : t('label.create')}
       title={isEmpty(persona) ? 'Add Persona' : 'Edit Persona'}
       width={750}
@@ -178,7 +179,7 @@ export const AddEditPersonaForm = ({
             <Space
               wrap
               className="m--t-md"
-              data-testid="reviewers-container"
+              data-testid="users-container"
               size={[8, 8]}>
               {usersList.map((d) => (
                 <UserTag

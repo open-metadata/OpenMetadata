@@ -50,7 +50,7 @@ function FollowingWidget({
   return (
     <Card
       className="following-widget-container card-widget h-full"
-      data-testid="following-data-container">
+      data-testid="following-widget">
       <EntityListWithV1
         entityList={followedData}
         headerText={
@@ -72,9 +72,14 @@ function FollowingWidget({
               <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </>
             )}
           </Space>

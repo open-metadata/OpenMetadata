@@ -827,6 +827,7 @@
     "relevance": "Relevância",
     "remove": "Remover",
     "remove-entity": "Remover {{entity}}",
+    "remove-entity-lowercase": "remove {{entity}}",
     "remove-lowercase": "remover",
     "removed": "Removido",
     "removing-user": "Removendo Usuário",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Document } from '../../../generated/entity/docStore/document';
 
 export interface AddWidgetModalProps {
@@ -34,6 +35,6 @@ export interface AddWidgetTabContentProps {
 }
 
 export interface WidgetSizeInfo {
-  label: string;
+  label: ReactNode;
   value: number;
 }
