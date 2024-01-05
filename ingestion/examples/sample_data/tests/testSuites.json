@@ -20,10 +20,6 @@
                     "resolutions": {
                         "sequenceOne": [
                             {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
                             },
@@ -109,10 +105,6 @@
                     "resolutions": {
                         "sequenceOne": [
                             {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
                             },
@@ -187,10 +179,6 @@
                     "resolutions": {
                         "sequenceOne": [
                             {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
                             },
@@ -264,10 +252,6 @@
                     ],
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"

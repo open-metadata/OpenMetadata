@@ -725,7 +725,7 @@ public class FeedRepository {
 
     restorePatchAttributes(original, updated);
 
-    if (!updated.getReactions().isEmpty()) {
+    if (!nullOrEmpty(updated.getReactions())) {
       populateUserReactions(updated.getReactions());
       updated
           .getReactions()
@@ -885,8 +885,10 @@ public class FeedRepository {
             && !Collections.isEmpty(updated.getReactions()))
         || (!Collections.isEmpty(original.getReactions())
             && Collections.isEmpty(updated.getReactions()))
-        || original.getReactions().size() != updated.getReactions().size()
-        || !original.getReactions().containsAll(updated.getReactions())
+        || (original.getReactions() != null
+            && updated.getReactions() != null
+            && (original.getReactions().size() != updated.getReactions().size()
+                || !original.getReactions().containsAll(updated.getReactions())))
         || (original.getAnnouncement() != null
             && (!original
                     .getAnnouncement()

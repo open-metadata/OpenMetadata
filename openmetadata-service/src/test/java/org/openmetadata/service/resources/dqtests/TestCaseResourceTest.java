@@ -1089,54 +1089,41 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     paginate(maxEntities, allEntities, logicalTestSuite);
   }
 
-  // Test Case Failure Status Tests
   @Test
-  void post_createTestCaseResultFailure(TestInfo test) throws HttpResponseException {
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-
-    // Create a test case failure status for each status type
-    List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
-    List<CreateTestCaseResolutionStatus> resolvedTestCaseFailureStatus = new ArrayList<>();
-    for (TestCaseResolutionStatusTypes statusType : TestCaseResolutionStatusTypes.values()) {
-      CreateTestCaseResolutionStatus createTestCaseFailureStatus =
-          new CreateTestCaseResolutionStatus()
-              .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-              .withTestCaseResolutionStatusType(statusType)
-              .withTestCaseResolutionStatusDetails(null);
-      if (statusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
-        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-            new Assigned().withAssignee(USER1_REF));
-      }
-      if (statusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
-        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-            new Resolved()
-                .withTestCaseFailureComment("resolved")
-                .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
-                .withResolvedBy(USER1_REF));
-        resolvedTestCaseFailureStatus.add(createTestCaseFailureStatus);
-        continue;
-      }
-      testCaseFailureStatuses.add(createTestCaseFailureStatus);
-    }
-    // Create 2 the test case failure statuses with all stages
-    // this should generate 2 sequence IDs
+  void post_createTestCaseResultFailure(TestInfo test)
+      throws HttpResponseException, ParseException {
+    // We're going to check how each test only has a single open stateID
+    // and 2 tests have their own flow
     Long startTs = System.currentTimeMillis();
-    createTestCaseResolutionStatus(testCaseFailureStatuses);
-    // create resolved test case failure status last
-    createTestCaseResolutionStatus(resolvedTestCaseFailureStatus);
+    TestCase testCaseEntity1 = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    TestCase testCaseEntity2 =
+        createEntity(createRequest(getEntityName(test) + "2"), ADMIN_AUTH_HEADERS);
 
-    // Start a new sequence ID
-    createTestCaseResolutionStatus(testCaseFailureStatuses);
-    // create resolved test case failure status last
-    createTestCaseResolutionStatus(resolvedTestCaseFailureStatus);
+    // Add a failed result, which will create a NEW incident and add a new status
+    for (TestCase testCase : List.of(testCaseEntity1, testCaseEntity2)) {
+      putTestCaseResult(
+          testCase.getFullyQualifiedName(),
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+
+      CreateTestCaseResolutionStatus createAckIncident =
+          new CreateTestCaseResolutionStatus()
+              .withTestCaseReference(testCase.getFullyQualifiedName())
+              .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
+              .withTestCaseResolutionStatusDetails(null);
+      createTestCaseFailureStatus(createAckIncident);
+    }
     Long endTs = System.currentTimeMillis();
 
     // Get the test case failure statuses
     ResultList<TestCaseResolutionStatus> testCaseFailureStatusResultList =
         getTestCaseFailureStatus(startTs, endTs, null, null);
-    assertEquals(8, testCaseFailureStatusResultList.getData().size());
+    assertEquals(4, testCaseFailureStatusResultList.getData().size());
 
-    // check we have only 2 distinct sequence IDs
+    // check we have only 2 distinct sequence IDs, one for each test case
     List<UUID> stateIds =
         testCaseFailureStatusResultList.getData().stream()
             .map(TestCaseResolutionStatus::getStateId)
@@ -1156,58 +1143,38 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Get the test case failure statuses by sequence ID
     ResultList<TestCaseResolutionStatus> storedTestCaseResolutions =
         getTestCaseFailureStatusByStateId(stateId);
-    assertEquals(4, storedTestCaseResolutions.getData().size());
+    assertEquals(2, storedTestCaseResolutions.getData().size());
     assertEquals(stateId, storedTestCaseResolutions.getData().get(0).getStateId());
 
     // Get the test case resolution statuses by status type
     storedTestCaseResolutions =
-        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Assigned);
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
     assertEquals(2, storedTestCaseResolutions.getData().size());
     assertEquals(
-        TestCaseResolutionStatusTypes.Assigned,
+        TestCaseResolutionStatusTypes.Ack,
         storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
-
-    // Get test case resolution statuses by assignee name
-    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, USER1.getName(), null);
-    assertEquals(2, storedTestCaseResolutions.getData().size());
   }
 
   @Test
-  void test_listTestCaseFailureStatusPagination(TestInfo test) throws IOException {
+  void test_listTestCaseFailureStatusPagination(TestInfo test) throws IOException, ParseException {
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
 
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-    TestCaseResolutionStatusTypes[] testCaseFailureStatusTypes =
-        TestCaseResolutionStatusTypes.values();
-    List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
-
-    for (int i = 0; i < maxEntities; i++) {
-      // randomly pick a status type
-      TestCaseResolutionStatusTypes testCaseFailureStatusType =
-          testCaseFailureStatusTypes[i % testCaseFailureStatusTypes.length];
-
-      CreateTestCaseResolutionStatus createTestCaseFailureStatus =
-          new CreateTestCaseResolutionStatus()
-              .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-              .withTestCaseResolutionStatusType(testCaseFailureStatusType)
-              .withTestCaseResolutionStatusDetails(null);
-      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
-        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-            new Assigned().withAssignee(USER1_REF));
-      }
-      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
-        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-            new Resolved()
-                .withTestCaseFailureComment("resolved")
-                .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
-                .withResolvedBy(USER1_REF));
-      }
-      testCaseFailureStatuses.add(createTestCaseFailureStatus);
-    }
     Long startTs = System.currentTimeMillis() - 1000;
-    createTestCaseResolutionStatus(testCaseFailureStatuses);
+    for (int i = 0; i < maxEntities; i++) {
+      // We'll create random test cases
+      TestCase testCaseEntity =
+          createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
+      // Adding failed test case, which will create a NEW incident
+      putTestCaseResult(
+          testCaseEntity.getFullyQualifiedName(),
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+    }
     Long endTs = System.currentTimeMillis() + 1000;
 
     // List all entities and use it for checking pagination
@@ -1215,57 +1182,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getTestCaseFailureStatus(1000000, null, false, startTs, endTs, null);
 
     paginateTestCaseFailureStatus(maxEntities, allEntities, null, startTs, endTs);
-  }
-
-  @Test
-  void test_listTestCaseFailureStatusLatestPagination(TestInfo test) throws IOException {
-    // Create a number of entities between 5 and 20 inclusive
-    Random rand = new Random();
-    TestCase testCaseEntity;
-    int maxEntities = rand.nextInt(16) + 5;
-
-    TestCaseResolutionStatusTypes[] testCaseFailureStatusTypes =
-        TestCaseResolutionStatusTypes.values();
-    List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
-
-    for (int i = 0; i < maxEntities; i++) {
-      // create `maxEntities` number of test cases
-      testCaseEntity = createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
-
-      for (int j = 0; j < 5; j++) {
-        // create 5 test case failure statuses for each test case
-        // randomly pick a status type
-        TestCaseResolutionStatusTypes testCaseFailureStatusType =
-            testCaseFailureStatusTypes[j % TestCaseResolutionStatusTypes.values().length];
-
-        CreateTestCaseResolutionStatus createTestCaseFailureStatus =
-            new CreateTestCaseResolutionStatus()
-                .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-                .withTestCaseResolutionStatusType(testCaseFailureStatusType)
-                .withTestCaseResolutionStatusDetails(null);
-        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
-          createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-              new Assigned().withAssignee(USER1_REF));
-        }
-        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
-          createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
-              new Resolved()
-                  .withTestCaseFailureComment("resolved")
-                  .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
-                  .withResolvedBy(USER1_REF));
-        }
-        testCaseFailureStatuses.add(createTestCaseFailureStatus);
-      }
-    }
-    Long startTs = System.currentTimeMillis() - 1000;
-    createTestCaseResolutionStatus(testCaseFailureStatuses);
-    Long endTs = System.currentTimeMillis() + 1000;
-
-    // List all entities and use it for checking pagination
-    ResultList<TestCaseResolutionStatus> allEntities =
-        getTestCaseFailureStatus(1000000, null, true, startTs, endTs, null);
-
-    paginateTestCaseFailureStatus(maxEntities, allEntities, true, startTs, endTs);
   }
 
   @Test
@@ -1326,24 +1242,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   public void test_testCaseResolutionTaskResolveWorkflowThruFeed(TestInfo test)
-      throws HttpResponseException {
+      throws HttpResponseException, ParseException {
     Long startTs = System.currentTimeMillis();
     FeedResourceTest feedResourceTest = new FeedResourceTest();
 
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-    CreateTestCaseResolutionStatus createTestCaseFailureStatus =
+
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Now, we should be good to create an ASSIGNED status
+    CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
-    TestCaseResolutionStatus testCaseFailureStatus =
-        createTestCaseFailureStatus(createTestCaseFailureStatus);
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
     String jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(testCaseFailureStatus.getId());
+            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(testCaseFailureStatus.getId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
     assertEquals(TaskStatus.Open, thread.getTask().getStatus());
 
     // resolve the task. The old task should be closed and the latest test case resolution status
@@ -1358,7 +1284,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(testCaseFailureStatus.getId());
+            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     thread = JsonUtils.readValue(jsonThread, Thread.class);
     // Confirm that the task is closed
     assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
@@ -1380,7 +1306,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResolutionStatusTypes.Resolved,
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
     assertEquals(
-        testCaseFailureStatus.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
+        assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
     Resolved resolved =
         JsonUtils.convertValue(
             mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusDetails(),
@@ -1391,31 +1317,40 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   public void test_testCaseResolutionTaskCloseWorkflowThruFeed(TestInfo test)
-      throws HttpResponseException {
+      throws HttpResponseException, ParseException {
     Long startTs = System.currentTimeMillis();
     FeedResourceTest feedResourceTest = new FeedResourceTest();
 
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-    CreateTestCaseResolutionStatus createTestCaseFailureStatus =
+
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Now, we should be good to create an ASSIGNED status
+    CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
-    TestCaseResolutionStatus testCaseFailureStatus =
-        createTestCaseFailureStatus(createTestCaseFailureStatus);
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
 
     // Assert that the task is open
     String jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(testCaseFailureStatus.getId());
+            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(testCaseFailureStatus.getId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
     assertEquals(TaskStatus.Open, thread.getTask().getStatus());
 
     // close the task. The old task should be closed and the latest test case resolution status
-    // should be updated (assigned) with the same state ID and a new task should be opened
-
+    // should be updated (resolved) with the same state ID.
     CloseTask closeTask =
         new CloseTask()
             .withComment(USER1.getFullyQualifiedName())
@@ -1424,7 +1359,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(testCaseFailureStatus.getId());
+            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     thread = JsonUtils.readValue(jsonThread, Thread.class);
     assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
 
@@ -1442,49 +1377,48 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestCaseResolutionStatus mostRecentTestCaseResolutionStatusData =
         mostRecentTestCaseResolutionStatus.getData().get(0);
     assertEquals(
-        TestCaseResolutionStatusTypes.Assigned,
+        TestCaseResolutionStatusTypes.Resolved,
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
     assertEquals(
-        testCaseFailureStatus.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
-    Assigned assigned =
-        JsonUtils.convertValue(
-            mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusDetails(),
-            Assigned.class);
-    assertEquals(USER1.getFullyQualifiedName(), assigned.getAssignee().getFullyQualifiedName());
+        assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
   }
 
   @Test
   public void test_testCaseResolutionTaskWorkflowThruAPI(TestInfo test)
-      throws HttpResponseException {
+      throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
-    CreateTestCaseResolutionStatus createTestCaseFailureStatus =
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Now, we should be good to create an ASSIGNED status
+    CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
-            .withTestCaseResolutionStatusDetails(null);
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
 
-    createTestCaseFailureStatus(createTestCaseFailureStatus);
-    TestCaseResolutionStatus testCaseFailureStatusAssigned =
-        createTestCaseFailureStatus(
-            createTestCaseFailureStatus
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
-                .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF)));
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
 
     // Confirm that the task is open
     String jsonThread =
         Entity.getCollectionDAO()
             .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(testCaseFailureStatusAssigned.getId());
+            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
     assertEquals(TaskStatus.Open, thread.getTask().getStatus());
-    assertEquals(
-        testCaseFailureStatusAssigned.getId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
 
     // Create a new test case resolution status with type Resolved
     // and confirm the task is closed
     CreateTestCaseResolutionStatus createTestCaseFailureStatusResolved =
-        createTestCaseFailureStatus
+        createAssignedIncident
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
             .withTestCaseResolutionStatusDetails(
                 new Resolved()
@@ -1499,22 +1433,33 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  public void unauthorizedTestCaseResolutionFlow(TestInfo test) throws HttpResponseException {
+  public void unauthorizedTestCaseResolutionFlow(TestInfo test)
+      throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-    CreateTestCaseResolutionStatus createTestCaseFailureStatus =
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Now, we should be good to create an ASSIGNED status
+    CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
-    createTestCaseFailureStatus(createTestCaseFailureStatus);
+    createTestCaseFailureStatus(createAssignedIncident);
 
     assertResponseContains(
         () ->
             createTestCaseFailureStatus(
-                createTestCaseFailureStatus.withTestCaseResolutionStatusType(
+                createAssignedIncident.withTestCaseResolutionStatusType(
                     TestCaseResolutionStatusTypes.Ack)),
         BAD_REQUEST,
-        "with type `Assigned` cannot be moved to `New` or `Ack`. You can `Assign` or `Resolve` the test case failure.");
+        "Incident with status [Assigned] cannot be moved to [Ack]");
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
@@ -1626,7 +1571,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
-      result.setTestCaseResolutionStatusReference(null);
+      result.setIncidentId(null);
       testCaseResultMap.put(result.getTimestamp(), result);
     }
     for (TestCaseResult result : expectedTestCaseResults) {

@@ -3592,6 +3592,32 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
+                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
+                + "AND json ->> 'incidentId' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> getResultsWithIncidents(@Bind("testCaseFQNHash") String testCaseFQNHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
+                + "AND json ->> 'incidentId' IS NOT NULL",
+        connectionType = POSTGRES)
+    // TODO: need to find the right way to get this cleaned
+    void cleanTestCaseIncidents(
+        @Bind("entityFQNHash") String entityFQNHash, @Bind("stateId") String stateId);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -3605,6 +3631,10 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
+    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

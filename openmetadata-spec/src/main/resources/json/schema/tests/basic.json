@@ -86,9 +86,9 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseResolutionStatusReference": {
-            "description": "Reference to the failure status object for the test case result.",
-            "$ref": "./testCaseResolutionStatus.json"
+        "incidentId": {
+            "description": "Reference to an ongoing Incident ID (stateId) for this result.",
+            "$ref": "../type/basic.json#/definitions/uuid"
         },
         "passedRows": {
           "description": "Number of rows that passed.",
