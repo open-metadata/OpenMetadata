@@ -96,12 +96,12 @@ describe('Recently viwed data assets', () => {
   });
 
   it('recently view section should be present', () => {
-    cy.get('[data-testid="recently-viewed-container"]')
+    cy.get('[data-testid="recently-viewed-widget"]')
       .scrollIntoView()
       .should('be.visible');
 
     cy.get(
-      `[data-testid="recently-viewed-container"] .right-panel-list-item`
+      `[data-testid="recently-viewed-widget"] .right-panel-list-item`
     ).should('have.length', 0);
   });
 
@@ -124,18 +124,18 @@ describe('Recently viwed data assets', () => {
 
       // need to add manual wait as we are dependant on local storage for recently view data
       cy.wait(500);
-      cy.get('[data-testid="recently-viewed-container"]')
+      cy.get('[data-testid="recently-viewed-widget"]')
         .scrollIntoView()
         .should('be.visible');
       cy.get(
-        `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`
+        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`
       )
         .scrollIntoView()
         .should('be.visible');
 
       // Checking count since we will only show max 5 not more than that
       cy.get(
-        `[data-testid="recently-viewed-container"] .right-panel-list-item`
+        `[data-testid="recently-viewed-widget"] .right-panel-list-item`
       ).should('have.length', index + 1);
     });
   });

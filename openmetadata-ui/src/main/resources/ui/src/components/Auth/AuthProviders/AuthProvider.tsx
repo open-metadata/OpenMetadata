@@ -44,7 +44,7 @@ import {
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
-import { ClientErrors } from '../../../enums/axios.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';

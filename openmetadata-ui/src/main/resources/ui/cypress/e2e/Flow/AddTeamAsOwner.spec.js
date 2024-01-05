@@ -12,7 +12,6 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
-import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   addTeam,
   interceptURL,
@@ -20,8 +19,9 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { DATA_ASSETS } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const teamName = `team-group-test-${uuid()}`;

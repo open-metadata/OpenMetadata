@@ -77,6 +77,7 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
+import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -526,7 +527,7 @@ const PipelineDetails = ({
   const tasksDAGView = useMemo(
     () =>
       !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
-        <Card headStyle={{ background: '#fafafa' }} title={t('label.dag-view')}>
+        <Card className="task-dag-view-card" title={t('label.dag-view')}>
           <div className="h-100">
             <TasksDAGView
               selectedExec={selectedExecution}

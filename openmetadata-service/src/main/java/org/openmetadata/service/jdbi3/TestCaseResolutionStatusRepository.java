@@ -11,7 +11,6 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
@@ -22,12 +21,14 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.IncidentManagerException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -96,11 +97,47 @@ public class TestCaseResolutionStatusRepository
     }
   }
 
-  @Override
-  protected void postCreate(TestCaseResolutionStatus entity) {
-    super.postCreate(entity);
-    if (entity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Assigned) {
-      createAssignedTask(entity);
+  public Boolean unresolvedIncident(TestCaseResolutionStatus incident) {
+    return incident != null
+        && !incident
+            .getTestCaseResolutionStatusType()
+            .equals(TestCaseResolutionStatusTypes.Resolved);
+  }
+
+  private Thread getIncidentTask(TestCaseResolutionStatus incident) {
+    // Fetch the latest task (which comes from the NEW state) and close it
+    String jsonThread =
+        Entity.getCollectionDAO()
+            .feedDAO()
+            .fetchThreadByTestCaseResolutionStatusId(incident.getStateId());
+    return JsonUtils.readValue(jsonThread, Thread.class);
+  }
+
+  /**
+   * Ensure we are following the correct status flow
+   */
+  private void validateStatus(
+      TestCaseResolutionStatusTypes lastStatus, TestCaseResolutionStatusTypes newStatus) {
+    switch (lastStatus) {
+      case New -> {
+        /* New can go to any status */
+      }
+      case Ack -> {
+        if (newStatus.equals(TestCaseResolutionStatusTypes.New)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
+      case Assigned -> {
+        if (List.of(TestCaseResolutionStatusTypes.New, TestCaseResolutionStatusTypes.Ack)
+            .contains(newStatus)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
+      case Resolved -> {
+        if (!newStatus.equals(TestCaseResolutionStatusTypes.Resolved)) {
+          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
+        }
+      }
     }
   }
 
@@ -108,109 +145,156 @@ public class TestCaseResolutionStatusRepository
   @Transaction
   public TestCaseResolutionStatus createNewRecord(
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
-    TestCaseResolutionStatus latestTestCaseFailure =
+
+    TestCaseResolutionStatus lastIncident =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
 
-    recordEntity.setStateId(
-        ((latestTestCaseFailure != null)
-                && (latestTestCaseFailure.getTestCaseResolutionStatusType()
-                    != TestCaseResolutionStatusTypes.Resolved))
-            ? latestTestCaseFailure.getStateId()
-            : UUID.randomUUID());
+    if (recordEntity.getStateId() == null) {
+      recordEntity.setStateId(UUID.randomUUID());
+    }
 
-    if (latestTestCaseFailure != null
-        && latestTestCaseFailure
-            .getTestCaseResolutionStatusType()
-            .equals(TestCaseResolutionStatusTypes.Assigned)) {
-      String jsonThread =
-          Entity.getCollectionDAO()
-              .feedDAO()
-              .fetchThreadByTestCaseResolutionStatusId(latestTestCaseFailure.getId());
-      Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-      if (recordEntity
-          .getTestCaseResolutionStatusType()
-          .equals(TestCaseResolutionStatusTypes.Assigned)) {
-        // We have an open task and we are passing an assigned status type
-        // (i.e. we are re-assigning). This scenario is when the test case resolution status is
-        // being sent through the API (and not resolving an open task)
-        // we'll get the associated thread with the latest test case failure
+    // if we have an ongoing incident, set the stateId if the new record to be created
+    // and validate the flow
+    if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
+      recordEntity.setStateId(lastIncident.getStateId());
+      validateStatus(
+          lastIncident.getTestCaseResolutionStatusType(),
+          recordEntity.getTestCaseResolutionStatusType());
+    }
 
-        // we'll close the task (the flow will also create a new assigned test case resolution
-        // status and open a new task)
-        Assigned assigned =
-            JsonUtils.convertValue(
-                recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-        User assignee =
-            Entity.getEntity(Entity.USER, assigned.getAssignee().getId(), "", Include.ALL);
-        User updatedBy =
-            Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
-        CloseTask closeTask =
-            new CloseTask()
-                .withComment(assignee.getFullyQualifiedName())
-                .withTestCaseFQN(recordEntity.getTestCaseReference().getFullyQualifiedName());
-        Entity.getFeedRepository().closeTask(thread, updatedBy.getFullyQualifiedName(), closeTask);
-        return getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
-      } else if (recordEntity
-          .getTestCaseResolutionStatusType()
-          .equals(TestCaseResolutionStatusTypes.Resolved)) {
-        // We have an open task and we are passing a resolved status type (i.e. we are marking it as
-        // resolved). This scenario is when the test case resolution status is being sent through
-        // the API (and not resolving an open task)
-        Resolved resolved =
-            JsonUtils.convertValue(
-                recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
-        TestCase testCase =
-            Entity.getEntity(
-                Entity.TEST_CASE, recordEntity.getTestCaseReference().getId(), "", Include.ALL);
-        User updatedBy =
-            Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
-        ResolveTask resolveTask =
-            new ResolveTask()
-                .withTestCaseFQN(testCase.getFullyQualifiedName())
-                .withTestCaseFailureReason(resolved.getTestCaseFailureReason())
-                .withNewValue(resolved.getTestCaseFailureComment());
-        Entity.getFeedRepository()
-            .resolveTask(
-                new FeedRepository.ThreadContext(thread),
-                updatedBy.getFullyQualifiedName(),
-                resolveTask);
-        return getLatestRecord(testCase.getFullyQualifiedName());
+    switch (recordEntity.getTestCaseResolutionStatusType()) {
+        // When we create a NEW incident, we need to open a task with the test case owner as the
+        // assignee. We don't need to check any past history
+      case New -> {
+        // If there is already an unresolved incident, return it without doing any
+        // further logic.
+        if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
+          return getLatestRecord(lastIncident.getTestCaseReference().getFullyQualifiedName());
+        }
+        openNewTask(recordEntity);
       }
-
-      throw new IllegalArgumentException(
-          String.format(
-              "Test Case Resolution status %s with type `Assigned` cannot be moved to `New` or `Ack`. You can `Assign` or `Resolve` the test case failure. ",
-              latestTestCaseFailure.getId().toString()));
+      case Ack -> {
+        /* nothing to do for ACK. The Owner already has the task open. It will close it when reassigning it */
+      }
+      case Assigned -> assignTask(recordEntity, lastIncident);
+        // When the incident is Resolved, we will close the Assigned task.
+      case Resolved -> {
+        resolveTask(recordEntity, lastIncident);
+        // We don't create a new record. The new status will be added via the
+        // TestCaseFailureResolutionTaskWorkflow
+        // implemented in the TestCaseRepository.
+        return getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+      }
+      default -> throw new IllegalArgumentException(
+          String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
     return super.createNewRecord(recordEntity, extension, recordFQN);
   }
 
-  private void createAssignedTask(TestCaseResolutionStatus entity) {
+  private void openNewTask(TestCaseResolutionStatus incidentStatus) {
+
+    List<EntityReference> owners =
+        EntityUtil.getEntityReferences(
+            daoCollection
+                .relationshipDAO()
+                .findFrom(
+                    incidentStatus.getTestCaseReference().getId(),
+                    Entity.TEST_CASE,
+                    Relationship.OWNS.ordinal(),
+                    Entity.USER));
+    createTask(incidentStatus, owners, "New Incident");
+  }
+
+  private void assignTask(
+      TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
+
+    if (lastIncidentStatus == null) {
+      throw new IncidentManagerException(
+          String.format(
+              "Cannot find the last incident status for stateId %s",
+              newIncidentStatus.getStateId()));
+    }
+
+    Thread thread = getIncidentTask(lastIncidentStatus);
+
     Assigned assigned =
-        JsonUtils.convertValue(entity.getTestCaseResolutionStatusDetails(), Assigned.class);
-    List<EntityReference> assignees = Collections.singletonList(assigned.getAssignee());
+        JsonUtils.convertValue(
+            newIncidentStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
+    User updatedBy =
+        Entity.getEntity(Entity.USER, newIncidentStatus.getUpdatedBy().getId(), "", Include.ALL);
+
+    patchTaskAssignee(thread, assigned.getAssignee(), updatedBy.getName());
+  }
+
+  private void resolveTask(
+      TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
+
+    if (lastIncidentStatus == null) {
+      throw new IncidentManagerException(
+          String.format(
+              "Cannot find the last incident status for stateId %s",
+              newIncidentStatus.getStateId()));
+    }
+
+    Thread thread = getIncidentTask(lastIncidentStatus);
+
+    Resolved resolved =
+        JsonUtils.convertValue(
+            newIncidentStatus.getTestCaseResolutionStatusDetails(), Resolved.class);
+    TestCase testCase =
+        Entity.getEntity(
+            Entity.TEST_CASE, newIncidentStatus.getTestCaseReference().getId(), "", Include.ALL);
+    User updatedBy =
+        Entity.getEntity(Entity.USER, newIncidentStatus.getUpdatedBy().getId(), "", Include.ALL);
+    ResolveTask resolveTask =
+        new ResolveTask()
+            .withTestCaseFQN(testCase.getFullyQualifiedName())
+            .withTestCaseFailureReason(resolved.getTestCaseFailureReason())
+            .withNewValue(resolved.getTestCaseFailureComment());
+    Entity.getFeedRepository()
+        .resolveTask(
+            new FeedRepository.ThreadContext(thread),
+            updatedBy.getFullyQualifiedName(),
+            resolveTask);
+  }
+
+  private void createTask(
+      TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees, String message) {
+
     TaskDetails taskDetails =
         new TaskDetails()
             .withAssignees(assignees)
             .withType(TaskType.RequestTestCaseFailureResolution)
             .withStatus(TaskStatus.Open)
-            .withTestCaseResolutionStatusId(entity.getId());
+            // Each incident flow - flagged by its State ID - will have a single unique Task
+            .withTestCaseResolutionStatusId(incidentStatus.getStateId());
 
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(
-            Entity.TEST_CASE, entity.getTestCaseReference().getFullyQualifiedName());
+            Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
             .withThreadTs(System.currentTimeMillis())
-            .withMessage("Test Case Failure Resolution requested for ")
-            .withCreatedBy(entity.getUpdatedBy().getName())
+            .withMessage(message)
+            .withCreatedBy(incidentStatus.getUpdatedBy().getName())
             .withAbout(entityLink.getLinkString())
             .withType(ThreadType.Task)
             .withTask(taskDetails)
-            .withUpdatedBy(entity.getUpdatedBy().getName())
+            .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
             .withUpdatedAt(System.currentTimeMillis());
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
+  }
+
+  private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
+    Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+    updatedTask.setTask(
+        updatedTask.getTask().withAssignees(Collections.singletonList(newAssignee)));
+
+    JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    feedRepository.patchThread(null, originalTask.getId(), user, patch);
   }
 }

@@ -231,7 +231,10 @@ export const PersonaDetailsPage = () => {
                 multiSelect
                 selectedUsers={personaDetails.users ?? []}
                 onUpdate={(users) => handlePersonaUpdate({ users })}>
-                <Button size="small" type="primary">
+                <Button
+                  data-testid="add-user-button"
+                  size="small"
+                  type="primary">
                   {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               </UserSelectableList>
