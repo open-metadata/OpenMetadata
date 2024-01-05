@@ -98,6 +98,7 @@ const FeedCardHeaderV1 = ({
         <UserPopOverCard userName={createdBy}>
           <span
             className="thread-author m-r-xss cursor-pointer"
+            role="button"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(createdBy);
