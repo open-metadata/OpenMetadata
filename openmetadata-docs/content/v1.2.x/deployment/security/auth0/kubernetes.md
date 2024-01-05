@@ -22,7 +22,7 @@ openmetadata:
     authentication:
       provider: "auth0"
       publicKeys: 
-      - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+      - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
       - "{Auth0 Domain Name}/.well-known/jwks.json"
       authority: "https://parth-panchal.us.auth0.com/"
       clientId: "{Client ID}"
