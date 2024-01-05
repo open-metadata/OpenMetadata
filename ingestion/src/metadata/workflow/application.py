@@ -57,6 +57,10 @@ class AppRunner(Step, ABC):
 
         super().__init__()
 
+    @property
+    def name(self) -> str:
+        return "AppRunner"
+
     @abstractmethod
     def run(self) -> None:
         """App logic to execute"""

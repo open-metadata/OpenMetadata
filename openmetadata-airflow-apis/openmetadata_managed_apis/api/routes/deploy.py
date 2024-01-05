@@ -56,7 +56,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             if json_request is None:
                 return ApiResponse.error(
                     status=ApiResponse.STATUS_BAD_REQUEST,
-                    error=f"Did not receive any JSON request to deploy",
+                    error="Did not receive any JSON request to deploy",
                 )
 
             ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(
