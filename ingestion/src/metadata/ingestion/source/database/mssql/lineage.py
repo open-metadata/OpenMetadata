@@ -26,4 +26,6 @@ class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
             OR lower(t.text) LIKE '%%update%%'
             OR lower(t.text) LIKE '%%merge%%'
         )
+        AND lower(t.text) NOT LIKE '%%create%%procedure%%'
+        AND lower(t.text) NOT LIKE '%%declare%%'
     """
