@@ -99,7 +99,9 @@ public class TestCaseResolutionStatusRepository
 
   public Boolean unresolvedIncident(TestCaseResolutionStatus incident) {
     return incident != null
-        && incident.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved;
+        && !incident
+            .getTestCaseResolutionStatusType()
+            .equals(TestCaseResolutionStatusTypes.Resolved);
   }
 
   private Thread getIncidentTask(TestCaseResolutionStatus incident) {
@@ -151,13 +153,10 @@ public class TestCaseResolutionStatusRepository
       recordEntity.setStateId(UUID.randomUUID());
     }
 
-    if (lastIncident != null) {
-      // if we have an ongoing incident, set the stateId if the new record to be created
-      recordEntity.setStateId(
-          Boolean.TRUE.equals(unresolvedIncident(recordEntity))
-              ? lastIncident.getStateId()
-              : recordEntity.getStateId());
-
+    // if we have an ongoing incident, set the stateId if the new record to be created
+    // and validate the flow
+    if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
+      recordEntity.setStateId(lastIncident.getStateId());
       validateStatus(
           lastIncident.getTestCaseResolutionStatusType(),
           recordEntity.getTestCaseResolutionStatusType());
@@ -169,7 +168,7 @@ public class TestCaseResolutionStatusRepository
       case New -> {
         // If there is already an unresolved incident, return it without doing any
         // further logic.
-        if (lastIncident != null) {
+        if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
           return getLatestRecord(lastIncident.getTestCaseReference().getFullyQualifiedName());
         }
         openNewTask(recordEntity);
