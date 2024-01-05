@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.SUBJECT_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
@@ -28,11 +29,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.TreeMap;
+import java.util.*;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
@@ -188,6 +185,12 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   public String validateAndReturnUsername(Map<String, Claim> claims) {
     // Get username from JWT token
+    String claimUserName = "";
+    if (!Objects.isNull(claims.get(SUBJECT_CLAIM))) {
+      claimUserName = claims.get(SUBJECT_CLAIM).as(TextNode.class).asText();
+    }
+
+    // Get email from JWT token
     String jwtClaim =
         jwtPrincipalClaims.stream()
             .filter(claims::containsKey)
@@ -208,6 +211,11 @@ public class JwtFilter implements ContainerRequestFilter {
     } else {
       userName = jwtClaim;
       domain = StringUtils.EMPTY;
+    }
+
+    // Prefer userName over email
+    if (org.apache.commons.lang3.StringUtils.isNotBlank(claimUserName)) {
+      userName = claimUserName;
     }
 
     // validate principal domain

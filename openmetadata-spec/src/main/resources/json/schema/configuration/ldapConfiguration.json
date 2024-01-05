@@ -41,9 +41,49 @@
       "description": "User base distinguished name",
       "type": "string"
     },
+    "groupBaseDN": {
+      "description": "Group base distinguished name",
+      "type": "string"
+    },
+    "roleAdminName": {
+      "description": "Admin role name",
+      "type": "string"
+    },
+    "allAttributeName": {
+      "description": "All attribute name",
+      "type": "string"
+    },
     "mailAttributeName": {
       "description": "Email attribute name",
       "type": "string"
+    },
+    "usernameAttributeName": {
+      "description": "User Name attribute name",
+      "type": "string"
+    },
+    "groupAttributeName": {
+      "description": "Group Name attribute name",
+      "type": "string"
+    },
+    "groupAttributeValue": {
+      "description": "Group attribute value",
+      "type": "string"
+    },
+    "groupMemberAttributeName": {
+      "description": "Group Member Name attribute name",
+      "type": "string"
+    },
+    "authRolesMapping": {
+      "description": "Json string of roles mapping between LDAP roles and Ranger roles",
+      "type": "string"
+    },
+    "authReassignRoles": {
+      "description": "Roles should be reassign every time user login",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     },
     "truststoreFormat": {
       "description": "Truststore format e.g. PKCS12, JKS.",
