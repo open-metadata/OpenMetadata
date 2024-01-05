@@ -124,20 +124,21 @@ export const buildCompleteTree = (
     value: any;
   }[],
   icon: any,
-  key: string
+  key: string,
+  parentKey: string
 ) => {
   let node: DataNode;
 
   if (icon != null) {
     node = {
-      key: key,
+      key: parentKey + '-' + key,
       title: viewElements.find((item) => item.key === key)?.value ?? null,
       children: [],
       icon,
     };
   } else {
     node = {
-      key: key,
+      key: parentKey + '-' + key,
       title: viewElements.find((item) => item.key === key)?.value ?? null,
       children: [],
     };
@@ -148,7 +149,13 @@ export const buildCompleteTree = (
     const childrenKeys = entry.downstreamTasks || [];
 
     for (const childKey of childrenKeys) {
-      const childNode = buildCompleteTree(data, viewElements, icon, childKey);
+      const childNode = buildCompleteTree(
+        data,
+        viewElements,
+        icon,
+        childKey,
+        parentKey + '-' + entry.name
+      );
       node.children?.push(childNode);
     }
   }
@@ -165,8 +172,8 @@ export const getTreeData = (
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  let treeDataList: DataNode[] = [];
-  let treeLabelList: DataNode[] = [];
+  const treeDataList: DataNode[] = [];
+  const treeLabelList: DataNode[] = [];
 
   // map execution element to task name
   const viewElements = map(viewData, (value, key) => ({
@@ -205,10 +212,22 @@ export const getTreeData = (
     labelElements.push(object);
   });
 
-  treeDataList = [buildCompleteTree(tasks, viewElements, null, tasks[0].name)];
-  treeLabelList = [
-    buildCompleteTree(tasks, labelElements, icon, tasks[0].name),
-  ];
+  const roots: string[] = [];
+
+  for (const task of tasks) {
+    if (!checkIsDownStreamTask(task, tasks)) {
+      roots.push(task.name);
+    }
+  }
+
+  roots.forEach((taskName) => {
+    treeDataList.push(
+      buildCompleteTree(tasks, viewElements, null, taskName, 'root')
+    );
+    treeLabelList.push(
+      buildCompleteTree(tasks, labelElements, icon, taskName, 'root')
+    );
+  });
 
   return { treeDataList, treeLabelList };
 };
