@@ -10,15 +10,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ChartIndex implements SearchIndex {
-
+public record ChartIndex(Chart chart) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Chart chart;
-
-  public ChartIndex(Chart chart) {
-    this.chart = chart;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(chart);
