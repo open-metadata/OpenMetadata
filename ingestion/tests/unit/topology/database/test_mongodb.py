@@ -49,7 +49,7 @@ mock_mongo_config = {
                 "type": "MongoDB",
                 "username": "ulixius",
                 "password": "dummy_password",
-                "hostPort": "localhost:27017"
+                "hostPort": "localhost:27017",
             },
         },
         "sourceConfig": {
