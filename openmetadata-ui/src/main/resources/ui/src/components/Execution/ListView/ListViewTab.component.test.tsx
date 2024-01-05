@@ -32,6 +32,7 @@ const mockProps = {
   executions: EXECUTION_LIST_MOCK,
   status: StatusType.Successful,
   loading: false,
+  searchString: undefined
 };
 
 describe('Test ListViewTab Component', () => {

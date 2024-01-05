@@ -28,14 +28,20 @@ interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
   status: string;
   loading: boolean;
+  searchString: string | undefined;
 }
 
-const ListView = ({ executions, status, loading }: ListViewProps) => {
+const ListView = ({
+  executions,
+  status,
+  loading,
+  searchString,
+}: ListViewProps) => {
   const { t } = useTranslation();
 
   const tableData = useMemo(
-    () => getTableViewData(executions, status),
-    [executions, status]
+    () => getTableViewData(executions, status, searchString),
+    [executions, status, searchString]
   );
 
   const columns = useMemo(

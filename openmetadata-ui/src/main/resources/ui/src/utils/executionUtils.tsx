@@ -60,7 +60,8 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
  */
 export const getTableViewData = (
   executions: PipelineStatus[] | undefined,
-  status: string | undefined
+  status: string | undefined,
+  searchString: string | undefined
 ): Array<ViewDataInterface> | undefined => {
   if (isUndefined(executions)) {
     return;
@@ -80,11 +81,17 @@ export const getTableViewData = (
     });
   });
 
-  return viewData.filter((data) =>
-    status !== MenuOptions.all
-      ? toLower(data.status)?.includes(toLower(status))
-      : data
-  );
+  return viewData
+    .filter((view) =>
+      searchString && searchString.length > 0
+        ? toLower(view.name)?.includes(toLower(searchString))
+        : true
+    )
+    .filter((view) =>
+      status !== MenuOptions.all
+        ? toLower(view.status)?.includes(toLower(status))
+        : true
+    );
 };
 
 /**
@@ -97,7 +104,7 @@ export const getTreeViewData = (
   executions: PipelineStatus[],
   status: string | undefined
 ) => {
-  const taskStatusArr = getTableViewData(executions, status);
+  const taskStatusArr = getTableViewData(executions, status, undefined);
 
   return groupBy(taskStatusArr, 'name');
 };
