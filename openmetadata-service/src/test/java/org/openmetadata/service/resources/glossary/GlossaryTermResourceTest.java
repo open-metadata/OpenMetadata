@@ -998,7 +998,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Contains Marathi characters
     translations.add("नमस्कार जग");
-    translations.add("नमस्कार");
 
     // Contains Bengali characters
     translations.add("ওহে বিশ্ব");
@@ -1026,7 +1025,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Contains Nepali characters
     translations.add("नमस्कार संसार");
-    translations.add("नमस्कार");
 
     // Contains Urdu characters
     translations.add("ہیلو دنیا");

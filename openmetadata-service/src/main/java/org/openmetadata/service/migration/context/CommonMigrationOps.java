@@ -4,7 +4,7 @@ import java.util.List;
 
 public class CommonMigrationOps {
   private CommonMigrationOps() {
-    /** Hidden constructor */
+    /* Hidden constructor */
   }
 
   public static final List<MigrationOps> COMMON_OPS =

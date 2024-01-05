@@ -3,15 +3,14 @@ package org.openmetadata.service.util;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AsciiTable {
+public record AsciiTable(
+    List<String> columns,
+    List<List<String>> rows,
+    boolean printHeader,
+    String nullText,
+    String emptyText) {
   private static final String DEFAULT_COLUMN_NAME = "(No column name)";
   private static final String DEFAULT_NO_VALUE = "-";
-
-  private final List<String> columns;
-  private final List<List<String>> rows;
-  private final boolean printHeader;
-  private final String nullText;
-  private final String emptyText;
 
   public AsciiTable(
       List<String> columns,
@@ -35,7 +34,7 @@ public class AsciiTable {
   }
 
   /**
-   * @return The table rendered with column header and row data.
+   * Return table rendered with column header and row data.
    */
   public String render() {
     List<Integer> widths = new ArrayList<>();

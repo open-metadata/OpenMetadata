@@ -4,14 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ReportDataIndexes implements SearchIndex {
-
-  final ReportData reportData;
-
-  public ReportDataIndexes(ReportData reportData) {
-    this.reportData = reportData;
-  }
-
+public record ReportDataIndexes(ReportData reportData) implements SearchIndex {
   @Override
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(reportData);

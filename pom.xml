@@ -299,13 +299,11 @@
         <groupId>org.opensearch.client</groupId>
         <artifactId>opensearch-rest-high-level-client</artifactId>
         <version>${opensearch.version}</version>
-        <!--      <classifier>shaded</classifier>-->
       </dependency>
       <dependency>
         <groupId>org.elasticsearch.client</groupId>
         <artifactId>elasticsearch-rest-high-level-client</artifactId>
         <version>${elasticsearch.version}</version>
-        <!--      <classifier>shaded</classifier>-->
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -767,6 +765,7 @@
           <artifactId>maven-release-plugin</artifactId>
           <version>${maven-release-plugin.version}</version>
           <configuration>
+            <!--suppress UnresolvedMavenProperty -->
             <arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
           </configuration>
         </plugin>

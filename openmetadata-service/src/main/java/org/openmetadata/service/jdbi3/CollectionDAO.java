@@ -3790,7 +3790,6 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
-        default -> throw new IllegalArgumentException("Invalid Token Type.");
       };
     }
   }

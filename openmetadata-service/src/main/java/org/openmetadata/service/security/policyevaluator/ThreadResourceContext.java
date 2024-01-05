@@ -8,14 +8,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Conversation threads require special handling */
-public class ThreadResourceContext implements ResourceContextInterface {
-  // User who created the thread is the owner of thread entity
-  private final String createdBy;
-
-  public ThreadResourceContext(String createdBy) {
-    this.createdBy = createdBy;
-  }
-
+public record ThreadResourceContext(String createdBy) implements ResourceContextInterface {
   @Override
   public String getResource() {
     return Entity.THREAD;

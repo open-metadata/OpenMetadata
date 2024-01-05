@@ -17,14 +17,8 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ContainerIndex implements ColumnIndex {
+public record ContainerIndex(Container container) implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Container container;
-
-  public ContainerIndex(Container container) {
-    this.container = container;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(container);

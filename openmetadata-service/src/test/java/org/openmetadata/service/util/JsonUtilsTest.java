@@ -123,7 +123,7 @@ class JsonUtilsTest {
 
   @Test
   void testJsonWithFieldsRemoveFields() throws URISyntaxException {
-    HashMap authType = new HashMap();
+    HashMap<String, String> authType = new HashMap<>();
     authType.put("username", "username");
     authType.put("password", "password");
     TableauConnection airflowConnection =

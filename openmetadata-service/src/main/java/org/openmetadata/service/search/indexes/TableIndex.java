@@ -18,7 +18,7 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TableIndex implements ColumnIndex {
+public record TableIndex(Table table) implements ColumnIndex {
   private static final List<String> excludeFields =
       List.of(
           "sampleData",
@@ -26,12 +26,6 @@ public class TableIndex implements ColumnIndex {
           "joins",
           "changeDescription",
           "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
-
-  final Table table;
-
-  public TableIndex(Table table) {
-    this.table = table;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(table);
