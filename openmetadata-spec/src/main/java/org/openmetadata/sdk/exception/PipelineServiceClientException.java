@@ -26,12 +26,14 @@ public class PipelineServiceClientException extends WebServiceException {
     super(status, message);
   }
 
-  public static PipelineServiceClientException byMessage(String name, String errorMessage, Response.Status status) {
+  public static PipelineServiceClientException byMessage(
+      String name, String errorMessage, Response.Status status) {
     return new PipelineServiceClientException(status, buildMessageByName(name, errorMessage));
   }
 
   public static PipelineServiceClientException byMessage(String name, String errorMessage) {
-    return new PipelineServiceClientException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+    return new PipelineServiceClientException(
+        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }
 
   private static String buildMessageByName(String name, String errorMessage) {

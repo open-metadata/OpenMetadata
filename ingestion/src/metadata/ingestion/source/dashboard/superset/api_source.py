@@ -24,7 +24,10 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
@@ -105,7 +108,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 left=StackTraceError(
                     name=dashboard_details.id or "Dashboard",
                     error=f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -144,7 +147,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     left=StackTraceError(
                         name=chart_json.id,
                         error=f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -193,7 +196,7 @@ class SupersetAPISource(SupersetSourceMixin):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 try:
                     chart_json = self.all_charts.get(chart_id)
-                    if not chart_json:
+                    if not chart_json or not chart_json.datasource_id:
                         logger.warning(
                             f"chart details for id: {chart_id} not found, skipped"
                         )
@@ -223,6 +226,6 @@ class SupersetAPISource(SupersetSourceMixin):
                         left=StackTraceError(
                             name=f"{dashboard_details.id} DataModel",
                             error=f"Error yielding Data Model [{dashboard_details.id}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )

@@ -24,13 +24,13 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   private static InMemorySecretsManager instance;
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
-  protected InMemorySecretsManager(String clusterPrefix) {
-    super(SecretsManagerProvider.IN_MEMORY, clusterPrefix, 0);
+  protected InMemorySecretsManager(SecretsConfig secretsConfig) {
+    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, 0);
   }
 
-  public static InMemorySecretsManager getInstance(String clusterPrefix) {
+  public static InMemorySecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new InMemorySecretsManager(clusterPrefix);
+      instance = new InMemorySecretsManager(secretsConfig);
     }
     return instance;
   }
@@ -54,7 +54,8 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   String getSecret(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {
-      throw new SecretsManagerException(String.format("Key [%s] not found in in-memory secrets manager", secretName));
+      throw new SecretsManagerException(
+          String.format("Key [%s] not found in in-memory secrets manager", secretName));
     }
     return value;
   }

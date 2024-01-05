@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.Include;
@@ -36,8 +37,9 @@ public class ActivityFeedAlertCache {
 
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
     @Override
-    public EventSubscription load(@CheckForNull String alertName) {
-      EventSubscription alert = Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
+    public @NonNull EventSubscription load(@CheckForNull String alertName) {
+      EventSubscription alert =
+          Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
       LOG.debug("Loaded Alert {}", alert);
       return alert;
     }

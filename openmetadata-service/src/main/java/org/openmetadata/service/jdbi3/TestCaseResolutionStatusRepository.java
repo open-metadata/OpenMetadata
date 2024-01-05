@@ -34,7 +34,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
-public class TestCaseResolutionStatusRepository extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
+public class TestCaseResolutionStatusRepository
+    extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
 
   public TestCaseResolutionStatusRepository() {
@@ -45,7 +46,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(UUID stateId) {
+  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
+      UUID stateId) {
     List<String> jsons =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listTestCaseResolutionStatusesForStateId(stateId.toString());
@@ -55,7 +57,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
   }
 
-  public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(UUID id, JsonPatch patch, String user)
+  public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(
+      UUID id, JsonPatch patch, String user)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
@@ -72,7 +75,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, RestUtil.ENTITY_UPDATED);
   }
 
-  private void validatePatchFields(TestCaseResolutionStatus updated, TestCaseResolutionStatus original)
+  private void validatePatchFields(
+      TestCaseResolutionStatus updated, TestCaseResolutionStatus original)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
     // Validate that only updatedAt and updatedBy fields are updated
     BeanInfo beanInfo = Introspector.getBeanInfo(TestCaseResolutionStatus.class);
@@ -85,7 +89,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
         Object originalValue = propertyDescriptor.getReadMethod().invoke(original);
         Object updatedValue = propertyDescriptor.getReadMethod().invoke(updated);
         if (originalValue != null && !originalValue.equals(updatedValue)) {
-          throw new IllegalArgumentException(String.format("Field %s is not allowed to be updated", propertyName));
+          throw new IllegalArgumentException(
+              String.format("Field %s is not allowed to be updated", propertyName));
         }
       }
     }
@@ -105,49 +110,70 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
       TestCaseResolutionStatus recordEntity, String extension, String recordFQN) {
     TestCaseResolutionStatus latestTestCaseFailure =
         getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
+
     recordEntity.setStateId(
         ((latestTestCaseFailure != null)
-                && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved))
+                && (latestTestCaseFailure.getTestCaseResolutionStatusType()
+                    != TestCaseResolutionStatusTypes.Resolved))
             ? latestTestCaseFailure.getStateId()
             : UUID.randomUUID());
 
     if (latestTestCaseFailure != null
-        && latestTestCaseFailure.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.Assigned)) {
+        && latestTestCaseFailure
+            .getTestCaseResolutionStatusType()
+            .equals(TestCaseResolutionStatusTypes.Assigned)) {
       String jsonThread =
-          Entity.getCollectionDAO().feedDAO().fetchThreadByTestCaseResolutionStatusId(latestTestCaseFailure.getId());
+          Entity.getCollectionDAO()
+              .feedDAO()
+              .fetchThreadByTestCaseResolutionStatusId(latestTestCaseFailure.getId());
       Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-      if (recordEntity.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.Assigned)) {
-        // We have an open task and we are passing an assigned status type (i.e. we are re-assigning). This scenario is
-        // when the test case resolution status
-        // is being sent through the API (and not resolving an open task)
+      if (recordEntity
+          .getTestCaseResolutionStatusType()
+          .equals(TestCaseResolutionStatusTypes.Assigned)) {
+        // We have an open task and we are passing an assigned status type
+        // (i.e. we are re-assigning). This scenario is when the test case resolution status is
+        // being sent through the API (and not resolving an open task)
         // we'll get the associated thread with the latest test case failure
 
-        // we'll close the task (the flow will also create a new assigned test case resolution status and open a new
-        // task)
-        Assigned assigned = JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-        User assignee = Entity.getEntity(Entity.USER, assigned.getAssignee().getId(), "", Include.ALL);
-        User updatedBy = Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
+        // we'll close the task (the flow will also create a new assigned test case resolution
+        // status and open a new task)
+        Assigned assigned =
+            JsonUtils.convertValue(
+                recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
+        User assignee =
+            Entity.getEntity(Entity.USER, assigned.getAssignee().getId(), "", Include.ALL);
+        User updatedBy =
+            Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
         CloseTask closeTask =
             new CloseTask()
                 .withComment(assignee.getFullyQualifiedName())
                 .withTestCaseFQN(recordEntity.getTestCaseReference().getFullyQualifiedName());
         Entity.getFeedRepository().closeTask(thread, updatedBy.getFullyQualifiedName(), closeTask);
         return getLatestRecord(recordEntity.getTestCaseReference().getFullyQualifiedName());
-      } else if (recordEntity.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.Resolved)) {
-        // We have an open task and we are passing a resolved status type (i.e. we are marking it as resolved). This
-        // scenario is when the test case resolution status
-        // is being sent through the API (and not resolving an open task)
-        Resolved resolved = JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
+      } else if (recordEntity
+          .getTestCaseResolutionStatusType()
+          .equals(TestCaseResolutionStatusTypes.Resolved)) {
+        // We have an open task and we are passing a resolved status type (i.e. we are marking it as
+        // resolved). This scenario is when the test case resolution status is being sent through
+        // the API (and not resolving an open task)
+        Resolved resolved =
+            JsonUtils.convertValue(
+                recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
         TestCase testCase =
-            Entity.getEntity(Entity.TEST_CASE, recordEntity.getTestCaseReference().getId(), "", Include.ALL);
-        User updatedBy = Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
+            Entity.getEntity(
+                Entity.TEST_CASE, recordEntity.getTestCaseReference().getId(), "", Include.ALL);
+        User updatedBy =
+            Entity.getEntity(Entity.USER, recordEntity.getUpdatedBy().getId(), "", Include.ALL);
         ResolveTask resolveTask =
             new ResolveTask()
                 .withTestCaseFQN(testCase.getFullyQualifiedName())
                 .withTestCaseFailureReason(resolved.getTestCaseFailureReason())
                 .withNewValue(resolved.getTestCaseFailureComment());
         Entity.getFeedRepository()
-            .resolveTask(new FeedRepository.ThreadContext(thread), updatedBy.getFullyQualifiedName(), resolveTask);
+            .resolveTask(
+                new FeedRepository.ThreadContext(thread),
+                updatedBy.getFullyQualifiedName(),
+                resolveTask);
         return getLatestRecord(testCase.getFullyQualifiedName());
       }
 
@@ -160,7 +186,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
   }
 
   private void createAssignedTask(TestCaseResolutionStatus entity) {
-    Assigned assigned = JsonUtils.convertValue(entity.getTestCaseResolutionStatusDetails(), Assigned.class);
+    Assigned assigned =
+        JsonUtils.convertValue(entity.getTestCaseResolutionStatusDetails(), Assigned.class);
     List<EntityReference> assignees = Collections.singletonList(assigned.getAssignee());
     TaskDetails taskDetails =
         new TaskDetails()
@@ -170,7 +197,8 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
             .withTestCaseResolutionStatusId(entity.getId());
 
     MessageParser.EntityLink entityLink =
-        new MessageParser.EntityLink(Entity.TEST_CASE, entity.getTestCaseReference().getFullyQualifiedName());
+        new MessageParser.EntityLink(
+            Entity.TEST_CASE, entity.getTestCaseReference().getFullyQualifiedName());
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())

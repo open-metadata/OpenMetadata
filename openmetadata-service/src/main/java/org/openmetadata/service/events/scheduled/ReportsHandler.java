@@ -53,11 +53,13 @@ public class ReportsHandler {
   private static ReportsHandler instance;
   private static volatile boolean initialized = false;
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
-  private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap =
+      new ConcurrentHashMap<>();
 
   private ReportsHandler() throws SchedulerException {
     this.searchRepository = Entity.getSearchRepository();
-    this.chartRepository = (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
+    this.chartRepository =
+        (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
     this.reportScheduler.start();
   }
 
@@ -139,7 +141,8 @@ public class ReportsHandler {
     }
   }
 
-  public Response triggerExistingDataInsightJob(EventSubscription dataReport) throws SchedulerException {
+  public Response triggerExistingDataInsightJob(EventSubscription dataReport)
+      throws SchedulerException {
     JobDetail jobDetail = getJobKey(dataReport.getId());
     if (jobDetail != null) {
       JobDataMap dataMap = new JobDataMap();

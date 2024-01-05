@@ -11,7 +11,7 @@ OpenMetadata has support for Google SSO, Okta SSO, custom OIDC, Auth0, Azure SSO
 
 Enabling Security is only required for your **Production** installation. If you are testing OpenMetadata, it will be easier 
 and faster to set up without security. To get up and running quickly with OpenMetadata (without security), 
-please follow the [Quickstart](/quick-start/local-deployment) guide.
+please follow the [Quickstart](/quick-start) guide.
 
 {%inlineCalloutContainer%}
   {%inlineCallout

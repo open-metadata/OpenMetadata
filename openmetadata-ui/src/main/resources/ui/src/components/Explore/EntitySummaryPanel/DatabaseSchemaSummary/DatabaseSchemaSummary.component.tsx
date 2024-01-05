@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -27,6 +29,7 @@ const DatabaseSchemaSummary = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: DatabaseSchemaSummaryProps) => {
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.DATABASE_SCHEMA, entityDetails),
@@ -49,7 +52,13 @@ const DatabaseSchemaSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
         />
       </>
     </SummaryPanelSkeleton>

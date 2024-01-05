@@ -17,7 +17,8 @@ public class LookerConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    LookerConnection lookerConnection = (LookerConnection) JsonUtils.convertValue(object, this.clazz);
+    LookerConnection lookerConnection =
+        (LookerConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(lookerConnection.getGitCredentials(), CREDENTIALS_CLASSES)
         .ifPresent(lookerConnection::setGitCredentials);

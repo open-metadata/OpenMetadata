@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,7 +60,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void setFullyQualifiedName(Dashboard dashboard) {
     dashboard.setFullyQualifiedName(
-        FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
+        FullyQualifiedName.add(
+            dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
   }
 
   @Override
@@ -67,28 +69,39 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("charts")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
-      if (!entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
-        // Only description field can be updated
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
+      if (entityLink.getArrayFieldValue() != null) {
+        return new ChartDescriptionAndTagTaskWorkflow(threadContext);
       }
-      return new ChartDescriptionTaskWorkflow(threadContext);
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
     }
     return super.getTaskWorkflow(threadContext);
   }
 
-  static class ChartDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    ChartDescriptionTaskWorkflow(ThreadContext threadContext) {
+  static class ChartDescriptionAndTagTaskWorkflow extends DescriptionTaskWorkflow {
+    ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      Dashboard dashboard = Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
+      EntityLink entityLink = threadContext.getAbout();
+      Dashboard dashboard =
+          Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
       String chartName = threadContext.getAbout().getArrayFieldName();
       EntityReference chartReference =
           dashboard.getCharts().stream()
               .filter(c -> c.getName().equals(chartName))
               .findFirst()
               .orElseThrow(
-                  () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("chart", chartName)));
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("chart", chartName)));
       Chart chart = Entity.getEntity(chartReference, "", ALL);
+      if (entityLink.getArrayFieldValue().equals(FIELD_DESCRIPTION)) {
+        threadContext.setAbout(
+            new EntityLink(
+                Entity.CHART, chart.getFullyQualifiedName(), FIELD_DESCRIPTION, null, null));
+      } else if (entityLink.getArrayFieldValue().equals(FIELD_TAGS)) {
+        threadContext.setAbout(
+            new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), FIELD_TAGS, null, null));
+      }
       threadContext.setAboutEntity(chart);
     }
   }
@@ -96,9 +109,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
-    dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+    dashboard.setCharts(
+        fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
-        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+        fields.contains("dataModels")
+            ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL)
+            : null);
     dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
@@ -112,7 +128,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void clearFields(Dashboard dashboard, Fields fields) {
     dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
     dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
-    dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
+    dashboard.withUsageSummary(
+        fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override
@@ -128,19 +145,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setServiceType(service.getServiceType());
   }
 
-  public void setService(Dashboard dashboard, EntityReference service) {
-    if (service != null && dashboard != null) {
-      // TODO remove this
-      addRelationship(service.getId(), dashboard.getId(), service.getType(), Entity.DASHBOARD, Relationship.CONTAINS);
-      dashboard.setService(service);
-    }
-  }
-
   @Override
   public void prepare(Dashboard dashboard, boolean update) {
     populateService(dashboard);
     dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
-    dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
+    dashboard.setDataModels(
+        EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
   }
 
   @Override
@@ -157,21 +167,22 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void storeRelationships(Dashboard dashboard) {
-    setService(dashboard, dashboard.getService());
+    addServiceRelationship(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart
-    if (dashboard.getCharts() != null) {
-      for (EntityReference chart : dashboard.getCharts()) {
-        addRelationship(dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
+    for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+      addRelationship(
+          dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
     }
 
     // Add relationship from dashboard to data models
-    if (dashboard.getDataModels() != null) {
-      for (EntityReference dataModel : dashboard.getDataModels()) {
-        addRelationship(
-            dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
-      }
+    for (EntityReference dataModel : listOrEmpty(dashboard.getDataModels())) {
+      addRelationship(
+          dashboard.getId(),
+          dataModel.getId(),
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Relationship.HAS);
     }
   }
 
@@ -200,7 +211,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
+      update(
+          Entity.CHART,
+          "charts",
+          listOrEmpty(updated.getCharts()),
+          listOrEmpty(original.getCharts()));
       update(
           Entity.DASHBOARD_DATA_MODEL,
           "dataModels",
@@ -211,18 +226,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     private void update(
-        String entityType, String field, List<EntityReference> updEntities, List<EntityReference> oriEntities) {
+        String entityType,
+        String field,
+        List<EntityReference> updEntities,
+        List<EntityReference> oriEntities) {
       // Remove all entity type associated with this dashboard
       deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
 
       // Add relationship from dashboard to entity type
       for (EntityReference entity : updEntities) {
-        addRelationship(updated.getId(), entity.getId(), Entity.DASHBOARD, entityType, Relationship.HAS);
+        addRelationship(
+            updated.getId(), entity.getId(), Entity.DASHBOARD, entityType, Relationship.HAS);
       }
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(
+          field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     public void updateDashboardUrl(Dashboard original, Dashboard updated) {

@@ -33,7 +33,10 @@ public abstract class WebServiceException extends RuntimeException {
   protected WebServiceException(int status, String msg) {
     super(msg);
     response =
-        Response.status(status).entity(new ErrorMessage(status, msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
+        Response.status(status)
+            .entity(new ErrorMessage(status, msg))
+            .type(MediaType.APPLICATION_JSON_TYPE)
+            .build();
   }
 
   protected WebServiceException(Response.Status status, String msg, Throwable cause) {

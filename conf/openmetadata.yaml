@@ -91,7 +91,19 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: DEBUG
+    org.openmetadata.service.util.OpenMetadataSetup:
+      level: INFO
+      appenders:
+        - type: console
+          logFormat: "%msg%n"
+          timeZone: UTC
+        - type: file
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          currentLogFilename: ./logs/openmetadata-operations.log
+          archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
   appenders:
     - type: console
       threshold: TRACE
@@ -186,7 +198,17 @@ authenticationConfiguration:
     dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
     dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
     userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    groupBaseDN: ${AUTHENTICATION_GROUP_LOOKUP_BASEDN:-""}
+    roleAdminName: ${AUTHENTICATION_USER_ROLE_ADMIN_NAME:-}
+    allAttributeName: ${AUTHENTICATION_USER_ALL_ATTR:-}
     mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    usernameAttributeName: ${AUTHENTICATION_USER_NAME_ATTR:-}
+    groupAttributeName: ${AUTHENTICATION_USER_GROUP_ATTR:-}
+    groupAttributeValue: ${AUTHENTICATION_USER_GROUP_ATTR_VALUE:-}
+    groupMemberAttributeName: ${AUTHENTICATION_USER_GROUP_MEMBER_ATTR:-}
+    #the mapping of roles to LDAP groups
+    authRolesMapping: ${AUTH_ROLES_MAPPING:-""}
+    authReassignRoles: ${AUTH_REASSIGN_ROLES:-[]}
     #optional
     maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
     sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
@@ -278,7 +300,9 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-noop} # Possible values are "noop", "aws", "aws-ssm"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws", "managed-aws-ssm"
+  prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
+  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource, e.g., in AWS. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
   parameters:
     region: ${OM_SM_REGION:-""}

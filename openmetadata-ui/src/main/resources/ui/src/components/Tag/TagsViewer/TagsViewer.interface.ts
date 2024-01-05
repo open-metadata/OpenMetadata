@@ -12,12 +12,14 @@
  */
 
 import { EntityTags } from 'Models';
+import { TagSource } from '../../../generated/type/tagLabel';
 
 export interface TagsViewerProps {
   tags: EntityTags[];
   sizeCap?: number;
   displayType?: DisplayType;
   showNoDataPlaceholder?: boolean;
+  tagType?: TagSource;
 }
 
 export enum DisplayType {

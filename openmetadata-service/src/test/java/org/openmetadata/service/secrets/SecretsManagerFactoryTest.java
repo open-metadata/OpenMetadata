@@ -34,42 +34,56 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
-    config.setSecretsManager(SecretsManagerProvider.NOOP);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    config.setSecretsManager(SecretsManagerProvider.DB);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfManagedAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof AWSSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfManagedAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS_SSM);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSSMSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof AWSSSMSecretsManager);
   }
 
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {

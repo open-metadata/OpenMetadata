@@ -1,21 +1,23 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.service.dataInsight.PageViewsByEntitiesAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends PageViewsByEntitiesAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public OpenSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+  protected Optional<Double> getValue(Sum key) {
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override
@@ -34,7 +36,8 @@ public class OpenSearchPageViewsByEntitiesAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation multiBucketsAggregation) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation multiBucketsAggregation) {
     return multiBucketsAggregation.getBuckets();
   }
 

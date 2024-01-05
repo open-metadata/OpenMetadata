@@ -65,11 +65,18 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
                 [TestResultValue(name=LIKE_COUNT, value=None)],
             )
 
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self.get_row_count()
+        else:
+            row_count = None
+
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(count == match_count),
             f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column.",
             [TestResultValue(name=LIKE_COUNT, value=str(match_count))],
+            row_count=row_count,
+            passed_rows=match_count,
         )
 
     @abstractmethod
@@ -81,3 +88,23 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
     ):
         raise NotImplementedError
+
+    @abstractmethod
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        raise NotImplementedError
+
+    def get_row_count(self) -> int:
+        """Get row count
+
+        Returns:
+            Tuple[int, int]:
+        """
+        return self.compute_row_count(self._get_column_name())
