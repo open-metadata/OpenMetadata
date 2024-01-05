@@ -136,16 +136,18 @@ export const buildCompleteTree = (
 ) => {
   let node: DataNode;
 
+  const nodeKey: string = parentKey + '-' + key;
+
   if (icon != null) {
     node = {
-      key: parentKey + '-' + key,
+      key: nodeKey,
       title: viewElements.find((item) => item.key === key)?.value ?? null,
       children: [],
       icon,
     };
   } else {
     node = {
-      key: parentKey + '-' + key,
+      key: nodeKey,
       title: viewElements.find((item) => item.key === key)?.value ?? null,
       children: [],
     };
@@ -153,7 +155,7 @@ export const buildCompleteTree = (
   const entry = data.find((item) => item.name === key);
 
   if (entry) {
-    const childrenKeys = entry.downstreamTasks || [];
+    const childrenKeys = entry.downstreamTasks ?? [];
 
     for (const childKey of childrenKeys) {
       const childNode = buildCompleteTree(
