@@ -168,7 +168,7 @@ const AddGlossary = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: FormItemLayout.HORIZONATAL,
+      formItemLayout: FormItemLayout.HORIZONTAL,
     },
   ];
 
@@ -189,7 +189,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -214,7 +214,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
