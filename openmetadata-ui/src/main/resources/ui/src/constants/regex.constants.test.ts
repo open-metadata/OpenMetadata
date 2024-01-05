@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ENTITY_NAME_REGEX } from './regex.constants';
+import { ENTITY_NAME_REGEX, TAG_NAME_REGEX } from './regex.constants';
 
 describe('Test Regex', () => {
   it('EntityName regex should pass for the valid entity name', () => {
@@ -158,5 +158,55 @@ describe('Test Regex', () => {
   it('EntityName regex should fail for the invalid entity name', () => {
     // conatines :: in the name should fail
     expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
+  });
+
+  describe('TAG_NAME_REGEX', () => {
+    it('should match English letters', () => {
+      expect(TAG_NAME_REGEX.test('Hello')).toEqual(true);
+    });
+
+    it('should match non-English letters', () => {
+      expect(TAG_NAME_REGEX.test('こんにちは')).toEqual(true);
+    });
+
+    it('should match combined characters', () => {
+      expect(TAG_NAME_REGEX.test('é')).toEqual(true);
+    });
+
+    it('should match numbers', () => {
+      expect(TAG_NAME_REGEX.test('123')).toEqual(true);
+    });
+
+    it('should match underscores', () => {
+      expect(TAG_NAME_REGEX.test('_')).toEqual(true);
+    });
+
+    it('should match hyphens', () => {
+      expect(TAG_NAME_REGEX.test('-')).toEqual(true);
+    });
+
+    it('should match spaces', () => {
+      expect(TAG_NAME_REGEX.test(' ')).toEqual(true);
+    });
+
+    it('should match periods', () => {
+      expect(TAG_NAME_REGEX.test('.')).toEqual(true);
+    });
+
+    it('should match ampersands', () => {
+      expect(TAG_NAME_REGEX.test('&')).toEqual(true);
+    });
+
+    it('should match parentheses', () => {
+      expect(TAG_NAME_REGEX.test('()')).toEqual(true);
+    });
+
+    it('should not match other special characters', () => {
+      expect(TAG_NAME_REGEX.test('$')).toEqual(false);
+    });
+
+    it('should not match empty string', () => {
+      expect(TAG_NAME_REGEX.test('')).toEqual(false);
+    });
   });
 });
