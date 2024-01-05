@@ -2957,16 +2957,16 @@
   dependencies:
     type-fest "^2.19.0"
 
-"@rjsf/core@5.4.0":
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.4.0.tgz#d75e42a5b8fe9af7b62b04fd8b93629f4e1fa5a7"
-  integrity sha512-0DmEmTCkpnGYju3HycEJb0MoYCp7Swd/R1abllmUg0sqCeffdtYSI4pWL3M1gwyMFT+JWgZWDYQ2CqJUZ9n0NA==
+"@rjsf/core@5.15.0":
+  version "5.15.0"
+  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.15.0.tgz#8faa26cc016b99fd4b69cea81e14ea55fbb80514"
+  integrity sha512-tD+S0Sx6TtiW1Wp2E8fLArlKcPDXaOS0MBnM6FNWZuum1bbQFoavjm/wf0PpKQ2AohsKGvWXjIAajC+HX4Anww==
   dependencies:
-    lodash "^4.17.15"
-    lodash-es "^4.17.15"
-    markdown-to-jsx "^7.2.0"
-    nanoid "^3.3.4"
-    prop-types "^15.7.2"
+    lodash "^4.17.21"
+    lodash-es "^4.17.21"
+    markdown-to-jsx "^7.3.2"
+    nanoid "^3.3.6"
+    prop-types "^15.8.1"
 
 "@rjsf/utils@5.15.0":
   version "5.15.0"
@@ -10565,10 +10565,10 @@ markdown-it@^13.0.1:
     mdurl "^1.0.1"
     uc.micro "^1.0.5"
 
-markdown-to-jsx@^7.2.0:
-  version "7.2.0"
-  resolved "https://registry.yarnpkg.com/markdown-to-jsx/-/markdown-to-jsx-7.2.0.tgz#e7b46b65955f6a04d48a753acd55874a14bdda4b"
-  integrity sha512-3l4/Bigjm4bEqjCR6Xr+d4DtM1X6vvtGsMGSjJYyep8RjjIvcWtrXBS8Wbfe1/P+atKNMccpsraESIaWVplzVg==
+markdown-to-jsx@^7.3.2:
+  version "7.3.2"
+  resolved "https://registry.yarnpkg.com/markdown-to-jsx/-/markdown-to-jsx-7.3.2.tgz#f286b4d112dad3028acc1e77dfe1f653b347e131"
+  integrity sha512-B+28F5ucp83aQm+OxNrPkS8z0tMKaeHiy0lHJs3LqCyDQFtWuenaIrkaVTgAm1pf1AU85LXltva86hlaT17i8Q==
 
 marked@^4.2.12:
   version "4.3.0"
@@ -10859,7 +10859,7 @@ nan@^2.14.0, nan@^2.14.1, nan@^2.17.0:
   resolved "https://registry.yarnpkg.com/nan/-/nan-2.18.0.tgz#26a6faae7ffbeb293a39660e88a76b82e30b7554"
   integrity sha512-W7tfG7vMOGtD30sHoZSSc/JVYiyDPEyQVso/Zz+/uQd0B0L46gtC+pHha5FFMRpil6fm/AoEcRWyOVi4+E/f8w==
 
-nanoid@^3.3.4, nanoid@^3.3.6:
+nanoid@^3.3.6:
   version "3.3.6"
   resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.3.6.tgz#443380c856d6e9f9824267d960b4236ad583ea4c"
   integrity sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==
