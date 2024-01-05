@@ -94,12 +94,6 @@ This is a sample config for MongoDB:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=5 %}
-
-**connectionURI**: MongoDB connection string is a concise string of parameters used to establish a connection between an OpenMetadata and a MongoDB database. For ex. `mongodb://username:password@mongodb0.example.com:27017`.
-
-{% /codeInfo %}
-
 {% codeInfo srNumber=6 %}
 
 **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
@@ -132,23 +126,19 @@ source:
   serviceConnection:
     config:
       type: MongoDB
-      connectionDetails:
 ```
 ```yaml {% srNumber=1 %}
-        username: username
+      username: username
 ```
 ```yaml {% srNumber=2 %}
-        password: password
+      password: password
 ```
 ```yaml {% srNumber=3 %}
-        hostPort: localhost:27017
-```
-```yaml {% srNumber=5 %}
-        # connectionURI: mongodb://username:password@mongodb0.example.com:27017
+      hostPort: localhost:27017
 ```
 ```yaml {% srNumber=7 %}
-        # connectionOptions:
-        #   key: value
+      # connectionOptions:
+      #   key: value
 ```
 ```yaml {% srNumber=6 %}
       database: custom_database_name

@@ -9,18 +9,6 @@ You can find further information on the Hive connector in the [here](https://doc
 ## Connection Details
 
 $$section
-### MongoDB Connection Details $(id="connectionDetails")
-
-Choose between MongoDB Connection String and MongoDB Connection Values to authenticate with your mongodb cluster.
-$$
-
-$$section
-### Connection URI $(id="connectionURI")
-
-MongoDB connection string is a concise string of parameters used to establish a connection between an OpenMetadata and a MongoDB database. For ex. `mongodb://username:password@mongodb0.example.com:27017`
-$$
-
-$$section
 ### Username $(id="username")
 Username to connect to Mongodb. This user must have access to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 $$
