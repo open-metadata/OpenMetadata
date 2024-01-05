@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
+import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'reactflow';
-import { EntityLineageNodeType } from '../../enums/entity.enum';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import './task-node.style.less';
 
 const handleStyles = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
-  position: 'absolute',
-  top: 10,
+  opacity: 0,
+  height: '1px',
+  width: '1px',
 };
 
 const renderHandle = (position: Position, isConnectable: boolean) => {
@@ -28,8 +29,10 @@ const renderHandle = (position: Position, isConnectable: boolean) => {
   let type: HandleType;
   if (position === Position.Left) {
     type = 'target';
+    styles.left = '10px';
   } else {
     type = 'source';
+    styles.right = '10px';
   }
 
   return (
@@ -59,15 +62,24 @@ const getHandle = (nodeType: string, isConnectable: boolean) => {
 
 const TaskNode = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
-  const { label } = data;
+  const { label, taskStatus } = data;
 
   return (
-    <div className="task-node relative nowheel  bg-primary-lite border border-primary rounded-6 p-x-sm">
+    <div
+      className="task-node relative nowheel border rounded-6 p-x-sm"
+      data-testid="task-node-container">
       {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
-      <div className="p-x-sm p-y-sm" data-testid="node-label">
+      <Space className="p-x-sm p-y-sm w-full" data-testid="node-label">
+        <div
+          className={classNames(
+            'custom-node-label',
+            taskStatus ? taskStatus : 'bg-primary'
+          )}
+          data-testid="node-label-status"
+        />
         {label}
-      </div>
+      </Space>
     </div>
   );
 };
