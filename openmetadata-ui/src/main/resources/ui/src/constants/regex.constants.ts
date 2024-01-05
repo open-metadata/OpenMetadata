@@ -26,6 +26,8 @@ export const FQN_REGEX = new RegExp(
  */
 export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
 
+export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
+
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
 
