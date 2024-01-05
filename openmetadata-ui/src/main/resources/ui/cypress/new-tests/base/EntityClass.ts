@@ -299,19 +299,16 @@ class EntityClass {
         endPoint: EntityType.Glossary,
         token,
       });
-
       // Delete custom property only for supported entities
       if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
         deleteCustomPropertyForEntity({
           property: this.intergerPropertyDetails,
           type: this.endPoint,
         });
-
         deleteCustomPropertyForEntity({
           property: this.stringPropertyDetails,
           type: this.endPoint,
         });
-
         deleteCustomPropertyForEntity({
           property: this.markdownPropertyDetails,
           type: this.endPoint,

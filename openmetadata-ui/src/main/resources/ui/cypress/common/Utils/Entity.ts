@@ -17,6 +17,11 @@ import {
   SEARCH_INDEX,
 } from '../../constants/Entity.interface';
 import {
+  ENTITIES_WITHOUT_FOLLOWING_BUTTON,
+  LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
+} from '../../constants/SoftDeleteFlow.constants';
+import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
@@ -215,25 +220,9 @@ export const visitEntityDetailsPage = ({
 
         verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-        verifyResponseStatusCode('@explorePageSearch', 200);
-        if ([EntityType.Dashboard, EntityType.DataModel].includes(entity)) {
-          cy.get('[data-testid="search-dropdown-Service"]').click();
-          cy.get(
-            '[data-testid="drop-down-menu"] [data-testid="search-input"]'
-          ).type(serviceName);
-          verifyResponseStatusCode('@explorePageSearch', 200);
-          cy.get(
-            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
-          ).click();
-          cy.get(
-            `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
-          ).click();
-          cy.get('[data-testid="entity-link"]').contains(term).eq(0).click();
-        } else {
-          cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
-            .scrollIntoView()
-            .click();
-        }
+        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+          .scrollIntoView()
+          .click();
       }
     });
 
@@ -243,7 +232,189 @@ export const visitEntityDetailsPage = ({
   });
 };
 
+export const checkCustomPropertyEditButton = ({ deleted }) => {
+  interceptURL(
+    'GET',
+    `/api/v1/metadata/types/name/*fields=customProperties*`,
+    'getCustomProperties'
+  );
+
+  cy.get('[data-testid="custom_properties"]').click();
+
+  verifyResponseStatusCode('@getCustomProperties', 200);
+
+  if (!deleted) {
+    cy.get(
+      `[data-row-key="${'CUSTOM_ATTRIBUTE_NAME'}"] [data-testid="edit-icon"]`
+    )
+      .scrollIntoView()
+      .should(`be.visible`);
+  } else {
+    cy.get(
+      `[data-row-key="${'CUSTOM_ATTRIBUTE_NAME'}"] [data-testid="edit-icon"]`
+    ).should(`not.exist`);
+  }
+};
+
+export const checkLineageTabActions = ({ deleted }) => {
+  interceptURL(
+    'GET',
+    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1*`,
+    'getLineageData'
+  );
+
+  cy.get('[data-testid="lineage"]').click();
+
+  !deleted && verifyResponseStatusCode('@getLineageData', 200);
+
+  if (!deleted) {
+    cy.get('[data-testid="edit-lineage"]').should('be.visible');
+  } else {
+    cy.get('[data-testid="no-data-placeholder"]').should(
+      'contain',
+      'Lineage data is not available for deleted entities.'
+    );
+  }
+};
+
+export const checkForEditActions = ({ entityType, deleted }) => {
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED.filter(({ elementSelector }) => {
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      return !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(entityType);
+    }
+
+    return !entityType.startsWith('services/');
+  }).map(({ containerSelector, elementSelector }) => {
+    cy.get(`${containerSelector} ${elementSelector}`).should(
+      `${!deleted ? 'not.' : ''}be.disabled`
+    );
+  });
+
+  LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT.map(
+    ({ containerSelector, elementSelector }) => {
+      if (!deleted) {
+        cy.get(`${containerSelector} ${elementSelector}`)
+          .scrollIntoView()
+          .should('be.visible');
+      } else {
+        cy.get(`${containerSelector} ${elementSelector}`).should('not.exist');
+      }
+    }
+  );
+
+  //   checkCustomPropertyEditButton({ deleted });
+};
+
+export const checkForTableSpecificFields = ({ deleted }) => {
+  interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
+
+  cy.get('[data-testid="table_queries"]').click();
+
+  verifyResponseStatusCode('@getQueryData', 200);
+
+  if (!deleted) {
+    cy.get('[data-testid="add-query-btn"]').should('be.enabled');
+  } else {
+    cy.get('[data-testid="no-data-placeholder"]').should(
+      'contain',
+      'Queries data is not available for deleted entities.'
+    );
+  }
+
+  interceptURL('GET', `/api/v1/tables/*/systemProfile*`, 'getSystemProfile');
+
+  cy.get('[data-testid="profiler"]').click();
+
+  verifyResponseStatusCode('@getSystemProfile', 200);
+
+  cy.get('[data-testid="profiler-add-table-test-btn"]').should(
+    !deleted ? 'be.visible' : 'not.exist'
+  );
+  cy.get('[data-testid="profiler-setting-btn"]').should(
+    !deleted ? 'be.visible' : 'not.exist'
+  );
+};
+
+export const deletedEntityCommonChecks = ({
+  entityType,
+  deleted,
+}: {
+  entityType: EntityType;
+  deleted?: boolean;
+}) => {
+  const isTableEntity = entityType === EntityType.Table;
+
+  // Go to first tab before starts validating
+  cy.get('.ant-tabs-tab').first().click();
+
+  // Check if all the edit actions are available for the entity
+  checkForEditActions({
+    entityType,
+    deleted,
+  });
+
+  if (isTableEntity) {
+    checkLineageTabActions({ deleted });
+  }
+
+  if (isTableEntity) {
+    checkForTableSpecificFields({ deleted });
+  }
+
+  cy.get('[data-testid="manage-button"]').click();
+
+  if (deleted) {
+    // only two menu options (restore and delete) should be present
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
+    ).should('not.exist');
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
+    ).should('not.exist');
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="profiler-setting-button"]'
+    ).should('not.exist');
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="restore-button"]'
+    ).should('be.visible');
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
+    ).should('be.visible');
+  } else {
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
+    ).should('exist');
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
+    ).should('exist');
+    [EntityType.Database, EntityType.DatabaseSchema].includes(entityType) &&
+      cy
+        .get(
+          '[data-testid="manage-dropdown-list-container"] [data-testid="profiler-setting-button"]'
+        )
+        .should('exist');
+
+    cy.get(
+      '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
+    ).should('be.visible');
+  }
+  cy.clickOutside();
+};
+
+export const restoreEntity = () => {
+  cy.get('[data-testid="deleted-badge"]').should('be.visible');
+  cy.get('[data-testid="manage-button"]').click();
+  cy.get('[data-testid="restore-button"]').click();
+
+  cy.get('[type="button"]').contains('Restore').click();
+  toastNotification('restored successfully');
+
+  cy.get('[data-testid="deleted-badge"]').should('not.exist');
+};
+
 export const deleteEntity = (entityName: string, endPoint: EntityType) => {
+  deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
+
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
   cy.get('[data-testid="delete-modal"]').then(() => {
@@ -269,24 +440,15 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
 
   toastNotification('deleted successfully!');
 
-  cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
-};
-
-export const restoreEntity = () => {
-  //   cy.get('[data-testid="app-bar-item-explore"]').click();
-  //   cy.get('[data-testid="show-deleted"]').click();
-  //   cy.get(`[data-testid="entity-header-display-name"]`)
-  //     .contains(entityName)
-  //     .click();
   cy.reload();
-  cy.get('[data-testid="deleted-badge"]').should('be.visible');
-  cy.get('[data-testid="manage-button"]').click();
-  cy.get('[data-testid="restore-button"]').click();
+  cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
 
-  cy.get('[type="button"]').contains('Restore').click();
-  toastNotification('restored successfully');
+  deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
 
-  cy.get('[data-testid="deleted-badge"]').should('not.exist');
+  restoreEntity();
+  cy.reload();
+
+  deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
 };
 
 export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {

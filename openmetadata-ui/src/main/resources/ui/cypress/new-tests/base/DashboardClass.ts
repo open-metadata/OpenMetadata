@@ -53,7 +53,13 @@ class DashboardClass extends EntityClass {
       createSingleLevelEntity({
         token,
         ...DASHBOARD_SERVICE,
-        entity: [{ ...DASHBOARD_SERVICE.entity, name: this.dashboardName }],
+        entity: [
+          {
+            ...DASHBOARD_SERVICE.entity,
+            name: this.dashboardName,
+            displayName: this.dashboardName,
+          },
+        ],
       });
     });
   }

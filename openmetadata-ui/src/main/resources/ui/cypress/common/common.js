@@ -1197,18 +1197,11 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (
-  ownerName,
-  entity,
-  isGlossaryPage,
-  isOwnerEmpty = false
-) => {
+export const addOwner = (ownerName, entity) => {
   interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
-  if (isGlossaryPage && isOwnerEmpty) {
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
-  } else {
-    cy.get('[data-testid="edit-owner"]').click();
-  }
+
+  cy.get('[data-testid="edit-owner"]').click();
+
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
@@ -1228,11 +1221,8 @@ export const addOwner = (
 
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"]').should('contain', ownerName);
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', ownerName);
-  }
+
+  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
 };
 
 export const removeOwner = (entity, isGlossaryPage) => {
@@ -1244,13 +1234,11 @@ export const removeOwner = (entity, isGlossaryPage) => {
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
-  }
+
+  cy.get('[data-testid="owner-link"]').should(
+    'contain',
+    isGlossaryPage ? 'Add' : 'No Owner'
+  );
 };
 
 export const addTier = (tier, entity) => {

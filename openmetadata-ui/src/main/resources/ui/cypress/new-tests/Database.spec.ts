@@ -163,7 +163,6 @@ entities.forEach((entity) => {
 
     it(`Soft delete`, () => {
       entity.softDeleteEntity();
-      entity.restoreEntity();
     });
 
     it(`Hard delete`, () => {

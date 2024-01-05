@@ -32,6 +32,7 @@ const entities = [
   new SearchIndexClass(),
   new DashboardDataModelClass(),
 ] as const;
+
 const OWNER1 = 'Aaron Johnson';
 const OWNER2 = 'Cynthia Meyer';
 
@@ -174,7 +175,6 @@ entities.forEach((entity) => {
 
     it(`Soft delete`, () => {
       entity.softDeleteEntity();
-      entity.restoreEntity();
     });
 
     it(`Hard delete`, () => {
