@@ -27,7 +27,7 @@ export const addTier = (tier) => {
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', tier);
 
-  cy.get('.tier-card-popover').clickOutside();
+  cy.clickOutside();
 };
 
 export const removeTier = () => {
@@ -39,5 +39,5 @@ export const removeTier = () => {
   verifyResponseStatusCode('@patchTier', 200);
   cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
 
-  cy.get('.tier-card-popover').clickOutside();
+  cy.clickOutside();
 };

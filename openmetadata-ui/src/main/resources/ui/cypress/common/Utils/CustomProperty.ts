@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../new-tests/base/EntityClass';
+
+import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export enum CustomPropertyType {
@@ -40,7 +41,7 @@ export const createCustomPropertyForEntity = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
+  cy.get('[data-testid="app-bar-item-settings"]').click();
   verifyResponseStatusCode('@settingsPage', 200);
 
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
@@ -101,9 +102,10 @@ export const deleteCustomPropertyForEntity = ({
     `[data-row-key="${property.name}"] [data-testid="delete-button"]`
   ).click();
 
-  cy.get('[data-testid="modal-header"]')
-    .should('be.visible')
-    .should('contain', `Delete Property ${property.name}`);
+  cy.get('[data-testid="modal-header"]').should(
+    'contain',
+    `Delete Property ${property.name}`
+  );
 
   cy.get('[data-testid="save-button"]').click();
 

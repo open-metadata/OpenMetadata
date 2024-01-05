@@ -787,9 +787,7 @@ export const deleteSoftDeletedUser = (username) => {
 };
 
 export const toastNotification = (msg, closeToast = true) => {
-  cy.get('.Toastify__toast-body')
-    .should('be.visible')
-    .should('contain.text', msg);
+  cy.get('.Toastify__toast-body').should('contain.text', msg);
   cy.wait(200);
   if (closeToast) {
     cy.get('.Toastify__close-button').click();

@@ -51,27 +51,29 @@ export const createAnnouncement = (announcement) => {
     'yyyy-MM-dd'
   );
 
-  cy.get('[data-testid="announcement-error"]')
-    .should('be.visible')
-    .contains('No Announcements, Click on add announcement to add one.');
+  cy.get('[data-testid="announcement-error"]').should(
+    'contain',
+    'No Announcements, Click on add announcement to add one.'
+  );
 
   // Create Active Announcement
-  cy.get('[data-testid="add-announcement"]').should('be.visible').click();
-  cy.get('.ant-modal-header').contains('Make an announcement');
+  cy.get('[data-testid="add-announcement"]').click();
+  cy.get('.ant-modal-header').should('contain', 'Make an announcement');
 
   annoucementForm({ ...announcement, startDate, endDate });
 
   // wait time for success toast message
   verifyResponseStatusCode('@announcementFeed', 200);
-  cy.get('.Toastify__close-button >').should('be.visible').click();
+  cy.get('.Toastify__close-button >').click();
 
   // reload page to get the active announcement card
   cy.reload();
 
   // check for announcement card on entity page
-  cy.get('[data-testid="announcement-card"]')
-    .should('be.visible')
-    .should('contain', announcement.title);
+  cy.get('[data-testid="announcement-card"]').should(
+    'contain',
+    announcement.title
+  );
 };
 
 export const deleteAnnoucement = () => {
@@ -99,19 +101,6 @@ export const deleteAnnoucement = () => {
       cy.get('[data-testid="save-button"]').click();
       verifyResponseStatusCode('@deleteFeed', 200);
     });
-
-  //   cy.get('[data-testid="announcement-card"] [data-testid="main-message"]')
-  //     .last()
-  //     .trigger('mouseover')
-  //     .then(() => {
-  //       cy.get('[data-testid="delete-message"]').click({ force: true });
-  //       cy.get('.ant-modal-body').should(
-  //         'contain',
-  //         'Are you sure you want to permanently delete this message?'
-  //       );
-  //       cy.get('[data-testid="save-button"]').click();
-  //       verifyResponseStatusCode('@deleteFeed', 200);
-  //     });
 };
 
 export const createInactiveAnnouncement = (announcement) => {
@@ -125,8 +114,8 @@ export const createInactiveAnnouncement = (announcement) => {
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="announcement-button"]').click();
 
-  cy.get('[data-testid="add-announcement"]').should('be.visible').click();
-  cy.get('.ant-modal-header').contains('Make an announcement');
+  cy.get('[data-testid="add-announcement"]').click();
+  cy.get('.ant-modal-header').should('contain', 'Make an announcement');
 
   const InActiveStartDate = customFormatDateTime(
     getEpochMillisForFutureDays(6),

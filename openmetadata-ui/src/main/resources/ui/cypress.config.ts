@@ -19,9 +19,9 @@ export default defineConfig({
   viewportHeight: 660,
   watchForFileChanges: false,
   videoUploadOnPasses: false,
-  defaultCommandTimeout: 15000,
+  defaultCommandTimeout: 5000,
   chromeWebSecurity: false,
-  numTestsKeptInMemory: 1,
+  numTestsKeptInMemory: 0,
   experimentalMemoryManagement: true,
   e2e: {
     experimentalStudio: true,
