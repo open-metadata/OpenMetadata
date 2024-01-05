@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
 import { getUserPath } from '../../../../constants/constants';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
@@ -57,7 +57,6 @@ const FeedCardHeaderV1 = ({
 
   const { t } = useTranslation();
 
-  const history = useHistory();
   const entityType = getEntityType(entityLink) ?? '';
   const entityFQN = getEntityFQN(entityLink) ?? '';
   const entityField = getEntityField(entityLink) ?? '';
@@ -86,25 +85,15 @@ const FeedCardHeaderV1 = ({
     </span>
   );
 
-  const onTitleClickHandler = (name: string) => {
-    history.push(getUserPath(name));
-  };
-
   return (
     <div className={classNames('feed-header', className)}>
       <UserPopOverCard userName={createdBy} />
 
       <div className="feed-header-content">
         <UserPopOverCard userName={createdBy}>
-          <span
-            className="thread-author m-r-xss cursor-pointer"
-            role="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTitleClickHandler(createdBy);
-            }}>
+          <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
             {getEntityName(user)}
-          </span>
+          </Link>
         </UserPopOverCard>
 
         {getFeedLinkElement}
