@@ -72,7 +72,7 @@ const RecentlyViewed = ({
   return (
     <Card
       className="recently-viewed-widget-container card-widget"
-      data-testid="recently-viewed-container">
+      data-testid="recently-viewed-widget">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
@@ -88,9 +88,14 @@ const RecentlyViewed = ({
                 <Space>
                   <DragOutlined
                     className="drag-widget-icon cursor-pointer"
+                    data-testid="drag-widget-button"
                     size={14}
                   />
-                  <CloseOutlined size={14} onClick={handleCloseClick} />
+                  <CloseOutlined
+                    data-testid="remove-widget-button"
+                    size={14}
+                    onClick={handleCloseClick}
+                  />
                 </Space>
               </Col>
             )}

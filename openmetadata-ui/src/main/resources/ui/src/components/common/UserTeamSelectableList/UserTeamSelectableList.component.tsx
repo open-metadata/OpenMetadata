@@ -35,8 +35,8 @@ import {
 } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
-import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 import './user-team-selectable-list.less';
+import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
