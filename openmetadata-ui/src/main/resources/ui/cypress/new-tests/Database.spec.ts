@@ -145,6 +145,14 @@ entities.forEach((entity) => {
       entity.removeInactiveAnnouncement();
     });
 
+    it(`UpVote entity`, () => {
+      entity.upVote();
+    });
+
+    it(`DownVote entity`, () => {
+      entity.downVote();
+    });
+
     Object.values(CustomPropertyType).forEach((type) => {
       it(`Set ${type} Custom Property `, () => {
         entity.setCustomProperty(

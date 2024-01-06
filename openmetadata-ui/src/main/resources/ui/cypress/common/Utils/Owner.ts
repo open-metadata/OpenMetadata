@@ -12,15 +12,48 @@
  */
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
+const userURL =
+  '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
+const teamURL =
+  '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
+
 export const addOwner = (ownerName: string) => {
-  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
+  cy.getAllLocalStorage().then((data) => {
+    const token = Object.values(data)[0].oidcIdToken;
+
+    cy.request({
+      method: 'GET',
+      url: userURL,
+      headers: { Authorization: `Bearer ${token}` },
+    }).as('UserCount');
+    cy.request({
+      method: 'GET',
+      url: teamURL,
+      headers: { Authorization: `Bearer ${token}` },
+    }).as('TeamCount');
+  });
 
   cy.get('[data-testid="edit-owner"]').click();
+
+  // check for teams count
+  cy.get('@TeamCount').then((response) => {
+    const teamCount = response.body.hits.total.value;
+    cy.get('.user-team-select-popover [data-testid="filter-count"]')
+      .eq(0)
+      .contains(`${teamCount}`);
+  });
+
+  // check for user count
+  cy.get('@UserCount').then((response) => {
+    const userCount = response.body.hits.total.value;
+    cy.get('.user-team-select-popover [data-testid="filter-count"]')
+      .eq(1)
+      .contains(`${userCount}`);
+  });
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
 
   interceptURL(
     'GET',

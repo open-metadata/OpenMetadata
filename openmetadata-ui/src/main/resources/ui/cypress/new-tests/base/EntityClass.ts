@@ -50,6 +50,7 @@ import {
 } from '../../common/Utils/Owner';
 import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
 import { addTier, removeTier } from '../../common/Utils/Tier';
+import { downVoteEntity, upVoteEntity } from '../../common/Utils/Voting';
 import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
 import { EntityType } from '../../constants/Entity.interface';
@@ -408,6 +409,16 @@ class EntityClass {
   }
   removeGlossary() {
     removeGlossaryTerm(['General.BankNumber', 'Person.Address'], this.endPoint);
+  }
+
+  // Voting
+
+  upVote() {
+    upVoteEntity({ endPoint: this.endPoint });
+  }
+
+  downVote() {
+    downVoteEntity({ endPoint: this.endPoint });
   }
 
   // Rename

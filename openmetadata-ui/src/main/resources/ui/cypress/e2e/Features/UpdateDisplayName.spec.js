@@ -35,7 +35,6 @@ import {
   DASHBOARD_DATA_MODEL,
   ENTITIES_DISPLAY_NAME,
   SCHEMA_AND_DATABASE_DISPLAY_NAME,
-  SERVICES,
 } from '../../constants/updateDisplayName.constant';
 
 const updateDisplayName = (displayName, apiPath) => {
@@ -126,16 +125,6 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   beforeEach(() => {
     cy.login();
-  });
-
-  Object.entries(SERVICES).map(([serviceType, service]) => {
-    it(`${service.type}`, () => {
-      visitServiceDetailsPage(service, false);
-      updateDisplayName(
-        service.displayName,
-        `/api/v1/services/${serviceType}/*`
-      );
-    });
   });
 
   it(`dataModel`, () => {

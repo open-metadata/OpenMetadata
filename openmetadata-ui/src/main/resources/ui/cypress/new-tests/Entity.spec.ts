@@ -134,10 +134,6 @@ entities.forEach((entity) => {
       entity.removeGlossary();
     });
 
-    it(`Update displayName`, () => {
-      entity.renameEntity();
-    });
-
     it(`Create annoucement`, () => {
       entity.createAnnouncement();
     });
@@ -152,6 +148,14 @@ entities.forEach((entity) => {
 
     it(`Remove inactive annoucement`, () => {
       entity.removeInactiveAnnouncement();
+    });
+
+    it(`UpVote entity`, () => {
+      entity.upVote();
+    });
+
+    it(`DownVote entity`, () => {
+      entity.downVote();
     });
 
     // Create custom property only for supported entities
@@ -172,6 +176,10 @@ entities.forEach((entity) => {
         });
       });
     }
+
+    it(`Update displayName`, () => {
+      entity.renameEntity();
+    });
 
     it(`Soft delete`, () => {
       entity.softDeleteEntity();
