@@ -17,15 +17,9 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardDataModelIndex implements ColumnIndex {
-
+public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
+    implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final DashboardDataModel dashboardDataModel;
-
-  public DashboardDataModelIndex(DashboardDataModel dashboardDataModel) {
-    this.dashboardDataModel = dashboardDataModel;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
