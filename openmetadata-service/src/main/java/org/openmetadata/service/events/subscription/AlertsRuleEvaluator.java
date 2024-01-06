@@ -46,7 +46,7 @@ public class AlertsRuleEvaluator {
           "Returns true if the change event entity being accessed has source as mentioned in condition",
       examples = {"matchAnySource('bot', 'user')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchAnySource(String... originEntities) {
+  public boolean matchAnySource(List<String> originEntities) {
     if (changeEvent == null || changeEvent.getEntityType() == null) {
       return false;
     }
@@ -66,7 +66,7 @@ public class AlertsRuleEvaluator {
           "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyOwnerName(String... ownerNameList) {
+  public boolean matchAnyOwnerName(List<String> ownerNameList) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -99,7 +99,7 @@ public class AlertsRuleEvaluator {
           "Returns true if the change event entity being accessed has following entityName from the List.",
       examples = {"matchAnyEntityFqn('Name1', 'Name')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(String... entityNames) {
+  public boolean matchAnyEntityFqn(List<String> entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -125,7 +125,7 @@ public class AlertsRuleEvaluator {
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityId(String... entityIds) {
+  public boolean matchAnyEntityId(List<String> entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -147,7 +147,7 @@ public class AlertsRuleEvaluator {
         "matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchAnyEventType(String... eventTypesList) {
+  public boolean matchAnyEventType(List<String> eventTypesList) {
     if (changeEvent == null || changeEvent.getEventType() == null) {
       return false;
     }
@@ -167,7 +167,7 @@ public class AlertsRuleEvaluator {
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchTestResult(String... testResults) {
+  public boolean matchTestResult(List<String> testResults) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
@@ -201,9 +201,10 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated Test Suite",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
+      examples = {"getTestCaseStatusIfInTestSuite('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean getTestCaseStatusIfInTestSuite(String... testResults) {
+  public boolean getTestCaseStatusIfInTestSuite(
+      List<String> testSuiteList, List<String> testResults) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
@@ -238,7 +239,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity is updated by the mentioned users",
       examples = {"matchUpdatedBy('user1', 'user2')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchUpdatedBy(String... updatedByUserList) {
+  public boolean matchUpdatedBy(List<String> updatedByUserList) {
     if (changeEvent == null || changeEvent.getUserName() == null) {
       return false;
     }
@@ -260,7 +261,7 @@ public class AlertsRuleEvaluator {
         "matchIngestionPipelineState('queued', 'success', 'failed', 'running', 'partialSuccess')"
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchIngestionPipelineState(String... pipelineState) {
+  public boolean matchIngestionPipelineState(List<String> pipelineState) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
@@ -288,7 +289,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity is updated by the mentioned users",
       examples = {"matchAnyFieldChange('fieldName1', 'fieldName')"},
       paramInputType = NOT_REQUIRED)
-  public boolean matchAnyFieldChange(String... fieldChangeUpdate) {
+  public boolean matchAnyFieldChange(List<String> fieldChangeUpdate) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
@@ -307,7 +308,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity belongs to a domain from the list",
       examples = {"matchAnyDomain('domain1', 'domain2')"},
       paramInputType = NOT_REQUIRED)
-  public boolean matchAnyDomain(String... fieldChangeUpdate) {
+  public boolean matchAnyDomain(List<String> fieldChangeUpdate) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }

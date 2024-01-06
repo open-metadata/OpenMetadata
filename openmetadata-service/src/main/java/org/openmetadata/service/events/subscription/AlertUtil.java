@@ -343,7 +343,8 @@ public final class AlertUtil {
 
         formulatedCondition =
             formulatedCondition.replace(
-                String.format("${%s}", argName), convertInputListToString(inputList));
+                String.format("${%s}", argName),
+                String.format("{%s}", convertInputListToString(inputList)));
       }
       return rule.withCondition(formulatedCondition);
     }
