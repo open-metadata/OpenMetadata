@@ -73,6 +73,9 @@
       "description": "Poll Interval in seconds.",
       "type": "integer",
       "default": 10
+    },
+    "observability": {
+      "$ref": "../eventSubscription.json#/definitions/observability"
     }
   },
   "required": ["name", "alertType", "subscriptionType"],

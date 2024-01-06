@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.events.subscription;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
@@ -26,14 +28,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.Observability;
+import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.ObservabilityFilters;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -53,7 +60,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
-import org.quartz.JobDataMap;
 import org.springframework.expression.Expression;
 
 @Slf4j
@@ -62,29 +68,16 @@ public final class AlertUtil {
 
   public static AbstractEventConsumer getNotificationsPublisher(EventSubscription subscription) {
     validateSubscriptionConfig(subscription);
-    AbstractEventConsumer publisher;
-    switch (subscription.getSubscriptionType()) {
-      case SLACK_WEBHOOK:
-        publisher = new SlackEventPublisher();
-        break;
-      case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsPublisher();
-        break;
-      case G_CHAT_WEBHOOK:
-        publisher = new GChatPublisher();
-        break;
-      case GENERIC_WEBHOOK:
-        publisher = new GenericPublisher();
-        break;
-      case EMAIL:
-        publisher = new EmailPublisher();
-        break;
-      case ACTIVITY_FEED:
-        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
-      default:
-        throw new IllegalArgumentException("Invalid Alert Action Specified.");
-    }
-    return publisher;
+    return switch (subscription.getSubscriptionType()) {
+      case SLACK_WEBHOOK -> new SlackEventPublisher();
+      case MS_TEAMS_WEBHOOK -> new MSTeamsPublisher();
+      case G_CHAT_WEBHOOK -> new GChatPublisher();
+      case GENERIC_WEBHOOK -> new GenericPublisher();
+      case EMAIL -> new EmailPublisher();
+      case ACTIVITY_FEED -> throw new IllegalArgumentException(
+          "Cannot create Activity Feed as Publisher.");
+      default -> throw new IllegalArgumentException("Invalid Alert Action Specified.");
+    };
   }
 
   public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
@@ -202,12 +195,11 @@ public final class AlertUtil {
 
   public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
     // OpenMetadataWide Setting apply to all ChangeEvents
-    if (config == null) {
+    if (config == null
+        || (config.getResources().size() == 1 && config.getResources().get(0).equals("all"))) {
       return true;
     }
-    if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
-      return true;
-    }
+
     return config.getResources().contains(entityType); // Use Trigger Specific Settings
   }
 
@@ -244,10 +236,15 @@ public final class AlertUtil {
       boolean triggerChangeEvent =
           AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
 
-      // Evaluate ChangeEvent Alert Filtering
-      if (filteringRules != null
-          && !AlertUtil.evaluateAlertConditions(event, filteringRules.getRules())) {
-        triggerChangeEvent = false;
+      if (filteringRules != null) {
+        // Evaluate Rules
+        triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
+
+        if (triggerChangeEvent) {
+          // Evaluate Actions
+          triggerChangeEvent =
+              AlertUtil.evaluateAlertConditions(event, filteringRules.getActions());
+        }
       }
 
       if (triggerChangeEvent) {
@@ -255,14 +252,6 @@ public final class AlertUtil {
       }
     }
     return filteredEvents;
-  }
-
-  public static <T> T getValueFromQtzJobMap(JobDataMap dataMap, String key, Class<T> tClass) {
-    Object value = dataMap.get(key);
-    if (value == null) {
-      return null;
-    }
-    return tClass.cast(value);
   }
 
   public static EventSubscriptionOffset getInitialAlertOffsetFromDb(UUID eventSubscriptionId) {
@@ -279,5 +268,99 @@ public final class AlertUtil {
       eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
     }
     return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
+  }
+
+  public static FilteringRules validateAndBuildFilteringConditions(
+      CreateEventSubscription createEventSubscription) {
+    // Resource Validation
+    List<EventFilterRule> finalRules = new ArrayList<>();
+    List<EventFilterRule> actions = new ArrayList<>();
+    List<String> resource = createEventSubscription.getFilteringRules().getResources();
+    if (resource.size() > 1) {
+      throw new BadRequestException(
+          "Only one resource can be specified for Observability filtering");
+    }
+
+    // Build a Map of Entity Filter Name
+    Map<String, EventFilterRule> supportedFilters =
+        EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+            .getSupportedFilters()
+            .stream()
+            .collect(
+                Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
+    // Build a Map of Actions
+    Map<String, EventFilterRule> supportedActions =
+        EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+            .getSupportedActions()
+            .stream()
+            .collect(
+                Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
+
+    // Input validation
+    if (createEventSubscription.getObservability() != null) {
+      Observability obscFilter = createEventSubscription.getObservability();
+      listOrEmpty(obscFilter.getFilters())
+          .forEach(
+              filter ->
+                  finalRules.add(
+                      getFilterRule(
+                          supportedFilters, filter.getName(), buildInputArgumentsMap(filter))));
+      listOrEmpty(obscFilter.getActions())
+          .forEach(
+              action ->
+                  actions.add(
+                      getFilterRule(
+                          supportedActions, action.getName(), buildInputArgumentsMap(action))));
+    }
+    return new FilteringRules()
+        .withResources(createEventSubscription.getFilteringRules().getResources())
+        .withRules(finalRules)
+        .withActions(actions);
+  }
+
+  private static Map<String, List<String>> buildInputArgumentsMap(ObservabilityFilters filter) {
+    return filter.getArguments().stream()
+        .collect(Collectors.toMap(Argument::getName, Argument::getInput));
+  }
+
+  private static EventFilterRule getFilterRule(
+      Map<String, EventFilterRule> supportedFilters,
+      String name,
+      Map<String, List<String>> inputArgMap) {
+    if (!supportedFilters.containsKey(name)) {
+      throw new BadRequestException("Give Resource doesn't support the filter " + name);
+    }
+    EventFilterRule rule = supportedFilters.get(name);
+    if (rule.getInputType().equals(EventFilterRule.InputType.NONE)) {
+      return rule;
+    } else {
+      String formulatedCondition = rule.getCondition();
+      for (String argName : rule.getArguments()) {
+        List<String> inputList = inputArgMap.get(argName);
+        if (nullOrEmpty(inputList)) {
+          throw new BadRequestException("Input for argument " + argName + " is missing");
+        }
+
+        formulatedCondition =
+            formulatedCondition.replace(
+                String.format("${%s}", argName), convertInputListToString(inputList));
+      }
+      return rule.withCondition(formulatedCondition);
+    }
+  }
+
+  private static String convertInputListToString(List<String> valueList) {
+    if (CommonUtil.nullOrEmpty(valueList)) {
+      return "";
+    }
+
+    StringBuilder result = new StringBuilder();
+    result.append("'").append(valueList.get(0)).append("'");
+
+    for (int i = 1; i < valueList.size(); i++) {
+      result.append(",'").append(valueList.get(i)).append("'");
+    }
+
+    return result.toString();
   }
 }

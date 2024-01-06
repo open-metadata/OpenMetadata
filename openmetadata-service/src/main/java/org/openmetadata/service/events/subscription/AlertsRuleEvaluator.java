@@ -197,6 +197,42 @@ public class AlertsRuleEvaluator {
   }
 
   @Function(
+      name = "getTestCaseStatusIfInTestSuite",
+      input = "List of comma separated Test Suite",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean getTestCaseStatusIfInTestSuite(String... testResults) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
+      // in case the entity is not test case return since the filter doesn't apply
+      return true;
+    }
+
+    // we need to handle both fields updated and fields added
+    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
+    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
+      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
+    }
+
+    for (FieldChange fieldChange : fieldChanges) {
+      if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
+        TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
+        TestCaseStatus status = testCaseResult.getTestCaseStatus();
+        for (String givenStatus : testResults) {
+          if (givenStatus.equals(status.value())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
       name = "matchUpdatedBy",
       input = "List of comma separated user names that updated the entity",
       description = "Returns true if the change event entity is updated by the mentioned users",
@@ -260,6 +296,30 @@ public class AlertsRuleEvaluator {
     for (String name : fieldChangeUpdate) {
       if (fields.contains(name)) {
         return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchAnyDomain",
+      input = "List of comma separated Domains",
+      description = "Returns true if the change event entity belongs to a domain from the list",
+      examples = {"matchAnyDomain('domain1', 'domain2')"},
+      paramInputType = NOT_REQUIRED)
+  public boolean matchAnyDomain(String... fieldChangeUpdate) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    EntityInterface entity = getEntity(changeEvent);
+    EntityInterface entityWithDomainData =
+        Entity.getEntity(
+            changeEvent.getEntityType(), entity.getId(), "domain", Include.NON_DELETED);
+    if (entityWithDomainData.getDomain() != null) {
+      for (String name : fieldChangeUpdate) {
+        if (entityWithDomainData.getDomain().getFullyQualifiedName().equals(name)) {
+          return true;
+        }
       }
     }
     return false;

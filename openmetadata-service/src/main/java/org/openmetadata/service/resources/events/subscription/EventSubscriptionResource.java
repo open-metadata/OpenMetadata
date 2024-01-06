@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,6 +57,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
@@ -113,7 +115,8 @@ public class EventSubscriptionResource
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getDescriptors()));
+          listOrEmpty(EventSubscriptionResource.getDescriptors()),
+          listOrEmpty(EventSubscriptionResource.getFilterDescriptors()));
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -274,6 +277,34 @@ public class EventSubscriptionResource
     EventSubscription eventSub =
         getEventSubscription(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
+    Response response = create(uriInfo, securityContext, eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
+    return response;
+  }
+
+  @POST
+  @Path("/observability")
+  @Operation(
+      operationId = "createObservabilitySubscription",
+      summary = "Create a new Observability Subscription",
+      description = "Create a new Observability Subscription",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Observability Subscription Created",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateEventSubscription.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createObservabilitySubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventSubscription request)
+      throws SchedulerException {
+    EventSubscription eventSub =
+        getObservabilitySubscription(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
@@ -554,6 +585,19 @@ public class EventSubscriptionResource
   }
 
   @GET
+  @Path("/observability/resources")
+  @Operation(
+      operationId = "listDataObservabilityResources",
+      summary = "Get list of Data Observability Resources used in filtering Event Subscription",
+      description =
+          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
+  public ResultList<FilterResourceDescriptor> listObservabilityResources(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
+  }
+
+  @GET
   @Path("/validation/condition/{expression}")
   @Operation(
       operationId = "validateCondition",
@@ -589,9 +633,38 @@ public class EventSubscriptionResource
         .withPollInterval(create.getPollInterval());
   }
 
+  public EventSubscription getObservabilitySubscription(
+      CreateEventSubscription create, String user) {
+    return repository
+        .copy(new EventSubscription(), create, user)
+        .withAlertType(create.getAlertType())
+        .withTrigger(create.getTrigger())
+        .withEnabled(create.getEnabled())
+        .withBatchSize(create.getBatchSize())
+        .withTimeout(create.getTimeout())
+        .withFilteringRules(validateAndBuildFilteringConditions(create))
+        .withSubscriptionType(create.getSubscriptionType())
+        .withSubscriptionConfig(create.getSubscriptionConfig())
+        .withProvider(create.getProvider())
+        .withRetries(create.getRetries())
+        .withPollInterval(create.getPollInterval())
+        .withObservability(create.getObservability());
+  }
+
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
+    return getDescriptorsFromFile(
+        "EventSubResourceDescriptor.json", SubscriptionResourceDescriptor.class);
+  }
+
+  public static List<FilterResourceDescriptor> getFilterDescriptors() throws IOException {
+    return getDescriptorsFromFile(
+        "EntityObservabilityFilterDescriptor.json", FilterResourceDescriptor.class);
+  }
+
+  public static <T> List<T> getDescriptorsFromFile(String fileName, Class<T> classType)
+      throws IOException {
     List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
+        EntityUtil.getJsonDataResources(String.format(".*json/data/%s$", fileName));
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
       return Collections.emptyList();
@@ -601,7 +674,7 @@ public class EventSubscriptionResource
       String json =
           CommonUtil.getResourceAsStream(
               EventSubscriptionResource.class.getClassLoader(), jsonDataFile);
-      return JsonUtils.readObjects(json, SubscriptionResourceDescriptor.class);
+      return JsonUtils.readObjects(json, classType);
     } catch (Exception e) {
       LOG.warn(
           "Failed to initialize the events subscription resource descriptors from file {}",

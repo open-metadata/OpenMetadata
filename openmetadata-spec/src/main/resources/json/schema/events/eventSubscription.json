@@ -7,6 +7,61 @@
   "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "observabilityFilters": {
+      "description": "Observability Filters for Event Subscription.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.ObservabilityFilters",
+      "properties": {
+        "name": {
+          "description": "Name of the filter",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Arguments List",
+          "type": "array",
+          "items": {
+            "description": "Argument for the filter.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the Argument",
+                "type": "string"
+              },
+              "input": {
+                "description": "Value of the Argument",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "observability": {
+      "description": "Observability of the event subscription.",
+      "type": "object",
+      "properties": {
+        "filters": {
+            "description": "List of filters for the event subscription.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/observabilityFilters"
+            }
+        },
+        "actions": {
+          "description": "List of filters for the event subscription.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/observabilityFilters"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "triggerType": {
       "description": "Trigger Configuration for Alerts.",
       "type": "string",
@@ -121,6 +176,13 @@
           }
         },
         "rules": {
+          "description": "A set of filter rules associated with the Alert.",
+          "type": "array",
+          "items": {
+            "$ref": "./eventFilterRule.json"
+          }
+        },
+        "actions": {
           "description": "A set of filter rules associated with the Alert.",
           "type": "array",
           "items": {
@@ -253,6 +315,9 @@
       "description": "Poll Interval in seconds.",
       "type": "integer",
       "default": 10
+    },
+    "observability": {
+      "$ref": "#/definitions/observability"
     }
   },
   "required": ["id", "name", "alertType", "subscriptionType"],
