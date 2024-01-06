@@ -41,7 +41,7 @@ class RuleEvaluatorTest {
   private static User user;
   private static EvaluationContext evaluationContext;
   private static SubjectContext subjectContext;
-  private static ResourceContext resourceContext;
+  private static ResourceContext<?> resourceContext;
 
   @BeforeAll
   public static void setup() {
@@ -87,7 +87,7 @@ class RuleEvaluatorTest {
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
 
     user = new User().withId(UUID.randomUUID()).withName("user");
-    resourceContext = new ResourceContext("table", table, mock(TableRepository.class));
+    resourceContext = new ResourceContext<>("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext =

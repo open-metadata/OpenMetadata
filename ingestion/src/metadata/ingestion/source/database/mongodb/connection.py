@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
-    MongoConnectionString,
     MongoDBConnection,
 )
 from metadata.ingestion.connections.builders import get_connection_url_common
@@ -36,10 +35,7 @@ def get_connection(connection: MongoDBConnection):
     """
     Create connection
     """
-    if isinstance(connection.connectionDetails, MongoConnectionString):
-        mongo_url = connection.connectionDetails.connectionURI
-    else:
-        mongo_url = get_connection_url_common(connection.connectionDetails)
+    mongo_url = get_connection_url_common(connection)
     return MongoClient(mongo_url)
 
 

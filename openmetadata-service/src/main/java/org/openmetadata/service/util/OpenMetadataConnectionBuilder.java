@@ -185,8 +185,6 @@ public class OpenMetadataConnectionBuilder {
     return switch (verifySSL) {
       case NO_SSL, IGNORE -> null;
       case VALIDATE -> JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
-      default -> throw new IllegalArgumentException(
-          "OpenMetadata doesn't support SSL verification type " + verifySSL.value());
     };
   }
 }

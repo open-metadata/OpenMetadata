@@ -21,7 +21,7 @@ AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=custom-oidc
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[http://localhost:8080/realms/myrealm/protocol/openid-connect/certs, http://{your openmetadata domain}/api/v1/config/jwks] # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_PUBLIC_KEYS=[http://localhost:8080/realms/myrealm/protocol/openid-connect/certs, http://{your openmetadata domain}/api/v1/system/config/jwks] # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY={http://localhost:8080/realms/myrealm}
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
