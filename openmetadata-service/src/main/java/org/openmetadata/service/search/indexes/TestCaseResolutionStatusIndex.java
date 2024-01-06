@@ -5,14 +5,8 @@ import java.util.Map;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseResolutionStatusIndex implements SearchIndex {
-
-  final TestCaseResolutionStatus testCaseResolutionStatus;
-
-  public TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus) {
-    this.testCaseResolutionStatus = testCaseResolutionStatus;
-  }
-
+public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
+    implements SearchIndex {
   @Override
   public Map<String, Object> buildESDoc() {
     return JsonUtils.getMap(testCaseResolutionStatus);
