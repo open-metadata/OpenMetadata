@@ -51,6 +51,7 @@ export interface TeamsInfoProps {
   childTeamsCount: number;
   currentTeam: Team;
   entityPermissions: OperationPermission;
+  isTeamDeleted: boolean;
   updateTeamHandler: (data: Team) => Promise<void>;
 }
 
@@ -63,4 +64,10 @@ export interface TeamsSubscriptionProps {
 export interface SubscriptionWebhook {
   webhook: string;
   endpoint: string;
+}
+
+export interface TeamsHeadingLabelProps {
+  currentTeam: Team;
+  entityPermissions: OperationPermission;
+  updateTeamHandler: (data: Team) => Promise<void>;
 }

@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -43,6 +44,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -114,7 +116,7 @@ class AirbyteSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -138,14 +140,24 @@ class AirbyteSource(PipelineServiceSource):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
+                created_at = (
+                    convert_timestamp_to_milliseconds(attempt["createdAt"])
+                    if attempt.get("createdAt")
+                    else None
+                )
+                ended_at = (
+                    convert_timestamp_to_milliseconds(attempt["endedAt"])
+                    if attempt.get("endedAt")
+                    else None
+                )
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.get("connectionId")),
                         executionStatus=STATUS_MAP.get(
                             attempt["status"].lower(), StatusType.Pending
                         ).value,
-                        startTime=attempt.get("createdAt"),
-                        endTime=attempt.get("endedAt"),
+                        startTime=created_at,
+                        endTime=ended_at,
                         logLink=log_link,
                     )
                 ]
@@ -154,11 +166,17 @@ class AirbyteSource(PipelineServiceSource):
                         attempt["status"].lower(), StatusType.Pending
                     ).value,
                     taskStatus=task_status,
-                    timestamp=attempt["createdAt"],
+                    timestamp=created_at,
+                )
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.pipeline_service,
+                    pipeline_name=self.context.pipeline,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_fqn=pipeline_fqn,
                         pipeline_status=pipeline_status,
                     )
                 )
@@ -214,9 +232,19 @@ class AirbyteSource(PipelineServiceSource):
             if not from_entity and not to_entity:
                 continue
 
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.pipeline_service,
+                pipeline_name=self.context.pipeline,
+            )
+            pipeline_entity = self.metadata.get_by_name(
+                entity=Pipeline, fqn=pipeline_fqn
+            )
+
             lineage_details = LineageDetails(
                 pipeline=EntityReference(
-                    id=self.context.pipeline.id.__root__, type="pipeline"
+                    id=pipeline_entity.id.__root__, type="pipeline"
                 ),
                 source=LineageSource.PipelineLineage,
             )

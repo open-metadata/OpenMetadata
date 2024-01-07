@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import { kebabCase } from 'lodash';
 import React from 'react';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { useTranslation } from 'react-i18next';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
@@ -24,27 +27,48 @@ const ApplicationCard = ({
   linkTitle,
   onClick,
   appName,
+  deleted = false,
+  showDescription = true,
 }: ApplicationCardProps) => {
+  const { t } = useTranslation();
+
   return (
     <Card
       bordered={false}
       className={classNames(
         className,
         'application-card card-body-border-none'
-      )}>
+      )}
+      data-testid={`${kebabCase(appName)}-card`}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />
         </div>
-        <Space className="application-info" direction="vertical" size={4}>
-          <Typography.Title className="m-0" level={5}>
-            {title}
-          </Typography.Title>
-          <RichTextEditorPreviewer
-            className="max-two-lines"
-            markdown={description}
-          />
-          <Button className="p-0" type="link" onClick={onClick}>
+        <Space className="application-info" direction="vertical" size={0}>
+          <div className="d-flex gap-2">
+            <Typography.Title className="m-0" level={5}>
+              {title}
+            </Typography.Title>
+            {deleted && (
+              <div
+                className="deleted-badge-button text-xss flex-center"
+                data-testid="deleted-badge">
+                <ExclamationCircleFilled className="d-flex m-r-xss font-medium text-xs" />
+                {t('label.disabled')}
+              </div>
+            )}
+          </div>
+          {showDescription && (
+            <RichTextEditorPreviewer
+              className="max-two-lines"
+              markdown={description}
+            />
+          )}
+          <Button
+            className="p-0"
+            data-testid="config-btn"
+            type="link"
+            onClick={onClick}>
             {linkTitle}
           </Button>
         </Space>

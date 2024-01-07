@@ -10,15 +10,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseIndex implements SearchIndex {
-
-  final Database database;
-
+public record DatabaseIndex(Database database) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public DatabaseIndex(Database database) {
-    this.database = database;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(database);
@@ -33,12 +26,8 @@ public class DatabaseIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE);
-    if (database.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(database.getOwner()));
-    }
-    if (database.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(database.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(database.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(database.getDomain()));
     return doc;
   }
 }

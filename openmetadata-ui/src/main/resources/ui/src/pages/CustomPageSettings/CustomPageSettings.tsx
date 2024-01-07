@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
-import Card from 'antd/lib/card/Card';
+import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageHeader from '../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -31,14 +30,15 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
+import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../rest/PersonaAPI';
-import { showPagination, Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './CustomPageSettings.less';
+import './custom-page-settings.less';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
@@ -54,12 +54,17 @@ export const CustomPageSettings = () => {
     pageSize,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
-  const fetchPersonas = async () => {
+  const fetchPersonas = async (params?: Partial<Paging>) => {
     try {
       setIsLoading(true);
-      const { data, paging } = await getAllPersonas({});
+      const { data, paging } = await getAllPersonas({
+        after: params?.after,
+        before: params?.before,
+        limit: pageSize,
+      });
       setPersonas(data);
       handlePagingChange(paging);
     } catch (error) {
@@ -71,7 +76,7 @@ export const CustomPageSettings = () => {
 
   useEffect(() => {
     fetchPersonas();
-  }, []);
+  }, [pageSize]);
 
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
@@ -83,8 +88,12 @@ export const CustomPageSettings = () => {
 
   const handlePersonaPageChange: NextPreviousProps['pagingHandler'] = ({
     currentPage,
+    cursorType,
   }) => {
     handlePageChange(currentPage);
+    if (cursorType) {
+      fetchPersonas({ [cursorType]: paging[cursorType] });
+    }
   };
 
   const errorPlaceHolder = useMemo(
@@ -124,57 +133,65 @@ export const CustomPageSettings = () => {
   return (
     <Row
       className="customize-landing-page user-listing p-b-md"
-      data-testid="user-list-v1-component"
+      data-testid="custom-page-setting-component"
       gutter={[16, 16]}>
       <Col span={18}>
         <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
       </Col>
 
-      {isLoading &&
-        [1, 2, 3].map((key) => (
-          <Col key={key} span={8}>
-            <Card>
-              <Skeleton active paragraph title />
-            </Card>
-          </Col>
-        ))}
+      {isLoading
+        ? [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
+              <Card>
+                <Skeleton active paragraph title />
+              </Card>
+            </Col>
+          ))
+        : personas?.map((persona) => (
+            <Col key={persona.id} span={8}>
+              <Card
+                bodyStyle={{ height: '100%' }}
+                className="h-full"
+                data-testid={`persona-details-card-${persona.name}`}
+                extra={
+                  <Button
+                    className="text-link-color"
+                    data-testid="customize-page-button"
+                    size="small"
+                    type="text"
+                    onClick={() => handleCustomisePersona(persona)}>
+                    {t('label.customize-entity', {
+                      entity: t('label.landing-page'),
+                    })}
+                  </Button>
+                }
+                title={getEntityName(persona)}>
+                {persona.description ? (
+                  <RichTextEditorPreviewer
+                    markdown={persona.description ?? ''}
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-muted">
+                    {t('label.no-description')}
+                  </Typography.Text>
+                )}
+              </Card>
+            </Col>
+          ))}
 
       {showErrorPlaceholder && errorPlaceHolder}
 
-      {personas?.map((persona) => (
-        <Col key={persona.id} span={8}>
-          <Card
-            bodyStyle={{ height: '100%' }}
-            className="h-full"
-            extra={
-              <Button
-                className="text-link-color"
-                size="small"
-                type="text"
-                onClick={() => handleCustomisePersona(persona)}>
-                {t('label.customize-landing-page')}
-              </Button>
-            }
-            title={getEntityName(persona)}>
-            {persona.description ? (
-              <RichTextEditorPreviewer markdown={persona.description ?? ''} />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-description')}
-              </Typography.Text>
-            )}
-          </Card>
-        </Col>
-      ))}
-      {showPagination(paging) && (
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={pageSize}
-          paging={paging}
-          pagingHandler={handlePersonaPageChange}
-          onShowSizeChange={handlePageSizeChange}
-        />
-      )}
+      <Col span={24}>
+        {showPagination && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handlePersonaPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
     </Row>
   );
 };

@@ -14,6 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../enums/entity.enum';
 import { getUserByName } from '../../rest/userAPI';
 import UserPage from './UserPage.component';
 
@@ -27,6 +28,15 @@ const mockUserData = {
   email: 'xyz@gmail.com',
   href: 'http://localhost:8585/api/v1/users/d6764107-e8b4-4748-b256-c86fecc66064',
   isAdmin: false,
+  domain: {
+    id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
+    type: EntityType.DOMAIN,
+    name: 'Engineering',
+    fullyQualifiedName: 'Engineering',
+    description: 'description',
+    inherited: true,
+    href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
+  },
   profile: {
     images: {
       image:
@@ -95,7 +105,7 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: true,

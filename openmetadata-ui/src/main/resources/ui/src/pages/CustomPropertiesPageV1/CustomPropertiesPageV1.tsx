@@ -15,18 +15,24 @@ import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { default as React, useEffect, useMemo, useState } from 'react';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from '../../components/header/PageHeader.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   ENTITY_PATH,
@@ -38,7 +44,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './CustomPropertiesPageV1.less';
+import './custom-properties-pageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
@@ -55,7 +61,7 @@ const CustomEntityDetailV1 = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const tabAttributePath = ENTITY_PATH[tab];
+  const tabAttributePath = useMemo(() => ENTITY_PATH[tab], [tab]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -91,34 +97,37 @@ const CustomEntityDetailV1 = () => {
     setIsLoading(false);
   };
 
-  const onTabChange = (activeKey: string) => {
+  const onTabChange = useCallback((activeKey: string) => {
     setActiveTab(activeKey as EntityTabs);
-  };
+  }, []);
 
-  const handleAddProperty = () => {
+  const handleAddProperty = useCallback(() => {
     const path = getAddCustomPropertyPath(tabAttributePath);
     history.push(path);
-  };
+  }, [tabAttributePath, history]);
 
-  const updateEntityType = async (properties: Type['customProperties']) => {
-    setIsButtonLoading(true);
-    const patch = compare(selectedEntityTypeDetail, {
-      ...selectedEntityTypeDetail,
-      customProperties: properties,
-    });
+  const updateEntityType = useCallback(
+    async (properties: Type['customProperties']) => {
+      setIsButtonLoading(true);
+      const patch = compare(selectedEntityTypeDetail, {
+        ...selectedEntityTypeDetail,
+        customProperties: properties,
+      });
 
-    try {
-      const data = await updateType(selectedEntityTypeDetail.id || '', patch);
-      setSelectedEntityTypeDetail((prev) => ({
-        ...prev,
-        customProperties: data.customProperties,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsButtonLoading(false);
-    }
-  };
+      try {
+        const data = await updateType(selectedEntityTypeDetail.id ?? '', patch);
+        setSelectedEntityTypeDetail((prev) => ({
+          ...prev,
+          customProperties: data.customProperties,
+        }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsButtonLoading(false);
+      }
+    },
+    [selectedEntityTypeDetail]
+  );
 
   const customPageHeader = useMemo(() => {
     switch (tabAttributePath) {
@@ -166,7 +175,7 @@ const CustomEntityDetailV1 = () => {
       setIsError(false);
       fetchTypeDetail(tabAttributePath);
     }
-  }, [tab]);
+  }, [tabAttributePath]);
 
   useEffect(() => {
     if (selectedEntityTypeDetail?.id) {
@@ -175,13 +184,13 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const tabs = useMemo(() => {
-    const { customProperties } = selectedEntityTypeDetail;
+    const { customProperties, schema } = selectedEntityTypeDetail;
 
     return [
       {
         label: (
           <TabsLabel
-            count={(customProperties || []).length}
+            count={(customProperties ?? []).length}
             id={EntityTabs.CUSTOM_PROPERTIES}
             isActive={activeTab === EntityTabs.CUSTOM_PROPERTIES}
             name={t('label.custom-property-plural')}
@@ -205,7 +214,7 @@ const CustomEntityDetailV1 = () => {
               )}
             </div>
             <CustomPropertyTable
-              customProperties={selectedEntityTypeDetail.customProperties ?? []}
+              customProperties={customProperties ?? []}
               hasAccess={editPermission}
               isButtonLoading={isButtonLoading}
               isLoading={isLoading}
@@ -222,18 +231,21 @@ const CustomEntityDetailV1 = () => {
             <SchemaEditor
               className="custom-properties-schemaEditor p-y-md"
               editorClass="custom-entity-schema"
-              value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
+              value={JSON.parse(schema ?? '{}')}
             />
           </div>
         ),
       },
     ];
   }, [
-    selectedEntityTypeDetail,
+    selectedEntityTypeDetail.schema,
     editPermission,
     isButtonLoading,
     customPageHeader,
     isLoading,
+    activeTab,
+    handleAddProperty,
+    updateEntityType,
   ]);
 
   if (isError) {
@@ -249,7 +261,7 @@ const CustomEntityDetailV1 = () => {
         <PageHeader data={customPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
-        <Tabs activeKey={activeTab} items={tabs} onChange={onTabChange} />
+        <Tabs items={tabs} key={tab} onChange={onTabChange} />
       </Col>
     </Row>
   );

@@ -24,7 +24,7 @@ It is important to leave the publicKeys configuration to have both Amazon Cognit
 3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
 4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
 
-For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
+For more details, follow [Enabling JWT Authentication](deployment/security/enable-jwt-tokens)
 
 {% /note %}
 
@@ -43,7 +43,7 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
 {% note noteType="Tip" %}
- Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+ Follow [this guide](/how-to-guides/admin-guide/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
 {% /note %}
 
 ## 2. Start Docker

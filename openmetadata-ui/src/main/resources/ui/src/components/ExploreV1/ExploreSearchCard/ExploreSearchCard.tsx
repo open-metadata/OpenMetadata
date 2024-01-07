@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -24,20 +24,12 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityId,
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityId, getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import {
-  getEntityIcon,
-  getServiceIcon,
-  getUsagePercentile,
-} from '../../../utils/TableUtils';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import './explore-search-card.less';
@@ -58,6 +50,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showTags = true,
       openEntityInNewPage,
       hideBreadcrumbs = false,
+      actionPopoverContent,
+      showCheckboxes = false,
+      checked = false,
+      onCheckboxChange,
     },
     ref
   ) => {
@@ -97,12 +93,21 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           isLink: true,
           openInNewTab: false,
         });
+      } else {
+        const entitiesWithoutDomain =
+          searchClassBase.getListOfEntitiesWithoutDomain();
+        if (!entitiesWithoutDomain.includes(source.entityType ?? '')) {
+          _otherDetails.push({
+            key: 'Domain',
+            value: '',
+          });
+        }
       }
 
       if (
-        source.entityType !== EntityType.GLOSSARY_TERM &&
-        source.entityType !== EntityType.TAG &&
-        source.entityType !== EntityType.DATA_PRODUCT
+        !searchClassBase
+          .getListOfEntitiesWithoutTier()
+          .includes((source.entityType ?? '') as EntityType)
       ) {
         _otherDetails.push({
           key: 'Tier',
@@ -123,19 +128,65 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source]);
 
     const serviceIcon = useMemo(() => {
-      return getServiceIcon(source);
+      return searchClassBase.getServiceIcon(source);
     }, [source]);
 
     const breadcrumbs = useMemo(
-      () => getEntityBreadcrumbs(source, source.entityType as EntityType, true),
+      () =>
+        searchClassBase.getEntityBreadcrumbs(
+          source,
+          source.entityType as EntityType,
+          true
+        ),
       [source]
     );
+
+    const entityIcon = useMemo(() => {
+      if (showEntityIcon) {
+        if (source.entityType === 'glossaryTerm') {
+          if (source.style?.iconURL) {
+            return (
+              <img
+                className="align-middle m-r-xs object-contain"
+                data-testid="icon"
+                height={24}
+                src={source.style.iconURL}
+                width={24}
+              />
+            );
+          }
+
+          return;
+        }
+
+        return (
+          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+            {getEntityIcon(source.entityType ?? '')}
+          </span>
+        );
+      }
+
+      return;
+    }, [source, showEntityIcon, getEntityIcon]);
 
     const header = useMemo(() => {
       return (
         <Row gutter={[8, 8]}>
+          {showCheckboxes && (
+            <Col flex="25px">
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={checked}
+                  className="assets-checkbox"
+                  onChange={(e) => {
+                    onCheckboxChange?.(e.target.checked);
+                  }}
+                />
+              </div>
+            </Col>
+          )}
           {!hideBreadcrumbs && (
-            <Col span={24}>
+            <Col className="d-flex" flex="auto">
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
@@ -147,39 +198,35 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               </div>
             </Col>
           )}
-          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
+          <Col
+            data-testid={`${
+              source.service?.name ? `${source.service.name}-` : 'explore-card-'
+            }${source.name}`}
+            span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(getEntityName(source))}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
               <div className="w-full d-flex items-start">
-                {showEntityIcon && (
-                  <span className="w-6 h-6 m-r-xs d-flex text-xl">
-                    {getEntityIcon(source.entityType ?? '')}
-                  </span>
-                )}
+                {entityIcon}
 
                 <Link
-                  className="no-underline w-full"
+                  className="no-underline line-height-22"
                   data-testid="entity-link"
-                  target={openEntityInNewPage ? '_blank' : '_self'}
-                  to={
-                    source.fullyQualifiedName && source.entityType
-                      ? getEntityLinkFromType(
-                          source.fullyQualifiedName,
-                          source.entityType as EntityType
-                        )
-                      : ''
-                  }>
+                  target={searchClassBase.getSearchEntityLinkTarget(
+                    source,
+                    openEntityInNewPage
+                  )}
+                  to={searchClassBase.getEntityLink(source)}>
                   <Typography.Text
-                    className="text-lg font-medium text-link-color"
+                    className="text-lg font-medium text-link-color break-word"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(getEntityName(source))}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
               </div>
@@ -187,12 +234,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           </Col>
         </Row>
       );
-    }, [breadcrumbs, source, hideBreadcrumbs]);
+    }, [breadcrumbs, source, hideBreadcrumbs, showCheckboxes, checked]);
 
     return (
       <div
         className={classNames('explore-search-card', className)}
-        data-testid="table-data-card"
+        data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
         onClick={() => {
@@ -221,6 +268,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
+        {actionPopoverContent && (
+          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        )}
       </div>
     );
   }

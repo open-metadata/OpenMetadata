@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -48,7 +49,10 @@ function GlossaryTermSummary({
     [selectedData]
   );
 
-  const synonyms = useMemo(() => entityDetails.synonyms ?? [], [selectedData]);
+  const synonyms = useMemo(
+    () => entityDetails.synonyms?.filter((item) => !isEmpty(item)) ?? [],
+    [selectedData]
+  );
 
   const fetchGlossaryTermDetails = useCallback(async () => {
     try {
@@ -91,9 +95,7 @@ function GlossaryTermSummary({
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-entity', {
-                  entity: t('label.children-lowercase'),
-                })}
+                {t('label.no-reviewer')}
               </Typography.Text>
             )}
           </Col>

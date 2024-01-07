@@ -29,7 +29,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
 import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getTableTabPath } from '../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -43,13 +43,13 @@ import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
-import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddDataQualityTestProps } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
@@ -70,13 +70,17 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
+  const { currentUser } = useAuthContext();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
+        url: getTableTabPath(
+          getEncodedFqn(table.fullyQualifiedName ?? ''),
+          EntityTabs.PROFILER
+        ),
       },
       {
         name: t('label.add-entity-test', {
@@ -92,10 +96,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const owner = useMemo(
     () => ({
-      id: getCurrentUserId(),
+      id: currentUser?.id ?? '',
       type: OwnerType.USER,
     }),
-    [getCurrentUserId]
+    [currentUser]
   );
 
   const handleRedirection = () => {
@@ -230,14 +234,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       />
       {isTableFqn && (
         <TableProfilerChart
-          dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
+          showHeader={false}
+          tableDetails={table}
         />
       )}
       {isColumnFqn && (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}
           dateRangeObject={DEFAULT_RANGE_DATA}
+          tableDetails={table}
         />
       )}
     </Fragment>

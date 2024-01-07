@@ -16,7 +16,6 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public class MigrationUtil {
   private MigrationUtil() {
@@ -25,42 +24,42 @@ public class MigrationUtil {
 
   private static final String MYSQL_LIST_TABLE_FQNS =
       "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM table_entity";
-  private static final String POSTGRES_LIST_TABLE_FQNS = "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
+  private static final String POSTGRES_LIST_TABLE_FQNS =
+      "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
 
   public static void fixTestCases(Handle handle, CollectionDAO collectionDAO) {
-    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     List<TestCase> testCases =
-        testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testCaseRepository.listAll(
+            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
-    try {
-      List<String> fqnList;
-      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
-      } else {
-        fqnList = handle.createQuery(POSTGRES_LIST_TABLE_FQNS).mapTo(String.class).list();
-      }
-      Map<String, String> tableMap = new HashMap<>();
-      for (String fqn : fqnList) {
-        tableMap.put(fqn.toLowerCase(), fqn);
-      }
+    List<String> fqnList;
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
+    } else {
+      fqnList = handle.createQuery(POSTGRES_LIST_TABLE_FQNS).mapTo(String.class).list();
+    }
+    Map<String, String> tableMap = new HashMap<>();
+    for (String fqn : fqnList) {
+      tableMap.put(fqn.toLowerCase(), fqn);
+    }
 
-      for (TestCase testCase : testCases) {
-        // Create New Executable Test Suites
-        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-        String fqn = entityLink.getEntityFQN();
-        Table table = JsonUtils.readValue(tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
-        if (table == null) {
-          String findTableFQN = tableMap.get(fqn.toLowerCase());
-          MessageParser.EntityLink newEntityLink =
-              new MessageParser.EntityLink(entityLink.getEntityType(), findTableFQN);
-          testCase.setEntityLink(newEntityLink.getLinkString());
-          testCase.setEntityFQN(findTableFQN);
-          collectionDAO.testCaseDAO().update(testCase);
-        }
+    for (TestCase testCase : testCases) {
+      // Create New Executable Test Suites
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      String fqn = entityLink.getEntityFQN();
+      Table table = tableRepository.findByNameOrNull(fqn, Include.ALL);
+      if (table == null) {
+        String findTableFQN = tableMap.get(fqn.toLowerCase());
+        MessageParser.EntityLink newEntityLink =
+            new MessageParser.EntityLink(entityLink.getEntityType(), findTableFQN);
+        testCase.setEntityLink(newEntityLink.getLinkString());
+        testCase.setEntityFQN(findTableFQN);
+        collectionDAO.testCaseDAO().update(testCase);
       }
-    } catch (Exception exc) {
-      throw exc;
     }
   }
 }

@@ -256,6 +256,8 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .should('contain', TEAM_DETAILS.updatedName);
 
+    cy.get('[role="tablist"] [data-icon="right"]').click();
+
     // Click on edit description button
     cy.get('[data-testid="edit-description"]')
       .should('be.visible')
@@ -294,7 +296,7 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="leave-team-button"]').click();
 
     // //Click on confirm button
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
+    cy.get('.ant-modal-footer').contains('Confirm').click();
 
     toastNotification('Left the team successfully');
 
@@ -317,17 +319,13 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedName);
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
-    cy.get('[data-testid="delete-button-title"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="delete-button-title"]').click();
 
     cy.get('[data-testid="confirm-button"]')
       .should('exist')
@@ -343,15 +341,14 @@ describe('Teams flow should work properly', () => {
 
     interceptURL('DELETE', '/api/v1/teams/*', 'softDeleteTeam');
 
-    cy.get('[data-testid="confirm-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="confirm-button"]').click();
 
     verifyResponseStatusCode('@softDeleteTeam', 200);
 
     // Verify the toast message
     toastNotification('Team deleted successfully!');
+
+    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
 
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
@@ -386,10 +383,9 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedName);
 
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
@@ -440,10 +436,9 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 

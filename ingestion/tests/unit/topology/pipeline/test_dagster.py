@@ -216,12 +216,12 @@ EXPECTED_PIPELINE_STATUS = [
                 TaskStatus(
                     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
                     executionStatus=StatusType.Successful.value,
-                    startTime=1655393914,
-                    endTime=1655394054,
+                    startTime=1655393914000,
+                    endTime=1655394054000,
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            timestamp=1655393914,
+            timestamp=1655393914000,
         ),
     ),
 ]
@@ -274,8 +274,10 @@ class DagsterUnitTest(TestCase):
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.dagster.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.dagster.context.__dict__["repository_name"] = "hacker_new_repository"
         self.dagster.context.__dict__["repository_location"] = "project_fully_featured"
 

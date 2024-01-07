@@ -144,7 +144,9 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.looker.context.__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
     def test_create(self):
         """
@@ -251,9 +253,8 @@ class LookerUnitTest(TestCase):
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
         with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
-            # This does not really return a ref, but for simplicity
             OpenMetadata,
-            "get_user_by_email",
+            "get_reference_by_email",
             return_value=ref,
         ):
             self.assertEqual(self.looker.get_owner_details(MOCK_LOOKER_DASHBOARD), ref)
@@ -278,7 +279,7 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
-                service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.looker.context.dashboard_service,
                 owner=None,
             )
 
@@ -373,7 +374,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             sourceUrl="https://my-looker.com/hello",
-            service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.looker.context.dashboard_service,
         )
 
         self.assertEqual(

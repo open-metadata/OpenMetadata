@@ -1,16 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,14 +17,8 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ContainerIndex implements ColumnIndex {
+public record ContainerIndex(Container container) implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Container container;
-
-  public ContainerIndex(Container container) {
-    this.container = container;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(container);
@@ -57,13 +43,18 @@ public class ContainerIndex implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    serviceSuggest.add(SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
-    doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
+    doc.put(
+        "displayName",
+        container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(container.getFollowers()));
@@ -77,24 +68,14 @@ public class ContainerIndex implements ColumnIndex {
         getFQNParts(
             container.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (container.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(container.getOwner()));
-    }
-    if (container.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(container.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(container.getOwner()));
+    doc.put("service", getEntityWithDisplayName(container.getService()));
+    doc.put("domain", getEntityWithDisplayName(container.getDomain()));
     return doc;
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("dataModel.columns.name", 2.0f);
     fields.put(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("dataModel.columns.name.ngram", 1.0f);

@@ -82,19 +82,23 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
   }
 
-  public synchronized SubscriptionStatus setSuccessStatus(Long updateTime) {
+  public synchronized void setSuccessStatus(Long updateTime) {
     SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
+        AlertUtil.buildSubscriptionStatus(
+            ACTIVE, updateTime, null, null, null, updateTime, updateTime);
     eventSubscription.setStatusDetails(subStatus);
-    return subStatus;
   }
 
-  protected synchronized SubscriptionStatus setStatus(
-      SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp) {
+  protected synchronized void setStatus(
+      SubscriptionStatus.Status status,
+      Long attemptTime,
+      Integer statusCode,
+      String reason,
+      Long timestamp) {
     SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
+        AlertUtil.buildSubscriptionStatus(
+            status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
     eventSubscription.setStatusDetails(subStatus);
-    return subStatus;
   }
 
   public void awaitShutdown() throws InterruptedException {

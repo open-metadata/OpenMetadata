@@ -18,7 +18,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.3.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <properties>
@@ -70,6 +70,20 @@
       <artifactId>dropwizard-jersey</artifactId>
       <version>${dropwizard.version}</version>
       <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>log4j-over-slf4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>commons-codec</groupId>

@@ -18,7 +18,6 @@ import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -32,7 +31,8 @@ import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
@@ -56,6 +56,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadType,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -163,10 +164,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   };
 
   const onPostThread = (value: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name ?? '',
       about: threadLink,
     };
     createThread(data);

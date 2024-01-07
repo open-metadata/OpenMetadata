@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Divider, Row, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -32,6 +37,7 @@ const DatabaseSummary = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: DatabaseSummaryProps) => {
   const { t } = useTranslation();
   const entityInfo = useMemo(
@@ -43,7 +49,8 @@ const DatabaseSummary = ({
     () =>
       getFormattedEntityData(
         SummaryEntityType.SCHEMAFIELD,
-        entityDetails.databaseSchemas
+        entityDetails.databaseSchemas,
+        highlights
       ),
     [entityDetails]
   );
@@ -64,7 +71,13 @@ const DatabaseSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
         />
 
         <Divider className="m-y-xs" />

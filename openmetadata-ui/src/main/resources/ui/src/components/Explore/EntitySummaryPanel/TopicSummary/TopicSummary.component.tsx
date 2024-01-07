@@ -12,7 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isArray, isEmpty } from 'lodash';
+import { get, isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -20,7 +20,10 @@ import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getTopicByFqn } from '../../../../rest/topicsAPI';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
@@ -28,6 +31,7 @@ import {
 import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -38,6 +42,7 @@ interface TopicSummaryProps {
   componentType?: string;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function TopicSummary({
@@ -45,6 +50,7 @@ function TopicSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: TopicSummaryProps) {
   const { t } = useTranslation();
 
@@ -98,7 +104,8 @@ function TopicSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.SCHEMAFIELD,
-        topicDetails.messageSchema?.schemaFields
+        topicDetails.messageSchema?.schemaFields,
+        highlights
       ),
     [topicDetails]
   );
@@ -158,7 +165,13 @@ function TopicSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
         />
         <Divider className="m-y-xs" />
 

@@ -5,23 +5,25 @@ import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Max;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
 
 public class ElasticSearchMostActiveUsersAggregator
-    extends MostActiveUsersAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
+    extends MostActiveUsersAggregator<
+        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
 
   public ElasticSearchMostActiveUsersAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getSumValue(Sum key) {
-    return key.getValue();
+  protected Optional<Double> getSumValue(Sum key) {
+    return Optional.ofNullable(key != null ? key.getValue() : null);
   }
 
   @Override
-  protected Long getMaxValue(Max key) {
-    return (long) key.getValue();
+  protected Optional<Long> getMaxValue(Max key) {
+    return Optional.ofNullable(key != null ? (long) key.getValue() : null);
   }
 
   @Override
@@ -40,7 +42,8 @@ public class ElasticSearchMostActiveUsersAggregator
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(MultiBucketsAggregation buckets) {
+  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
+      MultiBucketsAggregation buckets) {
     return buckets.getBuckets();
   }
 

@@ -45,8 +45,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (5, 2))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
@@ -62,8 +62,27 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (5, 2))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
+            list(df_list[0].columns), ["transaction_id", "transaction_value"]
+        )
+
+    def test_dsv_reader_with_separator(self):
+        key = ROOT_PATH / "transactions_separator.csv"
+
+        df_list = fetch_dataframe(
+            config_source=LocalConfig(),
+            client=None,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=str(key), bucket_name="unused", separator=";"
+            ),
+        )
+
+        self.assertIsNotNone(df_list)
+        self.assertTrue(len(df_list))
+
+        self.assertEqual(df_list[0].shape, (5, 2))
+        self.assertEqual(
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
@@ -79,8 +98,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (4, 4))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (4, 4))
+        self.assertEqual(
             list(df_list[0].columns),
             ["name", "id", "version", "Company"],
         )
@@ -97,8 +116,8 @@ class TestDataFrameReader(TestCase):
         self.assertIsNotNone(df_list)
         self.assertTrue(len(df_list))
 
-        self.assertEquals(df_list[0].shape, (4, 8))
-        self.assertEquals(
+        self.assertEqual(df_list[0].shape, (4, 8))
+        self.assertEqual(
             list(df_list[0].columns),
             [
                 "Boolean",

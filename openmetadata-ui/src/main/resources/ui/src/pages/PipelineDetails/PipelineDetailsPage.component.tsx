@@ -14,11 +14,11 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
@@ -38,8 +38,8 @@ import {
 } from '../../rest/pipelineAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -52,7 +52,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
   const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
@@ -211,7 +212,10 @@ const PipelineDetailsPage = () => {
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({ ...res, tags: res.tags ?? [] });
+      setPipelineDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -252,13 +256,17 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setPipelineDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
@@ -327,4 +335,4 @@ const PipelineDetailsPage = () => {
   );
 };
 
-export default observer(PipelineDetailsPage);
+export default PipelineDetailsPage;

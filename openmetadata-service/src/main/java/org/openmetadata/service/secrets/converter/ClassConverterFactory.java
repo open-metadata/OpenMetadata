@@ -30,9 +30,9 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.schema.services.connections.storage.GcsConnection;
+import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {
@@ -55,13 +55,15 @@ public final class ClassConverterFactory {
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
-            Map.entry(GcsConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
-            Map.entry(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
-            Map.entry(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter()),
+            Map.entry(
+                TestServiceConnectionRequest.class,
+                new TestServiceConnectionRequestClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()));
   }
 

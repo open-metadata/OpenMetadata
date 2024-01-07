@@ -18,8 +18,8 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
+import './empty-widget-placeholder.less';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';
-import './EmptyWidgetPlaceholder.less';
 
 function EmptyWidgetPlaceholder({
   iconHeight = SIZE.MEDIUM,
@@ -42,7 +42,10 @@ function EmptyWidgetPlaceholder({
   }, []);
 
   return (
-    <Card bodyStyle={{ height: '100%' }} className="empty-widget-placeholder">
+    <Card
+      bodyStyle={{ height: '100%' }}
+      className="empty-widget-placeholder"
+      data-testid={widgetKey}>
       <Row className="h-full">
         {isEditable && (
           <Col span={24}>
@@ -50,11 +53,16 @@ function EmptyWidgetPlaceholder({
               <Col>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
               </Col>
               <Col>
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </Col>
             </Row>
           </Col>
@@ -80,7 +88,7 @@ function EmptyWidgetPlaceholder({
                 <Button
                   ghost
                   className="add-button"
-                  data-testid="add-widget-placeholder-button"
+                  data-testid="add-widget-button"
                   icon={<PlusOutlined />}
                   type="primary"
                   onClick={handleAddClick}>

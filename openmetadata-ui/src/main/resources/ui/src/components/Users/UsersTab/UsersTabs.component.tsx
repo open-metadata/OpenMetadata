@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import { Button, Modal } from 'antd';
+import { isNil } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { commonUserDetailColumns } from '../../../utils/Users.util';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
-import { commonUserDetailColumns } from '../Users.util';
 
 interface UsersTabProps {
   users: EntityReference[];
@@ -32,8 +33,28 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   const [additionalUsersDetails, setAdditionalUsersDetails] = useState<User[]>(
     []
   );
+  const [removeUserDetails, setRemoveUserDetails] =
+    useState<{ state: boolean; user: User }>();
 
   const { t } = useTranslation();
+
+  const handleRemoveButtonClick = useCallback((user: User) => {
+    setRemoveUserDetails({
+      state: true,
+      user,
+    });
+  }, []);
+
+  const handleRemoveCancel = useCallback(() => {
+    setRemoveUserDetails(undefined);
+  }, []);
+
+  const handleRemoveConfirm = useCallback(() => {
+    if (!isNil(removeUserDetails) && !isNil(onRemoveUser)) {
+      onRemoveUser(removeUserDetails.user.id);
+    }
+    handleRemoveCancel();
+  }, [removeUserDetails, handleRemoveCancel]);
 
   const fetchUsersAdditionalDetails = async () => {
     try {
@@ -63,19 +84,23 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       title: t('label.action-plural'),
       dataIndex: 'id',
       key: 'id',
-      render: (id: string) => {
+      width: 90,
+      render: (_: string, record: User) => {
         return (
           onRemoveUser && (
-            <Icon
-              component={CloseIcon}
-              title={t('label.remove')}
-              onClick={() => onRemoveUser(id)}
+            <Button
+              data-testid="remove-user-btn"
+              icon={
+                <IconRemove height={16} name={t('label.remove')} width={16} />
+              }
+              type="text"
+              onClick={() => handleRemoveButtonClick(record)}
             />
           )
         );
       },
     };
-  }, []);
+  }, [onRemoveUser]);
 
   const columns = useMemo(
     () => [...commonUserDetailColumns(isDetailsLoading), actionColumn],
@@ -83,26 +108,44 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   );
 
   return (
-    <Table
-      bordered
-      columns={columns}
-      dataSource={
-        isDetailsLoading ? (users as unknown as User[]) : additionalUsersDetails
-      }
-      loading={isDetailsLoading}
-      locale={{
-        emptyText: (
-          <ErrorPlaceHolder
-            permission
-            className="p-y-md"
-            heading={t('label.user')}
-            type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-          />
-        ),
-      }}
-      pagination={false}
-      rowKey="fullyQualifiedName"
-      size="small"
-    />
+    <>
+      <Table
+        bordered
+        columns={columns}
+        dataSource={
+          isDetailsLoading
+            ? (users as unknown as User[])
+            : additionalUsersDetails
+        }
+        loading={isDetailsLoading}
+        locale={{
+          emptyText: (
+            <ErrorPlaceHolder
+              permission
+              className="p-y-md"
+              heading={t('label.user')}
+              type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
+            />
+          ),
+        }}
+        pagination={false}
+        rowKey="fullyQualifiedName"
+        size="small"
+      />
+      <Modal
+        cancelText={t('label.cancel')}
+        data-testid="remove-confirmation-modal"
+        okText={t('label.confirm')}
+        open={Boolean(removeUserDetails?.state)}
+        title={t('label.removing-user')}
+        onCancel={handleRemoveCancel}
+        onOk={handleRemoveConfirm}>
+        {t('message.are-you-sure-want-to-text', {
+          text: t('label.remove-entity-lowercase', {
+            entity: removeUserDetails?.user.name,
+          }),
+        })}
+      </Modal>
+    </>
   );
 };

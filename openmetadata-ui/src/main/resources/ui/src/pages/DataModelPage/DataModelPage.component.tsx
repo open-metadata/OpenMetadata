@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import {
   default as React,
@@ -25,8 +24,8 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataModelDetails from '../../components/DataModels/DataModelDetails.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -49,8 +48,8 @@ import {
 } from '../../rest/dataModelsAPI';
 import { postThread } from '../../rest/feedsAPI';
 import {
-  getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getSortedDataModelColumnTags } from '../../utils/DataModelsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -60,7 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
-
+  const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
@@ -70,12 +69,6 @@ const DataModelsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>(
     {} as DashboardDataModel
-  );
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const { hasViewPermission } = useMemo(() => {
@@ -89,10 +82,10 @@ const DataModelsPage = () => {
     return {
       tier: getTierTags(dataModelData?.tags ?? []),
       isUserFollowing: dataModelData?.followers?.some(
-        ({ id }: { id: string }) => id === getCurrentUserId()
+        ({ id }: { id: string }) => id === currentUser?.id
       ),
     };
-  }, [dataModelData]);
+  }, [dataModelData, currentUser]);
 
   const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
@@ -130,7 +123,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(response);
@@ -203,7 +196,7 @@ const DataModelsPage = () => {
 
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
-        tags: newTags,
+        tags: sortTagsCaseInsensitive(newTags ?? []),
         version,
       }));
     } catch (error) {
@@ -285,13 +278,17 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setDataModelData((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
@@ -300,7 +297,7 @@ const DataModelsPage = () => {
       await updateDataModelVotes(id, data);
       const details = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(details);
@@ -365,4 +362,4 @@ const DataModelsPage = () => {
   );
 };
 
-export default observer(DataModelsPage);
+export default DataModelsPage;

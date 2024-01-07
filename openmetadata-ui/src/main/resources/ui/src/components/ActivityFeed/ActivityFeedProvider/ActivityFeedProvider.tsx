@@ -23,7 +23,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -46,6 +45,7 @@ import {
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -69,11 +69,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
@@ -142,11 +138,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   // Here value is the post message and id can be thread id or post id.
   const postFeed = useCallback(async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+    if (!currentUser) {
+      return;
+    }
 
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser.name,
     } as Post;
 
     try {

@@ -18,6 +18,8 @@ export interface ApplicationCardProps {
   description: string;
   linkTitle: string;
   className?: string;
+  showDescription?: boolean;
+  deleted?: boolean;
   onClick: () => void;
   appName: string;
 }

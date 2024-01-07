@@ -15,19 +15,19 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../../components/Loader/Loader';
-import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
+import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
@@ -50,11 +50,12 @@ import {
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
-import '../TaskPage.style.less';
+import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
@@ -62,6 +63,7 @@ const UpdateTag = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
+  const { currentUser } = useAuthContext();
 
   const { entityType, fqn: entityFQN } =
     useParams<{ fqn: string; entityType: EntityType }>();
@@ -78,23 +80,29 @@ const UpdateTag = () => {
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
-
-  const message = `Update tags for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
-  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const sanitizeValue = useMemo(
+    () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
+    [value]
   );
+
+  const taskMessage = useMemo(
+    () =>
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Update tags',
+      }),
+    [value, entityType, field, entityData]
+  );
+
+  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const back = () => history.goBack();
 
   const columnObject = useMemo(() => {
-    const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
+    const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
     return getColumnObject(
       column[0],
@@ -127,7 +135,7 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
+      message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
@@ -177,13 +185,14 @@ const UpdateTag = () => {
           label: getEntityName(owner),
           value: owner.id || '',
           type: owner.type,
+          name: owner.name,
         },
       ];
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       updatedTags: getTags(),
       assignees: defaultAssignee,
     });
@@ -250,6 +259,7 @@ const UpdateTag = () => {
                     },
                   ]}>
                   <Assignees
+                    disabled={Boolean(entityData.owner)}
                     options={options}
                     value={assignees}
                     onChange={setAssignees}
@@ -323,4 +333,4 @@ const UpdateTag = () => {
   );
 };
 
-export default observer(UpdateTag);
+export default UpdateTag;

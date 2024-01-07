@@ -62,7 +62,7 @@
       "default": false
     },
     "tags": {
-      "description": "Tags associated with the column.",
+      "description": "Tags associated with the entity.",
       "type": "array",
       "items": {
         "$ref": "../../../type/tagLabel.json"
@@ -89,6 +89,10 @@
       "description": "Full Qualified ClassName for the the application",
       "type": "string"
     },
+    "sourcePythonClass": {
+      "description": "Fully Qualified class name for the Python source that will execute the external application.",
+      "type": "string"
+    },
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
@@ -105,8 +109,14 @@
       "description": "If app type is live, user can provide additional runtime context.",
       "$ref": "../app.json#/definitions/executionContext"
     },
+    "allowConfiguration": {
+      "description": "Allow users to configure the app from the UI. If `false`, the `configure` step will be hidden.",
+      "type": "boolean",
+      "default": true
+    },
     "appConfiguration": {
-      "description": "Application Configuration object."
+      "description": "Application Configuration object.",
+      "$ref": "../configuration/applicationConfig.json#/definitions/appConfig"
     },
     "appLogoUrl": {
       "description": "Application Logo Url.",

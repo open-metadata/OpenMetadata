@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3', 'postgres']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
     environment: test
 
     steps:
@@ -44,7 +44,7 @@ jobs:
         python-version: 3.9
 
     - name: configure aws credentials
-      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test)
+      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
@@ -94,6 +94,7 @@ jobs:
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
         E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
         E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+        E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
         E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
@@ -136,25 +137,31 @@ jobs:
         E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
         E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
         E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
-        E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_DATALAKE_S3_REGION }}
+        E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_AWS_REGION }}
         E2E_POSTGRES_USERNAME: ${{ secrets.E2E_POSTGRES_USERNAME }}
         E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
         E2E_POSTGRES_HOSTPORT: ${{ secrets.E2E_POSTGRES_HOSTPORT }}
         E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
+        E2E_ORACLE_HOST_PORT: ${{ secrets.E2E_ORACLE_HOST_PORT }}
+        E2E_ORACLE_USERNAME: ${{ secrets.E2E_ORACLE_USERNAME }}
+        E2E_ORACLE_PASSWORD: ${{ secrets.E2E_ORACLE_PASSWORD }}
+        E2E_ORACLE_SERVICE_NAME: ${{ secrets.E2E_ORACLE_SERVICE_NAME }}
+        E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
+        E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
+        E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
         echo "import os" >> $SITE_CUSTOMIZE_PATH
         echo "try:" >> $SITE_CUSTOMIZE_PATH
         echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
-        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/.coveragerc'" >> $SITE_CUSTOMIZE_PATH
+        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/pyproject.toml'" >> $SITE_CUSTOMIZE_PATH
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        sed -i "5i concurrency = multiprocessing" ingestion/.coveragerc
-        coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/.coveragerc --keep -a .coverage*   
-        coverage report --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST || true
+        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*   
+        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
@@ -240,8 +247,8 @@ jobs:
             cp -rT $folder/ ingestion/junit ;
           done
           source env/bin/activate
-          coverage combine --rcfile=ingestion/.coveragerc --keep -a .coverage*
-          coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a .coverage*
+          coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
         shell: bash

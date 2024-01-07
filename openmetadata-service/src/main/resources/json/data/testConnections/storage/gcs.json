@@ -1,0 +1,35 @@
+{
+  "name": "GCS",
+  "displayName": "GCS Test Connection",
+  "description": "This Test Connection validates the access against the storage service and basic metadata extraction of objects.",
+  "steps": [
+    {
+      "name": "ListBuckets",
+      "description": "List all the buckets available to the user.",
+      "errorMessage": "Failed to fetch buckets, please validate the credentials if the user has access to list buckets",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "ListBlobs",
+      "description": "List all the blobs available to the user.",
+      "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to list blobs",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetBucket",
+      "description": "Get the bucket available to the user.",
+      "errorMessage": "Failed to fetch bucket, please validate the credentials if the user has access to get bucket",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetBlob",
+      "description": "Get the blob available to the user.",
+      "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to get blob",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

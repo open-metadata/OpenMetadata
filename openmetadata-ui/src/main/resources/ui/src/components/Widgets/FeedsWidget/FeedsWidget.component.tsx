@@ -31,7 +31,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
 
@@ -215,9 +215,14 @@ const FeedsWidget = ({
               <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </>
             )}
           </Space>

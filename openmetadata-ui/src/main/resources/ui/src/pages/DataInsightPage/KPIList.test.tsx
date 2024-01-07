@@ -15,11 +15,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { mockUserData } from '../../components/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
 const mockPush = jest.fn();
-
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    currentUser: { ...mockUserData, isAdmin: true },
+  })),
+}));
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
@@ -35,14 +40,14 @@ jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div data-testid="delete-modal">Delete Modal</div>)
 );
 
-jest.mock('../../components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="next-previous">Next Previous</div>)
 );
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 

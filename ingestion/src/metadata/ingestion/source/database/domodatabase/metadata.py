@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -26,9 +26,14 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -37,21 +42,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
     Owner,
     SchemaColumn,
     User,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -99,7 +102,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -113,12 +116,17 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
@@ -127,9 +135,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table["name"],
                 )
 
@@ -150,7 +158,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 StackTraceError(
                     name=schema_name,
                     error=f"Fetching tables names failed for schema {schema_name} due to - {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -158,9 +166,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
-                user = self.metadata.get_user_by_email(owner_details.email)
-                if user:
-                    return EntityReference(id=user.id.__root__, type="user")
+                return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None
@@ -185,7 +191,13 @@ class DomodatabaseSource(DatabaseServiceSource):
                 columns=columns,
                 owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
                 sourceUrl=self.get_source_url(
                     table_name=table_id,
                 ),
@@ -197,7 +209,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 left=StackTraceError(
                     name=table_id,
                     error=f"Unexpected exception for table [{table_id}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -232,15 +244,11 @@ class DomodatabaseSource(DatabaseServiceSource):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []

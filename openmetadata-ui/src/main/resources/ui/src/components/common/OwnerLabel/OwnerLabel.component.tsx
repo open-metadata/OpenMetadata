@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isNil } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -46,7 +46,7 @@ export const OwnerLabel = ({
   const { t } = useTranslation();
 
   const profilePicture = useMemo(() => {
-    if (isUndefined(owner)) {
+    if (isNil(owner)) {
       return (
         <Icon
           component={IconUser}
@@ -63,16 +63,17 @@ export const OwnerLabel = ({
         style={{ fontSize: '18px' }}
       />
     ) : (
-      <ProfilePicture
-        displayName={displayName}
-        id={owner.id}
-        key="profile-picture"
-        name={owner.name ?? ''}
-        type="circle"
-        width="18"
-      />
+      <div style={{ flexBasis: '18px' }}>
+        <ProfilePicture
+          displayName={displayName}
+          key="profile-picture"
+          name={owner.name ?? ''}
+          type="circle"
+          width="18"
+        />
+      </div>
     );
-  }, [owner]);
+  }, [owner, displayName]);
 
   return (
     <div className="d-flex gap-2 items-center" data-testid="owner-label">

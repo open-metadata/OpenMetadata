@@ -80,8 +80,10 @@ public class UsageRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage) {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
+  public RestUtil.PutResponse<?> createByName(
+      String entityType, String fullyQualifiedName, DailyCount usage) {
+    EntityReference ref =
+        Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(POST, entityType, ref.getId(), usage);
   }
 
@@ -93,8 +95,10 @@ public class UsageRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage) {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
+  public RestUtil.PutResponse<?> createOrUpdateByName(
+      String entityType, String fullyQualifiedName, DailyCount usage) {
+    EntityReference ref =
+        Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(PUT, entityType, ref.getId(), usage);
   }
 
@@ -103,7 +107,8 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private RestUtil.PutResponse<?> addUsage(String method, String entityType, UUID entityId, DailyCount usage) {
+  private RestUtil.PutResponse<?> addUsage(
+      String method, String entityType, UUID entityId, DailyCount usage) {
     String fields = "usageSummary";
     // If table usage was reported, add the usage count to schema and database
     String type = entityType.toLowerCase();
@@ -118,7 +123,8 @@ public class UsageRepository {
         return mlModelEntityUsage(method, fields, entityId, entityType, usage);
       default:
         LOG.error("Invalid Usage Entity Type");
-        throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotSupported(entityType));
+        throw new UnhandledServerException(
+            CatalogExceptionMessage.entityTypeNotSupported(entityType));
     }
   }
 
@@ -131,14 +137,21 @@ public class UsageRepository {
     Table updated = Entity.getEntity(Entity.TABLE, entityId, fields, Include.ALL);
     dao.usageDAO()
         .insertOrUpdateCount(
-            usage.getDate(), table.getDatabaseSchema().getId(), Entity.DATABASE_SCHEMA, usage.getCount());
-    dao.usageDAO().insertOrUpdateCount(usage.getDate(), table.getDatabase().getId(), Entity.DATABASE, usage.getCount());
+            usage.getDate(),
+            table.getDatabaseSchema().getId(),
+            Entity.DATABASE_SCHEMA,
+            usage.getCount());
+    dao.usageDAO()
+        .insertOrUpdateCount(
+            usage.getDate(), table.getDatabase().getId(), Entity.DATABASE, usage.getCount());
 
     ChangeDescription change =
-        getChangeDescription(table.getVersion(), updated.getUsageSummary(), table.getUsageSummary());
+        getChangeDescription(
+            table.getVersion(), updated.getUsageSummary(), table.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, table.getVersion());
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> dashboardEntityUsage(
@@ -148,10 +161,12 @@ public class UsageRepository {
     Dashboard updated = Entity.getEntity(Entity.DASHBOARD, entityId, fields, Include.ALL);
 
     ChangeDescription change =
-        getChangeDescription(dashboard.getVersion(), updated.getUsageSummary(), dashboard.getUsageSummary());
+        getChangeDescription(
+            dashboard.getVersion(), updated.getUsageSummary(), dashboard.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, dashboard.getVersion());
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> chartEntityUsage(
@@ -161,10 +176,12 @@ public class UsageRepository {
     Chart updated = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
 
     ChangeDescription change =
-        getChangeDescription(chart.getVersion(), updated.getUsageSummary(), chart.getUsageSummary());
+        getChangeDescription(
+            chart.getVersion(), updated.getUsageSummary(), chart.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, chart.getVersion());
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> mlModelEntityUsage(
@@ -174,13 +191,16 @@ public class UsageRepository {
     MlModel updated = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
 
     ChangeDescription change =
-        getChangeDescription(mlModel.getVersion(), updated.getUsageSummary(), mlModel.getUsageSummary());
+        getChangeDescription(
+            mlModel.getVersion(), updated.getUsageSummary(), mlModel.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, mlModel.getVersion());
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private void insertToUsageRepository(String method, UUID entityId, String entityType, DailyCount usage) {
+  private void insertToUsageRepository(
+      String method, UUID entityId, String entityType, DailyCount usage) {
     if (method.equals(POST)) {
       dao.usageDAO().insertOrReplaceCount(usage.getDate(), entityId, entityType, usage.getCount());
     } else if (method.equals(PUT)) {
@@ -213,11 +233,17 @@ public class UsageRepository {
     @Override
     public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
       UsageStats dailyStats =
-          new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
+          new UsageStats()
+              .withCount(r.getInt("count1"))
+              .withPercentileRank(r.getDouble("percentile1"));
       UsageStats weeklyStats =
-          new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
+          new UsageStats()
+              .withCount(r.getInt("count7"))
+              .withPercentileRank(r.getDouble("percentile7"));
       UsageStats monthlyStats =
-          new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+          new UsageStats()
+              .withCount(r.getInt("count30"))
+              .withPercentileRank(r.getDouble("percentile30"));
       return new UsageDetails()
           .withDate(r.getString("usageDate"))
           .withDailyStats(dailyStats)

@@ -36,21 +36,26 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class RoleRepository extends EntityRepository<Role> {
   public RoleRepository() {
     super(
-        RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, Entity.getCollectionDAO().roleDAO(), POLICIES, POLICIES);
+        RoleResource.COLLECTION_PATH,
+        Entity.ROLE,
+        Role.class,
+        Entity.getCollectionDAO().roleDAO(),
+        POLICIES,
+        POLICIES);
   }
 
   @Override
-  public Role setFields(Role role, Fields fields) {
+  public void setFields(Role role, Fields fields) {
     role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : role.getPolicies());
     role.setTeams(fields.contains("teams") ? getTeams(role) : role.getTeams());
-    return role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
+    role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
   }
 
   @Override
-  public Role clearFields(Role role, Fields fields) {
+  public void clearFields(Role role, Fields fields) {
     role.setPolicies(fields.contains(POLICIES) ? role.getPolicies() : null);
     role.setTeams(fields.contains("teams") ? role.getTeams() : null);
-    return role.withUsers(fields.contains("users") ? role.getUsers() : null);
+    role.withUsers(fields.contains("users") ? role.getUsers() : null);
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {
@@ -63,12 +68,6 @@ public class RoleRepository extends EntityRepository<Role> {
 
   private List<EntityReference> getTeams(@NonNull Role role) {
     return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
-  }
-
-  @Override
-  public void restorePatchAttributes(Role original, Role updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
   }
 
   /**
@@ -130,13 +129,19 @@ public class RoleRepository extends EntityRepository<Role> {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
-    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
+    private void updatePolicies(
+        List<EntityReference> origPolicies, List<EntityReference> updatedPolicies) {
       // Record change description
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();
       boolean changed =
           recordListChange(
-              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
+              "policies",
+              origPolicies,
+              updatedPolicies,
+              addedPolicies,
+              deletedPolicies,
+              entityReferenceMatch);
 
       if (changed) {
         // Remove all the Role to policy relationships

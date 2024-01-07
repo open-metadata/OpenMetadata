@@ -131,7 +131,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
   }
@@ -165,12 +165,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../AppState', () => {
-  return jest.fn().mockReturnValue({
-    inPageSearchText: '',
-  });
-});
-
 jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
@@ -195,9 +189,10 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
@@ -229,11 +224,11 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
@@ -250,9 +245,12 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
   }
 );
-jest.mock('../../components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
-});
+jest.mock(
+  '../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
+  }
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -260,6 +258,19 @@ jest.mock(
     DataAssetsHeader: jest
       .fn()
       .mockImplementation(() => <p>DataAssetsHeader</p>),
+  })
+);
+
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Some) => Some),
+}));
+
+jest.mock(
+  '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable',
+  () => ({
+    DatabaseSchemaTable: jest
+      .fn()
+      .mockImplementation(() => <>testDatabaseSchemaTable</>),
   })
 );
 
@@ -271,39 +282,14 @@ describe('Test DatabaseDetails page', () => {
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
-    const databaseTable = await findByTestId(
+    const databaseTable = await findByText(
       container,
-      'database-databaseSchemas'
+      'testDatabaseSchemaTable'
     );
 
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
-  });
-
-  it('Table and its header should render', async () => {
-    const { container } = render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
-    const databaseTable = await findByTestId(
-      container,
-      'database-databaseSchemas'
-    );
-    const headerName = await findByText(container, 'label.schema-name');
-    const headerDescription = await findByText(
-      databaseTable,
-      'label.description'
-    );
-    const headerOwner = await findByText(container, 'label.owner');
-    const headerUsage = await findByText(container, 'label.usage');
-    const searchBox = await findByText(container, 'Searchbar.component');
-
-    expect(databaseTable).toBeInTheDocument();
-    expect(headerName).toBeInTheDocument();
-    expect(headerDescription).toBeInTheDocument();
-    expect(headerOwner).toBeInTheDocument();
-    expect(headerUsage).toBeInTheDocument();
-    expect(searchBox).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {
@@ -344,9 +330,9 @@ describe('Test DatabaseDetails page', () => {
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
-    const databaseTable = await findByTestId(
+    const databaseTable = await findByText(
       container,
-      'database-databaseSchemas'
+      'testDatabaseSchemaTable'
     );
 
     expect(entityHeader).toBeInTheDocument();

@@ -10,21 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseSchemaIndex implements SearchIndex {
-  final DatabaseSchema databaseSchema;
-
+public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public DatabaseSchemaIndex(DatabaseSchema databaseSchema) {
-    this.databaseSchema = databaseSchema;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(databaseSchema);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(databaseSchema.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(databaseSchema.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(databaseSchema.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(
@@ -32,12 +27,8 @@ public class DatabaseSchemaIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SCHEMA);
-    if (databaseSchema.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(databaseSchema.getOwner()));
-    }
-    if (databaseSchema.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(databaseSchema.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(databaseSchema.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(databaseSchema.getDomain()));
     return doc;
   }
 }

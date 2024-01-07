@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Tooltip, Typography } from 'antd';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -34,9 +34,14 @@ import {
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import Avatar from '../../common/avatar/Avatar';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import Avatar from '../../common/AvatarComponent/Avatar';
+import './user-profile-icon.less';
 
 type ListMenuItemProps = {
   listItems: EntityReference[];
@@ -53,7 +58,7 @@ const renderLimitedListMenuItem = ({
   sizeLimit = 2,
   readMoreKey,
 }: ListMenuItemProps) => {
-  const remaningCount =
+  const remainingCount =
     listItems.length ?? 0 > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
@@ -68,9 +73,9 @@ const renderLimitedListMenuItem = ({
           key: item.id,
         })) ?? []),
         ...[
-          remaningCount > 0
+          remainingCount > 0
             ? {
-                label: readMoreLabelRenderer(remaningCount),
+                label: readMoreLabelRenderer(remainingCount),
                 key: readMoreKey ?? 'more-item',
               }
             : null,
@@ -84,10 +89,11 @@ export const UserProfileIcon = () => {
     useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
-  const profilePicture = useMemo(
-    () => currentUser?.profile?.images?.image512,
-    [currentUser]
+  const profilePicture = getImageWithResolutionAndFallback(
+    ImageQuality['6x'],
+    currentUser?.profile?.images
   );
+  const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
@@ -109,7 +115,7 @@ export const UserProfileIcon = () => {
   }, [profilePicture]);
 
   const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
-    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
+    const userName = getEntityName(currentUser) || TERM_USER;
 
     return {
       userName,
@@ -124,12 +130,6 @@ export const UserProfileIcon = () => {
       personas: currentUser?.personas,
     };
   }, [currentUser]);
-
-  const readMoreTag = (count: number) => (
-    <Tag>
-      {count} {t('label.more')}
-    </Tag>
-  );
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
@@ -146,7 +146,7 @@ export const UserProfileIcon = () => {
   const teamLabelRenderer = useCallback(
     (item) => (
       <Link
-        className="ant-typography-ellipsis-custom text-sm m-b-0"
+        className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
         component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
@@ -156,13 +156,23 @@ export const UserProfileIcon = () => {
   );
 
   const readMoreTeamRenderer = useCallback(
-    (count) => (
-      <Link
-        className="more-teams-pill"
-        to={getUserPath(currentUser?.name as string)}>
-        {count} {t('label.more')}
-      </Link>
-    ),
+    (count: number, isPersona?: boolean) =>
+      isPersona ? (
+        <Typography.Text
+          className="more-teams-pill"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowAllPersona(true);
+          }}>
+          {count} {t('label.more')}
+        </Typography.Text>
+      ) : (
+        <Link
+          className="more-teams-pill"
+          to={getUserPath(currentUser?.name as string)}>
+          {count} {t('label.more')}
+        </Link>
+      ),
     [currentUser]
   );
 
@@ -193,11 +203,13 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: roles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-roles',
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.role-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.role-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -210,11 +222,11 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: inheritedRoles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-inherited-roles',
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.inherited-role-plural')}
           </span>
         ),
@@ -229,11 +241,12 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
+          sizeLimit: showAllPersona ? personas?.length : 2,
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.persona-plural')}
           </span>
         ),
@@ -252,7 +265,9 @@ export const UserProfileIcon = () => {
           readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.team-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.team-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -272,7 +287,15 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, selectedPersona, teams, roles, personas]
+    [
+      currentUser,
+      userName,
+      selectedPersona,
+      teams,
+      roles,
+      personas,
+      showAllPersona,
+    ]
   );
 
   useEffect(() => {
@@ -283,10 +306,10 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
-      data-testid="dropdown-profile"
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        rootClassName: 'profile-dropdown',
       }}
       trigger={['click']}>
       <div className="app-user-icon" data-testid="dropdown-profile">

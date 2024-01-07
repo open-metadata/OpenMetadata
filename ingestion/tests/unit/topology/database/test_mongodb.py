@@ -47,9 +47,9 @@ mock_mongo_config = {
         "serviceConnection": {
             "config": {
                 "type": "MongoDB",
-                "connectionDetails": {
-                    "connectionURI": "mongodb://ulixius:dummy_password@localhost:27017",
-                },
+                "username": "ulixius",
+                "password": "dummy_password",
+                "hostPort": "localhost:27017",
             },
         },
         "sourceConfig": {
@@ -200,9 +200,13 @@ class MongoDBUnitTest(TestCase):
             mock_mongo_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.mongo_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE
-        self.mongo_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.mongo_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.mongo_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())

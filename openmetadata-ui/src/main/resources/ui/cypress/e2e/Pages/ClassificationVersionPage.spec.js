@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitClassificationPage } from '../../common/TagUtils';
@@ -94,17 +95,25 @@ describe('Classification version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(
+      `[data-testid="description"] [data-testid="diff-added"]`
+    ).scrollIntoView();
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(`[data-testid="description"] [data-testid="diff-added"]`).should(
+      'be.visible'
+    );
 
     cy.get('[data-testid="mutually-exclusive-container"]').as(
       'mutuallyExclusiveContainer'
     );
 
-    cy.get('[data-testid="diff-removed"]').should('be.visible');
+    cy.get(
+      '[data-testid="mutually-exclusive-container"] [data-testid="diff-removed"]'
+    ).should('be.visible');
 
-    cy.get('[data-testid="diff-added"]').should('be.visible');
+    cy.get(
+      '[data-testid="mutually-exclusive-container"] [data-testid="diff-added"]'
+    ).should('be.visible');
 
     cy.get('[data-testid="version-button"]').click();
 
@@ -130,13 +139,8 @@ describe('Classification version page should work properly', () => {
       `/api/v1/classifications/${classificationId}/versions`,
       'getVersionsList'
     );
-    interceptURL(
-      'GET',
-      `/api/v1/classifications/${classificationId}/versions/0.3`,
-      'getSelectedVersionDetails'
-    );
 
-    cy.get('[data-testid="version-button"]').contains('0.3').click();
+    cy.get('[data-testid="version-button"]').contains('0.2').click();
 
     verifyResponseStatusCode(`@getClassificationDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
@@ -144,7 +148,7 @@ describe('Classification version page should work properly', () => {
 
     cy.get('[data-testid="disabled"]').should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.3').click();
+    cy.get('[data-testid="version-button"]').contains('0.2').click();
 
     cy.get('[data-testid="manage-button"]').click({ waitForAnimations: true });
 
@@ -162,13 +166,8 @@ describe('Classification version page should work properly', () => {
       `/api/v1/classifications/${classificationId}/versions`,
       'getVersionsList'
     );
-    interceptURL(
-      'GET',
-      `/api/v1/classifications/${classificationId}/versions/0.4`,
-      'getSelectedVersionDetails'
-    );
 
-    cy.get('[data-testid="version-button"]').contains('0.4').click();
+    cy.get('[data-testid="version-button"]').contains('0.2').click();
 
     verifyResponseStatusCode(`@getClassificationDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);

@@ -91,7 +91,19 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: DEBUG
+    org.openmetadata.service.util.OpenMetadataSetup:
+      level: INFO
+      appenders:
+        - type: console
+          logFormat: "%msg%n"
+          timeZone: UTC
+        - type: file
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          currentLogFilename: ./logs/openmetadata-operations.log
+          archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
   appenders:
     - type: console
       threshold: TRACE
@@ -130,7 +142,7 @@ database:
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
-  extensionPath: ${MIGRATION_EXTENSION_PATH:-""}
+  extensionPath: ""
 
 # Authorizer Configuration
 authorizerConfiguration:
@@ -144,6 +156,8 @@ authorizerConfiguration:
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
+  # This is used by auth provider provide response as either id_token or code
+  responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
@@ -184,7 +198,17 @@ authenticationConfiguration:
     dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
     dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
     userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    groupBaseDN: ${AUTHENTICATION_GROUP_LOOKUP_BASEDN:-""}
+    roleAdminName: ${AUTHENTICATION_USER_ROLE_ADMIN_NAME:-}
+    allAttributeName: ${AUTHENTICATION_USER_ALL_ATTR:-}
     mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    usernameAttributeName: ${AUTHENTICATION_USER_NAME_ATTR:-}
+    groupAttributeName: ${AUTHENTICATION_USER_GROUP_ATTR:-}
+    groupAttributeValue: ${AUTHENTICATION_USER_GROUP_ATTR_VALUE:-}
+    groupMemberAttributeName: ${AUTHENTICATION_USER_GROUP_MEMBER_ATTR:-}
+    #the mapping of roles to LDAP groups
+    authRolesMapping: ${AUTH_ROLES_MAPPING:-""}
+    authReassignRoles: ${AUTH_REASSIGN_ROLES:-[]}
     #optional
     maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
     sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
@@ -276,7 +300,9 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-noop} # Possible values are "noop", "aws", "aws-ssm"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws", "managed-aws-ssm"
+  prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
+  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource, e.g., in AWS. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
   parameters:
     region: ${OM_SM_REGION:-""}
@@ -299,23 +325,13 @@ email:
   emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
-  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
   senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
   serverPort: ${SMTP_SERVER_PORT:-""}
   username: ${SMTP_SERVER_USERNAME:-""}
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
-
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
-    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
-  loginConfig:
-    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
-
 
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
@@ -344,8 +360,4 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
-
-
-changeEventConfig:
-  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
-
+    

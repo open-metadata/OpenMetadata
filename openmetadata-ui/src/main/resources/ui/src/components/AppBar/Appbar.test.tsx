@@ -26,11 +26,18 @@ jest.mock('../../hooks/authHooks', () => ({
     };
   },
 }));
-
-jest.mock('../authentication/auth-provider/AuthProvider', () => {
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({ search: 'pathname' }),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <p data-testid="link">{children}</p>
+    )),
+  useHistory: jest.fn(),
+}));
+jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
       isAuthenticated: true,
       isProtectedRoute: jest.fn().mockReturnValue(true),
       isTourRoute: jest.fn().mockReturnValue(false),
@@ -39,7 +46,7 @@ jest.mock('../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('../nav-bar/NavBar', () => {
+jest.mock('../NavBar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });
 

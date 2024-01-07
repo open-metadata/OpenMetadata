@@ -37,14 +37,9 @@ import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public class SubjectContext {
+public record SubjectContext(User user) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
-  @Getter protected final User user;
-
-  protected SubjectContext(User user) {
-    this.user = user;
-  }
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
@@ -112,7 +107,8 @@ public class SubjectContext {
         if (parent.getName().equals(parentTeam)) {
           return true;
         }
-        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+        listOrEmpty(parent.getParents())
+            .forEach(stack::push); // Continue to go up the chain of parents
       } catch (Exception ex) {
         // Ignore and return false
       }
@@ -145,7 +141,7 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(getUser(), roles);
+    return hasRole(user(), roles);
   }
 
   /** Return true if the given user has any roles the list of roles */
@@ -162,7 +158,8 @@ public class SubjectContext {
         if (hasRole(parent.getDefaultRoles(), role)) {
           return true;
         }
-        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+        listOrEmpty(parent.getParents())
+            .forEach(stack::push); // Continue to go up the chain of parents
       } catch (Exception ex) {
         // Ignore the exception and return false
       }
@@ -171,7 +168,8 @@ public class SubjectContext {
   }
 
   private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
-    return listOrEmpty(userRoles).stream().anyMatch(userRole -> userRole.getName().equals(expectedRole));
+    return listOrEmpty(userRoles).stream()
+        .anyMatch(userRole -> userRole.getName().equals(expectedRole));
   }
 
   @Getter
@@ -182,7 +180,12 @@ public class SubjectContext {
     private final String policyName;
     private final List<CompiledRule> rules;
 
-    PolicyContext(String entityType, String entityName, String role, String policy, List<CompiledRule> rules) {
+    PolicyContext(
+        String entityType,
+        String entityName,
+        String role,
+        String policy,
+        List<CompiledRule> rules) {
       this.entityType = entityType;
       this.entityName = entityName;
       this.roleName = role;
@@ -194,16 +197,15 @@ public class SubjectContext {
   /** PolicyIterator goes over policies from a set of policies one by one. */
   static class PolicyIterator implements Iterator<PolicyContext> {
 
-    // When executing roles from a policy, entity type User or Team to which the Role is attached to.
-    // In case of executing a policy attached to a team, the entityType is Team
+    // When executing roles from a policy, entity type User or Team to which the Role is attached
+    // to. In case of executing a policy attached to a team, the entityType is Team.
     private final String entityType;
 
     // User or Team name to which the Role or Policy is attached to
-
     private final String entityName;
 
-    // Name of the role from which the policy is from. If policy is not part of the role, but from directly attaching
-    // it to a Team, then null
+    // Name of the role from which the policy is from. If policy is not part of the role, but from
+    // directly attaching it to a Team, then null
     private final String roleName;
 
     // Index to the current policy being evaluation
@@ -212,7 +214,8 @@ public class SubjectContext {
     // List of policies to execute
     private final List<EntityReference> policies;
 
-    PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policies) {
+    PolicyIterator(
+        String entityType, String entityName, String roleName, List<EntityReference> policies) {
       this.entityType = entityType;
       this.entityName = entityName;
       this.roleName = roleName;
@@ -223,7 +226,10 @@ public class SubjectContext {
     public boolean hasNext() {
       if (policyIndex >= policies.size()) {
         LOG.debug(
-            "iteration over policy attached to entity {}:{} role {} is completed", entityType, entityName, roleName);
+            "iteration over policy attached to entity {}:{} role {} is completed",
+            entityType,
+            entityName,
+            roleName);
       }
       return policyIndex < policies.size();
     }
@@ -234,7 +240,8 @@ public class SubjectContext {
         throw new NoSuchElementException();
       }
       EntityReference policy = policies.get(policyIndex++);
-      return new PolicyContext(entityType, entityName, roleName, policy.getName(), getPolicyRules(policy.getId()));
+      return new PolicyContext(
+          entityType, entityName, roleName, policy.getName(), getPolicyRules(policy.getId()));
     }
 
     private static List<CompiledRule> getPolicyRules(UUID policyId) {
@@ -262,8 +269,10 @@ public class SubjectContext {
       this.entityType = entityType;
       this.entityName = entityName;
       for (EntityReference role : listOrEmpty(roles)) {
-        Role roleEntity = Entity.getEntity(Entity.ROLE, role.getId(), "policies", Include.NON_DELETED);
-        policyIterators.add(new PolicyIterator(entityType, entityName, role.getName(), roleEntity.getPolicies()));
+        Role roleEntity =
+            Entity.getEntity(Entity.ROLE, role.getId(), "policies", Include.NON_DELETED);
+        policyIterators.add(
+            new PolicyIterator(entityType, entityName, role.getName(), roleEntity.getPolicies()));
       }
     }
 
@@ -275,7 +284,8 @@ public class SubjectContext {
         }
         iteratorIndex++;
       }
-      LOG.debug("iteration over roles attached to entity {}:{} is completed", entityType, entityName);
+      LOG.debug(
+          "iteration over roles attached to entity {}:{} is completed", entityType, entityName);
       return false;
     }
 
@@ -317,7 +327,9 @@ public class SubjectContext {
       // Finally, iterate over policies of teams that own the resource
       if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
         try {
-          Team team = Entity.getEntity(Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+          Team team =
+              Entity.getEntity(
+                  Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
           iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
         } catch (Exception ex) {
           // Ignore
@@ -363,7 +375,8 @@ public class SubjectContext {
       if (!teamsVisited.contains(teamId)) {
         teamsVisited.add(teamId);
         if (!skipRoles && team.getDefaultRoles() != null) {
-          iterators.add(new RolePolicyIterator(Entity.TEAM, team.getName(), team.getDefaultRoles()));
+          iterators.add(
+              new RolePolicyIterator(Entity.TEAM, team.getName(), team.getDefaultRoles()));
         }
         if (team.getPolicies() != null) {
           iterators.add(new PolicyIterator(Entity.TEAM, team.getName(), null, team.getPolicies()));

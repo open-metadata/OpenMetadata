@@ -33,4 +33,5 @@ export type GlossaryDetailsProps = {
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
+  onThreadLinkSelect: (value: string) => void;
 };

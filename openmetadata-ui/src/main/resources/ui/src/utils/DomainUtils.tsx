@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Divider, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import {
@@ -19,10 +20,12 @@ import {
   getUserPath,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
+import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityName } from './EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -41,7 +44,6 @@ export const getOwner = (
       <>
         <ProfilePicture
           displayName={getEntityName(owner)}
-          id={owner?.id || ''}
           name={owner?.name ?? ''}
           textClass="text-xs"
           width="20"
@@ -110,13 +112,54 @@ export const getUserNames = (
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
 
-export const getQueryFilterToIncludeDomain = (fqn: string) => ({
+export const getQueryFilterToIncludeDomain = (
+  domainFqn: string,
+  dataProductFqn: string
+) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            'domain.fullyQualifiedName': domainFqn,
+          },
+        },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  'dataProducts.fullyQualifiedName': dataProductFqn,
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: 'dataProduct',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const getQueryFilterToExcludeDomainTerms = (
+  fqn: string
+): QueryFilterInterface => ({
   query: {
     bool: {
       must: [
         {
           bool: {
-            must: [
+            must_not: [
               {
                 term: {
                   'domain.fullyQualifiedName': fqn,
@@ -129,3 +172,21 @@ export const getQueryFilterToIncludeDomain = (fqn: string) => ({
     },
   },
 });
+
+// Domain type description which will be shown in tooltip
+export const domainTypeTooltipDataRender = () => (
+  <Space direction="vertical" size="middle">
+    {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
+      <Fragment key={type}>
+        <Space direction="vertical" size={0}>
+          <Typography.Text>{`${type} :`}</Typography.Text>
+          <Typography.Paragraph className="m-0 text-grey-muted">
+            {description}
+          </Typography.Paragraph>
+        </Space>
+
+        {index !== 2 && <Divider className="m-0" />}
+      </Fragment>
+    ))}
+  </Space>
+);

@@ -15,7 +15,7 @@ import { OperationPermission } from '../../components/PermissionProvider/Permiss
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface PipelineVersionProp {
   version: string;
@@ -23,6 +23,7 @@ export interface PipelineVersionProp {
   isVersionLoading: boolean;
   owner: Pipeline['owner'];
   domain: Pipeline['domain'];
+  dataProducts: Pipeline['dataProducts'];
   tier: TagLabel;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

@@ -30,7 +30,9 @@ import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
+import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
+import duckdb from '../assets/img/service-icon-duckdb.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -49,6 +51,7 @@ import mode from '../assets/img/service-icon-mode.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
+import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
@@ -133,13 +136,16 @@ export const PULSAR = pulsar;
 export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const LOOKER = looker;
+export const MSTR = mstr;
 export const TABLEAU = tableau;
 export const REDASH = redash;
 export const METABASE = metabase;
 export const AZURESQL = azuresql;
 export const CLICKHOUSE = clickhouse;
 export const DATABRICK = databrick;
+export const UNITYCATALOG = databrick;
 export const IBMDB2 = ibmdb2;
+export const DORIS = doris;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
@@ -184,7 +190,7 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
-
+export const DUCKDB = duckdb;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const excludedService = [
@@ -406,6 +412,7 @@ export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
   'scheme',
+  'sampleDataStorageConfig',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

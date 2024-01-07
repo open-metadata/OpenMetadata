@@ -23,23 +23,25 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
   @Test
   public void test_get_test_connection_definition() throws HttpResponseException {
     WebTarget target = getResourceByName(TEST_CONNECTION_NAME);
-    TestConnectionDefinition mysqlTest = TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTest.getName(), "Mysql");
-    assertEquals(mysqlTest.getSteps().size(), 4);
+    TestConnectionDefinition mysqlTest =
+        TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
+    assertEquals("Mysql", mysqlTest.getName());
+    assertEquals(4, mysqlTest.getSteps().size());
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTestById.getName(), "Mysql");
-    assertEquals(mysqlTestById.getSteps().size(), 4);
+    assertEquals("Mysql", mysqlTestById.getName());
+    assertEquals(4, mysqlTestById.getSteps().size());
   }
 
   @Test
   public void test_list_test_connection_definition() throws HttpResponseException {
     WebTarget target = listResource();
-    ResultList testConnectionDefinitions = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    ResultList testConnectionDefinitions =
+        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
     // we get 10 as it's the default paging size
-    assertEquals(testConnectionDefinitions.getData().size(), 10);
+    assertEquals(10, testConnectionDefinitions.getData().size());
   }
 
   protected final WebTarget getResourceByName(String name) {

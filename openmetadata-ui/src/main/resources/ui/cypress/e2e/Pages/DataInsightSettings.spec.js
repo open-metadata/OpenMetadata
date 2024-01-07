@@ -12,9 +12,6 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { BASE_URL } from '../../constants/constants';
-
-const PIPELINE_NAME = 'cypress_dataInsight_pipeline';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
@@ -25,192 +22,105 @@ describe('Data Insight settings page should work properly', () => {
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
-    interceptURL(
-      'GET',
-      'api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=OpenMetadata&pipelineType=dataInsight',
-      'ingestionPipelines'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines/OpenMetadata.OpenMetadata_dataInsight/pipelineStatus?startTs=*',
-      'pipelineStatus'
-    );
+    interceptURL('GET', '/api/v1/apps?limit=*', 'getApplications');
+    cy.get(`[data-menu-id*="integrations.apps"]`).scrollIntoView().click();
 
-    cy.get(`[data-menu-id*="openMetadata.dataInsight"]`)
-      .scrollIntoView()
-      .click();
-
-    verifyResponseStatusCode('@ingestionPipelines', 200);
-    verifyResponseStatusCode('@pipelineStatus', 200);
+    verifyResponseStatusCode('@getApplications', 200);
   });
 
-  it('Add data insight pipeline should work properly', () => {
+  it('Edit data insight application', () => {
     interceptURL(
       'GET',
-      '/api/v1/services/metadataServices/name/OpenMetadata',
-      'serviceDetails'
+      '/api/v1/apps/name/DataInsightsApplication?fields=*',
+      'getDataInsightDetails'
     );
-
-    cy.get('[data-testid="add-new-ingestion-button"]').click();
-
-    verifyResponseStatusCode('@serviceDetails', 200);
-
-    cy.get('#root\\/name').clear().type(PIPELINE_NAME);
-
-    cy.get('[data-testid="submit-btn"]').click();
-
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines',
-      'postIngestionPipeline'
-    );
-
-    cy.get('[data-testid="deploy-button"]').click();
-
-    cy.wait('@postIngestionPipeline').then(({ request, response }) => {
-      expect(request.body.loggerLevel).to.equal('INFO');
-
-      expect(response.statusCode).to.equal(201);
-    });
-
-    cy.get('[data-testid="view-service-button"]').click();
-
-    verifyResponseStatusCode('@ingestionPipelines', 200);
-    verifyResponseStatusCode('@pipelineStatus', 200);
-
-    cy.get(`[data-row-key="${PIPELINE_NAME}"]`).should('be.visible');
-  });
-
-  it('Edit data insight pipeline should work properly', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/services/metadataServices/name/OpenMetadata',
-      'serviceDetails'
-    );
-
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="edit"]`).click();
-
-    verifyResponseStatusCode('@serviceDetails', 200);
-
-    cy.get('#root\\/enableDebugLog').click({ waitForAnimations: true });
-
-    cy.get('#root\\/enableDebugLog')
-      .invoke('attr', 'aria-checked')
-      .should('eq', 'true');
-
-    cy.get('[data-testid="submit-btn"]').click();
-
-    interceptURL(
-      'PUT',
-      '/api/v1/services/ingestionPipelines',
-      'putIngestionPipeline'
-    );
-
-    cy.get('[data-testid="deploy-button"]').click();
-
-    cy.wait('@putIngestionPipeline').then(({ request, response }) => {
-      expect(request.body.loggerLevel).to.equal('DEBUG');
-
-      expect(response.statusCode).to.equal(200);
-    });
-
-    cy.get('[data-testid="view-service-button"]').click();
-
-    verifyResponseStatusCode('@ingestionPipelines', 200);
-    verifyResponseStatusCode('@pipelineStatus', 200);
-
-    cy.get(`[data-row-key="${PIPELINE_NAME}"]`).should('be.visible');
-  });
-
-  it('Run and kill data insight pipeline should work properly', () => {
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines/trigger/*',
-      'runPipelineDag'
-    );
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="run"]`).click();
-
-    verifyResponseStatusCode('@runPipelineDag', 200);
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines/kill/*',
-      'killPipelineDag'
-    );
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="kill"]`).click();
-
-    cy.get('[data-testid="kill-modal"]').contains('Confirm').click();
-
-    verifyResponseStatusCode('@killPipelineDag', 200);
-  });
-
-  it('Re deploy data insight pipeline should work properly', () => {
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines/deploy/*',
-      'reDeployPipelineDag'
-    );
+    interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
     cy.get(
-      `[data-row-key="${PIPELINE_NAME}"] [data-testid="re-deploy-btn"]`
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
-
-    verifyResponseStatusCode('@reDeployPipelineDag', 200);
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="edit-button"]').click();
+    cy.get('#cronType').click();
+    cy.get('[title="Day"]').click();
+    cy.get('[data-testid="hour-options"]').click();
+    cy.get('[title="01"]').click();
+    cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@updateApplication', 200);
+    cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
   });
 
-  it('Pause and unpause data insight pipeline should work properly', () => {
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines/toggleIngestion/*',
-      'togglePipelineDag'
-    );
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="pause"]`).click();
-
-    verifyResponseStatusCode('@togglePipelineDag', 200);
-
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="unpause"]`).click();
-
-    verifyResponseStatusCode('@togglePipelineDag', 200);
-  });
-
-  it('Logs action button for the data insight pipeline should redirect to the logs page', () => {
+  it('Uninstall application', () => {
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines/name/OpenMetadata.${PIPELINE_NAME}?fields=owner,pipelineStatuses`,
-      'getServiceDetails'
+      '/api/v1/apps/name/DataInsightsApplication?fields=*',
+      'getDataInsightDetails'
     );
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines/logs/*/*last?after=',
-      'getLogs'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/services/ingestionPipelines/OpenMetadata.cypress_dataInsight_pipeline/pipelineStatus?*`,
-      'getPipelineStatus'
-    );
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="logs"]`).click();
-
-    verifyResponseStatusCode('@getServiceDetails', 200);
-    verifyResponseStatusCode('@getLogs', 200);
-    verifyResponseStatusCode('@getPipelineStatus', 200);
-
-    cy.url().should(
-      'eq',
-      `${BASE_URL}/metadataServices/OpenMetadata.${PIPELINE_NAME}/logs`
-    );
-  });
-
-  it('Delete data insight pipeline should work properly', () => {
+    interceptURL('GET', '/api/v1/apps?limit=*', 'getApplications');
     interceptURL(
       'DELETE',
-      '/api/v1/services/ingestionPipelines/*?hardDelete=true',
-      'deletePipelineDag'
+      '/api/v1/apps/name/DataInsightsApplication?hardDelete=true',
+      'deleteApplication'
     );
-    cy.get(`[data-row-key="${PIPELINE_NAME}"] [data-testid="delete"]`).click();
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="uninstall-button-title"]').click();
+    cy.get('[data-testid="save-button"]').click();
+    verifyResponseStatusCode('@deleteApplication', 200);
+    verifyResponseStatusCode('@getApplications', 200);
+    cy.get('[data-testid="data-insights-application-card"]').should(
+      'not.exist'
+    );
+  });
 
-    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  it('Install application', () => {
+    interceptURL('GET', '/api/v1/apps/marketplace?limit=*', 'getMarketPlace');
+    interceptURL('POST', '/api/v1/apps', 'installApplication');
+    cy.get('[data-testid="add-application"]').click();
+    verifyResponseStatusCode('@getMarketPlace', 200);
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    cy.get('[data-testid="install-application"]').click();
+    cy.get('[data-testid="save-button"]').click();
+    cy.get('#cronType').click();
+    cy.get('[title="Day"]').click();
+    cy.get('[data-testid="cron-type"]').should('contain', 'Day');
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@installApplication', 201);
+    verifyResponseStatusCode('@getApplications', 200);
+    cy.get('[data-testid="data-insights-application-card"]').should(
+      'be.visible'
+    );
+  });
 
-    cy.get('[data-testid="confirm-button"]').click();
-
-    verifyResponseStatusCode('@deletePipelineDag', 200);
+  it('Deploy & run application', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/apps/name/DataInsightsApplication?fields=*',
+      'getDataInsightDetails'
+    );
+    interceptURL(
+      'POST',
+      '/api/v1/apps/deploy/DataInsightsApplication',
+      'deploy'
+    );
+    interceptURL(
+      'POST',
+      '/api/v1/apps/trigger/DataInsightsApplication',
+      'triggerPipeline'
+    );
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@deploy', 200);
+    cy.reload();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="run-now-button"]').click();
+    verifyResponseStatusCode('@triggerPipeline', 200);
   });
 });

@@ -1,15 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,7 +27,9 @@ public class MlModelIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel));
-    doc.put("displayName", mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
+    doc.put(
+        "displayName",
+        mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(mlModel.getFollowers()));
@@ -48,26 +41,16 @@ public class MlModelIndex implements SearchIndex {
         getFQNParts(
             mlModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (mlModel.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(mlModel.getOwner()));
-    }
-    if (mlModel.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(mlModel.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(mlModel.getOwner()));
+    doc.put("service", getEntityWithDisplayName(mlModel.getService()));
+    doc.put("domain", getEntityWithDisplayName(mlModel.getDomain()));
     return doc;
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("mlFeatures.name", 2.0f);
     fields.put("mlFeatures.description", 1.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

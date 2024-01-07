@@ -27,10 +27,11 @@ public interface SearchClient {
   String ADD = "add";
 
   String DELETE = "delete";
-  String GLOBAL_SEARCH_ALIAS = "AllEntities";
+  String GLOBAL_SEARCH_ALIAS = "all";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
-  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT =
+      "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
@@ -42,6 +43,9 @@ public interface SearchClient {
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+
+  String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
+      "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
@@ -51,7 +55,7 @@ public interface SearchClient {
 
   boolean indexExists(String indexName);
 
-  boolean createIndex(IndexMapping indexMapping, String indexMappingContent);
+  void createIndex(IndexMapping indexMapping, String indexMappingContent);
 
   void updateIndex(IndexMapping indexMapping, String indexMappingContent);
 
@@ -83,9 +87,13 @@ public interface SearchClient {
 
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
-  void softDeleteOrRestoreChildren(String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
+  void softDeleteOrRestoreChildren(
+      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
-  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
+  void updateChildren(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,
@@ -112,7 +120,8 @@ public interface SearchClient {
   }
 
   default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data, es.org.elasticsearch.client.RequestOptions options)
+      es.org.elasticsearch.action.bulk.BulkRequest data,
+      es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
@@ -127,8 +136,8 @@ public interface SearchClient {
 
   void close();
 
-  default SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
-      throws KeyStoreException {
+  default SSLContext createElasticSearchSSLContext(
+      ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
     return elasticSearchConfiguration.getScheme().equals("https")
         ? SSLUtil.createSSLContext(
             elasticSearchConfiguration.getTruststorePath(),

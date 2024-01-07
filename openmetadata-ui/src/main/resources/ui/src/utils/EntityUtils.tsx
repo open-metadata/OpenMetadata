@@ -25,6 +25,7 @@ import {
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -36,12 +37,12 @@ import {
   EntityServiceUnion,
   EntityUnion,
   EntityWithServices,
-} from '../components/Explore/explore.interface';
+} from '../components/Explore/ExplorePage.interface';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
-} from '../components/searched-data/SearchedData.interface';
+} from '../components/SearchedData/SearchedData.interface';
 import { QueryVoteType } from '../components/TableQueries/TableQueries.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -116,7 +117,7 @@ import {
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -182,7 +183,6 @@ export const getOwnerNameWithProfilePic = (
       {' '}
       <ProfilePicture
         displayName={owner.displayName}
-        id={owner.id}
         name={owner.name ?? ''}
         width="20"
       />
@@ -244,11 +244,7 @@ const getTableOverview = (tableDetails: Table) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -358,7 +354,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
         'label.url-uppercase'
       )}`,
       dataTestId: 'pipeline-url-label',
-      value: displayName ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -409,7 +405,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: displayName ?? NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -607,7 +603,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
       )}`,
-      value: displayName || NO_DATA,
+      value: stringToHTML(displayName ?? '') || NO_DATA,
       url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
       isLink: true,
       visible: [
@@ -1115,6 +1111,7 @@ export const searchInColumns = <T extends Column | SearchIndexField>(
     const searchLowerCase = lowerCase(searchText);
     const isContainData =
       lowerCase(column.name).includes(searchLowerCase) ||
+      lowerCase(column.displayName).includes(searchLowerCase) ||
       lowerCase(column.description).includes(searchLowerCase) ||
       lowerCase(getDataTypeString(column.dataType)).includes(searchLowerCase);
 
@@ -1171,7 +1168,10 @@ export const getFrequentlyJoinedWithColumns = (
   joins: Array<ColumnJoins>
 ): Array<JoinedWith> => {
   return (
-    joins?.find((join) => join.columnName === columnName)?.joinedWith || []
+    (joins &&
+      Boolean(joins.length) &&
+      joins?.find((join) => join.columnName === columnName)?.joinedWith) ||
+    []
   );
 };
 
@@ -1322,6 +1322,47 @@ export const getEntityLinkFromType = (
       return getStoredProcedureDetailPath(fullyQualifiedName);
     case EntityType.SEARCH_INDEX:
       return getSearchIndexTabPath(fullyQualifiedName);
+
+    case EntityType.DATABASE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.DATABASE_SERVICES
+      );
+    case EntityType.MESSAGING_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.MESSAGING_SERVICES
+      );
+    case EntityType.DASHBOARD_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.DASHBOARD_SERVICES
+      );
+    case EntityType.PIPELINE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.PIPELINE_SERVICES
+      );
+    case EntityType.MLMODEL_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.ML_MODEL_SERVICES
+      );
+    case EntityType.STORAGE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.STORAGE_SERVICES
+      );
+    case EntityType.SEARCH_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.SEARCH_SERVICES
+      );
+    case EntityType.METADATA_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.METADATA_SERVICES
+      );
     default:
       return '';
   }
@@ -1716,4 +1757,46 @@ export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
   } else {
     return QueryVoteType.unVoted;
   }
+};
+
+export const highlightEntityNameAndDescription = (
+  entity: SearchedDataProps['data'][number]['_source'],
+  highlight: SearchedDataProps['data'][number]['highlight']
+): SearchedDataProps['data'][number]['_source'] => {
+  let entityDescription = entity.description ?? '';
+  const descHighlights = highlight?.description ?? [];
+
+  if (descHighlights.length > 0) {
+    const matchTextArr = descHighlights.map((val: string) =>
+      val.replace(/<\/?span(.*?)>/g, '')
+    );
+
+    matchTextArr.forEach((text: string, i: number) => {
+      entityDescription = entityDescription.replace(text, descHighlights[i]);
+    });
+  }
+
+  let entityDisplayName = getEntityName(entity);
+  if (!isUndefined(highlight)) {
+    entityDisplayName =
+      highlight?.displayName?.join(' ') ||
+      highlight?.name?.join(' ') ||
+      entityDisplayName;
+  }
+
+  return {
+    ...entity,
+    displayName: entityDisplayName,
+    description: entityDescription,
+  };
+};
+
+export const columnSorter = (
+  col1: { name: string; displayName?: string },
+  col2: { name: string; displayName?: string }
+) => {
+  const name1 = getEntityName(col1);
+  const name2 = getEntityName(col2);
+
+  return name1.localeCompare(name2);
 };

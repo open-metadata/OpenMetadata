@@ -10,22 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MessagingServiceIndex implements SearchIndex {
-
-  final MessagingService messagingService;
-
+public record MessagingServiceIndex(MessagingService messagingService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public MessagingServiceIndex(MessagingService messagingService) {
-    this.messagingService = messagingService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(messagingService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(messagingService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(messagingService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(messagingService.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(
@@ -33,12 +27,8 @@ public class MessagingServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MESSAGING_SERVICE);
-    if (messagingService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(messagingService.getOwner()));
-    }
-    if (messagingService.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(messagingService.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(messagingService.getDomain()));
     return doc;
   }
 }

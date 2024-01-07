@@ -54,22 +54,25 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return ["Random.*"]
 
     def expected_dashboards_and_charts(self) -> int:
-        return 20
+        return 22
 
     def expected_lineage(self) -> int:
-        return 0
+        return 1
 
     def expected_tags(self) -> int:
         return 1
 
     def expected_datamodel_lineage(self) -> int:
-        return 11
+        return 5
 
     def expected_datamodels(self) -> int:
-        return 10
+        return 5
 
     def expected_filtered_mix(self) -> int:
-        return 12
+        return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 10
+        return 13
+
+    def expected_dashboards_and_charts_after_patch(self) -> int:
+        return 5

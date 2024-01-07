@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+export const MOCK_TAG_ENCODED_FQN = '"%22Mock.Tag%22.Tag_1"';
+
 export const mockTagList = [
   {
     id: 'e649c601-44d3-449d-bc04-fbbaf83baf19',
@@ -27,58 +29,29 @@ export const mockTagList = [
   },
 ];
 
-export const mockTagsApiResponse = {
-  data: [
-    {
-      id: '0897311f-1321-4e1c-a857-aab7dedc632d',
-      name: 'Personal',
-      fullyQualifiedName: 'PersonalData.Personal',
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
-      classification: {
-        id: '5ce3825b-3227-4326-8beb-37ed2784149e',
-        type: 'classification',
-        name: 'PersonalData',
-        fullyQualifiedName: 'PersonalData',
-        description:
-          'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/classifications/5ce3825b-3227-4326-8beb-37ed2784149e',
-      },
-      version: 0.1,
-      updatedAt: 1675078969456,
-      updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/tags/0897311f-1321-4e1c-a857-aab7dedc632d',
-      deprecated: false,
-      deleted: false,
-      provider: 'system',
-      mutuallyExclusive: false,
-    },
-    {
-      id: '68a9fa7f-9342-404a-b31a-112dea0e0f81',
-      name: 'SpecialCategory',
-      fullyQualifiedName: 'PersonalData.SpecialCategory',
-      description:
-        'GDPR special category data is personal information of data subjects that is especially sensitive',
-      classification: {
-        id: '5ce3825b-3227-4326-8beb-37ed2784149e',
-        type: 'classification',
-        name: 'PersonalData',
-        fullyQualifiedName: 'PersonalData',
-        description:
-          'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/classifications/5ce3825b-3227-4326-8beb-37ed2784149e',
-      },
-      version: 0.1,
-      updatedAt: 1675078969475,
-      updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/tags/68a9fa7f-9342-404a-b31a-112dea0e0f81',
-      deprecated: false,
-      deleted: false,
-      provider: 'system',
-      mutuallyExclusive: false,
-    },
-  ],
-  paging: { total: 2 },
+export const MOCK_TAG_DATA = {
+  id: 'e8bc85c8-a87f-471c-872e-46904c5ea888',
+  name: 'search_part_2',
+  displayName: '',
+  fullyQualifiedName: 'advanceSearch.search_part_2',
+  description: 'this is search_part_2',
+  style: {},
+  classification: {
+    id: '16c5865a-8804-4474-a1dd-14ee9da443b2',
+    type: 'classification',
+    name: 'advanceSearch',
+    fullyQualifiedName: 'advanceSearch',
+    description: 'advanceSearch',
+    displayName: '',
+    deleted: false,
+    href: 'http://sandbox-beta.open-metadata.org/api/v1/classifications/16c5865a-8804-4474-a1dd-14ee9da443b2',
+  },
+  version: 0.1,
+  updatedAt: 1704261482857,
+  updatedBy: 'ashish',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/tags/e8bc85c8-a87f-471c-872e-46904c5ea888',
+  deprecated: false,
+  deleted: false,
+  provider: 'user',
+  mutuallyExclusive: false,
 };

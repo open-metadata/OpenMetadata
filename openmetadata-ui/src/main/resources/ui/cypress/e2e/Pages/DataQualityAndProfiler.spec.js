@@ -28,11 +28,13 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
+  DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
-  MYDATA_SUMMARY_OPTIONS,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
@@ -40,9 +42,25 @@ import {
   SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
+const testSuite = {
+  name: `${tableFqn}.testSuite`,
+  executableEntityReference: tableFqn,
+};
+const testCase = {
+  name: `user_tokens_table_column_name_to_exist_${uuid()}`,
+  entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
+  parameterValues: [{ name: 'columnName', value: 'id' }],
+  testDefinition: 'tableColumnNameToExist',
+  description: 'test case description',
+  testSuite: testSuite.name,
+};
+let testCaseId = '';
 
 const goToProfilerTab = () => {
   interceptURL(
@@ -50,17 +68,90 @@ const goToProfilerTab = () => {
     `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
     'waitForPageLoad'
   );
-  visitEntityDetailsPage(
-    TEAM_ENTITY,
+  visitEntityDetailsPage({
+    term: TEAM_ENTITY,
     serviceName,
-    MYDATA_SUMMARY_OPTIONS.tables
-  );
+    entity: DATA_ASSETS.tables,
+  });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
+const clickOnTestSuite = (testSuiteName) => {
+  cy.get('[data-testid="test-suite-container"]').then(($body) => {
+    if ($body.find(`[data-testid="${testSuiteName}"]`).length) {
+      cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
+    } else {
+      if ($body.find('[data-testid="next"]').length) {
+        cy.get('[data-testid="next"]').click();
+        verifyResponseStatusCode('@testSuite', 200);
+        clickOnTestSuite(testSuiteName);
+      } else {
+        throw new Error('Test Suite not found');
+      }
+    }
+  });
+};
+const visitTestSuiteDetailsPage = (testSuiteName) => {
+  interceptURL(
+    'GET',
+    '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+    'testSuite'
+  );
+  interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+  cy.get('[data-testid="app-bar-item-data-quality"]').click();
+  cy.get('[data-testid="by-test-suites"]').click();
+  verifyResponseStatusCode('@testSuite', 200);
+  clickOnTestSuite(testSuiteName);
+};
 
-describe.skip('Data Quality and Profiler should work properly', () => {
+describe('Data Quality and Profiler should work properly', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites/executable`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: testSuite,
+      }).then(() => {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/dataQuality/testCases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: testCase,
+        }).then((response) => {
+          testCaseId = response.body.id;
+        });
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
@@ -108,6 +199,7 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    searchServiceFromSettingPage(serviceName);
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -163,6 +255,11 @@ describe.skip('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
@@ -189,7 +286,6 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
@@ -269,6 +365,11 @@ describe.skip('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -314,6 +415,11 @@ describe.skip('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -437,7 +543,7 @@ describe.skip('Data Quality and Profiler should work properly', () => {
     const testCaseName = 'column_value_max_to_be_between';
     interceptURL(
       'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
+      '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
       'testSuite'
     );
     interceptURL(
@@ -474,23 +580,14 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'searchTestCase'
     );
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'PUT',
       '/api/v1/dataQuality/testCases/logicalTestCases',
       'putTestCase'
     );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     cy.get('[data-testid="add-test-case-btn"]').click();
     verifyResponseStatusCode('@testCase', 200);
@@ -506,11 +603,6 @@ describe.skip('Data Quality and Profiler should work properly', () => {
   });
 
   it('Remove test case from logical test suite', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'GET',
@@ -522,12 +614,7 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases/*/*',
       'removeTestCase'
     );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
     verifyResponseStatusCode('@testSuitePermission', 200);
     verifyResponseStatusCode('@testCase', 200);
 
@@ -541,17 +628,7 @@ describe.skip('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete test suite', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
 
@@ -595,7 +672,7 @@ describe.skip('Data Quality and Profiler should work properly', () => {
   it('Profiler matrix and test case graph should visible', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
-    visitEntityDetailsPage(term, serviceName, entity);
+    visitEntityDetailsPage({ term, serviceName, entity });
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(term)
       .should('be.visible');
@@ -650,15 +727,20 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${term}?fields=*&include=all`,
       'waitForPageLoad'
     );
-    visitEntityDetailsPage(term, serviceName, entity);
+    visitEntityDetailsPage({ term, serviceName, entity });
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="entity-header-display-name"]')
-      .should('be.visible')
-      .contains(term);
-    cy.get('[data-testid="profiler"]').should('be.visible').click();
-    cy.get('[data-testid="profiler-add-table-test-btn"]')
-      .should('be.visible')
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      term
+    );
+
+    cy.get('[data-testid="profiler"]').click();
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
       .click();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
     // creating new test case
@@ -704,5 +786,160 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .contains(sqlQuery);
+  });
+
+  it('Update displayName of test case', () => {
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
+    cy.get('[data-testid="by-test-cases"]').click();
+    verifyResponseStatusCode('@getTestCase', 200);
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${testCase.name}*&index=test_case_search_index*`,
+      'searchTestCase'
+    );
+    cy.get(
+      '[data-testid="test-case-container"] [data-testid="searchbar"]'
+    ).type(testCase.name);
+    verifyResponseStatusCode('@searchTestCase', 200);
+    cy.get(`[data-testid="${testCase.name}"]`)
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get(`[data-testid="edit-${testCase.name}"]`).click();
+    cy.get('.ant-modal-body').should('be.visible');
+    cy.get('#tableTestForm_displayName').type('Table test case display name');
+    interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTestCase');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@updateTestCase', 200);
+    cy.get(`[data-testid="${testCase.name}"]`)
+      .scrollIntoView()
+      .invoke('text')
+      .then((text) => {
+        expect(text).to.eq('Table test case display name');
+      });
+  });
+
+  it('Update profiler setting modal', () => {
+    const profilerSetting = {
+      profileSample: 60,
+      sampleDataCount: 100,
+      profileQuery: 'select * from table',
+      excludeColumns: 'user_id',
+      includeColumns: 'shop_id',
+      partitionColumnName: 'name',
+      partitionIntervalType: 'COLUMN-VALUE',
+      partitionValues: 'test',
+    };
+    interceptURL('GET', '/api/v1/tables/*/tableProfile?*', 'tableProfiler');
+    interceptURL('GET', '/api/v1/tables/*/systemProfile?*', 'systemProfiler');
+    interceptURL(
+      'GET',
+      '/api/v1/tables/*/tableProfilerConfig*',
+      'tableProfilerConfig'
+    );
+    visitEntityDetailsPage({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+    });
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
+    verifyResponseStatusCode('@tableProfiler', 200);
+    verifyResponseStatusCode('@systemProfiler', 200);
+    cy.get('[data-testid="profiler-setting-btn"]').click();
+    verifyResponseStatusCode('@tableProfilerConfig', 200);
+    cy.get('.ant-modal-body').should('be.visible');
+    cy.get('[data-testid="slider-input"]')
+      .clear()
+      .type(profilerSetting.profileSample);
+    cy.get('[data-testid="sample-data-count-input"]')
+      .clear()
+      .type(profilerSetting.sampleDataCount);
+    cy.get('[data-testid="exclude-column-select"]')
+      .scrollIntoView()
+      .type(`${profilerSetting.excludeColumns}{enter}`);
+    cy.clickOutside();
+    cy.get('.CodeMirror-scroll')
+      .scrollIntoView()
+      .click()
+      .type(profilerSetting.profileQuery);
+
+    cy.get('[data-testid="include-column-select"]').scrollIntoView().click();
+    cy.get('.ant-select-dropdown')
+      .not('.ant-select-dropdown-hidden')
+      .find(`[title="${profilerSetting.includeColumns}"]`)
+      .click();
+    cy.get('[data-testid="enable-partition-switch"]').scrollIntoView().click();
+    cy.get('[data-testid="interval-type"]').scrollIntoView().click();
+    cy.get('.ant-select-dropdown')
+      .not('.ant-select-dropdown-hidden')
+      .find(`[title="${profilerSetting.partitionIntervalType}"]`)
+      .click();
+    cy.get('[data-testid="column-name"]').click();
+    cy.get('.ant-select-dropdown')
+      .not('.ant-select-dropdown-hidden')
+      .find(`[title="${profilerSetting.partitionColumnName}"]`)
+      .click();
+    cy.get('[data-testid="partition-value"]')
+      .scrollIntoView()
+      .type(profilerSetting.partitionValues);
+
+    interceptURL(
+      'PUT',
+      '/api/v1/tables/*/tableProfilerConfig',
+      'updateTableProfilerConfig'
+    );
+    cy.get('.ant-modal-footer').contains('Save').scrollIntoView().click();
+    cy.wait('@updateTableProfilerConfig').then(({ request }) => {
+      expect(request.body).to.deep.equal({
+        excludeColumns: ['user_id'],
+        profileQuery: 'select * from table',
+        profileSample: 60,
+        profileSampleType: 'PERCENTAGE',
+        includeColumns: [{ columnName: 'shop_id' }],
+        partitioning: {
+          partitionColumnName: 'name',
+          partitionIntervalType: 'COLUMN-VALUE',
+          partitionValues: ['test'],
+          enablePartitioning: true,
+        },
+        sampleDataCount: 100,
+      });
+    });
+
+    cy.reload();
+    // verify profiler setting details
+    verifyResponseStatusCode('@tableProfiler', 200);
+    verifyResponseStatusCode('@systemProfiler', 200);
+    cy.get('[data-testid="profiler-setting-btn"]').click();
+    verifyResponseStatusCode('@tableProfilerConfig', 200);
+
+    cy.get('[data-testid="slider-input"]').should(
+      'have.value',
+      `${profilerSetting.profileSample}%`
+    );
+    cy.get('.CodeMirror-scroll').should(
+      'contain',
+      profilerSetting.profileQuery
+    );
+    cy.get('[data-testid="exclude-column-select"]').should(
+      'contain',
+      profilerSetting.excludeColumns
+    );
+    cy.get('[data-testid="enable-partition-switch"]').should(
+      'have.value',
+      'true'
+    );
+    cy.get('[data-testid="interval-type"]').should(
+      'contain',
+      profilerSetting.partitionIntervalType
+    );
+    cy.get('[data-testid="column-name"]').should(
+      'contain',
+      profilerSetting.partitionColumnName
+    );
+    cy.get('[data-testid="partition-value"]').should(
+      'have.value',
+      profilerSetting.partitionValues
+    );
   });
 });

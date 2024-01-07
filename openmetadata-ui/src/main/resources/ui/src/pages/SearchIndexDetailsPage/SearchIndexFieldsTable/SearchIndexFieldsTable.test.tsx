@@ -44,7 +44,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
   () =>
     jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
 );
@@ -93,5 +93,17 @@ describe('SearchIndexFieldsTable component', () => {
     expect(screen.queryByText('columns')).toBeNull();
     expect(screen.queryByText('description')).toBeNull();
     expect(screen.queryByText('column_description')).toBeNull();
+  });
+
+  it('SearchIndexFieldsTable should show value from dataType field when there is no dataTypeDisplay is present', () => {
+    render(
+      <SearchIndexFieldsTable
+        {...mockProps}
+        searchedFields={mockSearchedFields}
+      />
+    );
+    const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
+
+    expect(dataTypeFieldForColumnName).toHaveTextContent('text');
   });
 });

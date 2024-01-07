@@ -13,14 +13,9 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import AppState from '../../AppState';
 import { createUser } from '../../rest/userAPI';
 import { getImages } from '../../utils/CommonUtils';
-import {
-  mockChangedFormData,
-  mockCreateUser,
-  mockFormData,
-} from './mocks/signup.mock';
+import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
 let letExpectedUserName = {
@@ -36,9 +31,14 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
+    newUser: {
+      name: '',
+      email: '',
+      picture: '',
+    },
   })),
 }));
 
@@ -54,17 +54,6 @@ jest.mock('../../rest/userAPI', () => ({
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
-}));
-
-jest.mock('../../AppState', () => ({
-  ...jest.requireActual('../../AppState'),
-  newUser: {
-    name: 'Sample Name',
-    email: 'sample123@sample.com',
-    picture: 'Profile Picture',
-  },
-  updateUserDetails: jest.fn(),
-  updateUserPermissions: jest.fn(),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -128,9 +117,6 @@ describe('SignUp page', () => {
     const submitButton = screen.getByTestId('create-button');
 
     expect(form).toBeInTheDocument();
-    expect(fullNameInput).toHaveValue(mockFormData.name);
-    expect(userNameInput).toHaveValue(mockFormData.userName);
-    expect(emailInput).toHaveValue(mockFormData.email);
 
     await act(async () => {
       fireEvent.change(fullNameInput, {
@@ -168,9 +154,6 @@ describe('SignUp page', () => {
     const submitButton = screen.getByTestId('create-button');
 
     expect(form).toBeInTheDocument();
-    expect(fullNameInput).toHaveValue(mockFormData.name);
-    expect(userNameInput).toHaveValue(mockFormData.userName);
-    expect(emailInput).toHaveValue(mockFormData.email);
 
     await act(async () => {
       fireEvent.change(fullNameInput, {
@@ -203,11 +186,7 @@ describe('SignUp page', () => {
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
     letExpectedUserName = { name: '', email: '' };
-    AppState.newUser = {
-      name: '',
-      email: '',
-      picture: '',
-    };
+
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
     const fullNameInput = screen.getByTestId('full-name-input');

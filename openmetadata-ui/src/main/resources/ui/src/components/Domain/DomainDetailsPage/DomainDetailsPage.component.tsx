@@ -43,17 +43,14 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { AssetSelectionModal } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import Loader from '../../../components/Loader/Loader';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -63,7 +60,6 @@ import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -74,10 +70,8 @@ import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
-import {
-  getEntityDeleteMessage,
-  getIsErrorMatch,
-} from '../../../utils/CommonUtils';
+import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -87,7 +81,14 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import '../domain.less';
@@ -99,7 +100,6 @@ import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
 
 const DomainDetailsPage = ({
   domain,
-  loading,
   onUpdate,
   onDelete,
   isVersionsView = false,
@@ -112,7 +112,7 @@ const DomainDetailsPage = ({
     tab: activeTab,
     version,
   } = useParams<{ fqn: string; tab: string; version: string }>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : '';
+  const domainFqn = fqn ? getDecodedFqn(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -195,7 +195,7 @@ const DomainDetailsPage = ({
     async (formData: CreateDataProduct) => {
       const data = {
         ...formData,
-        domain: domain.name,
+        domain: domain.fullyQualifiedName,
       };
 
       try {
@@ -237,34 +237,42 @@ const DomainDetailsPage = ({
   };
 
   const fetchDataProducts = async () => {
-    try {
-      const res = await searchData(
-        '',
-        1,
-        0,
-        `(domain.fullyQualifiedName:"${domainFqn}")`,
-        '',
-        '',
-        SearchIndex.DATA_PRODUCT
-      );
-
-      setDataProductsCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
-      setDataProductsCount(0);
-    }
-  };
-
-  const fetchDomainAssets = async () => {
-    if (fqn) {
+    if (!isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${fqn}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
-          myDataSearchIndex
+          SearchIndex.DATA_PRODUCT
+        );
+
+        setDataProductsCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+      }
+    }
+  };
+
+  const fetchDomainAssets = async () => {
+    if (fqn && !isVersionsView) {
+      try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`,
+          '',
+          '',
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -303,12 +311,11 @@ const DomainDetailsPage = ({
   }, []);
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
-    const { name, displayName } = obj;
+    const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
-      name: name?.trim() || domain.name,
       displayName: displayName?.trim(),
     };
 
@@ -329,12 +336,6 @@ const DomainDetailsPage = ({
 
     onUpdate(updatedDetails);
     setIsStyleEditing(false);
-  };
-
-  const handleDelete = () => {
-    const { id } = domain;
-    onDelete(id);
-    setIsDelete(false);
   };
 
   const handleAssetSave = () => {
@@ -482,12 +483,14 @@ const DomainDetailsPage = ({
                   rightPanelWidth={400}>
                   <AssetsTabs
                     assetCount={assetCount}
+                    entityFqn={domainFqn}
                     isSummaryPanelOpen={false}
                     permissions={domainPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DOMAIN}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
+                    onRemoveAsset={handleAssetSave}
                   />
                 </PageLayoutV1>
               ),
@@ -500,6 +503,7 @@ const DomainDetailsPage = ({
     domainPermission,
     previewAsset,
     handleAssetClick,
+    handleAssetSave,
     assetCount,
     dataProductsCount,
     activeTab,
@@ -509,11 +513,7 @@ const DomainDetailsPage = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
-  }, [fqn]);
-
-  if (loading) {
-    return <Loader />;
-  }
+  }, [domain.fullyQualifiedName]);
 
   return (
     <>
@@ -546,9 +546,10 @@ const DomainDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={domain.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="280px">
+        <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && domainPermission.Create && (
               <Dropdown
@@ -603,9 +604,11 @@ const DomainDetailsPage = ({
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}
@@ -634,30 +637,34 @@ const DomainDetailsPage = ({
           }
         />
       )}
+      {assetModalVisible && (
+        <AssetSelectionModal
+          entityFqn={domainFqn}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+          type={AssetsOfEntity.DOMAIN}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
-      <AssetSelectionModal
-        entityFqn={domainFqn}
-        open={assetModalVisible}
-        type={AssetsOfEntity.DOMAIN}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
       {domain && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(domain.name, '')}
+        <DeleteWidgetModal
+          afterDeleteAction={() => onDelete(domain.id)}
+          allowSoftDelete={false}
+          entityId={domain.id}
           entityName={domain.name}
-          entityType="Glossary"
-          loadingState="success"
+          entityType={EntityType.DOMAIN}
           visible={isDelete}
-          onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onCancel={() => {
+            setIsDelete(false);
+          }}
         />
       )}
       <EntityNameModal
-        allowRename
         entity={domain}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

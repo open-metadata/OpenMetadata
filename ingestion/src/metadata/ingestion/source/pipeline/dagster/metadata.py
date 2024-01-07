@@ -17,6 +17,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -25,10 +26,13 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -40,9 +44,11 @@ from metadata.ingestion.source.pipeline.dagster.models import (
     SolidHandle,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -120,7 +126,7 @@ class DagsterSource(PipelineServiceSource):
                 displayName=pipeline_details.name,
                 description=pipeline_details.description,
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
-                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                service=self.context.pipeline_service,
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[self.context.repository_name],
@@ -138,7 +144,7 @@ class DagsterSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=pipeline_details.name,
                     error=f"Error to yield pipeline for {pipeline_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -161,8 +167,12 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                startTime=round(run.startTime) if run.startTime else None,
-                endTime=round(run.endTime) if run.endTime else None,
+                startTime=round(convert_timestamp_to_milliseconds(run.startTime))
+                if run.startTime
+                else None,
+                endTime=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
             )
 
             pipeline_status = PipelineStatus(
@@ -170,10 +180,18 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=round(run.endTime) if run.endTime else None,
+                timestamp=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
+            )
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.pipeline_service,
+                pipeline_name=self.context.pipeline,
             )
             pipeline_status_yield = OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                pipeline_fqn=pipeline_fqn,
                 pipeline_status=pipeline_status,
             )
             yield Either(right=pipeline_status_yield)
@@ -182,7 +200,7 @@ class DagsterSource(PipelineServiceSource):
                 left=StackTraceError(
                     name=run.runId,
                     error=f"Error to yield run status for {run}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -190,7 +208,14 @@ class DagsterSource(PipelineServiceSource):
         self, pipeline_details: DagsterPipeline
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield the pipeline and task status"""
-        for task in self.context.pipeline.tasks or []:
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.pipeline_service,
+            pipeline_name=self.context.pipeline,
+        )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        for task in pipeline_entity.tasks or []:
             try:
                 runs = self.client.get_task_runs(
                     task.name,
@@ -205,7 +230,7 @@ class DagsterSource(PipelineServiceSource):
                     left=StackTraceError(
                         name=f"{pipeline_details.name} Pipeline Status",
                         error=f"Error to yield pipeline status for {pipeline_details}: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

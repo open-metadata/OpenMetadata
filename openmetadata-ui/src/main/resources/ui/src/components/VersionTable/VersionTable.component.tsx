@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tooltip } from 'antd';
+import { Col, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TableConstraint } from '../../generated/api/data/createTable';
@@ -32,8 +32,8 @@ import {
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import Searchbar from '../common/searchbar/Searchbar';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
@@ -46,7 +46,7 @@ function VersionTable<T extends Column | SearchIndexField>({
   deletedColumnConstraintDiffs,
   addedTableConstraintDiffs,
   deletedTableConstraintDiffs,
-}: VersionTableProps<T>) {
+}: Readonly<VersionTableProps<T>>) {
   const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
   const { t } = useTranslation();
 
@@ -115,14 +115,16 @@ function VersionTable<T extends Column | SearchIndexField>({
       });
 
       return (
-        <Space
-          align="start"
-          className="w-max-90 vertical-align-inherit"
-          size={2}>
-          {deletedConstraintIcon}
-          {addedConstraintIcon}
-          <RichTextEditorPreviewer markdown={name} />
-        </Space>
+        <div className="d-inline-flex flex-column hover-icon-group w-full">
+          <div className="d-inline-flex">
+            {deletedConstraintIcon}
+            {addedConstraintIcon}
+            <RichTextEditorPreviewer markdown={name} />
+          </div>
+          {!isEmpty(record.displayName) ? (
+            <RichTextEditorPreviewer markdown={record.displayName ?? ''} />
+          ) : null}
+        </div>
       );
     },
     [
@@ -184,7 +186,7 @@ function VersionTable<T extends Column | SearchIndexField>({
               <RichTextEditorPreviewer markdown={description} />
               {getFrequentlyJoinedColumns(
                 columnName,
-                joins,
+                joins ?? [],
                 t('label.frequently-joined-column-plural')
               )}
             </>

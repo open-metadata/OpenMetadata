@@ -5,7 +5,6 @@ import static org.openmetadata.service.resources.teams.UserResource.getUser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.ws.rs.InternalServerErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -20,18 +19,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
-import org.quartz.SchedulerException;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
-  public static String APP_BOT_ROLE = "ApplicationBotRole";
+  public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -44,12 +41,19 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = false;
+    quoteFqn = true;
   }
 
   @Override
-  public App setFields(App entity, EntityUtil.Fields fields) {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    return entity.withBot(getBotUser(entity));
+  public void setFields(App entity, EntityUtil.Fields fields) {
+    entity.setPipelines(
+        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.withBot(getBotUser(entity));
+  }
+
+  @Override
+  protected List<EntityReference> getIngestionPipelines(App service) {
+    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -57,8 +61,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public App clearFields(App entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(App entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -74,7 +78,8 @@ public class AppRepository extends EntityRepository<App> {
       botUser = userRepository.findByName(botName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       // Get Bot Role
-      EntityReference roleRef = Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
+      EntityReference roleRef =
+          Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
       // Create Bot User
       AuthenticationMechanism authMechanism =
           new AuthenticationMechanism()
@@ -96,7 +101,8 @@ public class AppRepository extends EntityRepository<App> {
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
       authMechanism.setConfig(
-          JWTTokenGenerator.getInstance().generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+          JWTTokenGenerator.getInstance()
+              .generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
       user.setAuthenticationMechanism(authMechanism);
 
       // Create User
@@ -140,16 +146,6 @@ public class AppRepository extends EntityRepository<App> {
     entity.withBot(botUserRef).withOwner(ownerRef);
   }
 
-  @Override
-  public void postDelete(App entity) {
-    try {
-      AppScheduler.getInstance().deleteScheduledApplication(entity);
-    } catch (SchedulerException ex) {
-      LOG.error("Failed in delete Application from Scheduler.", ex);
-      throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
-    }
-  }
-
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
@@ -159,7 +155,12 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
-      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.CONTAINS);
+      addRelationship(
+          entity.getId(),
+          entity.getBot().getId(),
+          Entity.APPLICATION,
+          Entity.BOT,
+          Relationship.CONTAINS);
     }
   }
 
@@ -180,7 +181,9 @@ public class AppRepository extends EntityRepository<App> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
-          daoCollection.appExtensionTimeSeriesDao().listAppRunRecord(appId.toString(), limitParam, offset);
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppRunRecord(appId.toString(), limitParam, offset);
 
       for (String json : jsons) {
         AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
@@ -192,6 +195,16 @@ public class AppRepository extends EntityRepository<App> {
       // limit == 0 , return total count of entity.
       return new ResultList<>(entities, null, total);
     }
+  }
+
+  @Override
+  protected void cleanup(App app) {
+    // Remove the Pipelines for Application
+    List<EntityReference> pipelineRef = getIngestionPipelines(app);
+    pipelineRef.forEach(
+        reference ->
+            Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    super.cleanup(app);
   }
 
   public AppRunRecord getLatestAppRuns(UUID appId) {
@@ -211,7 +224,8 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
+      recordChange(
+          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
     }
   }

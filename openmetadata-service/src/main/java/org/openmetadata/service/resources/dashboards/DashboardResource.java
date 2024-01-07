@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
-      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts";
+      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -113,7 +113,10 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboards",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardList.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardList.class)))
       })
   public ResultList<Dashboard> list(
       @Context UriInfo uriInfo,
@@ -128,16 +131,20 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of dashboards before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of dashboards before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of dashboards after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of dashboards after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -147,7 +154,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -160,12 +168,17 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -179,13 +192,18 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
   public Dashboard get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -210,12 +228,19 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard for instance {fqn} is not found")
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard for instance {fqn} is not found")
       })
   public Dashboard getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the dashboard", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Fully qualified name of the dashboard",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Context SecurityContext securityContext,
@@ -243,15 +268,20 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Dashboard for instance {id} and version {version} is " + "not found")
+            description = "Dashboard for instance {id} and version {version} is not found")
       })
   public Dashboard getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Dashboard version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -269,11 +299,16 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboard create) {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboard);
   }
@@ -284,19 +319,24 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       operationId = "patchDashboard",
       summary = "Update a dashboard",
       description = "Update an existing dashboard using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -311,11 +351,16 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboard create) {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboard);
   }
@@ -333,9 +378,16 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
-    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "UUID"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @DELETE
@@ -347,11 +399,17 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
   }
 
   @PUT
@@ -364,15 +422,21 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Valid VoteRequest request) {
-    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE
@@ -392,7 +456,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -404,7 +470,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       description = "Delete a dashboard by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Dashboard for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -413,10 +481,17 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the dashboard", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(
+              description = "Fully qualified name of the dashboard",
+              schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -429,10 +504,15 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Dashboard.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Dashboard.class)))
       })
   public Response restoreDashboard(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -445,6 +525,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .withSourceUrl(create.getSourceUrl())
         .withDashboardType(create.getDashboardType())
         .withProject(create.getProject())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

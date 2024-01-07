@@ -11,34 +11,47 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, useState } from 'react';
+import { Typography } from 'antd';
+import { isNil, isObject } from 'lodash';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import SchemaModal from '../Modals/SchemaModal/SchemaModal';
-import { SampleDataType } from './sample.interface';
+import { SampleDataType } from './SampleData.interface';
 
 export const RowData = ({ data }: { data: SampleDataType }) => {
   const [isFullView, setIsFullView] = useState<boolean>(false);
 
-  const onClose = () => setIsFullView(false);
-  const onOpen = () => setIsFullView(true);
+  const onClose = useCallback(() => setIsFullView(false), []);
+  const onOpen = useCallback(() => setIsFullView(true), []);
 
-  const getDataElement = (rowValue: SampleDataType) => {
-    if (typeof rowValue === 'object') {
+  const dataElementRenderer = useMemo(() => {
+    if (isNil(data) || data === '') {
       return (
-        <p
+        <Typography.Text data-testid="empty-data">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      );
+    } else if (isObject(data)) {
+      return (
+        <Typography.Text
           className="w-52 truncate cursor-pointer"
           data-testid="json-object"
           onClick={onOpen}>
-          {JSON.stringify(rowValue)}
-        </p>
+          {JSON.stringify(data)}
+        </Typography.Text>
+      );
+    } else {
+      return (
+        <Typography.Text data-testid="string-data">
+          {data.toString()}
+        </Typography.Text>
       );
     }
-
-    return <p data-testid="string-data">{rowValue.toString()}</p>;
-  };
+  }, [data, onOpen]);
 
   return (
     <Fragment>
-      {data ? getDataElement(data) : <p data-testid="empty-data">--</p>}
+      {dataElementRenderer}
       {isFullView && (
         <SchemaModal data={data} visible={isFullView} onClose={onClose} />
       )}

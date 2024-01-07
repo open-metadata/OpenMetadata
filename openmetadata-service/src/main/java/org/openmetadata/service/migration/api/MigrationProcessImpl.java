@@ -14,7 +14,6 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
-  private CollectionDAO collectionDAO;
   private MigrationDAO migrationDAO;
   private Handle handle;
   private final MigrationFile migrationFile;
@@ -28,7 +27,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   @Override
   public void initialize(Handle handle) {
     this.handle = handle;
-    this.collectionDAO = handle.attach(CollectionDAO.class);
+    handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
   }
 
@@ -64,7 +63,8 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runSchemaChanges() {
-    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
+    performSqlExecutionAndUpdate(
+        handle, migrationDAO, migrationFile.getSchemaChanges(), migrationFile.version);
   }
 
   @Override
@@ -72,7 +72,8 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runPostDDLScripts() {
-    performSqlExecutionAndUpdate(handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
+    performSqlExecutionAndUpdate(
+        handle, migrationDAO, migrationFile.getPostDDLScripts(), migrationFile.version);
   }
 
   @Override

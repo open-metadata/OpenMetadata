@@ -30,18 +30,23 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public BotRepository() {
     super(
-        BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, Entity.getCollectionDAO().botDAO(), "", BOT_UPDATE_FIELDS);
+        BotResource.COLLECTION_PATH,
+        Entity.BOT,
+        Bot.class,
+        Entity.getCollectionDAO().botDAO(),
+        "",
+        BOT_UPDATE_FIELDS);
     quoteFqn = true;
   }
 
   @Override
-  public Bot setFields(Bot entity, Fields fields) {
-    return entity.withBotUser(getBotUser(entity));
+  public void setFields(Bot entity, Fields fields) {
+    entity.withBotUser(getBotUser(entity));
   }
 
   @Override
-  public Bot clearFields(Bot entity, Fields fields) {
-    return entity;
+  public void clearFields(Bot entity, Fields fields) {
+    /* Do nothing */
   }
 
   @Override
@@ -60,7 +65,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void storeRelationships(Bot entity) {
-    addRelationship(entity.getId(), entity.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+    addRelationship(
+        entity.getId(),
+        entity.getBotUser().getId(),
+        Entity.BOT,
+        Entity.USER,
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -93,7 +103,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
     private void updateUser(Bot original, Bot updated) {
       deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
-      addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+      addRelationship(
+          updated.getId(),
+          updated.getBotUser().getId(),
+          Entity.BOT,
+          Entity.USER,
+          Relationship.CONTAINS);
       if (original.getBotUser() == null
           || updated.getBotUser() == null
           || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {

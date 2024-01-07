@@ -67,7 +67,7 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../common/searchbar/Searchbar', () => {
+jest.mock('../common/SearchBarComponent/SearchBar.component', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });
 
@@ -118,7 +118,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -160,7 +159,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -208,7 +206,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -246,7 +243,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -297,7 +293,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -307,9 +302,9 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const viewButton = await findByTestId(container, 'ingestion-dag-link');
+    const pipelineName = await findByText(container, 'test3_metadata');
 
-    expect(viewButton).toBeInTheDocument();
+    expect(pipelineName).toBeInTheDocument();
   });
 
   it('Pause button should be present if enabled is available', async () => {
@@ -327,7 +322,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -363,7 +357,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}
@@ -405,7 +398,6 @@ describe('Test Ingestion page', () => {
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
-        serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
         onIngestionWorkflowsUpdate={mockUpdateWorkflows}

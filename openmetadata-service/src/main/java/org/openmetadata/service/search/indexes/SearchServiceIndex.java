@@ -10,22 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchServiceIndex implements SearchIndex {
-
-  final SearchService searchService;
-
+public record SearchServiceIndex(SearchService searchService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public SearchServiceIndex(SearchService searchService) {
-    this.searchService = searchService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(searchService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(searchService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(searchService.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_SERVICE);
     doc.put(
@@ -33,9 +27,7 @@ public class SearchServiceIndex implements SearchIndex {
         getFQNParts(
             searchService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (searchService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(searchService.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(searchService.getOwner()));
     return doc;
   }
 }

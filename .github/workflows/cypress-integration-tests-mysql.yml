@@ -16,9 +16,15 @@ name: MySQL Cypress Integration Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '30 0 * * *'
+  pull_request_target:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
     paths-ignore:
       - 'openmetadata-docs/**'
 
@@ -31,13 +37,28 @@ concurrency:
 
 jobs:
   cypress-ci-mysql:
+    if: |
+        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+            || ( github.event_name == 'pull_request_target'
+                 && contains(github.event.pull_request.labels.*.name, 'e2e')
+                 && github.event.pull_request.draft == false
+               )
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        job: [0, 1, 2]
+        parallel-machine: [1, 2, 3, 4]
     environment: test
     steps:
+      - name: Set Project ID Environment variable
+        id: cypress-project-id
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ]; then  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+          else  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+          fi  
+
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -49,7 +70,7 @@ jobs:
             swap-storage: true
             docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        uses: lewagon/wait-on-check-action@v1.3.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -117,12 +138,12 @@ jobs:
         uses: cypress-io/github-action@v4
         timeout-minutes: 120
         with:
-          install: false
+          install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
-          parallel: false
+          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          group: Tests with database mysql
+          group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
@@ -132,6 +153,7 @@ jobs:
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          CYPRESS_PROJECT_ID: ${{ steps.cypress-project-id.outputs.PROJECT_ID }}
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
           CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}

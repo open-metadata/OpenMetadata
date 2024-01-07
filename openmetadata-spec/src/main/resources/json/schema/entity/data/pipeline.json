@@ -19,7 +19,7 @@
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": ["Successful", "Failed", "Pending"],
+      "enum": ["Successful", "Failed", "Pending", "Skipped"],
       "javaEnums": [
         {
           "name": "Successful"
@@ -29,6 +29,9 @@
         },
         {
           "name": "Pending"
+        },
+        {
+          "name": "Skipped"
         }
       ]
     },
@@ -117,6 +120,10 @@
             "$ref": "../../type/tagLabel.json"
           },
           "default": null
+        },
+        "owner": {
+          "description": "Owner of this task.",
+          "$ref": "../../type/entityReference.json"
         }
       },
       "required": ["name"],
@@ -167,6 +174,10 @@
     "description": {
       "description": "Description of this Pipeline.",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -265,6 +276,12 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["id", "name", "service"],

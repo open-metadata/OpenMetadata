@@ -37,8 +37,13 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
 );
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ markdown }) => (
+        <div data-testid="rich-text-editor-previewer">{markdown}</div>
+      ))
 );
 
 jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
@@ -54,13 +59,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock(
@@ -155,5 +159,17 @@ describe('PipelineVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/pipeline/sample_airflow.snowflake_etl/versions/0.3/custom_properties'
     );
+  });
+
+  it('Should show task name if no displayName is present', async () => {
+    await act(async () => {
+      render(<PipelineVersion {...pipelineVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const taskWithoutDisplayName = screen.getByText('snowflake_task');
+
+    expect(taskWithoutDisplayName).toBeInTheDocument();
   });
 });

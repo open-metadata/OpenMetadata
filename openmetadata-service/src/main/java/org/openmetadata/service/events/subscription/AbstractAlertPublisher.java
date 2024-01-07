@@ -44,19 +44,22 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
   }
 
   @Override
-  public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
+  public void onEvent(
+      EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
       throws Exception {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.getEvent();
 
     // Evaluate Alert Trigger Config
-    if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), eventSubscription.getFilteringRules())) {
+    if (!AlertUtil.shouldTriggerAlert(
+        changeEvent.getEntityType(), eventSubscription.getFilteringRules())) {
       return;
     }
 
     // Evaluate ChangeEvent Alert Filtering
     if (eventSubscription.getFilteringRules() != null
-        && !AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
+        && !AlertUtil.evaluateAlertConditions(
+            changeEvent, eventSubscription.getFilteringRules().getRules())) {
       return;
     }
 
@@ -72,7 +75,11 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
       batch.clear();
     } catch (RetriableException ex) {
       setNextBackOff();
-      LOG.error("Failed to publish event in batch {} due to {}, will try again in {} ms", list, ex, currentBackoffTime);
+      LOG.error(
+          "Failed to publish event in batch {} due to {}, will try again in {} ms",
+          list,
+          ex,
+          currentBackoffTime);
       Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
       LOG.error("[AbstractAlertPublisher] error {}", e.getMessage(), e);

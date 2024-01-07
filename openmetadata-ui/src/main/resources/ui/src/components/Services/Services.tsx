@@ -19,10 +19,8 @@ import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ListView } from '../../components/ListView/ListView.component';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
@@ -38,11 +36,12 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
 import { getServices, searchService } from '../../rest/serviceAPI';
-import { getServiceLogo, showPagination } from '../../utils/CommonUtils';
+import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
@@ -53,9 +52,10 @@ import {
 } from '../../utils/ServiceUtils';
 import { FilterIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from '../header/PageHeader.component';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
@@ -64,7 +64,6 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
@@ -82,7 +81,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
+  const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
   const searchIndex = useMemo(() => {
@@ -137,6 +138,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             limit: limit ?? pageSize,
             currentPage,
             filters,
+            deleted,
           });
 
           services = hits.map(
@@ -149,6 +151,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             limit: limit ?? pageSize,
             after,
             before,
+            include: deleted ? Include.Deleted : Include.NonDeleted,
           });
 
           services = data;
@@ -173,7 +176,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName]
+    [searchIndex, serviceName, deleted]
   );
 
   const handleServicePageChange = ({
@@ -195,6 +198,11 @@ const Services = ({ serviceName }: ServicesProps) => {
         permissions
       ),
     [permissions, serviceName]
+  );
+
+  const handleDeletedSwitchChange = useCallback(
+    () => setDeleted((prevValue) => !prevValue),
+    []
   );
 
   const getServicePageHeader = useCallback(() => {
@@ -400,7 +408,14 @@ const Services = ({ serviceName }: ServicesProps) => {
             .join(' ')})`
         : undefined,
     });
-  }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
+  }, [
+    searchIndex,
+    pageSize,
+    serviceName,
+    searchTerm,
+    serviceTypeFilter,
+    deleted,
+  ]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -426,7 +441,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   })
                 : NO_PERMISSION_FOR_ACTION
             }>
-            {(addServicePermission || isAuthDisabled) && (
+            {addServicePermission && (
               <Button
                 className="m-b-xs"
                 data-testid="add-service-button"
@@ -444,11 +459,13 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          deleted={deleted}
+          handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
             onSearch: handleServiceSearch,
             search: searchTerm,
           }}
-          tableprops={{
+          tableProps={{
             bordered: true,
             columns,
             dataSource: serviceDetails,
@@ -464,7 +481,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

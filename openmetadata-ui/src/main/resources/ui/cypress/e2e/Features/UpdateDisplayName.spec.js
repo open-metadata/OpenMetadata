@@ -10,15 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   interceptURL,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import {
+  createEntityTable,
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/EntityUtils';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
-import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import {
+  DASHBOARD_DATA_MODEL_DETAILS,
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+  STORED_PROCEDURE_DETAILS,
+} from '../../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   DASHBOARD_DATA_MODEL,
   ENTITIES_DISPLAY_NAME,
@@ -57,6 +69,61 @@ const updateDisplayName = (displayName, apiPath) => {
 };
 
 describe('Edit displayName for all the entities, services and verify breadcrumb', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
+
+      // creating data model
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_DATA_MODEL_DETAILS,
+      });
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_DETAILS,
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
   });
@@ -106,11 +173,11 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   it(`database`, () => {
     interceptURL('GET', 'api/v1/databases/name/*', 'database');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
+    visitEntityDetailsPage({
+      term: SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
+      serviceName: SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
+      entity: SCHEMA_AND_DATABASE_DISPLAY_NAME.entity,
+    });
     cy.log(SCHEMA_AND_DATABASE_DISPLAY_NAME.database);
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.database)
@@ -127,11 +194,11 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   it(`databaseSchema`, () => {
     interceptURL('GET', 'api/v1/databaseSchemas/name/*', 'databaseSchemas');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
+    visitEntityDetailsPage({
+      term: SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
+      serviceName: SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
+      entity: SCHEMA_AND_DATABASE_DISPLAY_NAME.entity,
+    });
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.schema)
       .click();
@@ -147,109 +214,15 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   Object.values(ENTITIES_DISPLAY_NAME).map((entity) => {
     it(`${entity.entity}`, () => {
-      visitEntityDetailsPage(entity.name, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.name,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       updateDisplayName(entity.displayName, `/api/v1/${entity.entity}/*`);
       entity.breadcrumb.map((value) => {
         cy.get('[data-testid="breadcrumb"]').should('contain', value);
       });
-    });
-  });
-});
-
-describe('Cleanup', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  Object.values(ENTITIES_DISPLAY_NAME).map((entity) => {
-    it(`${entity.entity}`, () => {
-      if (entity.entity === MYDATA_SUMMARY_OPTIONS.dashboards) {
-        visitEntityDetailsPage(
-          entity.displayName,
-          entity.serviceName,
-          entity.entity
-        );
-      } else {
-        visitEntityDetailsPage(entity.name, entity.serviceName, entity.entity);
-      }
-      updateDisplayName(entity.oldDisplayName, `/api/v1/${entity.entity}/*`);
-    });
-  });
-
-  it(`databaseSchema`, () => {
-    interceptURL('GET', 'api/v1/databaseSchemas/name/*', 'databaseSchemas');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
-    cy.get('[data-testid="breadcrumb"]')
-      .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.schemaDisplayName)
-      .click();
-    verifyResponseStatusCode('@databaseSchemas', 200);
-    updateDisplayName(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.schema,
-      `/api/v1/databaseSchemas/*`
-    );
-  });
-
-  it(`database`, () => {
-    interceptURL('GET', 'api/v1/databases/name/*', 'database');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
-    cy.get('[data-testid="breadcrumb"]')
-      .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.databaseDisplayName)
-      .click();
-    verifyResponseStatusCode('@database', 200);
-    updateDisplayName(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.database,
-      `/api/v1/databases/*`
-    );
-  });
-
-  it(`dataModel`, () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dashboard/datamodels?service=*',
-      'dashboardDataModel'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/dashboard/datamodels/name/*',
-      'dataModelDetails'
-    );
-    visitServiceDetailsPage(
-      {
-        type: DASHBOARD_DATA_MODEL.service.type,
-        name: DASHBOARD_DATA_MODEL.service.name,
-      },
-      false
-    );
-    verifyResponseStatusCode('@dashboardDataModel', 200);
-    cy.get('[data-testid="data-model"]').should('be.visible').click();
-    cy.get('[data-testid="data-models-table"]')
-      .contains(DASHBOARD_DATA_MODEL.name)
-      .click();
-    verifyResponseStatusCode('@dataModelDetails', 200);
-    updateDisplayName(
-      DASHBOARD_DATA_MODEL.displayName,
-      `/api/v1/dashboard/datamodels/*`
-    );
-  });
-
-  Object.entries(SERVICES).map(([serviceType, service]) => {
-    it(`${service.type}`, () => {
-      visitServiceDetailsPage(
-        {
-          type: service.type,
-          name: service.name,
-        },
-        false
-      );
-      updateDisplayName(service.name, `/api/v1/services/${serviceType}/*`);
     });
   });
 });

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
+
 export const WORKFLOWS_PROFILER_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
 

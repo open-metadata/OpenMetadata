@@ -17,17 +17,22 @@ import { cloneDeep, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/Loader/Loader';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from '../../constants/constants';
 import { EntityAction } from '../../enums/entity.enum';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addGlossaryTerm,
   getGlossaryTerms,
@@ -37,6 +42,8 @@ import {
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -48,7 +55,7 @@ import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
-import './GlossaryV1.style.less';
+import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({
@@ -69,6 +76,11 @@ const GlossaryV1 = ({
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
   const history = useHistory();
+  const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
 
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +107,17 @@ const GlossaryV1 = ({
     () => action === EntityAction.IMPORT,
     [action]
   );
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
+    setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
+  };
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
@@ -136,6 +159,19 @@ const GlossaryV1 = ({
       setGlossaryTermPermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
     }
   };
 
@@ -329,6 +365,7 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term)
             }
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ) : (
           <GlossaryTermsV1
@@ -350,6 +387,7 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term)
             }
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ))}
 
@@ -376,6 +414,19 @@ const GlossaryV1 = ({
           onSave={handleGlossaryTermSave}
         />
       )}
+
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          deletePostHandler={deleteFeed}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeed}
+          threadLink={threadLink}
+          threadType={threadType}
+          updateThreadHandler={updateFeed}
+          onCancel={onThreadPanelClose}
+        />
+      ) : null}
     </>
   );
 };

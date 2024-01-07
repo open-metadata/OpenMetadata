@@ -26,22 +26,24 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import get_columns
@@ -98,7 +100,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName.__root__,
+                service=self.context.database_service,
                 sourceUrl=self.get_source_url(database_name=database_name),
             )
         )
@@ -115,8 +117,8 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema,
             )
 
@@ -140,9 +142,14 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName.__root__,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                 ),
             )
@@ -164,16 +171,16 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         if self.source_config.includeTables:
             for collection in self.get_table_name_list(schema_name):
                 table_name = collection
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -206,7 +213,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
@@ -216,9 +223,15 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 tableType=table_type,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=self.context.database_schema.fullyQualifiedName.__root__,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                     table_name=table_name,
                     table_type=table_type,
@@ -232,7 +245,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 left=StackTraceError(
                     name=table_name,
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -260,15 +273,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def get_source_url(
         self,

@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
-import { isNil } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
-import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -48,43 +47,34 @@ function IngestionListTable({
   isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = ({
-    cursorType,
+  const {
     currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      const pagingString = `&${cursorType}=${paging[cursorType]}`;
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(10);
 
-      onIngestionWorkflowsUpdate(pagingString);
-      setIngestionCurrentPage(currentPage);
-    }
-  };
+  useEffect(() => {
+    handlePagingChange(paging);
+  }, [paging]);
 
-  const renderNameField = (text: string, record: IngestionPipeline) => {
-    return airflowEndpoint ? (
-      <Tooltip
-        title={
-          permissions.ViewAll || permissions.ViewBasic
-            ? t('label.view-entity', {
-                entity: t('label.dag'),
-              })
-            : t('message.no-permission-to-view')
-        }>
-        <Typography.Link
-          className="m-r-xs overflow-wrap-anywhere"
-          data-testid="ingestion-dag-link"
-          disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-          href={`${airflowEndpoint}/tree?dag_id=${text}`}
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    ) : (
-      getEntityName(record)
-    );
+  const ingestionPagingHandler = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = `&${cursorType}=${paging[cursorType]}`;
+
+        onIngestionWorkflowsUpdate(pagingString);
+        handlePageChange(currentPage);
+      }
+    },
+    [paging, handlePageChange, onIngestionWorkflowsUpdate]
+  );
+
+  const renderNameField = (_: string, record: IngestionPipeline) => {
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
@@ -175,13 +165,6 @@ function IngestionListTable({
     ]
   );
 
-  const showNextPrevious = useMemo(
-    () =>
-      Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-      paging.total > PAGE_SIZE,
-    [paging]
-  );
-
   return (
     <Space
       className="m-b-md w-full"
@@ -206,12 +189,13 @@ function IngestionListTable({
         size="small"
       />
 
-      {showNextPrevious && (
+      {showPagination && (
         <NextPrevious
-          currentPage={ingestionCurrentPage}
-          pageSize={PAGE_SIZE}
+          currentPage={currentPage}
+          pageSize={pageSize}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
+          onShowSizeChange={handlePageSizeChange}
         />
       )}
     </Space>

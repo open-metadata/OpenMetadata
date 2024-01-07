@@ -18,14 +18,17 @@ import os
 import shutil
 import traceback
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
@@ -78,12 +81,19 @@ class TableUsageStage(Stage):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(self, username: str) -> Tuple[List[str], List[str]]:
+    def _get_user_entity(
+        self, username: str
+    ) -> Tuple[Optional[List[str]], Optional[List[str]]]:
+        """
+        From the user received in the query history call - who executed the query in the db -
+        return if we find any users in OM that match, plus the user that we found in the db record.
+        """
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [user.fullyQualifiedName.__root__], []
-        return [], [username]
+                return [user.fullyQualifiedName.__root__], [username]
+            return None, [username]
+        return None, None
 
     def _add_sql_query(self, record, table):
         users, used_by = self._get_user_entity(record.userName)
@@ -139,16 +149,16 @@ class TableUsageStage(Stage):
                     sqlQueries=[],
                     databaseSchema=parsed_data.databaseSchema,
                 )
+            self.table_usage[(table, parsed_data.date)] = table_usage_count
 
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=table,
                     error=f"Error in staging record [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
-        self.table_usage[(table, parsed_data.date)] = table_usage_count
         yield Either(right=table)
 
     def _run(self, record: QueryParserData) -> Iterable[Either[str]]:

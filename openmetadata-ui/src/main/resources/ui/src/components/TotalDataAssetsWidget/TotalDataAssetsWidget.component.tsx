@@ -13,7 +13,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -31,8 +31,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../assets/svg/data-insight-no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { SIZE } from '../../enums/common.enum';
 import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -47,11 +49,11 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import '../DataInsightDetail/DataInsightDetail.less';
+import '../DataInsightDetail/data-insight-detail.less';
 import { EmptyGraphPlaceholder } from '../DataInsightDetail/EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from '../DataInsightDetail/TotalEntityInsightSummary.component';
+import './total-data-assets-widget.less';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
-import './TotalDataAssetsWidget.less';
 
 const TotalDataAssetsWidget = ({
   isEditView = false,
@@ -110,7 +112,7 @@ const TotalDataAssetsWidget = ({
   return (
     <Card
       className="total-data-insight-card"
-      data-testid="entity-summary-card"
+      data-testid="total-assets-widget"
       id={DataInsightChartType.TotalEntitiesByType}
       loading={isLoading}>
       {isEditView && (
@@ -118,16 +120,39 @@ const TotalDataAssetsWidget = ({
           <Col>
             <DragOutlined
               className="drag-widget-icon cursor-pointer"
+              data-testid="drag-widget-button"
               size={14}
             />
           </Col>
           <Col>
-            <CloseOutlined size={14} onClick={handleCloseClick} />
+            <CloseOutlined
+              data-testid="remove-widget-button"
+              size={14}
+              onClick={handleCloseClick}
+            />
           </Col>
         </Row>
       )}
-      {data.length ? (
-        <Row>
+      {isEmpty(data) ? (
+        <Row className="h-full">
+          <Col span={14}>
+            <Typography.Text className="font-medium">
+              {t('label.data-insight-total-entity-summary')}
+            </Typography.Text>
+          </Col>
+          <Col className="h-95" span={24}>
+            <EmptyGraphPlaceholder
+              icon={
+                <TotalDataAssetsEmptyIcon
+                  height={SIZE.X_SMALL}
+                  width={SIZE.X_SMALL}
+                />
+              }
+            />
+          </Col>
+        </Row>
+      ) : (
+        <Row className="h-95">
           <Col span={isWidgetSizeLarge ? 14 : 24}>
             <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
@@ -160,7 +185,7 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col span={10}>
+            <Col className="overflow-y-scroll h-max-full" span={10}>
               <TotalEntityInsightSummary
                 entities={entities}
                 latestData={latestData}
@@ -170,17 +195,6 @@ const TotalDataAssetsWidget = ({
               />
             </Col>
           )}
-        </Row>
-      ) : (
-        <Row>
-          <Col span={14}>
-            <Typography.Text className="font-medium">
-              {t('label.data-insight-total-entity-summary')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <EmptyGraphPlaceholder />
-          </Col>
         </Row>
       )}
     </Card>

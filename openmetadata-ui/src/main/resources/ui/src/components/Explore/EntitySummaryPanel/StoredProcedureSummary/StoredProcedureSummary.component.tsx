@@ -12,18 +12,19 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isObject } from 'lodash';
+import { get, isObject } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { StoredProcedureCodeObject } from '../../../../generated/entity/data/storedProcedure';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from '../../../schema-editor/SchemaEditor';
+import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';
@@ -33,6 +34,7 @@ const StoredProcedureSummary = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: StoredProcedureSummaryProps) => {
   const { t } = useTranslation();
 
@@ -57,7 +59,13 @@ const StoredProcedureSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
         />
         <Divider className="m-y-xs" />
 

@@ -13,7 +13,7 @@ Greenplum source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -51,6 +51,7 @@ from metadata.ingestion.source.database.greenplum.utils import (
     get_table_comment,
     get_view_definition,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -109,7 +110,7 @@ PGDialect.get_all_view_definitions = get_all_view_definitions
 PGDialect.ischema_names = ischema_names
 
 
-class GreenplumSource(CommonDbSourceService):
+class GreenplumSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Greenplum Source
@@ -144,20 +145,25 @@ class GreenplumSource(CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(GREENPLUM_GET_DB_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.__root__.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(GREENPLUM_GET_DB_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 

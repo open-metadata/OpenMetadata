@@ -33,7 +33,10 @@ from metadata.data_insight.processor.reports.web_analytic_report_data_processor 
 )
 from metadata.data_insight.producer.producer_factory import producer_factory
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -123,7 +126,7 @@ class DataInsightSource(Source):
                 processor = cast(DataProcessor, processor)
                 processor.pre_hook() if processor.pre_hook else None  # pylint: disable=expression-not-assigned
 
-                for data in producer.fetch_data():
+                for data in producer.fetch_data(fields=["owner", "tags"]):
                     processor.refine(data)
 
                 processor.post_hook() if processor.post_hook else None  # pylint: disable=expression-not-assigned
@@ -136,7 +139,7 @@ class DataInsightSource(Source):
                         name=report_data_type.value,
                         error=f"Error retrieving processor with exception [{key_error}]."
                         "Available processors are {self.processors}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     ),
                     right=None,
                 )
@@ -145,7 +148,7 @@ class DataInsightSource(Source):
                     left=StackTraceError(
                         name=report_data_type.value,
                         error=f"Error listing data for report with exception [{exc}]",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     ),
                     right=None,
                 )

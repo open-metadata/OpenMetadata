@@ -15,7 +15,8 @@ import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";
-  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
+  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
+      "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository() {
     super(
@@ -28,13 +29,13 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
-    return entity;
+  public void setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public WebAnalyticEvent clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -58,8 +59,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         webAnalyticEventData.getEventType().value(),
         WEB_ANALYTICS_EVENT_DATA_EXTENSION,
         "webAnalyticEventData",
-        JsonUtils.pojoToJson(webAnalyticEventData),
-        webAnalyticEventData.getTimestamp());
+        JsonUtils.pojoToJson(webAnalyticEventData));
     return Response.ok(webAnalyticEventData).build();
   }
 
@@ -67,14 +67,19 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     deleteExtensionBeforeTimestamp(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }
 
-  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs) {
+  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
+      String eventType, Long startTs, Long endTs) {
     List<WebAnalyticEventData> webAnalyticEventData;
     webAnalyticEventData =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
+            getResultsFromAndToTimestamps(
+                eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
             WebAnalyticEventData.class);
 
     return new ResultList<>(
-        webAnalyticEventData, String.valueOf(startTs), String.valueOf(endTs), webAnalyticEventData.size());
+        webAnalyticEventData,
+        String.valueOf(startTs),
+        String.valueOf(endTs),
+        webAnalyticEventData.size());
   }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../../../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
@@ -19,19 +19,25 @@ export enum AssetsOfEntity {
   DOMAIN = 'DOMAIN',
   DATA_PRODUCT = 'DATA_PRODUCT',
   TEAM = 'TEAM',
-}
-
-export enum AssetsViewType {
-  PILLS = 'PILLS',
-  TABS = 'TABS',
+  MY_DATA = 'MY_DATA',
+  FOLLOWING = 'FOLLOWING',
+  ACCESS_TOKEN = 'ACCESS_TOKEN',
 }
 
 export interface AssetsTabsProps {
   onAddAsset: () => void;
+  onRemoveAsset?: () => void;
+  entityFqn?: string;
   permissions: OperationPermission;
   assetCount: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
-  viewType?: AssetsViewType;
+  queryFilter?: string;
+  noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;
+}
+
+export interface AssetNoDataPlaceholderProps {
+  message: string;
 }

@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Operation } from 'fast-json-patch';
-import {
-  AssetsUnion,
-  MapPatchAPIResponse,
-} from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AxiosError } from 'axios';
+import { compare, Operation } from 'fast-json-patch';
+import { EntityDetailUnion } from 'Models';
+import { MapPatchAPIResponse } from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Table } from '../../generated/entity/data/table';
+import { Domain } from '../../generated/entity/domains/domain';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -33,7 +34,9 @@ import {
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
 import {
+  getGlossariesByName,
   getGlossaryTermByFQN,
+  patchGlossaries,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
@@ -55,11 +58,13 @@ import {
   patchStoredProceduresDetails,
 } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
+import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
+import { showErrorToast } from '../ToastUtils';
 
 export const getAPIfromSource = (
-  source: AssetsUnion
+  source: keyof MapPatchAPIResponse
 ): ((
   id: string,
   jsonPatch: Operation[]
@@ -85,10 +90,14 @@ export const getAPIfromSource = (
       return patchDataModelDetails;
     case EntityType.GLOSSARY_TERM:
       return patchGlossaryTerm;
+    case EntityType.GLOSSARY:
+      return patchGlossaries;
     case EntityType.DATABASE_SCHEMA:
       return patchDatabaseSchemaDetails;
     case EntityType.DATABASE:
       return patchDatabaseDetails;
+    case EntityType.TEAM:
+      return patchTeamDetail;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -105,7 +114,7 @@ export const getAPIfromSource = (
 };
 
 export const getEntityAPIfromSource = (
-  source: AssetsUnion
+  source: keyof MapPatchAPIResponse
 ): ((
   id: string,
   queryFields: string | string[]
@@ -129,12 +138,16 @@ export const getEntityAPIfromSource = (
       return getDataModelsByName;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
+    case EntityType.GLOSSARY:
+      return getGlossariesByName;
     case EntityType.DATABASE_SCHEMA:
       return getDatabaseSchemaDetailsByFQN;
     case EntityType.DATABASE:
       return getDatabaseDetailsByFQN;
     case EntityType.SEARCH_INDEX:
       return getSearchIndexDetailsByFQN;
+    case EntityType.TEAM:
+      return getTeamByName;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -152,6 +165,7 @@ export const getEntityAPIfromSource = (
 
 export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
   const commonAssets: Record<string, SearchIndex> = {
+    [EntityType.ALL]: SearchIndex.ALL,
     [EntityType.TABLE]: SearchIndex.TABLE,
     [EntityType.PIPELINE]: SearchIndex.PIPELINE,
     [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
@@ -187,5 +201,116 @@ export const getAssetsFields = (source: AssetsOfEntity) => {
     return 'domain';
   } else {
     return 'dataProducts';
+  }
+};
+
+const getJsonPatchObject = (entity: Table, activeEntity: Domain) => {
+  let patchObj;
+  if (activeEntity) {
+    const { id, description, fullyQualifiedName, name, displayName } =
+      activeEntity;
+    patchObj = {
+      id,
+      description,
+      fullyQualifiedName,
+      name,
+      displayName,
+      type: 'domain',
+    };
+  }
+
+  const jsonPatch = compare(entity, {
+    ...entity,
+    domain: patchObj,
+  });
+
+  return jsonPatch;
+};
+
+export const updateDomainAssets = async (
+  activeEntity: EntityDetailUnion | undefined,
+  type: AssetsOfEntity,
+  selectedItems: Map<string, EntityDetailUnion>
+) => {
+  try {
+    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+      getEntityAPIfromSource(item.entityType)(
+        item.fullyQualifiedName,
+        getAssetsFields(type)
+      )
+    );
+    const entityDetailsResponse = await Promise.allSettled(entityDetails);
+    const map = new Map();
+
+    entityDetailsResponse.forEach((response) => {
+      if (response.status === 'fulfilled') {
+        const entity = response.value;
+        entity && map.set(entity.fullyQualifiedName, entity);
+      }
+    });
+    const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+      .map((item) => {
+        if (map.has(item.fullyQualifiedName)) {
+          const entity = map.get(item.fullyQualifiedName);
+          const jsonPatch = getJsonPatchObject(entity, activeEntity as Domain);
+          const api = getAPIfromSource(item.entityType);
+
+          return api(item.id, jsonPatch);
+        }
+
+        return;
+      })
+      .filter(Boolean);
+
+    await Promise.all(patchAPIPromises);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
+  }
+};
+
+export const removeGlossaryTermAssets = async (
+  entityFqn: string,
+  type: AssetsOfEntity,
+  selectedItems: Map<string, EntityDetailUnion>
+) => {
+  const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+    getEntityAPIfromSource(item.entityType)(
+      item.fullyQualifiedName,
+      getAssetsFields(type)
+    )
+  );
+
+  try {
+    const entityDetailsResponse = await Promise.allSettled(entityDetails);
+    const map = new Map();
+    entityDetailsResponse.forEach((response) => {
+      if (response.status === 'fulfilled') {
+        const entity = response.value;
+        entity && map.set(entity.fullyQualifiedName, (entity as Table).tags);
+      }
+    });
+    const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+      .map((item) => {
+        if (map.has(item.fullyQualifiedName)) {
+          const jsonPatch = compare(
+            { tags: map.get(item.fullyQualifiedName) },
+            {
+              tags: (item.tags ?? []).filter(
+                (tag: EntityDetailUnion) => tag.tagFQN !== entityFqn
+              ),
+            }
+          );
+          const api = getAPIfromSource(item.entityType);
+
+          return api(item.id, jsonPatch);
+        }
+
+        return;
+      })
+      .filter(Boolean);
+
+    await Promise.all(patchAPIPromises);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
   }
 };

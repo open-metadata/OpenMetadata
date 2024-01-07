@@ -23,7 +23,8 @@ import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.schema.services.connections.storage.GcsConnection;
+import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
 public class ClassConverterFactoryTest {
 
@@ -38,7 +39,8 @@ public class ClassConverterFactoryTest {
         DbtGCSConfig.class,
         DbtPipeline.class,
         GCSConfig.class,
-        GcsConnection.class,
+        GCSConnection.class,
+        ElasticSearchConnection.class,
         LookerConnection.class,
         OpenMetadataConnection.class,
         SSOAuthMechanism.class,
@@ -50,11 +52,12 @@ public class ClassConverterFactoryTest {
         Workflow.class
       })
   void testClassConverterIsSet(Class<?> clazz) {
-    assertFalse(ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
+    assertFalse(
+        ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
   }
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(18, ClassConverterFactory.getConverterMap().size());
+    assertEquals(19, ClassConverterFactory.getConverterMap().size());
   }
 }

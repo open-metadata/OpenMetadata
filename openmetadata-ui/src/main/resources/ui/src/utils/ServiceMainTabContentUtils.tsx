@@ -19,7 +19,7 @@ import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
@@ -35,14 +35,15 @@ export const getServiceMainTabColumns = (
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
-    dataIndex: 'displayName',
-    key: 'displayName',
+    dataIndex: 'name',
+    key: 'name',
     width: 280,
     render: (_, record: ServicePageData) => {
       return (
         <Link
           to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
           <Typography.Paragraph
+            data-testid="child-asset-name-link"
             ellipsis={{
               rows: 2,
               tooltip: true,
@@ -91,12 +92,7 @@ export const getServiceMainTabColumns = (
     render: (owner: ServicePageData['owner']) =>
       !isUndefined(owner) ? (
         <Space data-testid="owner-data">
-          <ProfilePicture
-            id=""
-            name={owner.name ?? ''}
-            type="circle"
-            width="24"
-          />
+          <ProfilePicture name={owner.name ?? ''} width="24" />
           <Typography.Text data-testid={`${owner.name}-owner-name`}>
             {getEntityName(owner)}
           </Typography.Text>

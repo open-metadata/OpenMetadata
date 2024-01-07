@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import java.util.List;
 import lombok.SneakyThrows;
@@ -29,7 +29,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
@@ -59,8 +58,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
-    ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
+        FullyQualifiedName.add(
+            dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+    ColumnUtil.setColumnFQN(
+        dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
 
   @Override
@@ -86,9 +87,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     ColumnDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
       threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+      column =
+          EntityUtil.findColumn(
+              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -104,9 +108,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     ColumnTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+          Entity.getEntity(
+              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
       threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
+      column =
+          EntityUtil.findColumn(
+              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -119,12 +126,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void prepare(DashboardDataModel dashboardDataModel, boolean update) {
-    DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
+    DashboardService dashboardService =
+        Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
-
-    // Validate column tags
-    validateColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -132,7 +137,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference service = dashboardDataModel.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // relationships
     dashboardDataModel.withService(null);
 
     store(dashboardDataModel, update);
@@ -144,68 +150,40 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   @SneakyThrows
   public void storeRelationships(DashboardDataModel dashboardDataModel) {
-    EntityReference service = dashboardDataModel.getService();
-    addRelationship(
-        service.getId(),
-        dashboardDataModel.getId(),
-        service.getType(),
-        Entity.DASHBOARD_DATA_MODEL,
-        Relationship.CONTAINS);
+    addServiceRelationship(dashboardDataModel, dashboardDataModel.getService());
   }
 
   @Override
-  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
-    return inheritDomain(dataModel, fields, dashboardService);
-  }
-
-  @Override
-  public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
+  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    populateEntityFieldTags(
+        entityType,
+        dashboardDataModel.getColumns(),
+        dashboardDataModel.getFullyQualifiedName(),
+        fields.contains(FIELD_TAGS));
+    dashboardDataModel.setSourceHash(
+        fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
-    return dashboardDataModel;
   }
 
   @Override
-  public DashboardDataModel clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    return dashboardDataModel; // Nothing to do
+  public void clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
-  }
-
-  // TODO move this to base class?
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
-    }
-  }
-
-  private void applyTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
-      if (column.getChildren() != null) {
-        applyTags(column.getChildren());
-      }
-    }
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override
   public void applyTags(DashboardDataModel dashboardDataModel) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(dashboardDataModel);
-    applyTags(dashboardDataModel.getColumns());
+    applyColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -214,22 +192,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public EntityUpdater getUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      DashboardDataModel original, DashboardDataModel updated, Operation operation) {
     return new DataModelUpdater(original, updated, operation);
   }
 
-  private void validateColumnTags(List<Column> columns) {
-    for (Column column : columns) {
-      checkMutuallyExclusive(column.getTags());
-      if (column.getChildren() != null) {
-        validateColumnTags(column.getChildren());
-      }
-    }
+  @Override
+  public void validateTags(DashboardDataModel entity) {
+    super.validateTags(entity);
+    validateColumnTags(entity.getColumns());
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {
 
-    public DataModelUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
+    public DataModelUpdater(
+        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -238,6 +215,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     public void entitySpecificUpdate() {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

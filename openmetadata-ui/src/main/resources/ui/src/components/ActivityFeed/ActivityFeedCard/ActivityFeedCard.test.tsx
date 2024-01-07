@@ -21,15 +21,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-  isProfilePicLoading: jest.fn(),
-}));
-
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
   getEntityFQN: jest.fn(),
@@ -44,6 +35,10 @@ jest.mock('./FeedCardFooter/FeedCardFooter', () => {
 });
 jest.mock('./FeedCardHeader/FeedCardHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
+});
+
+jest.mock('../../common/PopOverCard/UserPopOverCard', () => {
+  return jest.fn().mockImplementation(() => <>testUserPopOverCard</>);
 });
 
 const mockFeedCardProps = {

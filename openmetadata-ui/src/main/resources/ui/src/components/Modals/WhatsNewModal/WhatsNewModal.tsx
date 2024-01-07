@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import CloseIcon from '../CloseIcon.component';
 import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
+import './whats-new-modal.less';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
 import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
-import './WhatsNewModal.styles.less';
-import { getReleaseVersionExpiry } from './WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 
@@ -77,28 +77,31 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       }
       width={1200}>
       <Row className="w-auto h-full h-min-75">
-        <Col className="border-r-2 p-x-md p-y-md border-separate" span={3}>
-          <div className="d-flex flex-col-reverse">
+        <Col
+          className="border-r-2 p-x-md p-y-md border-separate whats-new-version-timeline"
+          span={3}>
+          <Space className="flex-col-reverse" direction="vertical">
             {WHATS_NEW.map((d) => (
-              <div className="flex items-center justify-end mb-2.5" key={d.id}>
-                <VersionIndicatorIcon
-                  fill={
-                    activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
-                  }
-                />
-                <Button
-                  className={classNames(
-                    'm-l-xss p-0',
-                    activeData.id === d.id ? 'text-primary' : null
-                  )}
-                  size="small"
-                  type="text"
-                  onClick={() => setActiveData(d)}>
-                  {d.version}
-                </Button>
-              </div>
+              <Button
+                className={classNames(
+                  'p-0',
+                  activeData.id === d.id ? 'text-primary' : null
+                )}
+                icon={
+                  <VersionIndicatorIcon
+                    fill={
+                      activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
+                    }
+                  />
+                }
+                key={d.id}
+                size="small"
+                type="text"
+                onClick={() => setActiveData(d)}>
+                {d.version}
+              </Button>
             ))}
-          </div>
+          </Space>
         </Col>
         <Col className="overflow-y-auto" span={21}>
           <div className="p-t-md px-10 ">

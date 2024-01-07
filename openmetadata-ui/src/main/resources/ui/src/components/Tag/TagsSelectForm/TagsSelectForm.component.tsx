@@ -25,6 +25,7 @@ const TagSelectForm = ({
   onSubmit,
   onCancel,
   tagData,
+  tagType,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -66,9 +67,10 @@ const TagSelectForm = ({
             <AsyncSelectList
               className="tag-select-box"
               fetchOptions={fetchApi}
-              initialData={tagData}
+              initialOptions={tagData}
               mode="multiple"
               placeholder={placeholder}
+              tagType={tagType}
             />
           </Form.Item>
         </Col>

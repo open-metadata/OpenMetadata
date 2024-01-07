@@ -13,16 +13,16 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityUnion } from '../../../components/Explore/explore.interface';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
-import { TagLabel } from '../../../generated/type/tagLabel';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
-  tags,
+  tags = [],
   entityDetail,
 }: {
-  tags: TagLabel[];
+  tags: BasicEntityInfo['tags'];
   entityDetail: EntityUnion;
 }) => {
   const { t } = useTranslation();

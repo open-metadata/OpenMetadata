@@ -22,7 +22,6 @@ import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -31,16 +30,18 @@ import {
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
 export const INFO_COLOR = '#2196f3';
+export const ERROR_COLOR = '#ff4c3b';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
-export const GRAYED_OUT_COLOR = '#CCCCCC';
+export const GRAYED_OUT_COLOR = '#959595';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
+export const BLACK_COLOR = '#000000';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -50,7 +51,7 @@ export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
-export const USER_DATA_SIZE = 4;
+export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -66,6 +67,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
+export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -86,6 +88,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
+export const STAR_OMD_USER = 'STAR_OMD_USER';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -96,7 +99,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_SUB_TAB = ':subTab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
-export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 
@@ -119,13 +121,7 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const tiers = [
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
-];
+export const ES_UPDATE_DELAY = 500;
 
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
@@ -140,24 +136,10 @@ export const globalSearchOptions = [
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
-];
-
-export const versionTypes = [
-  { name: t('label.all'), value: 'all' },
-  { name: t('label.major'), value: 'major' },
-  { name: t('label.minor'), value: 'minor' },
+  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
-
-export const visibleFilters = [
-  'service',
-  'tier',
-  'tags',
-  'database',
-  'databaseschema',
-  'servicename',
-];
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
@@ -335,8 +317,11 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+  SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
+
+  ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -779,11 +764,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const TIMEOUT = {
-  USER_LIST: 60000, // 60 seconds for user retrieval
-  TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
-};
-
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
@@ -820,6 +800,13 @@ export const VALIDATION_MESSAGES = {
     fieldText: '${label}',
   }),
   string: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
+  number: {
     range: i18n.t('message.entity-size-in-between', {
       entity: '${label}',
       min: '${min}',

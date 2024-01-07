@@ -28,6 +28,7 @@ from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
@@ -36,6 +37,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -94,7 +96,7 @@ def _build(*args, quote: bool = True) -> str:
 
 
 def unquote_name(name: str) -> str:
-    return name[1:-1] if name is not None and '"' in name else name
+    return name[1:-1] if name and name[0] == '"' and name[-1] == '"' else name
 
 
 def quote_name(name: str) -> str:
@@ -283,6 +285,25 @@ def _(
     return _build(service_name, topic_name)
 
 
+@fqn_build_registry.add(Container)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Container FQN building
+    *,
+    service_name: str,
+    parent_container: str,
+    container_name: str,
+) -> str:
+    if not service_name or not container_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
+        )
+    return (
+        _build(parent_container, container_name, quote=False)
+        if parent_container
+        else (_build(service_name, container_name))
+    )
+
+
 @fqn_build_registry.add(SearchIndex)
 def _(
     _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building
@@ -321,6 +342,18 @@ def _(
     model_name: str,
 ) -> str:
     return _build(service_name, database_name, schema_name, model_name)
+
+
+@fqn_build_registry.add(StoredProcedure)
+def _(
+    _: Optional[OpenMetadata],
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    procedure_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, procedure_name)
 
 
 @fqn_build_registry.add(Pipeline)
@@ -531,12 +564,12 @@ def build_es_fqn_search_string(
     Returns:
         FQN search string
     """
-    if not service_name or not table_name:
+    if not table_name:
         raise FQNBuildingException(
-            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+            f"Table Name should be informed, but got table=`{table_name}`"
         )
     fqn_search_string = _build(
-        service_name, database_name or "*", schema_name or "*", table_name
+        service_name or "*", database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
 
@@ -548,6 +581,7 @@ def search_table_from_es(
     service_name: str,
     table_name: str,
     fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,
 ):
     fqn_search_string = build_es_fqn_search_string(
         database_name, schema_name, service_name, table_name
@@ -556,6 +590,36 @@ def search_table_from_es(
     es_result = metadata.es_search_from_fqn(
         entity_type=Table,
         fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
+def search_database_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    service_name: Optional[str],
+    fetch_multiple_entities: Optional[bool] = False,
+    fields: Optional[str] = None,
+):
+    """
+    Search Database entity from ES
+    """
+
+    if not database_name:
+        raise FQNBuildingException(
+            f"Database Name should be informed, but got database=`{database_name}`"
+        )
+
+    fqn_search_string = _build(service_name or "*", database_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Database,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
     )
 
     return get_entity_from_es_result(

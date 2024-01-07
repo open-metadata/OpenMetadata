@@ -11,8 +11,9 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
@@ -32,7 +33,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -45,12 +45,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -65,7 +67,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -101,10 +102,14 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["database"],
-        post_process=["yield_view_lineage"],
+        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
+        # as post_processed. This is because we cannot ensure proper lineage processing
+        # until we have finished ingesting all the metadata from the source.
+        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -114,6 +119,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
             )
         ],
         children=["databaseSchema"],
@@ -126,17 +133,19 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_database_schema_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DatabaseSchema,
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
+                cache_entities=True,
+                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted"],
+        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -146,13 +155,20 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_table_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=Table,
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
+            ),
+            NodeStage(
+                type_=User,
+                context="owner",
+                processor="process_owner",
+                consumer=["database_service", "database_schema"],
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -166,26 +182,11 @@ class DatabaseServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=StoredProcedure,
-                context="stored_procedure",
+                context="stored_procedures",
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
-            ),
-        ],
-        children=["stored_procedure_queries"],
-    )
-    stored_procedure_queries = TopologyNode(
-        producer="get_stored_procedure_queries",
-        stages=[
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="yield_procedure_lineage",
-                context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
-                nullable=True,
-            ),
-            NodeStage(
-                type_=Query,
-                processor="yield_procedure_query",
-                nullable=True,
+                store_all_in_context=True,
+                use_cache=True,
             ),
         ],
     )
@@ -202,6 +203,7 @@ class DatabaseServiceSource(
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     database_source_state: Set = set()
+    stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
 
@@ -339,20 +341,10 @@ class DatabaseServiceSource(
         """Process the stored procedure information"""
 
     @abstractmethod
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
-        """List the queries associated to a stored procedure"""
-
-    @abstractmethod
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Process the stored procedure query"""
-
-    @abstractmethod
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Add procedure lineage from its query"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -386,9 +378,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             skip_es_search=True,
         )
@@ -404,9 +396,9 @@ class DatabaseServiceSource(
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             column_name=column["name"],
         )
@@ -419,14 +411,31 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_request.name.__root__,
             skip_es_search=True,
         )
 
         self.database_source_state.add(table_fqn)
+
+    def register_record_stored_proc_request(
+        self, stored_proc_request: CreateStoredProcedureRequest
+    ) -> None:
+        """
+        Mark the table record as scanned and update the database_source_state
+        """
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            procedure_name=stored_proc_request.name.__root__,
+        )
+
+        self.stored_procedure_source_state.add(table_fqn)
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -435,8 +444,8 @@ class DatabaseServiceSource(
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema_name,
             )
             if filter_by_schema(
@@ -448,13 +457,75 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def get_owner_details(  # pylint: disable=useless-return
+        self, schema_name: str, table_name: str  # pylint: disable=unused-argument
+    ) -> Optional[EntityReference]:
+        """Get database owner
+
+        Args
+        schema_name, table_nam
+        Returns:
+            Optional[EntityReference]
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
+        return None
+
+    def process_owner(self, table_name_and_type: Tuple[str, str]):
+        """
+        Method to process the table owners
+        """
+        try:
+            if self.source_config.includeOwners:
+                self.inspector.get_table_owner(
+                    connection=self.connection,  # pylint: disable=no-member
+                    table_name=table_name_and_type[0],
+                    schema=self.context.database_schema,
+                )
+                schema_name = self.context.database_schema
+                table_name = table_name_and_type[0]
+
+                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                    table_name=table_name, schema_name=schema_name
+                )
+
+                if owner:
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                        table_name=table_name,
+                    )
+                    table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
+                    self.metadata.patch_owner(
+                        entity=Table,
+                        source=table_entity,
+                        owner=owner,
+                        force=False,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
+            )
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
         """
+        if not self.context.__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the table deletion."
+            )
+
         if self.source_config.markDeletedTables:
             logger.info(
-                f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
+                f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
             )
             schema_fqn_list = self._get_filtered_schema_names(
                 return_fqn=True, add_to_status=False
@@ -467,6 +538,28 @@ class DatabaseServiceSource(
                     entity_source_state=self.database_source_state,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                     params={"database": schema_fqn},
+                )
+
+    def mark_stored_procedures_as_deleted(self):
+        """
+        Use the current inspector to mark Stored Procedures as deleted
+        """
+        if self.source_config.markDeletedStoredProcedures:
+            logger.info(
+                f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
+            )
+
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
+
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=StoredProcedure,
+                    entity_source_state=self.stored_procedure_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:

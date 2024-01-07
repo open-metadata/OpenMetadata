@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   CartesianGrid,
   Line,
@@ -25,13 +26,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as KPIIcon } from '../../assets/svg/ic-kpi.svg';
+import { ReactComponent as KPIEmptyIcon } from '../../assets/svg/KPI-not-data-placeholder.svg';
 import {
   CHART_WIDGET_DAYS_DURATION,
   GRAPH_BACKGROUND_COLOR,
 } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
+import { SIZE } from '../../enums/common.enum';
 import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
@@ -55,8 +57,8 @@ const EmptyPlaceholder = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex items-center flex-col p-t-sm">
-      <KPIIcon width={80} />
+    <div className="flex-center flex-col h-full p-t-sm">
+      <KPIEmptyIcon width={SIZE.X_SMALL} />
       <div className="m-t-xs text-center">
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
@@ -67,11 +69,10 @@ const EmptyPlaceholder = () => {
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a
-                href={DATA_INSIGHT_DOCS}
+              <Link
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
                 target="_blank"
+                to={{ pathname: DATA_INSIGHT_DOCS }}
               />
             }
             values={{
@@ -215,22 +216,27 @@ const KPIWidget = ({
   return (
     <Card
       className="kpi-widget-card h-full"
-      data-testid="kpi-card"
+      data-testid="kpi-widget"
       id="kpi-charts"
       loading={isKPIListLoading || isLoading}>
-      <Row justify="end">
-        <Col>
-          {isEditView && (
+      {isEditView && (
+        <Row justify="end">
+          <Col>
             <Space align="center">
               <DragOutlined
                 className="drag-widget-icon cursor-pointer"
+                data-testid="drag-widget-button"
                 size={14}
               />
-              <CloseOutlined size={14} onClick={handleCloseClick} />
+              <CloseOutlined
+                data-testid="remove-widget-button"
+                size={14}
+                onClick={handleCloseClick}
+              />
             </Space>
-          )}
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      )}
       <Row align="middle" justify="space-between">
         <Col>
           <Typography.Text className="font-medium">
@@ -238,55 +244,45 @@ const KPIWidget = ({
           </Typography.Text>
         </Col>
       </Row>
-      {kpiList.length > 0 ? (
-        <Row className="p-t-md">
-          {graphData.length ? (
-            <>
-              <Col span={isWidgetSizeMedium ? 14 : 24}>
-                <ResponsiveContainer debounce={1} height={250} width="100%">
-                  <LineChart
-                    data={graphData}
-                    margin={{
-                      top: 10,
-                      right: isWidgetSizeMedium ? 50 : 20,
-                      left: -30,
-                      bottom: 0,
-                    }}>
-                    <CartesianGrid
-                      stroke={GRAPH_BACKGROUND_COLOR}
-                      vertical={false}
-                    />
-                    <XAxis dataKey="timestamp" />
-                    <YAxis />
-                    {kpis.map((kpi, i) => (
-                      <Line
-                        dataKey={kpi}
-                        key={kpi}
-                        stroke={KPI_WIDGET_GRAPH_COLORS[i]}
-                        type="monotone"
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </Col>
-              {!isUndefined(kpiLatestResults) &&
-                !isEmpty(kpiLatestResults) &&
-                isWidgetSizeMedium && (
-                  <Col span={10}>
-                    <KPILatestResultsV1
-                      kpiLatestResultsRecord={kpiLatestResults}
-                    />
-                  </Col>
-                )}
-            </>
-          ) : (
-            <Col span={24}>
-              <EmptyPlaceholder />
-            </Col>
-          )}
-        </Row>
-      ) : (
+      {isEmpty(kpiList) || isEmpty(graphData) ? (
         <EmptyPlaceholder />
+      ) : (
+        <Row className="p-t-md">
+          <Col span={isWidgetSizeMedium ? 14 : 24}>
+            <ResponsiveContainer debounce={1} height={250} width="100%">
+              <LineChart
+                data={graphData}
+                margin={{
+                  top: 10,
+                  right: isWidgetSizeMedium ? 50 : 20,
+                  left: -30,
+                  bottom: 0,
+                }}>
+                <CartesianGrid
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  vertical={false}
+                />
+                <XAxis dataKey="timestamp" />
+                <YAxis />
+                {kpis.map((kpi, i) => (
+                  <Line
+                    dataKey={kpi}
+                    key={kpi}
+                    stroke={KPI_WIDGET_GRAPH_COLORS[i]}
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+          {!isUndefined(kpiLatestResults) &&
+            !isEmpty(kpiLatestResults) &&
+            isWidgetSizeMedium && (
+              <Col span={10}>
+                <KPILatestResultsV1 kpiLatestResultsRecord={kpiLatestResults} />
+              </Col>
+            )}
+        </Row>
       )}
     </Card>
   );

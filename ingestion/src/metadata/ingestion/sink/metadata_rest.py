@@ -47,20 +47,30 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCaseResolutionStatus import (
+    TestCaseResolutionStatus,
+)
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    PatchRequest,
+)
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
+    OMetaTestCaseResolutionStatus,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -84,7 +94,7 @@ class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
 
 
-class MetadataRestSink(Sink):
+class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     """
     Sink implementation that sends OM Entities
     to the OM server API
@@ -126,14 +136,14 @@ class MetadataRestSink(Sink):
             error = f"Failed to ingest {log} due to api request failure: {err}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
         except Exception as exc:
             error = f"Failed to ingest {log}: {exc}"
             return Either(
                 left=StackTraceError(
-                    name=log, error=error, stack_trace=traceback.format_exc()
+                    name=log, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
@@ -149,9 +159,31 @@ class MetadataRestSink(Sink):
         error = f"Failed to ingest {type(entity_request).__name__}"
         return Either(
             left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stack_trace=None
+                name=type(entity_request).__name__, error=error, stackTrace=None
             )
         )
+
+    @_run_dispatch.register
+    def patch_entity(self, record: PatchRequest) -> Either[Entity]:
+        """
+        Patch the records
+        """
+        entity = self.metadata.patch(
+            entity=type(record.original_entity),
+            source=record.original_entity,
+            destination=record.new_entity,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+        )
+        return Either(right=entity)
+
+    @_run_dispatch.register
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
+        """
+        Create or update the custom properties
+        """
+        custom_property = self.metadata.create_or_update_custom_property(record)
+        return Either(right=custom_property)
 
     @_run_dispatch.register
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:
@@ -172,7 +204,7 @@ class MetadataRestSink(Sink):
             left=StackTraceError(
                 name="Data Model",
                 error="Sink did not receive a table. We cannot ingest the data model.",
-                stack_trace=None,
+                stackTrace=None,
             )
         )
 
@@ -381,6 +413,15 @@ class MetadataRestSink(Sink):
         logger.debug(
             f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
         )
+        return Either(right=res)
+
+    @_run_dispatch.register
+    def write_test_case_resolution_status(
+        self, record: OMetaTestCaseResolutionStatus
+    ) -> TestCaseResolutionStatus:
+        """For sample data"""
+        res = self.metadata.create_test_case_resolution(record.test_case_resolution)
+
         return Either(right=res)
 
     @_run_dispatch.register

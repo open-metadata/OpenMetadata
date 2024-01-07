@@ -85,6 +85,9 @@ class NifiClient:
                 )
                 self._token = res.text
 
+                if res.status_code not in (200, 201):
+                    raise HTTPError(res.text)
+
             except HTTPError as err:
                 logger.error(
                     f"Connection error retrieving the Bearer Token to access Nifi - {err}"

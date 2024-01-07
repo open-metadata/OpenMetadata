@@ -58,7 +58,7 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
         return 7
 
     def inserted_rows_count(self) -> int:
-        return 100
+        return 50
 
     def view_column_lineage_count(self) -> int:
         pass

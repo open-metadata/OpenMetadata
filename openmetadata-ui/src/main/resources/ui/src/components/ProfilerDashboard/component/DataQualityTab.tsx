@@ -26,23 +26,20 @@ import { ReactComponent as IconCheckMark } from '../../../assets/svg/ic-check-ma
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from '../../../components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Table from '../../../components/common/Table/Table';
 import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
+import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../generated/entity/policies/policy';
-import {
-  TestCase,
-  TestCaseFailureStatus,
-  TestCaseResult,
-} from '../../../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import {
   patchTestCaseResult,
   removeTestCaseFromTestSuite,
@@ -55,18 +52,16 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
-import {
-  getEntityFqnFromEntityLink,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import {
   DataQualityTabProps,
   TableProfilerTab,
   TestCaseAction,
 } from '../profilerDashboard.interface';
-import './DataQualityTab.style.less';
+import './data-quality-tab.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -78,6 +73,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeFromTestSuite,
   showTableColumn = true,
   afterDeleteAction,
+  showPagination,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -121,12 +117,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setSelectedTestCase(undefined);
   };
 
-  const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
+  const handleStatusSubmit = async (data: TestCaseResolutionStatus) => {
     if (selectedTestCase?.data?.testCaseResult) {
       const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...selectedTestCase.data?.testCaseResult,
-        testCaseFailureStatus: data,
+        testCaseResolutionStatusReference: data,
       };
       const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
       const patch = compare(
@@ -254,8 +250,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'resolution',
         width: 100,
         render: (value: TestCaseResult) => {
-          const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
-          const failureStatus = value?.testCaseFailureStatus;
+          const label =
+            value?.testCaseResolutionStatusReference
+              ?.testCaseResolutionStatusType;
+          const failureStatus = value?.testCaseResolutionStatusReference;
 
           return label ? (
             <Tooltip
@@ -407,7 +405,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           data-testid="test-case-table"
           dataSource={sortedData}
           expandable={{
-            ...getTableExpandableConfig<TestCase>(),
             expandRowByClick: true,
             rowExpandable: () => true,
             expandedRowRender: (recode) => <TestSummary data={recode} />,
@@ -422,15 +419,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
-          <NextPrevious
-            currentPage={pagingData.currentPage}
-            isNumberBased={pagingData.isNumberBased}
-            pageSize={PAGE_SIZE}
-            paging={pagingData.paging}
-            pagingHandler={pagingData.onPagingClick}
-          />
-        )}
+        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal
@@ -441,7 +430,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
 
         <TestCaseStatusModal
-          data={selectedTestCase?.data?.testCaseResult?.testCaseFailureStatus}
+          data={
+            selectedTestCase?.data?.testCaseResult
+              ?.testCaseResolutionStatusReference
+          }
           open={selectedTestCase?.action === 'UPDATE_STATUS'}
           onCancel={handleCancel}
           onSubmit={handleStatusSubmit}
@@ -469,7 +461,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}
-            entityType="testCase"
+            entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
           />

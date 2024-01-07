@@ -21,13 +21,13 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) {
-    return entity; // Nothing to set
+  public void setFields(TestDefinition entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public TestDefinition clearFields(TestDefinition entity, EntityUtil.Fields fields) {
-    return entity; // Nothing to set
+  public void clearFields(TestDefinition entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -49,12 +49,14 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public EntityUpdater getUpdater(TestDefinition original, TestDefinition updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      TestDefinition original, TestDefinition updated, Operation operation) {
     return new TestDefinitionUpdater(original, updated, operation);
   }
 
   public class TestDefinitionUpdater extends EntityUpdater {
-    public TestDefinitionUpdater(TestDefinition original, TestDefinition updated, Operation operation) {
+    public TestDefinitionUpdater(
+        TestDefinition original, TestDefinition updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -62,8 +64,12 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     @Override
     public void entitySpecificUpdate() {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
-      recordChange("supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());
-      recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
+      recordChange(
+          "supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());
+      recordChange(
+          "parameterDefinition",
+          original.getParameterDefinition(),
+          updated.getParameterDefinition());
     }
   }
 }

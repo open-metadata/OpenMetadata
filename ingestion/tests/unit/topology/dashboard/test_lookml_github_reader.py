@@ -35,11 +35,13 @@ class TestLookMLGitHubReader(TestCase):
     reader = GitHubReader(creds)
     parser = LkmlParser(reader)
 
-    def test_lookml_read_and_parse(self):
+    def x_test_lookml_read_and_parse(self):
         """
         We can parse the explore file.
 
         We'll expand and find views from https://github.com/open-metadata/lookml-sample/blob/main/cats.explore.lkml
+
+        disabling this test as it is flakey and fails with error rate limit exceeded
         """
 
         explore_file = "cats.explore.lkml"

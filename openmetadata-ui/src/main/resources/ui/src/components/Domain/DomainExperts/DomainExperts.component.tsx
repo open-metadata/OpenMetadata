@@ -62,7 +62,6 @@ function DomainExperts({
         <Space className="m-r-xss" key={expert.id} size={4}>
           <ProfilePicture
             displayName={getEntityName(expert)}
-            id={expert.id}
             name={expert.name ?? ''}
             textClass="text-xs"
             width="20"
@@ -122,7 +121,7 @@ function DomainExperts({
 
   if (!isEmpty(entity.experts) && !isUndefined(entity.experts)) {
     return (
-      <Space wrap data-testid="domain-expert-name-heading" size={6}>
+      <Space wrap data-testid="domain-expert-name-heading" size={8}>
         {entity.experts.map((expert) =>
           getExpert(expert, EntityChangeOperations.NORMAL)
         )}

@@ -21,6 +21,13 @@ export const TAG_CONSTANT = {
   tagFQN: t('label.add'),
 };
 
+export const GLOSSARY_CONSTANT = {
+  labelType: LabelType.Manual,
+  source: TagSource.Glossary,
+  state: State.Confirmed,
+  tagFQN: t('label.add'),
+};
+
 export enum TAG_START_WITH {
   PLUS = '+',
   SOURCE_ICON = 'source_icon',

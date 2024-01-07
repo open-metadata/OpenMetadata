@@ -59,13 +59,7 @@ jest.mock('../../rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../AppState', () =>
-  jest.fn().mockReturnValue({
-    userTeams: [],
-  })
-);
-
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
 

@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
@@ -30,6 +31,8 @@ from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.helpers import is_safe_sql_query
+from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
@@ -37,6 +40,8 @@ from metadata.utils.sqa_utils import (
     get_partition_col_type,
     get_value_filter,
 )
+
+logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
@@ -63,17 +68,28 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
-    def _base_sample_query(self, label=None):
+    def _base_sample_query(self, column: Optional[Column], label=None):
+        """Base query for sampling
+
+        Args:
+            column (Optional[Column]): if computing a column metric only sample for the column
+            label (_type_, optional):
+
+        Returns:
+        """
+        # only sample the column if we are computing a column metric to limit the amount of data scaned
+        entity = self.table if column is None else column
         if label is not None:
-            return self.client.query(self.table, label)
-        return self.client.query(self.table)
+            return self.client.query(entity, label)
+        return self.client.query(entity)
 
     @partition_filter_handler(build_sample=True)
-    def get_sample_query(self) -> Query:
+    def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
                 self._base_sample_query(
+                    column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .suffix_with(
@@ -89,6 +105,7 @@ class SQASampler(SamplerInterface):
 
         table_query = self.client.query(self.table)
         session_query = self._base_sample_query(
+            column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
         )
         return (
@@ -97,7 +114,7 @@ class SQASampler(SamplerInterface):
             .cte(f"{self.table.__tablename__}_rnd")
         )
 
-    def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def random_sample(self, ccolumn=None) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -105,14 +122,14 @@ class SQASampler(SamplerInterface):
         if self._profile_sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.profile_sample:
+        if not self.profile_sample or int(self.profile_sample) == 100:
             if self._partition_details:
                 return self._partitioned_table()
 
             return self.table
 
         # Add new RandomNumFn column
-        sampled = self.get_sample_query()
+        sampled = self.get_sample_query(column=ccolumn)
 
         # Assign as an alias
         return aliased(self.table, sampled)
@@ -143,12 +160,23 @@ class SQASampler(SamplerInterface):
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
-        sqa_sample = (
-            self.client.query(*sqa_columns)
-            .select_from(rnd)
-            .limit(self.sample_limit)
-            .all()
-        )
+        try:
+            sqa_sample = (
+                self.client.query(*sqa_columns)
+                .select_from(rnd)
+                .limit(self.sample_limit)
+                .all()
+            )
+        except Exception:
+            logger.debug(
+                "Cannot fetch sample data with random sampling. Falling back to 100 rows."
+            )
+            logger.debug(traceback.format_exc())
+            sqa_columns = list(inspect(self.table).c)
+            sqa_sample = (
+                self.client.query(*sqa_columns).select_from(self.table).limit(100).all()
+            )
+
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
@@ -156,6 +184,11 @@ class SQASampler(SamplerInterface):
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
+        if not is_safe_sql_query(self._profile_sample_query):
+            raise RuntimeError(
+                f"SQL expression is not safe\n\n{self._profile_sample_query}"
+            )
+
         rnd = self.client.execute(f"{self._profile_sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
@@ -168,6 +201,11 @@ class SQASampler(SamplerInterface):
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
+        if not is_safe_sql_query(self._profile_sample_query):
+            raise RuntimeError(
+                f"SQL expression is not safe\n\n{self._profile_sample_query}"
+            )
+
         return self.client.query(self.table).from_statement(
             text(f"{self._profile_sample_query}")
         )

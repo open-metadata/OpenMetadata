@@ -18,6 +18,7 @@ import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
 import frFR from '../../locale/languages/fr-fr.json';
 import jaJP from '../../locale/languages/ja-jp.json';
+import nlNL from '../../locale/languages/nl-nl.json';
 import ptBR from '../../locale/languages/pt-br.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import zhCN from '../../locale/languages/zh-cn.json';
@@ -31,6 +32,7 @@ export enum SupportedLocales {
   Español = 'es-ES',
   Русский = 'ru-RU',
   Deutsh = 'de-DE',
+  Nederlands = 'nl-NL',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -51,6 +53,7 @@ export const getInitOptions = (): InitOptions => {
       'es-ES': { translation: esES },
       'ru-RU': { translation: ruRU },
       'de-DE': { translation: deDe },
+      'nl-NL': { translation: nlNL },
     },
     fallbackLng: ['en-US'],
     detection: {

@@ -16,7 +16,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import DescriptionV1 from '../../../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
@@ -37,10 +37,14 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { getUserNames } from '../../../../utils/DomainUtils';
+import {
+  domainTypeTooltipDataRender,
+  getUserNames,
+} from '../../../../utils/DomainUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import FormItemLabel from '../../../Form/FormItemLabel';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -281,8 +285,15 @@ const DocumentationTab = ({
                 <Typography.Text
                   className="right-panel-label"
                   data-testid="domainType-heading-name">
-                  {t('label.domain-type')}
+                  <FormItemLabel
+                    align={{ targetOffset: [18, 0] }}
+                    helperText={domainTypeTooltipDataRender()}
+                    label={t('label.domain-type')}
+                    overlayClassName="domain-type-tooltip-container"
+                    placement="topLeft"
+                  />
                 </Typography.Text>
+
                 {editAllPermission && (domain as Domain).domainType && (
                   <Button
                     className="cursor-pointer flex-center m-l-xss"

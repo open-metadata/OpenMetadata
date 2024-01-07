@@ -37,24 +37,41 @@ describe('Entity Announcement', () => {
         'announcementFeed'
       );
       interceptURL('DELETE', '/api/v1/feed/*', 'deleteFeed');
-      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      visitEntityDetailsPage({
+        term: value.term,
+        serviceName: value.serviceName,
+        entity: value.entity,
+      });
       cy.get('[data-testid="manage-button"]').click();
       cy.get('[data-testid="announcement-button"]').click();
 
       verifyResponseStatusCode('@announcementFeed', 200);
-      cy.get('[data-testid="main-message"]').each(($message) => {
-        cy.wrap($message)
-          .trigger('mouseover')
-          .then(() => {
-            cy.get('[data-testid="delete-message"]').click({ force: true });
-            cy.get('.ant-modal-body').should(
-              'contain',
-              'Are you sure you want to permanently delete this message?'
-            );
-            cy.get('[data-testid="save-button"]').click();
-            verifyResponseStatusCode('@deleteFeed', 200);
-          });
-      });
+
+      cy.get('[data-testid="announcement-card"] [data-testid="main-message"]')
+        .first()
+        .trigger('mouseover')
+        .then(() => {
+          cy.get('[data-testid="delete-message"]').click({ force: true });
+          cy.get('.ant-modal-body').should(
+            'contain',
+            'Are you sure you want to permanently delete this message?'
+          );
+          cy.get('[data-testid="save-button"]').click();
+          verifyResponseStatusCode('@deleteFeed', 200);
+        });
+
+      cy.get('[data-testid="announcement-card"] [data-testid="main-message"]')
+        .last()
+        .trigger('mouseover')
+        .then(() => {
+          cy.get('[data-testid="delete-message"]').click({ force: true });
+          cy.get('.ant-modal-body').should(
+            'contain',
+            'Are you sure you want to permanently delete this message?'
+          );
+          cy.get('[data-testid="save-button"]').click();
+          verifyResponseStatusCode('@deleteFeed', 200);
+        });
     });
   });
 });

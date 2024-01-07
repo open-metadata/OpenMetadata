@@ -97,8 +97,10 @@ public class MetadataServiceResource
         OpenMetadataConnection openMetadataServerConnection =
             new OpenMetadataConnectionBuilder(config)
                 .build()
-                .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
-        MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
+                .withElasticsSearch(
+                    getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
+        MetadataConnection metadataConnection =
+            new MetadataConnection().withConfig(openMetadataServerConnection);
         openMetadataService.setConnection(metadataConnection);
       } else {
         LOG.error("[MetadataService] Missing Elastic Search Config.");
@@ -143,7 +145,9 @@ public class MetadataServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = MetadataServiceResource.MetadataServiceList.class)))
+                    schema =
+                        @Schema(
+                            implementation = MetadataServiceResource.MetadataServiceList.class)))
       })
   public ResultList<MetadataService> list(
       @Context UriInfo uriInfo,
@@ -159,7 +163,9 @@ public class MetadataServiceResource
               schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of metadata services after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of metadata services after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -168,7 +174,8 @@ public class MetadataServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return listInternal(uriInfo, securityContext, fieldsParam, include, null, limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, null, limitParam, before, after);
   }
 
   @GET
@@ -182,13 +189,19 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Metadata Service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
-        @ApiResponse(responseCode = "404", description = "Metadata Service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetadataService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Metadata Service for instance {id} is not found")
       })
   public MetadataService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -200,7 +213,8 @@ public class MetadataServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MetadataService metadataService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    MetadataService metadataService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
 
@@ -215,13 +229,18 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Metadata Service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
-        @ApiResponse(responseCode = "404", description = "Metadata Service for instance {name} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetadataService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Metadata Service for instance {name} is not found")
       })
   public MetadataService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -234,7 +253,8 @@ public class MetadataServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    MetadataService metadataService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MetadataService metadataService =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
 
@@ -249,12 +269,16 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Successfully updated the service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class)))
       })
   public MetadataService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -272,12 +296,16 @@ public class MetadataServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "List of Metadata Service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -286,7 +314,8 @@ public class MetadataServiceResource
             .map(
                 json -> {
                   try {
-                    MetadataService metadataService = JsonUtils.readValue((String) json, MetadataService.class);
+                    MetadataService metadataService =
+                        JsonUtils.readValue((String) json, MetadataService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
                   } catch (Exception e) {
                     return json;
@@ -308,17 +337,21 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Metadata Service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetadataService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Metadata Service for instance {id} and version " + "{version} is not found")
+            description = "Metadata Service for instance {id} and version {version} is not found")
       })
   public MetadataService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "Metadata Service version number in the form `major`" + ".`minor`",
+              description = "Metadata Service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -336,12 +369,17 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Metadata Service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetadataService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService create) {
-    MetadataService service = getMetadataService(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMetadataService create) {
+    MetadataService service =
+        getMetadataService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
@@ -357,12 +395,17 @@ public class MetadataServiceResource
             responseCode = "200",
             description = "Metadata Service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetadataService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update) {
-    MetadataService service = getMetadataService(update, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMetadataService update) {
+    MetadataService service =
+        getMetadataService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
@@ -374,19 +417,24 @@ public class MetadataServiceResource
       operationId = "patchMetadataService",
       summary = "Update a metadata service",
       description = "Update an existing Metadata service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -397,15 +445,19 @@ public class MetadataServiceResource
   @Operation(
       operationId = "deleteMetadataService",
       summary = "Delete a metadata service by Id",
-      description = "Delete a metadata services. If some service belong the service, it can't be " + "deleted.",
+      description =
+          "Delete a metadata services. If some service belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MetadataService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "MetadataService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -413,7 +465,8 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -424,12 +477,12 @@ public class MetadataServiceResource
       operationId = "deleteMetadataServiceByName",
       summary = "Delete a metadata service by name",
       description =
-          "Delete a metadata services by `name`. If some service belong the service, it can't be " + "deleted.",
+          "Delete a metadata services by `name`. If some service belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
             responseCode = "404",
-            description = "MetadataService service for instance {name} " + "is not found")
+            description = "MetadataService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -438,9 +491,15 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string"))
+          @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
@@ -453,10 +512,15 @@ public class MetadataServiceResource
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Table ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -477,7 +541,8 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) throws IOException {
+  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig)
+      throws IOException {
     if (Objects.nonNull(esConfig)) {
       ElasticsSearch sink = new ElasticsSearch();
       ComponentConfig componentConfig = new ComponentConfig();

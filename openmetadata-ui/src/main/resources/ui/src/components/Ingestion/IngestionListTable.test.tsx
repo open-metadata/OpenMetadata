@@ -16,7 +16,7 @@ import React from 'react';
 import { mockIngestionListTableProps } from '../../mocks/IngestionListTable.mock';
 import IngestionListTable from './IngestionListTable.component';
 
-jest.mock('../../components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>nextPrevious</div>)
 );
 jest.mock('../../components/Loader/Loader', () =>
@@ -72,7 +72,7 @@ describe('IngestionListTable tests', () => {
       <IngestionListTable
         {...mockIngestionListTableProps}
         paging={{
-          total: 16,
+          total: 26,
           after: 'after',
         }}
       />
@@ -98,21 +98,13 @@ describe('IngestionListTable tests', () => {
     expect(nextPrevious).toBeNull();
   });
 
-  it('Should render the ingestion link if airflowEndpoint is provided', () => {
+  it('Should render the ingestion name', () => {
     render(<IngestionListTable {...mockIngestionListTableProps} />);
 
-    const ingestionDagLink = screen.getByTestId('ingestion-dag-link');
-
-    expect(ingestionDagLink).toBeInTheDocument();
-  });
-
-  it('Should not render the ingestion link if airflowEndpoint is not provided', () => {
-    render(
-      <IngestionListTable {...mockIngestionListTableProps} airflowEndpoint="" />
+    const ingestionDagName = screen.getByText(
+      'OpenMetadata_elasticSearchReindex'
     );
 
-    const ingestionDagLink = screen.queryByTestId('ingestion-dag-link');
-
-    expect(ingestionDagLink).toBeNull();
+    expect(ingestionDagName).toBeInTheDocument();
   });
 });

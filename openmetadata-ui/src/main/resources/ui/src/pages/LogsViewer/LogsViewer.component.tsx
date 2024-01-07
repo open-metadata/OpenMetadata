@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Tag, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
+import { isEmpty, isNil, isUndefined, startCase, toNumber } from 'lodash';
 import React, {
   Fragment,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -24,24 +25,38 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
-import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { CopyToClipboardButton } from '../../components/CopyToClipboardButton/CopyToClipboardButton';
 import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { PIPELINE_INGESTION_RUN_STATUS } from '../../constants/pipeline.constants';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { App, AppScheduleClass } from '../../generated/entity/applications/app';
+import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
+import {
+  IngestionPipeline,
+  PipelineState,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import {
+  getApplicationByName,
+  getApplicationRuns,
+  getLatestApplicationRuns,
+} from '../../rest/applicationAPI';
 import {
   getIngestionPipelineByName,
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
+import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './logs-viewer.style.less';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
-import './LogsViewer.style.less';
 
 const LogsViewer = () => {
   const { logEntityType, ingestionName } = useParams<LogViewerParams>();
@@ -51,13 +66,34 @@ const LogsViewer = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
+  const [appData, setAppData] = useState<App>();
+  const [appLatestRun, setAppLatestRun] = useState<AppRunRecord>();
   const [paging, setPaging] = useState<Paging>();
+
+  const isApplicationType = useMemo(
+    () => logEntityType === GlobalSettingOptions.APPLICATIONS,
+    [logEntityType]
+  );
 
   const fetchLogs = async (
     ingestionId?: string,
     pipelineType?: PipelineType
   ) => {
     try {
+      if (isApplicationType) {
+        const currentTime = Date.now();
+        const oneDayAgo = getEpochMillisForPastDays(1);
+        const { data } = await getApplicationRuns(ingestionName, {
+          startTs: oneDayAgo,
+          endTs: currentTime,
+        });
+
+        const logs = await getLatestApplicationRuns(ingestionName);
+        setAppLatestRun(data[0]);
+        setLogs(logs.data_insight_task);
+
+        return;
+      }
       const res = await getIngestionPipelineLogById(
         ingestionId || ingestionDetails?.id || '',
         paging?.total !== paging?.after ? paging?.after : ''
@@ -134,6 +170,22 @@ const LogsViewer = () => {
     }
   };
 
+  const fetchAppDetails = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getApplicationByName(ingestionName, {
+        fields: 'owner',
+        include: Include.All,
+      });
+      setAppData(data);
+      fetchLogs();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ingestionName]);
+
   const fetchMoreLogs = () => {
     fetchLogs(ingestionDetails?.id, ingestionDetails?.pipelineType);
     setPaging({
@@ -143,7 +195,11 @@ const LogsViewer = () => {
   };
 
   useEffect(() => {
-    fetchIngestionDetailsByName();
+    if (isApplicationType) {
+      fetchAppDetails();
+    } else {
+      fetchIngestionDetailsByName();
+    }
   }, []);
 
   const handleScroll = (event: Event) => {
@@ -210,17 +266,43 @@ const LogsViewer = () => {
     }
   };
 
+  const recentRuns = useMemo(() => {
+    if (isApplicationType) {
+      return (
+        <Tag
+          className="ingestion-run-badge latest"
+          color={
+            PIPELINE_INGESTION_RUN_STATUS[
+              (appLatestRun?.status as unknown as PipelineState) ??
+                PipelineState.Failed
+            ]
+          }
+          data-testid="pipeline-status">
+          {startCase(appLatestRun?.status)}
+        </Tag>
+      );
+    }
+
+    if (ingestionDetails?.fullyQualifiedName) {
+      return <IngestionRecentRuns ingestion={ingestionDetails} />;
+    }
+
+    return '--';
+  }, [logEntityType, appLatestRun, ingestionDetails]);
+
   const logSummaries = useMemo(() => {
+    const scheduleClass = appData?.appSchedule as AppScheduleClass;
+
     return {
-      Type: ingestionDetails?.pipelineType || '--',
-      Schedule: ingestionDetails?.airflowConfig.scheduleInterval || '--',
-      ['Recent Runs']: ingestionDetails?.fullyQualifiedName ? (
-        <IngestionRecentRuns ingestion={ingestionDetails} />
-      ) : (
-        '--'
-      ),
+      Type:
+        ingestionDetails?.pipelineType ?? scheduleClass?.scheduleType ?? '--',
+      Schedule:
+        ingestionDetails?.airflowConfig.scheduleInterval ??
+        scheduleClass?.cronExpression ??
+        '--',
+      ['Recent Runs']: recentRuns,
     };
-  }, [ingestionDetails]);
+  }, [ingestionDetails, appData, recentRuns]);
 
   if (isLoading) {
     return <Loader />;
@@ -240,7 +322,7 @@ const LogsViewer = () => {
         </Space>
         <Space>
           <Typography.Title level={5}>
-            {ingestionDetails?.name}
+            {ingestionDetails?.name ?? appData?.name}
           </Typography.Title>
         </Space>
       </Space>

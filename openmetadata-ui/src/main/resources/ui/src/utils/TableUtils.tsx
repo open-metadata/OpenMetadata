@@ -52,7 +52,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { SourceType } from '../components/searched-data/SearchedData.interface';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -90,9 +90,14 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
@@ -153,38 +158,34 @@ export const getConstraintIcon = ({
 }) => {
   let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY:
-      {
-        title = t('label.primary-key');
-        icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
-        dataTestId = 'primary-key';
-      }
+    case ConstraintTypes.PRIMARY_KEY: {
+      title = t('label.primary-key');
+      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+      dataTestId = 'primary-key';
 
       break;
-    case ConstraintTypes.UNIQUE:
-      {
-        title = t('label.unique');
-        icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
-        dataTestId = 'unique';
-      }
+    }
+    case ConstraintTypes.UNIQUE: {
+      title = t('label.unique');
+      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+      dataTestId = 'unique';
 
       break;
-    case ConstraintTypes.NOT_NULL:
-      {
-        title = t('label.not-null');
-        icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
-        dataTestId = 'not-null';
-      }
+    }
+    case ConstraintTypes.NOT_NULL: {
+      title = t('label.not-null');
+      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+      dataTestId = 'not-null';
 
       break;
-    case ConstraintTypes.FOREIGN_KEY:
-      {
-        title = t('label.foreign-key');
-        icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
-        dataTestId = 'foreign-key';
-      }
+    }
+    case ConstraintTypes.FOREIGN_KEY: {
+      title = t('label.foreign-key');
+      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+      dataTestId = 'foreign-key';
 
       break;
+    }
     default:
       return null;
   }
@@ -286,6 +287,14 @@ export const getEntityLink = (
     case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
 
+    case EntityType.DOMAIN:
+    case SearchIndex.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return getDataProductsDetailsPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -295,23 +304,39 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <GlossaryIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
   } else if (source.entityType === EntityType.TAG) {
     return (
-      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+      <ClassificationIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
     );
   } else if (source.entityType === EntityType.DATA_PRODUCT) {
     return (
-      <DataProductIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+      <DataProductIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
     );
   } else if (source.entityType === EntityType.DOMAIN) {
-    return <DomainIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <DomainIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-7"
-        src={serviceTypeLogo(source.serviceType || '')}
+        className="inline service-icon h-7"
+        src={serviceUtilClassBase.getServiceTypeLogo(source)}
       />
     );
   }
@@ -392,11 +417,11 @@ export const getEntityIcon = (indexType: string) => {
 
 export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
   return {
-    description: column.description || '',
+    description: column.description ?? '',
     // Sorting tags as the response of PATCH request does not return the sorted order
     // of tags, but is stored in sorted manner in the database
     // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags || []),
+    tags: sortTagsCaseInsensitive(column.tags ?? []),
     key: column?.name,
     ...column,
   };
@@ -480,23 +505,23 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="d-inline-flex items-center">
+        <>
           {isDraggable && (
-            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
           )}
           <Icon
-            className="m-r-xs"
+            className="m-r-xs vertical-baseline"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
             style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
-        </div>
+        </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
-            <div className="expand-cell-empty-icon-container" />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <span className="expand-cell-empty-icon-container" />
           </>
         )
       ),
@@ -538,7 +563,7 @@ export const prepareConstraintIcon = ({
   const columnConstraintEl = columnConstraint
     ? getConstraintIcon({
         constraint: columnConstraint,
-        className: iconClassName || 'm-r-xs',
+        className: iconClassName ?? 'm-r-xs',
         width: iconWidth,
         isConstraintAdded: isColumnConstraintAdded,
         isConstraintDeleted: isColumnConstraintDeleted,
@@ -550,7 +575,7 @@ export const prepareConstraintIcon = ({
     ? filteredTableConstraints.map((tableConstraint) =>
         getConstraintIcon({
           constraint: tableConstraint.constraintType,
-          className: iconClassName || 'm-r-xs',
+          className: iconClassName ?? 'm-r-xs',
           width: iconWidth,
           isConstraintAdded: isTableConstraintAdded,
           isConstraintDeleted: isTableConstraintDeleted,
@@ -687,3 +712,11 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
 export const FilterIcon = (filtered: boolean) => (
   <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
 );
+
+export const getFilterIcon = (dataTestId: string) => (filtered: boolean) =>
+  (
+    <FilterOutlined
+      data-testid={dataTestId}
+      style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+    />
+  );

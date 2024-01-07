@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor } from '@tiptap/core';
-import { BubbleMenu as CoreBubbleMenu } from '@tiptap/react';
+import { Editor, isNodeSelection } from '@tiptap/core';
+import {
+  BubbleMenu as CoreBubbleMenu,
+  BubbleMenuProps as CoreBubbleMenuProps,
+} from '@tiptap/react';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -27,78 +30,68 @@ interface BubbleMenuProps {
   toggleLink: () => void;
 }
 
+export interface BubbleMenuItem {
+  ariaLabel: string;
+  icon: SvgComponent | string;
+  className?: string;
+  command: () => void;
+  isActive: () => boolean;
+}
+
 const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
   const { menuList } = useMemo(() => {
-    const menuList = [
+    const menuList: BubbleMenuItem[] = [
       {
         ariaLabel: 'Heading 1',
         className: 'm-x-xs',
-        disabled: !editor
-          .can()
-          .chain()
-          .focus()
-          .toggleHeading({ level: 1 })
-          .run(),
-        onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+        command: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+        isActive: () => editor.isActive('heading', { level: 1 }),
         icon: 'H1',
       },
       {
         ariaLabel: 'Heading 2',
         className: 'm-r-xs',
-        disabled: !editor
-          .can()
-          .chain()
-          .focus()
-          .toggleHeading({ level: 2 })
-          .run(),
-        onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        command: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        isActive: () => editor.isActive('heading', { level: 2 }),
         icon: 'H2',
       },
       {
         ariaLabel: 'Heading 3',
-        className: '',
-        disabled: !editor
-          .can()
-          .chain()
-          .focus()
-          .toggleHeading({ level: 3 })
-          .run(),
-        onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+        command: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+        isActive: () => editor.isActive('heading', { level: 3 }),
         icon: 'H3',
       },
       {
         ariaLabel: 'Bold',
-        className: editor.isActive('bold') ? 'is-active' : '',
-        disabled: !editor.can().chain().focus().toggleBold().run(),
-        onClick: () => editor.chain().focus().toggleBold().run(),
+        command: () => editor.chain().focus().toggleBold().run(),
+        isActive: () => editor.isActive('bold'),
         icon: FormatBoldIcon,
       },
       {
         ariaLabel: 'Italic',
-        className: editor.isActive('italic') ? 'is-active' : '',
-        disabled: !editor.can().chain().focus().toggleItalic().run(),
-        onClick: () => editor.chain().focus().toggleItalic().run(),
+        command: () => editor.chain().focus().toggleItalic().run(),
+        isActive: () => editor.isActive('italic'),
         icon: FormatItalicIcon,
       },
       {
         ariaLabel: 'Strike',
-        className: editor.isActive('strike') ? 'is-active' : '',
-        disabled: !editor.can().chain().focus().toggleStrike().run(),
-        onClick: () => editor.chain().focus().toggleStrike().run(),
+        command: () => editor.chain().focus().toggleStrike().run(),
+        isActive: () => editor.isActive('strike'),
         icon: FormatStrikeIcon,
       },
       {
         ariaLabel: 'Inline code',
-        className: editor.isActive('code') ? 'is-active' : '',
-        disabled: !editor.can().chain().focus().toggleCode().run(),
-        onClick: () => editor.chain().focus().toggleCode().run(),
+        command: () => editor.chain().focus().toggleCode().run(),
+        isActive: () => editor.isActive('code'),
         icon: FormatInlineCodeIcon,
       },
       {
         ariaLabel: 'Link',
-        className: editor.isActive('link') ? 'is-active' : '',
-        disabled: false,
-        onClick: () => toggleLink(),
+        command: () => {
+          editor.chain().focus().setLink({ href: '' }).run();
+          toggleLink();
+        },
+        isActive: () => editor.isActive('link'),
         icon: FormatLinkIcon,
       },
     ];
@@ -106,17 +99,46 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     return { menuList };
   }, [editor]);
 
+  const handleShouldShow: CoreBubbleMenuProps['shouldShow'] = ({
+    state,
+    editor,
+  }) => {
+    const { selection } = state;
+    const { empty } = selection;
+
+    // don't show bubble menu if:
+    // - the selected node is an image
+    // - the selection is empty
+    // - the selection is a node selection (for drag handles)
+    // - link is active
+    if (
+      editor.isActive('image') ||
+      empty ||
+      isNodeSelection(selection) ||
+      editor.isActive('link') ||
+      editor.isActive('table')
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
   return (
-    <CoreBubbleMenu className="menu-wrapper" editor={editor}>
+    <CoreBubbleMenu
+      className="menu-wrapper"
+      editor={editor}
+      shouldShow={handleShouldShow}>
       {menuList.map(
-        ({ icon: Icon, ariaLabel, className, disabled, onClick }) => (
+        ({ icon: Icon, ariaLabel, className, command, isActive }) => (
           <Tooltip key={ariaLabel} title={ariaLabel}>
             <Button
               aria-label={ariaLabel}
-              className={classNames('p-0', className)}
-              disabled={disabled}
+              className={classNames('p-0', className, {
+                'is-format-active': isActive(),
+              })}
               type="text"
-              onClick={onClick}>
+              onClick={command}>
               {isString(Icon) ? (
                 <Typography>{Icon}</Typography>
               ) : (

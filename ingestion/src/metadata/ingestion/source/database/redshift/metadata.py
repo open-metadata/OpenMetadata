@@ -14,7 +14,7 @@ Redshift source ingestion
 
 import re
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import inspect, sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -25,6 +25,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedureCode,
@@ -40,16 +41,20 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -101,7 +106,7 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
+class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -153,20 +158,25 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 
@@ -239,7 +249,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.database_schema.name.__root__,
+                    schema_name=self.context.database_schema,
                 )
             ).all()
             for row in results:
@@ -252,46 +262,46 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    storedProcedureCode=StoredProcedureCode(
-                        language=Language.SQL,
-                        code=stored_procedure.definition,
-                    ),
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
-                )
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
             )
+            yield Either(right=stored_procedure_request)
+
+            self.register_record_stored_proc_request(stored_procedure_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
         """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
+        Return the dictionary associating stored procedures to the
+        queries they triggered
         """
-        # Only process if we actually have yield a stored procedure
-        if self.context.stored_procedure:
-            start, _ = get_start_and_end(self.source_config.queryLogDuration)
-            query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-                database_name=self.context.database.name.__root__,
-            )
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            database_name=self.context.database,
+        )
 
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-                schema_name=self.context.database_schema.name.__root__,
-                database_name=self.context.database.name.__root__,
-            )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
 
-            for query_by_procedure in (
-                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
-                or []
-            ):
-                yield query_by_procedure
+        return queries_dict

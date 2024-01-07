@@ -46,7 +46,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -55,18 +56,8 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "text",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "fqnParts": {
         "type": "keyword"
@@ -90,6 +81,16 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -156,6 +157,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -219,6 +221,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               },
               "ngram": {
@@ -381,7 +384,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -403,6 +407,9 @@
       "status": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [
@@ -415,4 +422,4 @@
       }
       }
     }
-  }s
+  }

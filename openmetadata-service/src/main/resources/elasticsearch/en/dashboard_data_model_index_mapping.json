@@ -46,7 +46,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -82,6 +83,53 @@
       },
       "version": {
         "type": "float"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "updatedAt": {
         "type": "date",
@@ -137,6 +185,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -177,7 +226,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -222,6 +272,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -237,10 +297,12 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "dataModelType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "columns": {
         "properties": {
@@ -250,6 +312,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -272,7 +335,8 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -301,6 +365,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
@@ -327,6 +392,16 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

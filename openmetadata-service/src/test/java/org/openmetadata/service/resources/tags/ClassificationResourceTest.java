@@ -40,6 +40,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -50,7 +51,8 @@ import org.openmetadata.service.util.TestUtils;
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ClassificationResourceTest extends EntityResourceTest<Classification, CreateClassification> {
+public class ClassificationResourceTest
+    extends EntityResourceTest<Classification, CreateClassification> {
   public ClassificationResourceTest() {
     super(
         Entity.CLASSIFICATION,
@@ -64,9 +66,12 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
   void put_classificationInvalidRequest_400(TestInfo test) {
     // Primary tag with missing description
     String newCategoryName = test.getDisplayName().substring(0, 10);
-    CreateClassification create = new CreateClassification().withName(newCategoryName).withDescription(null);
+    CreateClassification create =
+        new CreateClassification().withName(newCategoryName).withDescription(null);
     assertResponseContains(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "description must not be null");
 
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
@@ -82,7 +87,8 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
     assertResponse(
         () -> deleteEntity(classification.getId(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(classification.getName(), Entity.CLASSIFICATION));
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(
+            classification.getName(), Entity.CLASSIFICATION));
   }
 
   @Override
@@ -93,21 +99,24 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
   @Override
   public void validateCreatedEntity(
       Classification createdEntity, CreateClassification request, Map<String, String> authHeaders) {
-    //    assertEquals(
-    //        request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
+    assertEquals(
+        request.getProvider() == null ? ProviderType.USER : request.getProvider(),
+        createdEntity.getProvider());
     assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
   @Override
-  public void compareEntities(Classification expected, Classification updated, Map<String, String> authHeaders) {
-    //    assertEquals(expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
-    // updated.getProvider());
+  public void compareEntities(
+      Classification expected, Classification updated, Map<String, String> authHeaders) {
+    assertEquals(
+        expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
+        updated.getProvider());
     assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
   @Override
-  public Classification validateGetWithDifferentFields(Classification classification, boolean byName)
-      throws HttpResponseException {
+  public Classification validateGetWithDifferentFields(
+      Classification classification, boolean byName) throws HttpResponseException {
     classification =
         byName
             ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -125,26 +134,26 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
-  public void renameClassificationAndCheck(Classification classification, String newName) throws IOException {
+  public void renameClassificationAndCheck(Classification classification, String newName)
+      throws IOException {
     // User PATCH operation to rename a classification
     String oldName = classification.getName();
     String json = JsonUtils.pojoToJson(classification);
-    ChangeDescription change = getChangeDescription(classification.getVersion());
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     classification.setName(newName);
-    Classification ret = patchEntityAndCheck(classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Classification ret =
+        patchEntityAndCheck(classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Now check all the children are renamed
     // List children glossary terms with this term as the parent and ensure rename
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("parent", ret.getFullyQualifiedName());
-    List<Tag> children = new TagResourceTest().listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
+    List<Tag> children =
+        new TagResourceTest().listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     for (Tag child : listOrEmpty(children)) {
       assertTrue(child.getFullyQualifiedName().startsWith(ret.getFullyQualifiedName()));
     }

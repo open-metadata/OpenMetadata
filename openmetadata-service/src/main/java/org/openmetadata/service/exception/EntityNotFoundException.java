@@ -20,8 +20,10 @@ public class EntityNotFoundException extends WebServiceException {
   private static final String BY_ID_MESSAGE = "Entity with id [%s] not found.";
   private static final String BY_NAME_MESSAGE = "Entity with name [%s] not found.";
   private static final String BY_FILTER_MESSAGE = "Entity not found for query params [%s].";
-  private static final String BY_VERSION_MESSAGE = "Entity with id [%s] and version [%s] not found.";
-  private static final String BY_PARSER_SCHEMA_MESSAGE = "Parser schema not found for entity with id [%s].";
+  private static final String BY_VERSION_MESSAGE =
+      "Entity with id [%s] and version [%s] not found.";
+  private static final String BY_PARSER_SCHEMA_MESSAGE =
+      "Parser schema not found for entity with id [%s].";
 
   public EntityNotFoundException(String message) {
     super(Response.Status.NOT_FOUND, message);

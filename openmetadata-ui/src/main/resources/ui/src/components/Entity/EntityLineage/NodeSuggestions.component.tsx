@@ -27,6 +27,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { SearchSourceAlias } from '../../../interface/search.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -34,9 +35,9 @@ import {
   getEntityNodeIcon,
   getSearchIndexFromNodeType,
 } from '../../../utils/EntityLineageUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExploreSearchIndex } from '../../Explore/explore.interface';
+import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
@@ -139,7 +140,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   alt={entity.serviceType}
                   className="m-r-xs"
                   height="16px"
-                  src={serviceTypeLogo(entity.serviceType as string)}
+                  src={serviceUtilClassBase.getServiceTypeLogo(
+                    entity as SearchSourceAlias
+                  )}
                   width="16px"
                 />
                 <div className="flex-1 text-left">

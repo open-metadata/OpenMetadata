@@ -11,74 +11,86 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Typography } from 'antd';
+import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as PersonaIcon } from '../../assets/svg/ic-personas.svg';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import SearchedData from '../../components/searched-data/SearchedData';
-import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { getUserPath, NO_DATA_PLACEHOLDER } from '../../constants/constants';
-import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
+import { getUserPath, ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { useAuth } from '../../hooks/authHooks';
+import { searchData } from '../../rest/miscAPI';
+import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
-import PageLayoutV1 from '../containers/PageLayoutV1';
-import Loader from '../Loader/Loader';
+import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
+import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
+import AssetsTabs from '../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import {
+  AssetNoDataPlaceholderProps,
+  AssetsOfEntity,
+} from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
-import './Users.style.less';
+import './users.less';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
-import UserProfileImage from './UsersProfile/UserProfileImage/UserProfileImage.component';
 import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({
-  userData,
-  followingEntities,
-  ownedEntities,
-  isUserEntitiesLoading,
-  updateUserDetails,
-  username,
-  handlePaginate,
-}: Props) => {
-  const { tab = UserPageTabs.ACTIVITY } = useParams<{ tab: UserPageTabs }>();
-
+const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+  const { fqn: username, tab: activeTab = UserPageTabs.ACTIVITY } =
+    useParams<{ fqn: string; tab: UserPageTabs }>();
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
+  const { currentUser } = useAuthContext();
 
-  const [showSummaryPanel, setShowSummaryPanel] = useState(false);
-  const [entityDetails, setEntityDetails] =
-    useState<SearchedDataProps['data'][number]['_source']>();
+  const decodedUsername = useMemo(() => getDecodedFqn(username), [username]);
+
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+
+  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
 
   const { t } = useTranslation();
 
-  const defaultPersona = useMemo(() => {
-    return userData.personas?.find(
-      (persona) => persona.id === userData.defaultPersona?.id
-    );
-  }, [userData]);
+  const isLoggedInUser = useMemo(
+    () => username === currentUser?.name,
+    [username]
+  );
 
-  const tabs = useMemo(() => {
-    return USER_PROFILE_TABS.map((data) => ({
-      label: <TabsLabel id={data.key} key={data.key} name={data.name} />,
-      key: data.key,
-    }));
-  }, []);
+  const hasEditPermission = useMemo(
+    () => isAdminUser || isLoggedInUser,
+    [isAdminUser, isLoggedInUser]
+  );
+  const fetchAssetsCount = async (query: string) => {
+    try {
+      const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
+
+      setAssetCount(res.data.hits.total.value ?? 0);
+    } catch (error) {
+      setAssetCount(0);
+    }
+  };
 
   const activeTabHandler = (activeKey: string) => {
     // To reset search params appends from other page for proper navigation
     location.search = '';
-    if (activeKey !== tab) {
+    if (activeKey !== activeTab) {
       history.push({
         pathname: getUserPath(username, activeKey),
         search: location.search,
@@ -86,44 +98,9 @@ const Users = ({
     }
   };
 
-  const handleSummaryPanelDisplay = useCallback(
-    (details: SearchedDataProps['data'][number]['_source']) => {
-      setShowSummaryPanel(true);
-      setEntityDetails(details);
-    },
-    []
-  );
-
-  const handleClosePanel = () => {
-    setShowSummaryPanel(false);
-  };
-
-  useEffect(() => {
-    if ([UserPageTabs.FOLLOWING, UserPageTabs.MY_DATA].includes(tab)) {
-      const entityData =
-        tab === UserPageTabs.MY_DATA ? ownedEntities : followingEntities;
-
-      if (!isEmpty(entityData.data) && entityData.data[0]) {
-        handleSummaryPanelDisplay(entityData.data[0]?._source);
-      } else {
-        setShowSummaryPanel(false);
-        setEntityDetails(undefined);
-      }
-    }
-  }, [tab, ownedEntities, followingEntities]);
-
-  const activityFeed = useMemo(
-    () => (
-      <ActivityFeedProvider user={userData.id}>
-        <ActivityFeedTab
-          entityType={EntityType.USER}
-          fqn={username}
-          onFeedUpdate={noop}
-        />
-      </ActivityFeedProvider>
-    ),
-    [userData, username]
-  );
+  const handleAssetClick = useCallback((asset) => {
+    setPreviewAsset(asset);
+  }, []);
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
@@ -132,181 +109,263 @@ const Users = ({
     [updateUserDetails, userData]
   );
 
-  const handleDefaultPersonaUpdate = useCallback(
-    async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ ...userData, defaultPersona });
-    },
-    [updateUserDetails, userData]
+  const tabDataRender = useCallback(
+    (props: {
+      queryFilter: string;
+      type: AssetsOfEntity;
+      noDataPlaceholder: AssetNoDataPlaceholderProps;
+    }) => (
+      <Row className="user-page-layout" wrap={false}>
+        <Col className="user-layout-scroll" flex="auto">
+          <AssetsTabs
+            isSummaryPanelOpen
+            assetCount={assetCount}
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
+            onAddAsset={() => history.push(ROUTES.EXPLORE)}
+            onAssetClick={handleAssetClick}
+            {...props}
+          />
+        </Col>
+
+        {previewAsset && (
+          <Col className="user-page-layout-right-panel" flex="400px">
+            <EntitySummaryPanel
+              entityDetails={previewAsset}
+              handleClosePanel={() => setPreviewAsset(undefined)}
+            />
+          </Col>
+        )}
+      </Row>
+    ),
+    [previewAsset, assetCount, handleAssetClick, setPreviewAsset]
   );
 
-  const tabDetails = useMemo(() => {
-    switch (tab) {
-      case UserPageTabs.FOLLOWING:
-      case UserPageTabs.MY_DATA: {
-        const entityData =
-          tab === UserPageTabs.MY_DATA ? ownedEntities : followingEntities;
-        if (isUserEntitiesLoading) {
-          return <Loader />;
-        }
-
-        return (
-          <Row className="user-page-layout" wrap={false}>
-            <Col className="user-layout-scroll" flex="auto">
-              {entityData.data.length ? (
-                <SearchedData
-                  data={entityData.data ?? []}
-                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                  isFilterSelected={false}
-                  isSummaryPanelVisible={showSummaryPanel}
-                  selectedEntityId={entityDetails?.id || ''}
-                  totalValue={entityData.total ?? 0}
-                  onPaginationChange={handlePaginate}
+  const tabs = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.ACTIVITY}
+            isActive={activeTab === UserPageTabs.ACTIVITY}
+            name={t('label.activity')}
+          />
+        ),
+        key: UserPageTabs.ACTIVITY,
+        children: (
+          <ActivityFeedProvider user={userData.id}>
+            <ActivityFeedTab
+              entityType={EntityType.USER}
+              fqn={decodedUsername}
+              isForFeedTab={false}
+              onFeedUpdate={noop}
+            />
+          </ActivityFeedProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.MY_DATA}
+            isActive={activeTab === UserPageTabs.MY_DATA}
+            name={t('label.my-data')}
+          />
+        ),
+        key: UserPageTabs.MY_DATA,
+        children: tabDataRender({
+          queryFilter: queryFilters.myData,
+          type: AssetsOfEntity.MY_DATA,
+          noDataPlaceholder: {
+            message: t('server.you-have-not-action-anything-yet', {
+              action: t('label.owned-lowercase'),
+            }),
+          },
+        }),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.FOLLOWING}
+            isActive={activeTab === UserPageTabs.FOLLOWING}
+            name={t('label.following')}
+          />
+        ),
+        key: UserPageTabs.FOLLOWING,
+        children: tabDataRender({
+          queryFilter: queryFilters.following,
+          type: AssetsOfEntity.FOLLOWING,
+          noDataPlaceholder: {
+            message: t('server.you-have-not-action-anything-yet', {
+              action: t('label.followed-lowercase'),
+            }),
+          },
+        }),
+      },
+      ...(isLoggedInUser
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={UserPageTabs.ACCESS_TOKEN}
+                  isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
+                  name={t('label.access-token')}
                 />
-              ) : (
-                <ErrorPlaceHolder className="m-0">
-                  <Typography.Paragraph>
-                    {tab === UserPageTabs.MY_DATA
-                      ? t('server.you-have-not-action-anything-yet', {
-                          action: t('label.owned-lowercase'),
-                        })
-                      : t('server.you-have-not-action-anything-yet', {
-                          action: t('label.followed-lowercase'),
-                        })}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolder>
-              )}
-            </Col>
+              ),
+              key: UserPageTabs.ACCESS_TOKEN,
+              children: <AccessTokenCard isBot={false} />,
+            },
+          ]
+        : []),
+    ],
+    [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
+  );
 
-            {showSummaryPanel && entityDetails && (
-              <Col className="user-page-layout-right-panel " flex="400px">
-                <EntitySummaryPanel
-                  entityDetails={{ details: entityDetails }}
-                  handleClosePanel={handleClosePanel}
-                />
-              </Col>
-            )}
-          </Row>
-        );
-      }
-      case UserPageTabs.ACTIVITY:
-        return activityFeed;
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await updateUserDetails({ description });
 
-      default:
-        return <></>;
+      setIsDescriptionEdit(false);
+    },
+    [updateUserDetails, setIsDescriptionEdit]
+  );
+
+  const descriptionRenderComponent = useMemo(
+    () =>
+      hasEditPermission ? (
+        <DescriptionV1
+          description={userData.description ?? ''}
+          entityName={getEntityName(userData as unknown as EntityReference)}
+          entityType={EntityType.USER}
+          hasEditAccess={hasEditPermission}
+          isEdit={isDescriptionEdit}
+          showCommentsIcon={false}
+          onCancel={() => setIsDescriptionEdit(false)}
+          onDescriptionEdit={() => setIsDescriptionEdit(true)}
+          onDescriptionUpdate={handleDescriptionChange}
+        />
+      ) : (
+        <Space direction="vertical" size="middle">
+          <Typography.Text className="right-panel-label">
+            {t('label.description')}
+          </Typography.Text>
+          <Typography.Paragraph className="m-b-0">
+            {isEmpty(userData.description)
+              ? t('label.no-entity', {
+                  entity: t('label.description'),
+                })
+              : userData.description}
+          </Typography.Paragraph>
+        </Space>
+      ),
+    [
+      userData,
+      isAdminUser,
+      isDescriptionEdit,
+      hasEditPermission,
+      getEntityName,
+      handleDescriptionChange,
+    ]
+  );
+
+  const userProfileCollapseHeader = useMemo(
+    () => (
+      <UserProfileDetails
+        updateUserDetails={updateUserDetails}
+        userData={userData}
+      />
+    ),
+    [userData, updateUserDetails]
+  );
+
+  useEffect(() => {
+    if ([UserPageTabs.MY_DATA, UserPageTabs.FOLLOWING].includes(activeTab)) {
+      fetchAssetsCount(
+        activeTab === UserPageTabs.MY_DATA
+          ? queryFilters.myData
+          : queryFilters.following
+      );
     }
-  }, [
-    tab,
-    followingEntities,
-    ownedEntities,
-    isUserEntitiesLoading,
-    entityDetails,
-    activityFeed,
-  ]);
+  }, [activeTab]);
 
   return (
     <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
-      <div data-testid="table-container">
-        <Row className="user-profile-container" data-testid="user-profile">
-          <Col className="flex-center border-right" span={4}>
-            <UserProfileImage
-              userData={{
-                id: userData.id,
-                name: userData.name,
-                displayName: userData.displayName,
-                images: userData.profile?.images,
-              }}
-            />
-          </Col>
-          <Col className="p-x-sm border-right" span={5}>
-            <UserProfileDetails
-              updateUserDetails={updateUserDetails}
-              userData={{
-                email: userData.email,
-                name: userData.name,
-                displayName: userData.displayName,
-                description: userData.description,
-              }}
-            />
-          </Col>
-          <Col className="p-x-sm border-right" span={5}>
-            <UserProfileTeams
-              teams={userData.teams}
-              updateUserDetails={updateUserDetails}
-            />
-          </Col>
-          <Col className="p-x-sm border-right" span={5}>
-            <div className="d-flex flex-col justify-between h-full">
-              <UserProfileRoles
-                isUserAdmin={userData.isAdmin}
-                updateUserDetails={updateUserDetails}
-                userRoles={userData.roles}
-              />
-              <UserProfileInheritedRoles
-                inheritedRoles={userData.inheritedRoles}
-              />
-            </div>
-          </Col>
-          <Col className="p-x-sm border-right" span={5}>
-            <div className="d-flex flex-col justify-between h-full">
-              <Card
-                className="ant-card-feed relative card-body-border-none card-padding-y-0 m-b-md"
-                title={
-                  <Typography.Text
-                    className="right-panel-label items-center d-flex gap-2"
-                    data-testid="inherited-roles">
-                    {t('label.persona')}
-                    <PersonaSelectableList
-                      hasPermission
-                      multiSelect
-                      selectedPersonas={userData.personas ?? []}
-                      onUpdate={handlePersonaUpdate}
+      <div data-testid="user-profile">
+        <Collapse
+          accordion
+          bordered={false}
+          className="header-collapse-custom-collapse user-profile-container"
+          expandIconPosition="end">
+          <Collapse.Panel
+            className="header-collapse-custom-panel"
+            collapsible="icon"
+            header={userProfileCollapseHeader}
+            key="1">
+            <Row className="border-top p-y-lg" gutter={[0, 24]}>
+              <Col span={24}>
+                <Row data-testid="user-profile-details">
+                  <Col className="p-x-sm border-right" span={6}>
+                    <UserProfileTeams
+                      teams={userData.teams}
+                      updateUserDetails={updateUserDetails}
                     />
-                  </Typography.Text>
-                }>
-                <Chip
-                  showNoDataPlaceholder
-                  data={userData.personas ?? []}
-                  icon={<PersonaIcon height={18} />}
-                  noDataPlaceholder={t('message.no-persona-assigned')}
-                />
-              </Card>
-              <Card
-                className="ant-card-feed relative card-body-border-none card-padding-y-0"
-                title={
-                  <Typography.Text
-                    className="right-panel-label m-b-0 d-flex gap-2"
-                    data-testid="inherited-roles">
-                    {t('label.default-persona')}
-                    <PersonaSelectableList
-                      hasPermission
-                      multiSelect={false}
-                      personaList={userData.personas}
-                      selectedPersonas={defaultPersona ? [defaultPersona] : []}
-                      onUpdate={handleDefaultPersonaUpdate}
+                  </Col>
+                  <Col className="p-x-sm border-right" span={6}>
+                    <UserProfileRoles
+                      isUserAdmin={userData.isAdmin}
+                      updateUserDetails={updateUserDetails}
+                      userRoles={userData.roles}
                     />
-                  </Typography.Text>
-                }>
-                <Chip
-                  showNoDataPlaceholder
-                  data={defaultPersona ? [defaultPersona] : []}
-                  icon={<PersonaIcon height={18} />}
-                  noDataPlaceholder={NO_DATA_PLACEHOLDER}
-                />
-              </Card>
-            </div>
-          </Col>
-        </Row>
+                  </Col>
+                  <Col className="p-x-sm border-right" span={6}>
+                    <UserProfileInheritedRoles
+                      inheritedRoles={userData.inheritedRoles}
+                    />
+                  </Col>
+                  <Col className="p-x-sm" span={6}>
+                    <div className="d-flex flex-col justify-between h-full">
+                      <Card
+                        className="ant-card-feed relative card-body-border-none card-padding-y-0"
+                        title={
+                          <Typography.Text
+                            className="right-panel-label items-center d-flex gap-2"
+                            data-testid="inherited-roles">
+                            {t('label.persona')}
+                            <PersonaSelectableList
+                              multiSelect
+                              hasPermission={Boolean(isAdminUser)}
+                              selectedPersonas={userData.personas ?? []}
+                              onUpdate={handlePersonaUpdate}
+                            />
+                          </Typography.Text>
+                        }>
+                        <Chip
+                          showNoDataPlaceholder
+                          data={userData.personas ?? []}
+                          icon={<PersonaIcon height={14} />}
+                          noDataPlaceholder={t('message.no-persona-assigned')}
+                        />
+                      </Card>
+                    </div>
+                  </Col>
+                </Row>
+              </Col>
+              <Col className="border-top p-lg p-b-0" span={24}>
+                {descriptionRenderComponent}
+              </Col>
+            </Row>
+          </Collapse.Panel>
+        </Collapse>
+
         <Tabs
-          activeKey={tab ?? UserPageTabs.ACTIVITY}
+          destroyInactiveTabPane
+          activeKey={activeTab ?? UserPageTabs.ACTIVITY}
           className="user-page-tabs"
           data-testid="tabs"
           items={tabs}
           onChange={activeTabHandler}
         />
-        <div>{tabDetails}</div>
       </div>
     </PageLayoutV1>
   );
 };
 
-export default observer(Users);
+export default Users;

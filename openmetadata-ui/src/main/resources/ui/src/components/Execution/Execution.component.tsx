@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseCircleOutlined } from '@ant-design/icons';
+import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
   DatePicker,
   Dropdown,
-  Menu,
   MenuProps,
   Radio,
   Row,
@@ -27,7 +26,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
@@ -40,12 +39,11 @@ import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
 import {
   getCurrentMillis,
-  getCurrentUnixInteger,
   getEpochMillisForPastDays,
-  getUnixSecondsForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './Execution.style.less';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
 
@@ -57,12 +55,13 @@ interface ExecutionProps {
 const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState(PIPELINE_EXECUTION_TABS.LIST_VIEW);
+  const [searchValue, setSearchValue] = useState<string>('');
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
-    getUnixSecondsForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+    getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getCurrentUnixInteger());
+  const [endTime, setEndTime] = useState(getCurrentMillis());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(false);
@@ -86,29 +85,26 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = (event) => {
-    if (event?.key) {
-      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
-    }
-  };
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    []
+  );
 
-  const menu = useMemo(
-    () => (
-      <Menu
-        items={map(MenuOptions, (value, key) => ({
-          key: key,
-          label: value,
-        }))}
-        onClick={handleMenuClick}
-      />
-    ),
+  const statusMenuItems = useMemo(
+    () => ({
+      items: map(MenuOptions, (value, key) => ({
+        key: key,
+        label: value,
+      })),
+      onClick: handleMenuClick,
+    }),
     [handleMenuClick]
   );
 
   const onDateChange: RangePickerProps['onChange'] = (values) => {
     if (values) {
-      const startTime = values[0]?.milliseconds() ?? 0;
-      const endTime = values[1]?.milliseconds() ?? 0;
+      const startTime = values[0]?.valueOf() ?? 0;
+      const endTime = values[1]?.valueOf() ?? 0;
 
       if (!isNaN(startTime) && !isNaN(endTime)) {
         setStartTime(startTime);
@@ -125,6 +121,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
       }
 
       setDatesSelected(true);
+    } else {
+      setDatesSelected(false);
+      setStartTime(
+        getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+      );
+      setEndTime(getCurrentMillis());
     }
   };
 
@@ -132,8 +134,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     fetchPipelineStatus(startTime, endTime);
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
+  const handleSearch = (value: string) => {
+    setSearchValue(value);
+  };
+
   return (
-    <Row className="h-full p-md" gutter={16}>
+    <Row className="h-full p-md" data-testid="execution-tab" gutter={16}>
       <Col flex="auto">
         <Row gutter={[16, 16]}>
           <Col span={24}>
@@ -141,18 +147,20 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               <Radio.Group
                 buttonStyle="solid"
                 className="radio-switch"
+                data-testid="radio-switch"
                 optionType="button"
                 options={Object.values(PIPELINE_EXECUTION_TABS)}
                 value={view}
                 onChange={(e) => setView(e.target.value)}
               />
               <Space>
-                <Dropdown overlay={menu} placement="bottom">
-                  <Button ghost type="primary">
-                    <Space>
-                      <FilterIcon />
-                      {status === MenuOptions.all ? t('label.status') : status}
-                    </Space>
+                <Dropdown menu={statusMenuItems} placement="bottom">
+                  <Button
+                    ghost
+                    data-testid="status-button"
+                    icon={<Icon component={FilterIcon} size={12} />}
+                    type="primary">
+                    {status === MenuOptions.all ? t('label.status') : status}
                   </Button>
                 </Dropdown>
                 {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
@@ -163,12 +171,13 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         'range-picker-button-width delay-100':
                           !datesSelected && !isClickedCalendar,
                       })}
+                      data-testid="data-range-picker-button"
+                      icon={<Icon component={Calendar} size={12} />}
                       type="primary"
                       onClick={() => {
                         setIsClickedCalendar(true);
                       }}>
-                      <Space>
-                        <Calendar />
+                      <span>
                         {!datesSelected && (
                           <label>{t('label.date-filter')}</label>
                         )}
@@ -178,6 +187,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                           bordered={false}
                           className="executions-date-picker"
                           clearIcon={<CloseCircleOutlined />}
+                          data-testid="data-range-picker"
                           open={isClickedCalendar}
                           placeholder={['', '']}
                           suffixIcon={null}
@@ -186,7 +196,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                             setIsClickedCalendar(isOpen);
                           }}
                         />
-                      </Space>
+                      </span>
                     </Button>
                   </>
                 ) : null}
@@ -195,11 +205,25 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
           </Col>
           <Col span={24}>
             {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-              <ListView
-                executions={executions}
-                loading={isLoading}
-                status={status}
-              />
+              <div>
+                <Row>
+                  <Col className="mb-4" span={6}>
+                    <Searchbar
+                      removeMargin
+                      placeholder="Filter by task name"
+                      searchValue={searchValue}
+                      typingInterval={500}
+                      onSearch={handleSearch}
+                    />
+                  </Col>
+                </Row>
+                <ListView
+                  executions={executions}
+                  loading={isLoading}
+                  searchString={searchValue}
+                  status={status}
+                />
+              </div>
             ) : (
               <TreeViewTab
                 endTime={endTime}

@@ -24,29 +24,26 @@ import {
   Space,
   Typography,
 } from 'antd';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './app-install-verify-card.less';
 import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 
 const AppInstallVerifyCard = ({
   appData,
+  nextButtonLabel,
   onCancel,
   onSave,
 }: AppInstallVerifyCardProps) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
 
   return (
     <div className="flex-center flex-col">
@@ -78,17 +75,9 @@ const AppInstallVerifyCard = ({
       <Card className="w-500 m-t-md">
         <Space size={12}>
           <UserPopOverCard
-            userName={currentUser?.displayName ?? currentUser?.name ?? ''}>
-            <span className="d-flex cursor-pointer" data-testid="authorAvatar">
-              <ProfilePicture
-                className="d-flex"
-                id=""
-                name={currentUser?.displayName ?? currentUser?.name ?? ''}
-                type="circle"
-                width="32"
-              />
-            </span>
-          </UserPopOverCard>
+            profileWidth={32}
+            userName={currentUser?.name ?? ''}
+          />
           <div className="d-flex flex-col">
             <Typography.Text className="font-medium">
               <Transi18next
@@ -135,7 +124,7 @@ const AppInstallVerifyCard = ({
             key="save-btn"
             type="primary"
             onClick={onSave}>
-            {t('label.configure')}
+            {nextButtonLabel}
           </Button>
         </div>
       </Card>

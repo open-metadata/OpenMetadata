@@ -17,15 +17,15 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import appState from '../../AppState';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import { UserProfile } from '../../components/authentication/auth-provider/AuthProvider.interface';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import {
   REDIRECT_PATHNAME,
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { EntityReference } from '../../generated/entity/type';
 import { createUser } from '../../rest/userAPI';
 import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
@@ -42,6 +42,7 @@ const SignUp = () => {
     jwtPrincipalClaims = [],
     authorizerConfig,
     updateCurrentUser,
+    newUser,
   } = useAuthContext();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -53,12 +54,12 @@ const SignUp = () => {
     try {
       const res = await createUser({
         ...data,
+        teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
-          images: getImages(appState.newUser.picture ?? ''),
+          images: getImages(data.picture ?? ''),
         },
       });
       updateCurrentUser(res);
-      appState.updateUserDetails(res);
       cookieStorage.removeItem(REDIRECT_PATHNAME);
       setIsSigningIn(false);
       history.push(ROUTES.HOME);
@@ -105,9 +106,9 @@ const SignUp = () => {
         <Form
           data-testid="create-user-form"
           initialValues={{
-            displayName: appState.newUser.name || '',
+            displayName: newUser?.name || '',
             ...getNameFromUserData(
-              appState.newUser as UserProfile,
+              newUser as UserProfile,
               jwtPrincipalClaims,
               authorizerConfig?.principalDomain
             ),
@@ -125,6 +126,7 @@ const SignUp = () => {
               },
             ]}>
             <Input
+              autoFocus
               data-testid="full-name-input"
               placeholder={t('label.your-entity', {
                 entity: t('label.full-name'),

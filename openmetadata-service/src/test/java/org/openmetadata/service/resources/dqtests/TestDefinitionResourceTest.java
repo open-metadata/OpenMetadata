@@ -20,7 +20,8 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 
-public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
+public class TestDefinitionResourceTest
+    extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
   public TestDefinitionResourceTest() {
     super(
         Entity.TEST_DEFINITION,
@@ -33,11 +34,14 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
   public void setupTestDefinitions() throws IOException {
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
     TEST_DEFINITION1 =
-        testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
+        testDefinitionResourceTest.getEntityByName(
+            "columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION2 =
-        testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
+        testDefinitionResourceTest.getEntityByName(
+            "columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION3 =
-        testDefinitionResourceTest.getEntityByName("columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
+        testDefinitionResourceTest.getEntityByName(
+            "columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -73,7 +77,8 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
   }
 
   @Override
-  public void compareEntities(TestDefinition expected, TestDefinition updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      TestDefinition expected, TestDefinition updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
     assertEquals(expected.getTestPlatforms(), updated.getTestPlatforms());
@@ -99,9 +104,6 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

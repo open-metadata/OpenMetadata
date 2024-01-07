@@ -53,11 +53,11 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()
@@ -102,6 +102,8 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: false,
+      limit: 15,
       testSuiteType: 'executable',
     });
   });
@@ -137,6 +139,8 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: true,
+      limit: 15,
       testSuiteType: 'logical',
     });
   });

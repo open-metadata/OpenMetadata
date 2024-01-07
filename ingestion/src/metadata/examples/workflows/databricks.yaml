@@ -8,7 +8,6 @@ source:
       token: <databricks token>
       hostPort: localhost:443
       connectionTimeout: 120
-      useUnityCatalog: true
       connectionArguments:
         http_path: <http path of databricks cluster>
   sourceConfig:

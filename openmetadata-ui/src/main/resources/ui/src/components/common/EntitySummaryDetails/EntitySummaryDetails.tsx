@@ -14,7 +14,14 @@
 import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
+import {
+  isEmpty,
+  isString,
+  isUndefined,
+  lowerCase,
+  noop,
+  toLower,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,11 +36,12 @@ import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
-import './EntitySummaryDetails.style.less';
+import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -67,6 +75,7 @@ const EntitySummaryDetails = ({
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const displayVal = data.placeholderText || data.value;
 
   const ownerDropdown = allowTeamOwner ? (
@@ -86,7 +95,7 @@ const EntitySummaryDetails = ({
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
     useMemo(() => {
-      const userDetails = getTeamsUser(data);
+      const userDetails = currentUser ? getTeamsUser(data, currentUser) : {};
 
       return {
         isEntityCard: data?.isEntityCard,
@@ -111,9 +120,7 @@ const EntitySummaryDetails = ({
                   <>
                     <ProfilePicture
                       displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
                       name={userDetails.ownerName ?? ''}
-                      type="circle"
                       width="24"
                     />
                     <span data-testid="owner-link">
@@ -133,9 +140,7 @@ const EntitySummaryDetails = ({
                 ) : (
                   <ProfilePicture
                     displayName={displayVal}
-                    id=""
                     name={data.profileName ?? ''}
-                    type="circle"
                     width={data.avatarWidth ?? '24'}
                   />
                 )}
@@ -189,7 +194,7 @@ const EntitySummaryDetails = ({
 
     case 'Domain':
       {
-        retVal = (
+        retVal = !isEmpty(displayVal) ? (
           <DomainIcon
             className="d-flex"
             color={DE_ACTIVE_COLOR}
@@ -197,6 +202,10 @@ const EntitySummaryDetails = ({
             name="folder"
             width={16}
           />
+        ) : (
+          <span className="d-flex gap-1 items-center" data-testid="owner-link">
+            {t('label.no-entity', { entity: t('label.domain') })}
+          </span>
         );
       }
 

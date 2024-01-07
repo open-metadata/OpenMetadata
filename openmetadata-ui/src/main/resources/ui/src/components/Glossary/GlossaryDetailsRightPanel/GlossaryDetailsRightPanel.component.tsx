@@ -22,7 +22,6 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import TagButton from '../../../components/TagButton/TagButton.component';
-import TagsInput from '../../../components/TagsInput/TagsInput.component';
 import {
   DE_ACTIVE_COLOR,
   getTeamAndUserDetailsPath,
@@ -30,7 +29,8 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { Glossary } from '../../../generated/entity/data/glossary';
+import { EntityType } from '../../../enums/entity.enum';
+import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   TagLabel,
@@ -45,6 +45,9 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {
@@ -53,6 +56,7 @@ type Props = {
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
+  onThreadLinkSelect: (value: string) => void;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -61,6 +65,7 @@ const GlossaryDetailsRightPanel = ({
   isGlossary,
   onUpdate,
   isVersionView,
+  onThreadLinkSelect,
 }: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -112,7 +117,6 @@ const GlossaryDetailsRightPanel = ({
           <>
             <ProfilePicture
               displayName={getEntityName(owner)}
-              id={owner?.id || ''}
               name={owner?.name ?? ''}
               textClass="text-xs"
               width="20"
@@ -199,6 +203,18 @@ const GlossaryDetailsRightPanel = ({
 
   return (
     <Row gutter={[0, 40]}>
+      <Col span={24}>
+        <DomainLabel
+          showDomainHeading
+          domain={selectedData.domain}
+          entityFqn={selectedData.fullyQualifiedName ?? ''}
+          entityId={selectedData.id ?? ''}
+          entityType={
+            isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+          }
+          hasPermission={permissions.EditAll}
+        />
+      </Col>
       <Col data-testid="glossary-owner-name" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
@@ -292,11 +308,15 @@ const GlossaryDetailsRightPanel = ({
       <Col span="24">
         <div data-testid="glossary-tags-name">
           {isGlossary && (
-            <TagsInput
-              editable={permissions.EditAll || permissions.EditTags}
-              isVersionView={isVersionView}
-              tags={tags}
-              onTagsUpdate={handleTagsUpdate}
+            <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
+              entityFqn={selectedData.fullyQualifiedName}
+              entityType={EntityType.GLOSSARY}
+              permission={permissions.EditAll || permissions.EditTags}
+              selectedTags={tags ?? []}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagsUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
           )}
         </div>

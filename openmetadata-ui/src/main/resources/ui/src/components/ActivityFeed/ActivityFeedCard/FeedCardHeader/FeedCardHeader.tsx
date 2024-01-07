@@ -16,8 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
-import { getUserPath } from '../../../../constants/constants';
+import { Link } from 'react-router-dom';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
   formatDateTime,
@@ -32,7 +31,6 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
-import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -46,10 +44,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   task,
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const onTitleClickHandler = (name: string) => {
-    history.push(getUserPath(name));
-  };
+
   const { task: taskDetails } = task;
 
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
@@ -125,16 +120,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   return (
     <div className={classNames('d-inline-block', className)}>
-      <UserPopOverCard userName={createdBy}>
-        <span
-          className="thread-author cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            onTitleClickHandler(createdBy);
-          }}>
-          {createdBy}
-        </span>
-      </UserPopOverCard>
+      <UserPopOverCard userName={createdBy}>{createdBy}</UserPopOverCard>
 
       {feedType === ThreadType.Conversation && getFeedLinkElement}
       {feedType === ThreadType.Task && getTaskLinkElement}

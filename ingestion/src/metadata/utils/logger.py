@@ -28,6 +28,8 @@ from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -52,6 +54,7 @@ class Loggers(Enum):
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
+    APP = "App"
 
     @DynamicClassAttribute
     def value(self):
@@ -151,6 +154,14 @@ def great_expectations_logger():
     return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
 
 
+def app_logger():
+    """
+    Method to get the APP logger
+    """
+
+    return logging.getLogger(Loggers.APP.value)
+
+
 def query_runner_logger():
     """
     Method to get the QUERY_RUNNER logger
@@ -178,7 +189,9 @@ def log_ansi_encoded_string(
 @singledispatch
 def get_log_name(record: Entity) -> Optional[str]:
     try:
-        return f"{type(record).__name__} [{getattr(record, 'name', record.entity.name).__root__}]"
+        if hasattr(record, "name"):
+            return f"{type(record).__name__} [{getattr(record, 'name').__root__}]"
+        return f"{type(record).__name__} [{record.entity.name.__root__}]"
     except Exception:
         return str(record)
 
@@ -249,3 +262,14 @@ def _(_: TestCaseResults) -> Optional[str]:
 @get_log_name.register
 def _(record: TestCaseResultResponse) -> str:
     return record.testCase.fullyQualifiedName.__root__
+
+
+@get_log_name.register
+def _(record: OMetaPipelineStatus) -> str:
+    return f"Pipeline Status [{record.pipeline_fqn}]"
+
+
+@get_log_name.register
+def _(record: PatchRequest) -> str:
+    """Get the log of the new entity"""
+    return get_log_name(record.new_entity)

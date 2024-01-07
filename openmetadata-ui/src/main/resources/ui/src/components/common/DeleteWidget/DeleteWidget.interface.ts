@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../../enums/entity.enum';
+
 export interface DeleteOption {
   title: string;
   description: string;
@@ -26,14 +28,16 @@ export interface DeleteWidgetModalProps {
   softDeleteMessagePostFix?: string;
   hardDeleteMessagePostFix?: string;
   entityName: string;
-  entityType: string;
+  entityType: EntityType;
   isAdminUser?: boolean;
   entityId?: string;
   prepareType?: boolean;
   isRecursiveDelete?: boolean;
   successMessage?: string;
   deleteOptions?: DeleteOption[];
-  afterDeleteAction?: (isSoftDelete?: boolean) => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  onDelete?: (data: DeleteWidgetFormFields) => void;
+  isDeleting?: boolean;
 }
 
 export interface DeleteSectionProps {
@@ -52,3 +56,8 @@ export enum DeleteType {
   SOFT_DELETE = 'soft-delete',
   HARD_DELETE = 'hard-delete',
 }
+
+export type DeleteWidgetFormFields = {
+  deleteType: DeleteType;
+  deleteTextInput: string;
+};

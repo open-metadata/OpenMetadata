@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -21,6 +21,7 @@ import { Icons } from '../utils/SvgUtils';
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
 export const TIER_FQN_KEY = 'tier.tagFQN';
+export const TAG_FQN_KEY = 'tags.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
@@ -277,6 +278,17 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'tags.tagFQN',
 ];
 
-export const ALL_EXPLORE_SEARCH_INDEX =
-  // eslint-disable-next-line max-len
-  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX}` as SearchIndex;
+export const TABS_SEARCH_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+  SearchIndex.TAG,
+  SearchIndex.DATA_PRODUCT,
+];

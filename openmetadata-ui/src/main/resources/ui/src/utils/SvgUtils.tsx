@@ -85,7 +85,6 @@ import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
 import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
-import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
@@ -115,7 +114,6 @@ import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
-import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
 import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
@@ -174,6 +172,7 @@ import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconShowPassword from '../assets/svg/show-password.svg';
+import IconSkippedBadge from '../assets/svg/skipped-badge.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconSuccessBadge from '../assets/svg/success-badge.svg';
@@ -250,7 +249,6 @@ export const Icons = {
   GROWTH_ARROW: 'icon-growth-arrow',
   LOSS_ARROW: 'icon-loss-arrow',
   CHECK_CIRCLE: 'icon-check-circle',
-  EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
   HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
@@ -341,6 +339,7 @@ export const Icons = {
   SUCCESS_BADGE: 'success-badge',
   FAIL_BADGE: 'fail-badge',
   PENDING_BADGE: 'pending-badge',
+  SKIPPED_BADGE: 'skipped-badge',
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
@@ -587,10 +586,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconCheckCircle;
 
       break;
-    case Icons.EXCLAMATION_CIRCLE:
-      IconComponent = IconExclamationCircle;
 
-      break;
     case Icons.TIMES_CIRCLE:
       IconComponent = IconTimesCircle;
 
@@ -962,6 +958,11 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconPendingBadge;
 
       break;
+
+    case Icons.SKIPPED_BADGE:
+      IconComponent = IconSkippedBadge;
+
+      break;
     case Icons.BOT_PROFILE:
       IconComponent = IconBotProfile;
 
@@ -1017,10 +1018,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconStar;
 
       break;
-    case Icons.STAR_PRIMARY:
-      IconComponent = IconStarPrimary;
 
-      break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
 

@@ -30,9 +30,6 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
-  group: maven-build-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
 jobs:
     maven-postgresql-ci:
         runs-on: ubuntu-latest
@@ -41,6 +38,6 @@ jobs:
             os:
               - ubuntu-latest
             node-version:
-              - 16.x
+              - 18.x
         steps:
           - run: 'echo "Step is not required"'

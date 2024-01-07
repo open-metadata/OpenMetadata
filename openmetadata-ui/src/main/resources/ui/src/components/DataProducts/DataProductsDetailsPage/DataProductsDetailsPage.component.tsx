@@ -34,19 +34,18 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { AssetSelectionModal } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { DomainTabs } from '../../../components/Domain/DomainPage.interface';
 import DocumentationTab from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
 import { DocumentationEntity } from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -55,8 +54,8 @@ import {
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   ChangeDescription,
   DataProduct,
@@ -64,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
@@ -78,7 +78,12 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import './data-products-details-page.less';
 import {
@@ -202,16 +207,19 @@ const DataProductsDetailsPage = ({
   }, [permissions, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
-    if (fqn) {
+    if (dataProduct) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:"${fqn}")`,
+          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
-          myDataSearchIndex
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -289,7 +297,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -312,12 +320,11 @@ const DataProductsDetailsPage = ({
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
     if (dataProduct) {
-      const { name, displayName } = obj;
+      const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
 
       updatedDetails = {
         ...dataProduct,
-        name: name?.trim() || dataProduct.name,
         displayName: displayName?.trim(),
       };
 
@@ -411,12 +418,14 @@ const DataProductsDetailsPage = ({
                   rightPanelWidth={400}>
                   <AssetsTabs
                     assetCount={assetCount}
+                    entityFqn={dataProduct.fullyQualifiedName}
                     isSummaryPanelOpen={false}
                     permissions={dataProductPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
+                    onRemoveAsset={handleAssetSave}
                   />
                 </PageLayoutV1>
               ),
@@ -429,6 +438,7 @@ const DataProductsDetailsPage = ({
     previewAsset,
     dataProduct,
     isVersionsView,
+    handleAssetSave,
     assetCount,
     activeTab,
   ]);
@@ -469,9 +479,10 @@ const DataProductsDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={dataProduct.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="280px">
+        <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && dataProductPermission.Create && (
               <Button
@@ -519,9 +530,11 @@ const DataProductsDetailsPage = ({
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}
@@ -542,10 +555,9 @@ const DataProductsDetailsPage = ({
       </Row>
 
       <EntityNameModal
-        allowRename
         entity={dataProduct}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
@@ -561,16 +573,24 @@ const DataProductsDetailsPage = ({
         onConfirm={onDelete}
       />
 
-      <AssetSelectionModal
-        entityFqn={dataProductFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToIncludeDomain(
-          dataProduct.domain?.fullyQualifiedName ?? ''
-        )}
-        type={AssetsOfEntity.DATA_PRODUCT}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
+      {assetModalVisible && (
+        <AssetSelectionModal
+          emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+            name: getEntityName(dataProduct.domain),
+          })}
+          entityFqn={dataProductFqn}
+          open={assetModalVisible}
+          queryFilter={
+            getQueryFilterToIncludeDomain(
+              dataProduct.domain?.fullyQualifiedName ?? '',
+              dataProduct.fullyQualifiedName ?? ''
+            ) as QueryFilterInterface
+          }
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
       <StyleModal
         open={isStyleEditing}

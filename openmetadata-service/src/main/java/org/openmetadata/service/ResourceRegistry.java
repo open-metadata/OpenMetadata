@@ -19,7 +19,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class ResourceRegistry {
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
-  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
+  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP =
+      new HashMap<>();
   protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
       new EnumMap<>(MetadataOperation.class);
 
@@ -46,18 +47,20 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "roles");
     mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
     mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
-    // TODO tier, lineage, statues, reviewers, tests, queries, data profile, sample data
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
     Collections.sort(allOperations);
-    RESOURCE_DESCRIPTORS.add(new ResourceDescriptor().withName("all").withOperations(allOperations));
+    RESOURCE_DESCRIPTORS.add(
+        new ResourceDescriptor().withName("all").withOperations(allOperations));
   }
 
   private ResourceRegistry() {}
 
   public static void addResource(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, Set<String> entityFields) {
+      String resourceName,
+      List<MetadataOperation> entitySpecificOperations,
+      Set<String> entityFields) {
     // If resourceName already exists, then no need to add the resource again
     if (RESOURCE_DESCRIPTORS.stream().anyMatch(d -> d.getName().equals(resourceName))) {
       return;
@@ -65,13 +68,13 @@ public class ResourceRegistry {
     ResourceDescriptor resourceDescriptor =
         new ResourceDescriptor()
             .withName(resourceName)
-            .withOperations(getOperations(resourceName, entitySpecificOperations, new ArrayList<>(entityFields)));
+            .withOperations(getOperations(entitySpecificOperations, new ArrayList<>(entityFields)));
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
     RESOURCE_DESCRIPTORS.add(resourceDescriptor);
   }
 
   private static List<MetadataOperation> getOperations(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+      List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
     Set<MetadataOperation> operations = new TreeSet<>(COMMON_OPERATIONS);
     if (!nullOrEmpty(entitySpecificOperations)) {
       operations.addAll(entitySpecificOperations);
@@ -101,9 +104,13 @@ public class ResourceRegistry {
 
   public static ResourceDescriptor getResourceDescriptor(String resourceType) {
     ResourceDescriptor rd =
-        RESOURCE_DESCRIPTORS.stream().filter(r -> r.getName().equalsIgnoreCase(resourceType)).findAny().orElse(null);
+        RESOURCE_DESCRIPTORS.stream()
+            .filter(r -> r.getName().equalsIgnoreCase(resourceType))
+            .findAny()
+            .orElse(null);
     if (rd == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.resourceTypeNotFound(resourceType));
     }
     return rd;
   }

@@ -13,24 +13,25 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { User } from '../../generated/entity/teams/user';
 import { ReactionType } from '../../generated/type/reaction';
 import Emoji from './Emoji';
 
 const onReactionSelect = jest.fn();
+const mockUserData: User = {
+  name: 'aaron_johnson0',
+  email: 'testUser1@email.com',
+  id: '2e424734-761a-443f-bf2a-a5b361823c80',
+};
 
 jest.mock('../../hooks/useImage', () =>
   jest.fn().mockReturnValue({ image: null })
 );
 
-jest.mock('../../AppState', () => ({
-  getCurrentUserDetails: jest.fn().mockReturnValue({
-    id: '2e424734-761a-443f-bf2a-a5b361823c80',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  }),
+jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    currentUser: mockUserData,
+  })),
 }));
 
 const mockProps = {

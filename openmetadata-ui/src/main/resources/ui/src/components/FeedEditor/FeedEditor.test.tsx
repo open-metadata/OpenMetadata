@@ -73,6 +73,10 @@ jest.mock('react-quill', () => {
   };
 });
 
+jest.mock('../../utils/QuillLink/QuillLink', () => {
+  return jest.fn();
+});
+
 describe('Test FeedEditor Component', () => {
   it('Should render FeedEditor Component', async () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {

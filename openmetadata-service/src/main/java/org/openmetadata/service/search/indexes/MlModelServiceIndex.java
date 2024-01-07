@@ -10,22 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MlModelServiceIndex implements SearchIndex {
-
-  final MlModelService mlModelService;
-
+public record MlModelServiceIndex(MlModelService mlModelService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public MlModelServiceIndex(MlModelService mlModelService) {
-    this.mlModelService = mlModelService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(mlModelService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(mlModelService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(mlModelService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(mlModelService.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(
@@ -33,9 +27,7 @@ public class MlModelServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL_SERVICE);
-    if (mlModelService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(mlModelService.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));
     return doc;
   }
 }
