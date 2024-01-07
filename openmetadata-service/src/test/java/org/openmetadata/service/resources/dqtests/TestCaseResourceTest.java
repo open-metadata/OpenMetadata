@@ -1532,7 +1532,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public TestCase getTestCase(String fqn, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/name/" + fqn);
-    target = target.queryParam("fields", "incidents");
+    target = target.queryParam("fields", "incidentId");
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 

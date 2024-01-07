@@ -58,7 +58,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
-  private static final String INCIDENTS_FIELD = "incidents";
+  private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
@@ -516,12 +516,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private UUID getIncidentId(TestCase test) {
     UUID ongoingIncident = null;
 
-    List<UUID> incidents = daoCollection
-        .dataQualityDataTimeSeriesDao()
-        .getResultsWithIncidents(test.getFullyQualifiedName())
-        .stream()
-        .map(UUID::fromString)
-        .toList();
+    List<UUID> incidents =
+        daoCollection
+            .dataQualityDataTimeSeriesDao()
+            .getResultsWithIncidents(test.getFullyQualifiedName())
+            .stream()
+            .map(UUID::fromString)
+            .toList();
 
     if (!nullOrEmpty(incidents)) {
       ongoingIncident = incidents.get(0);
