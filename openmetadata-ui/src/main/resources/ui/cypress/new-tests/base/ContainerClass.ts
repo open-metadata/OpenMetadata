@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import { STORAGE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass from './EntityClass';
@@ -32,9 +32,6 @@ class ContainerClass extends EntityClass {
       term: this.containerName,
       serviceName: STORAGE_SERVICE.service.name,
       entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
     });
   }
 

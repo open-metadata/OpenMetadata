@@ -17,7 +17,7 @@ const userURL =
 const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
 
-export const addOwner = (ownerName: string) => {
+export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
     const token = Object.values(data)[0].oidcIdToken;
 
@@ -51,6 +51,12 @@ export const addOwner = (ownerName: string) => {
       .contains(`${userCount}`);
   });
 
+  cy.clickOutside();
+};
+
+export const addOwner = (ownerName: string) => {
+  cy.get('[data-testid="edit-owner"]').click();
+
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
@@ -71,6 +77,46 @@ export const addOwner = (ownerName: string) => {
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get('[data-testid="owner-link"]').should('contain', ownerName);
+};
+
+export const updateOwner = (ownerName: string) => {
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+  cy.log('/api/v1/users?limit=*&isBot=false*');
+  cy.get('.ant-tabs [id*=tab-users]').click();
+
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,
+    'searchOwner'
+  );
+
+  cy.get('[data-testid="owner-select-users-search-bar"]')
+    .clear()
+    .type(ownerName);
+
+  verifyResponseStatusCode('@searchOwner', 200);
+
+  interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
+
+  cy.get(`.ant-popover [title="${ownerName}"]`).click();
+  verifyResponseStatusCode('@patchOwner', 200);
+
+  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
+};
+
+export const removeOwner = (ownerName: string) => {
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
+
+  interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
+
+  cy.get('[data-testid="remove-owner"]').click();
+  verifyResponseStatusCode('@patchOwner', 200);
+
+  cy.get('[data-testid="owner-link"]').should('not.contain', ownerName);
 };
 
 export const addTeamAsOwner = (teamName: string) => {
@@ -104,56 +150,35 @@ export const addTeamAsOwner = (teamName: string) => {
   cy.get('[data-testid="owner-link"]').should('contain', teamName);
 };
 
-export const removeOwner = (ownerName: string) => {
-  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
-
-  cy.get('[data-testid="edit-owner"]').click();
-
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
-    'searchOwner'
-  );
-
-  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
-
-  verifyResponseStatusCode('@searchOwner', 200);
-
-  interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
-
-  cy.get('[data-testid="remove-owner"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-
-  cy.get('[data-testid="owner-link"]').should('not.contain', ownerName);
-};
-
-export const addRemoveAsOwner = (teamName: string) => {
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index',
-    'getTeams'
-  );
-
+export const updateTeamAsOwner = (teamName: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
-  verifyResponseStatusCode('@getTeams', 200);
-
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${encodeURI(teamName)}*&index=team_search_index`,
+    `api/v1/search/query?q=*${encodeURI(teamName)}*`,
     'searchTeams'
   );
 
-  cy.get('[data-testid="owner-select-teams-search-bar"]').type(teamName);
+  cy.get('[data-testid="owner-select-teams-search-bar"]')
+    .clear()
+    .type(teamName);
 
   verifyResponseStatusCode('@searchTeams', 200);
+
+  interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
+
+  cy.get(`.ant-popover [title="${teamName}"]`).click();
+  verifyResponseStatusCode('@patchOwner', 200);
+
+  cy.get('[data-testid="owner-link"]').should('contain', teamName);
+};
+
+export const removeTeamAsOwner = (teamName: string) => {
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 

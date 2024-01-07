@@ -44,12 +44,15 @@ import {
 } from '../../common/Utils/Glossary';
 import {
   addOwner,
-  addRemoveAsOwner,
   addTeamAsOwner,
   removeOwner,
+  removeTeamAsOwner,
+  updateOwner,
+  updateTeamAsOwner,
+  validateOwnerAndTeamCounts,
 } from '../../common/Utils/Owner';
 import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
-import { addTier, removeTier } from '../../common/Utils/Tier';
+import { addTier, removeTier, updateTier } from '../../common/Utils/Tier';
 import { downVoteEntity, upVoteEntity } from '../../common/Utils/Voting';
 import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
@@ -348,36 +351,25 @@ class EntityClass {
 
   // Owner
 
-  assignOwner(ownerName: string) {
+  userOwnerFlow(ownerName: string, newOwnerName: string) {
+    validateOwnerAndTeamCounts();
     addOwner(ownerName);
-  }
-  updateOwner(ownerName: string) {
-    addOwner(ownerName);
-  }
-  removeOwner(ownerName: string) {
-    removeOwner(ownerName);
+    updateOwner(newOwnerName);
+    removeOwner(newOwnerName);
   }
 
   // Team as Owner
-  assignTeamOwner(teamName: string) {
+  teamOwnerFlow(teamName: string, newTeamName: string) {
     addTeamAsOwner(teamName);
-  }
-  updateTeamOwner(teamName: string) {
-    addTeamAsOwner(teamName);
-  }
-  removeTeamOwner(teamName: string) {
-    addRemoveAsOwner(teamName);
+    updateTeamAsOwner(newTeamName);
+    removeTeamAsOwner(newTeamName);
   }
 
   // Tier
 
-  assignTier(tier: string) {
+  tierFlow(tier: string, newTier: string) {
     addTier(tier);
-  }
-  updateTier(tier: string) {
-    addTier(tier);
-  }
-  removeTier() {
+    updateTier(newTier);
     removeTier();
   }
 

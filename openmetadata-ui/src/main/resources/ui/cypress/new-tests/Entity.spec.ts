@@ -58,103 +58,52 @@ entities.forEach((entity) => {
       entity.visitEntity();
     });
 
-    it(`Assign domain`, () => {
+    it(`Domain assign, update & delete`, () => {
       entity.assignDomain();
-    });
-
-    it(`Update domain`, () => {
       entity.updateDomain();
-    });
-
-    it(`Remove domain`, () => {
       entity.removeDomain();
     });
 
-    it(`Assign user Owner`, () => {
-      entity.assignOwner(OWNER1);
+    it(`User as Owner assign, update & delete`, () => {
+      entity.userOwnerFlow(OWNER1, OWNER2);
     });
 
-    it(`Update user Owner`, () => {
-      entity.updateOwner(OWNER2);
+    it(`Team as Owner assign, update & delete`, () => {
+      entity.teamOwnerFlow(TEAM_OWNER_1, TEAM_OWNER_2);
     });
 
-    it(`Remove user Owner`, () => {
-      entity.removeOwner(OWNER2);
-    });
-
-    it(`Assign team as Owner`, () => {
-      entity.assignTeamOwner(TEAM_OWNER_1);
-    });
-
-    it(`Update team as Owner`, () => {
-      entity.updateTeamOwner(TEAM_OWNER_2);
-    });
-
-    it(`Remove team as Owner`, () => {
-      entity.removeTeamOwner(TEAM_OWNER_2);
-    });
-
-    it(`Assign tier`, () => {
-      entity.assignTier('Tier1');
-    });
-
-    it(`Update tier`, () => {
-      entity.updateTier('Tier5');
-    });
-
-    it(`Remove tier`, () => {
-      entity.removeTier();
+    it(`Tier assign, update & delete`, () => {
+      entity.tierFlow('Tier1', 'Tier5');
     });
 
     it(`Update description`, () => {
       entity.updateDescription();
     });
 
-    it(`Assign tags`, () => {
+    it(`Tags assign, update & delete`, () => {
       entity.assignTags();
-    });
-
-    it(`Update Tags`, () => {
       entity.updateTags();
-    });
-
-    it(`Remove Tags`, () => {
       entity.removeTags();
     });
 
-    it(`Assign GlossaryTerm`, () => {
+    it(`GlossaryTerm assign, update & delete`, () => {
       entity.assignGlossary();
-    });
-
-    it(`Update GlossaryTerm`, () => {
       entity.updateGlossary();
-    });
-
-    it(`Remove GlossaryTerm`, () => {
       entity.removeGlossary();
     });
 
-    it(`Create annoucement`, () => {
+    it(`Annoucement create & delete`, () => {
       entity.createAnnouncement();
-    });
-
-    it(`Remove annoucement`, () => {
       entity.removeAnnouncement();
     });
 
-    it(`Create inactive annoucement`, () => {
+    it(`Inactive annoucement create & delete`, () => {
       entity.createInactiveAnnouncement();
-    });
-
-    it(`Remove inactive annoucement`, () => {
       entity.removeInactiveAnnouncement();
     });
 
-    it(`UpVote entity`, () => {
+    it(`UpVote & DownVote entity`, () => {
       entity.upVote();
-    });
-
-    it(`DownVote entity`, () => {
       entity.downVote();
     });
 

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
+  visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -42,9 +42,6 @@ class StoreProcedureClass extends EntityClass {
       term: this.storeProcedureName,
       serviceName: DATABASE_SERVICE.service.name,
       entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
     });
   }
 

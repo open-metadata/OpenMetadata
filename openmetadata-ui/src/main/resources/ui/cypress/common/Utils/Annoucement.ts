@@ -137,4 +137,5 @@ export const createInactiveAnnouncement = (announcement) => {
   toastNotification('Announcement created successfully!');
 
   cy.get('[data-testid="inActive-announcements"]').should('be.visible');
+  cy.clickOutside();
 };

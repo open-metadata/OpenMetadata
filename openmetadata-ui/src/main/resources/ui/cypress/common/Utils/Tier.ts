@@ -12,12 +12,29 @@
  */
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
-export const addTier = (tier) => {
+export const addTier = (tier: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchTier');
 
   interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
   cy.get('[data-testid="edit-tier"]').click();
   verifyResponseStatusCode('@fetchTier', 200);
+  cy.get(`[data-testid="radio-btn-${tier}"]`).click({
+    waitForAnimations: true,
+  });
+  verifyResponseStatusCode('@patchTier', 200);
+  cy.get(`[data-testid="radio-btn-${tier}"]`).should('be.checked');
+
+  cy.clickOutside();
+  cy.get('[data-testid="Tier"]').should('contain', tier);
+
+  cy.clickOutside();
+};
+
+export const updateTier = (tier: string) => {
+  interceptURL('PATCH', `/api/v1/**`, 'patchTier');
+
+  cy.get('[data-testid="edit-tier"]').click();
+
   cy.get(`[data-testid="radio-btn-${tier}"]`).click({
     waitForAnimations: true,
   });

@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { deleteEntityViaREST } from '../../common/Utils/Entity';
+import {
+  deleteEntityViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   DASHBOARD_SERVICE,
@@ -36,9 +38,6 @@ class DashboardClass extends EntityClass {
       term: this.dashboardName,
       serviceName: DASHBOARD_SERVICE.service.name,
       entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
     });
   }
 

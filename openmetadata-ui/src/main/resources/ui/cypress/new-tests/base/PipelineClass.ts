@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { visitEntityDetailsPage } from '../../common/common';
 import { createSingleLevelEntity } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import { PIPELINE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass from './EntityClass';
@@ -32,9 +32,6 @@ class PipelineClass extends EntityClass {
       term: this.pipelineName,
       serviceName: PIPELINE_SERVICE.service.name,
       entity: this.endPoint,
-      dataTestId: null,
-      entityFqn: null,
-      entityType: null,
     });
   }
 

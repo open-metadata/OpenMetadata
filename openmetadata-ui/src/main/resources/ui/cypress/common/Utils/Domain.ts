@@ -13,13 +13,9 @@
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export const addDomainToEntity = (domainName: string) => {
-  interceptURL('GET', '/api/v1/domains?limit=*', 'getDomains');
-
   cy.get('[data-testid="add-domain"]').click();
 
   cy.get('[data-testid="selectable-list"]').should('be.visible');
-
-  verifyResponseStatusCode('@getDomains', 200);
 
   interceptURL(
     'GET',
@@ -29,9 +25,9 @@ export const addDomainToEntity = (domainName: string) => {
     'searchDomain'
   );
 
-  cy.get('[data-testid="selectable-list"] [data-testid="searchbar"]').type(
-    domainName
-  );
+  cy.get('[data-testid="selectable-list"] [data-testid="searchbar"]')
+    .clear()
+    .type(domainName);
 
   verifyResponseStatusCode('@searchDomain', 200);
 
@@ -44,13 +40,9 @@ export const addDomainToEntity = (domainName: string) => {
 };
 
 export const removeDomainFromEntity = (domainName: string) => {
-  interceptURL('GET', '/api/v1/domains?limit=*', 'getDomains');
-
   cy.get('[data-testid="add-domain"]').click();
 
   cy.get('[data-testid="selectable-list"]').should('be.visible');
-
-  verifyResponseStatusCode('@getDomains', 200);
 
   interceptURL('PATCH', `/api/v1/**`, 'patchDomain');
 

@@ -47,20 +47,20 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.Database
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
+    | EntityType.Domain
   >,
   string
 > = {
-  [EntityType.Dashboard]: 'Dashboard',
+  [EntityType.Dashboard]: 'dashboards',
   [EntityType.DataModel]: 'dashboard data models',
-  [EntityType.Pipeline]: 'Pipeline',
-  [EntityType.Topic]: 'Topic',
-  [EntityType.MlModel]: 'ML Model',
-  [EntityType.Container]: 'Container',
-  [EntityType.SeachIndex]: 'Search Index',
-  [EntityType.Table]: 'Table',
-  [EntityType.StoreProcedure]: 'Store Procedure',
-  [EntityType.Glossary]: 'Glossary',
-  [EntityType.Domain]: 'Domain',
+  [EntityType.Pipeline]: 'pipelines',
+  [EntityType.Topic]: 'topics',
+  [EntityType.MlModel]: 'ml models',
+  [EntityType.Container]: 'containers',
+  [EntityType.SeachIndex]: 'search indexes',
+  [EntityType.Table]: 'tables',
+  [EntityType.StoreProcedure]: 'stored procedures',
+  [EntityType.Glossary]: 'glossaries',
 } as const;
 
 export const SEARCH_INDEX: Record<
