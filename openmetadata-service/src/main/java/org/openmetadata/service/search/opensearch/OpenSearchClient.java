@@ -1338,8 +1338,6 @@ public class OpenSearchClient implements SearchClient {
           aggregations.getAggregations());
       case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
           aggregations.getAggregations());
-      default -> throw new IllegalArgumentException(
-          String.format("No processor found for chart Type %s ", dataInsightChartType));
     };
   }
 

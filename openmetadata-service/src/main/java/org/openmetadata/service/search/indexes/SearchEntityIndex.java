@@ -10,15 +10,9 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchEntityIndex implements SearchIndex {
-
-  final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
-
+public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex)
+    implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex) {
-    this.searchIndex = searchIndex;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(searchIndex);

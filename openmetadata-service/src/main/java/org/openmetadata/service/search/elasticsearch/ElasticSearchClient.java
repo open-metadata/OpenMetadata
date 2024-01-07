@@ -1409,8 +1409,6 @@ public class ElasticSearchClient implements SearchClient {
           aggregations.getAggregations());
       case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
           aggregations.getAggregations());
-      default -> throw new IllegalArgumentException(
-          String.format("No processor found for chart Type %s ", dataInsightChartType));
     };
   }
 

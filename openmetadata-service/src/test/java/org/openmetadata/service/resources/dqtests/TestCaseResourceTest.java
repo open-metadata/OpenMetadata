@@ -897,7 +897,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         storedTestSuite.getTestCaseResultSummary().stream()
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
-            .get();
+            .orElse(null);
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
@@ -914,7 +914,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         storedTestSuite.getTestCaseResultSummary().stream()
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
-            .get();
+            .orElse(null);
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
@@ -930,7 +930,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         storedTestSuite.getTestCaseResultSummary().stream()
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
-            .get();
+            .orElse(null);
     storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
@@ -957,7 +957,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         storedTestSuite.getTestCaseResultSummary().stream()
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
-            .get();
+            .orElse(null);
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
