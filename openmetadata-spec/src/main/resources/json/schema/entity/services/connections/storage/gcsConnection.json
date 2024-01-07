@@ -4,7 +4,7 @@
   "title": "GCS Connection",
   "description": "GCS Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.storage.GcsConnection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.GCSConnection",
   "definitions": {
     "gcsType": {
       "description": "Gcs service type",

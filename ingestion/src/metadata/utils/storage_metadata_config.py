@@ -20,6 +20,9 @@ import requests
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
+    GCSConfig,
+)
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
@@ -28,6 +31,9 @@ from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig 
 )
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataADLSConfig import (
     StorageMetadataAdlsConfig,
+)
+from metadata.generated.schema.metadataIngestion.storage.storageMetadataGCSConfig import (
+    StorageMetadataGcsConfig,
 )
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataHttpConfig import (
     StorageMetadataHttpConfig,
@@ -39,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config
     StorageMetadataS3Config,
 )
 from metadata.readers.file.config_source_factory import get_reader
+from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -172,5 +179,39 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
-            f"Error fetching manifest file from s3: {exc}"
+            f"Error fetching manifest file from adls: {exc}"
+        )
+
+
+@get_manifest.register
+def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
+    try:
+        bucket_name, prefix = (
+            config.prefixConfig.containerName,
+            config.prefixConfig.objectPrefix,
+        )
+
+        path = (
+            f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}"
+            if prefix
+            else STORAGE_METADATA_MANIFEST_FILE_NAME
+        )
+
+        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel
+            Client,
+        )
+
+        set_google_credentials(gcp_credentials=config.securityConfig)
+        gcs_client = Client()
+        reader = get_reader(
+            config_source=GCSConfig(securityConfig=config.securityConfig),
+            client=gcs_client,
+        )
+
+        manifest = reader.read(path=path, bucket_name=bucket_name)
+        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        raise StorageMetadataConfigException(
+            f"Error fetching manifest file from gcs: {exc}"
         )
