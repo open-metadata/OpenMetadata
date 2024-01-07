@@ -19,10 +19,10 @@ server:
   rootPath: '/api/*'
   applicationConnectors:
     - type: http
-      port: ${SERVER_PORT:-8585}
+      port: ${SERVER_PORT:-9585}
   adminConnectors:
     - type: http
-      port: ${SERVER_ADMIN_PORT:-8586}
+      port: ${SERVER_ADMIN_PORT:-9586}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -241,6 +241,7 @@ elasticsearch:
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
   password: ${ELASTICSEARCH_PASSWORD:-""}
+  clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
