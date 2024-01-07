@@ -5118,10 +5118,10 @@ antd@4.24.0:
     rc-util "^5.22.5"
     scroll-into-view-if-needed "^2.2.25"
 
-antlr4@4.9.2:
-  version "4.9.2"
-  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.9.2.tgz#abbc53d275954b1b6f4d8b3468b4a2cb258121fc"
-  integrity sha512-UjMSlenUORL+a+6g4RNZxRh5LcFWybRi2g0ASDBpgXBY6nlavg0BRVAVEQF0dz8jH6SyX3lV7uP5y/krJzc+Hw==
+antlr4@4.13.1:
+  version "4.13.1"
+  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.13.1.tgz#1e0a1830a08faeb86217cb2e6c34716004e4253d"
+  integrity sha512-kiXTspaRYvnIArgE97z5YVVf/cDVQABr3abFRR6mE7yesLMkgu4ujuyV/sgxafQ8wgve0DJQUJ38Z8tkgA2izA==
 
 anymatch@^2.0.0:
   version "2.0.0"
