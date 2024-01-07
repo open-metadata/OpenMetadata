@@ -198,9 +198,7 @@ export const visitEntityDetailsPage = ({
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(entityFqn ?? term);
 
-  verifyResponseStatusCode('@explorePageSearch', 200);
-
-  cy.wait('@explorePageSearch').then(() => {
+  verifyResponseStatusCode('@explorePageSearch', 200).then(() => {
     cy.get('body').then(($body) => {
       // checking if requested term is available in search suggestion
       if (

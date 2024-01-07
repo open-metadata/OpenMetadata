@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  createEntityTableViaREST,
-  deleteEntityViaREST,
-  visitEntityDetailsPage,
-} from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
   STORED_PROCEDURE_DETAILS,
 } from '../../constants/EntityConstant';
+import {
+  createEntityTableViaREST,
+  deleteEntityViaREST,
+  visitEntityDetailsPage,
+} from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
 class StoreProcedureClass extends EntityClass {

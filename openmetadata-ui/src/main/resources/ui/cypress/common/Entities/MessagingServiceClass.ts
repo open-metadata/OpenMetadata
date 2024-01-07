@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { MESSAGING_SERVICE } from '../../constants/EntityConstant';
+import { createSingleLevelEntity } from '../EntityUtils';
+import { visitServiceDetailsPage } from '../serviceUtils';
 import EntityClass from './EntityClass';
 
 class MessagingServiceClass extends EntityClass {

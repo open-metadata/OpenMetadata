@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../constants/Entity.interface';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
   visitEntityDetailsPage,
-} from '../../common/Utils/Entity';
-import { EntityType } from '../../constants/Entity.interface';
-import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+} from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
 class TableClass extends EntityClass {

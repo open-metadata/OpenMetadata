@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { uuid } from '../../constants/constants';
+import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
   deleteAnnoucement,
-} from '../../common/Utils/Annoucement';
+} from '../Utils/Annoucement';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
@@ -23,11 +26,8 @@ import {
   deleteCustomPropertyForEntity,
   generateCustomProperty,
   setValueForProperty,
-} from '../../common/Utils/CustomProperty';
-import {
-  addDomainToEntity,
-  removeDomainFromEntity,
-} from '../../common/Utils/Domain';
+} from '../Utils/CustomProperty';
+import { addDomainToEntity, removeDomainFromEntity } from '../Utils/Domain';
 import {
   createEntityViaREST,
   deleteEntity,
@@ -36,12 +36,12 @@ import {
   restoreEntity as restoreEntityUtil,
   updateDescriptioForEntity,
   updateDisplayNameForEntity,
-} from '../../common/Utils/Entity';
+} from '../Utils/Entity';
 import {
   assignGlossaryTerm,
   removeGlossaryTerm,
   udpateGlossaryTerm,
-} from '../../common/Utils/Glossary';
+} from '../Utils/Glossary';
 import {
   addOwner,
   addTeamAsOwner,
@@ -50,13 +50,10 @@ import {
   updateOwner,
   updateTeamAsOwner,
   validateOwnerAndTeamCounts,
-} from '../../common/Utils/Owner';
-import { assignTags, removeTags, udpateTags } from '../../common/Utils/Tags';
-import { addTier, removeTier, updateTier } from '../../common/Utils/Tier';
-import { downVoteEntity, upVoteEntity } from '../../common/Utils/Voting';
-import { uuid } from '../../constants/constants';
-import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import { EntityType } from '../../constants/Entity.interface';
+} from '../Utils/Owner';
+import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
+import { addTier, removeTier, updateTier } from '../Utils/Tier';
+import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
 const description =
   // eslint-disable-next-line max-len

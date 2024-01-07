@@ -10,27 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
-import { STORAGE_SERVICE } from '../../constants/EntityConstant';
+import { PIPELINE_SERVICE } from '../../constants/EntityConstant';
+import { createSingleLevelEntity } from '../EntityUtils';
+import { visitEntityDetailsPage } from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
-class ContainerClass extends EntityClass {
-  containerName: string;
+class PipelineClass extends EntityClass {
+  pipelineName: string;
 
   constructor() {
-    const containerName = `cypress-container-${Date.now()}`;
-    super(containerName, STORAGE_SERVICE.entity, EntityType.Container);
+    const pipelineName = `cypress-pipeline-${Date.now()}`;
+    super(pipelineName, PIPELINE_SERVICE.entity, EntityType.Pipeline);
 
-    this.containerName = containerName;
-    this.name = 'Container';
+    this.pipelineName = pipelineName;
+    this.name = 'Pipeline';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
-      term: this.containerName,
-      serviceName: STORAGE_SERVICE.service.name,
+      term: this.pipelineName,
+      serviceName: PIPELINE_SERVICE.service.name,
       entity: this.endPoint,
     });
   }
@@ -45,11 +45,11 @@ class ContainerClass extends EntityClass {
 
       createSingleLevelEntity({
         token,
-        ...STORAGE_SERVICE,
-        entity: [{ ...STORAGE_SERVICE.entity, name: this.containerName }],
+        ...PIPELINE_SERVICE,
+        entity: [{ ...PIPELINE_SERVICE.entity, name: this.pipelineName }],
       });
     });
   }
 }
 
-export default ContainerClass;
+export default PipelineClass;

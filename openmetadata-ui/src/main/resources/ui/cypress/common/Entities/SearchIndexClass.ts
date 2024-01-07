@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   SEARCH_INDEX_DETAILS,
   SEARCH_SERVICE,
 } from '../../constants/EntityConstant';
+import { createSingleLevelEntity } from '../EntityUtils';
+import { visitEntityDetailsPage } from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
 class SearchIndexClass extends EntityClass {

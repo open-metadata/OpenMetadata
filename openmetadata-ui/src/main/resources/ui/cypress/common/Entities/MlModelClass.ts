@@ -10,27 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
-import {
-  MESSAGING_SERVICE,
-  TOPIC_DETAILS,
-} from '../../constants/EntityConstant';
+import { ML_MODEL_SERVICE } from '../../constants/EntityConstant';
+import { createSingleLevelEntity } from '../EntityUtils';
+import { visitEntityDetailsPage } from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
-class TopicClass extends EntityClass {
-  constructor() {
-    const topicName = `cypress-topic-${Date.now()}`;
-    super(topicName, TOPIC_DETAILS, EntityType.Topic);
+class MlModelClass extends EntityClass {
+  mlModelName: string;
 
-    this.name = 'Topic';
+  constructor() {
+    const mlModelName = `cypress-mlmodel-${Date.now()}`;
+    super(mlModelName, ML_MODEL_SERVICE.entity, EntityType.MlModel);
+
+    this.mlModelName = mlModelName;
+    this.name = 'MlModel';
   }
 
   visitEntity() {
     visitEntityDetailsPage({
-      term: this.entityName,
-      serviceName: MESSAGING_SERVICE.service.name,
+      term: this.mlModelName,
+      serviceName: ML_MODEL_SERVICE.service.name,
       entity: this.endPoint,
     });
   }
@@ -41,15 +41,15 @@ class TopicClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = Object.values(data)[0].oidcIdToken as string;
 
       createSingleLevelEntity({
-        ...MESSAGING_SERVICE,
-        entity: { ...MESSAGING_SERVICE.entity, name: this.entityName },
-        token: token,
+        token,
+        ...ML_MODEL_SERVICE,
+        entity: [{ ...ML_MODEL_SERVICE.entity, name: this.mlModelName }],
       });
     });
   }
 }
 
-export default TopicClass;
+export default MlModelClass;

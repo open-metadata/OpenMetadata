@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createSingleLevelEntity } from '../../common/EntityUtils';
-import {
-  deleteEntityViaREST,
-  visitEntityDetailsPage,
-} from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   DASHBOARD_SERVICE,
   DASHBOARD_SERVICE_DETAILS,
 } from '../../constants/EntityConstant';
+import { createSingleLevelEntity } from '../EntityUtils';
+import { deleteEntityViaREST, visitEntityDetailsPage } from '../Utils/Entity';
 import EntityClass from './EntityClass';
 
 class DashboardClass extends EntityClass {

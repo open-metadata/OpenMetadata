@@ -11,26 +11,17 @@
  *  limitations under the License.
  */
 
-import { CustomPropertyType } from '../common/Utils/CustomProperty';
-import { CustomPropertySupportedEntityList } from '../constants/CustomProperty.constant';
-import ContainerClass from './base/ContainerClass';
-import DashboardClass from './base/DashboardClass';
-import DashboardDataModelClass from './base/DataModelClass';
-import MlModelClass from './base/MlModelClass';
-import PipelineClass from './base/PipelineClass';
-import SearchIndexClass from './base/SearchIndexClass';
-import TopicClass from './base/TopicClass';
+import { CustomPropertyType } from '../../common/Utils/CustomProperty';
+import DatabaseClass from './../../common/Entities/DatabaseClass';
+import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
+import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
+import TableClass from './../../common/Entities/TableClass';
 
-// Run tests over all entities except Database, Schema, Table and Store Procedure
-// Those tests are covered in cypress/new-tests/Database.spec.js
 const entities = [
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
+  new DatabaseClass(),
+  new DatabaseSchemaClass(),
+  new StoreProcedureClass(),
+  new TableClass(),
 ] as const;
 
 const OWNER1 = 'Aaron Johnson';
@@ -92,6 +83,10 @@ entities.forEach((entity) => {
       entity.removeGlossary();
     });
 
+    it(`Update displayName`, () => {
+      entity.renameEntity();
+    });
+
     it(`Annoucement create & delete`, () => {
       entity.createAnnouncement();
       entity.removeAnnouncement();
@@ -107,27 +102,20 @@ entities.forEach((entity) => {
       entity.downVote();
     });
 
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endPoint)) {
-      Object.values(CustomPropertyType).forEach((type) => {
-        it(`Set ${type} Custom Property `, () => {
-          entity.setCustomProperty(
-            entity.customPropertyValue[type].property,
-            entity.customPropertyValue[type].value
-          );
-        });
-
-        it(`Update ${type} Custom Property`, () => {
-          entity.updateCustomProperty(
-            entity.customPropertyValue[type].property,
-            entity.customPropertyValue[type].newValue
-          );
-        });
+    Object.values(CustomPropertyType).forEach((type) => {
+      it(`Set ${type} Custom Property `, () => {
+        entity.setCustomProperty(
+          entity.customPropertyValue[type].property,
+          entity.customPropertyValue[type].value
+        );
       });
-    }
 
-    it(`Update displayName`, () => {
-      entity.renameEntity();
+      it(`Update ${type} Custom Property`, () => {
+        entity.updateCustomProperty(
+          entity.customPropertyValue[type].property,
+          entity.customPropertyValue[type].newValue
+        );
+      });
     });
 
     it(`Soft delete`, () => {

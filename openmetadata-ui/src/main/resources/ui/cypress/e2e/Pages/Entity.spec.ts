@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 
-import DashboardServiceClass from './base/DashboardServiceClass';
-import DatabaseServiceClass from './base/DatabaseServiceClass';
-import MessagingServiceClass from './base/MessagingServiceClass';
-import MlModelServiceClass from './base/MlModelServiceClass';
-import PipelineServiceClass from './base/PipelineServiceClass';
-import SearchServiceClass from './base/SearchServiceClass';
-import StorageServiceClass from './base/StorageServiceClass';
+import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
+import ContainerClass from './../../common/Entities/ContainerClass';
+import DashboardClass from './../../common/Entities/DashboardClass';
+import DashboardDataModelClass from './../../common/Entities/DataModelClass';
+import MlModelClass from './../../common/Entities/MlModelClass';
+import PipelineClass from './../../common/Entities/PipelineClass';
+import SearchIndexClass from './../../common/Entities/SearchIndexClass';
+import TopicClass from './../../common/Entities/TopicClass';
+import { CustomPropertyType } from './../../common/Utils/CustomProperty';
 
+// Run tests over all entities except Database, Schema, Table and Store Procedure
+// Those tests are covered in cypress/new-tests/Database.spec.js
 const entities = [
-  new DatabaseServiceClass(),
-  new MessagingServiceClass(),
-  new DashboardServiceClass(),
-  new PipelineServiceClass(),
-  new MlModelServiceClass(),
-  new StorageServiceClass(),
-  new SearchServiceClass(),
-  // TODO: add tests for metadata service tests
-  //   new MetadataServiceClass(),
+  new DashboardClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+  new SearchIndexClass(),
+  new DashboardDataModelClass(),
 ] as const;
 
 const OWNER1 = 'Aaron Johnson';
@@ -47,6 +49,7 @@ entities.forEach((entity) => {
 
     after(() => {
       cy.login();
+
       entity.cleanup();
     });
 
@@ -89,10 +92,6 @@ entities.forEach((entity) => {
       entity.removeGlossary();
     });
 
-    it(`Update displayName`, () => {
-      entity.renameEntity();
-    });
-
     it(`Annoucement create & delete`, () => {
       entity.createAnnouncement();
       entity.removeAnnouncement();
@@ -101,6 +100,34 @@ entities.forEach((entity) => {
     it(`Inactive annoucement create & delete`, () => {
       entity.createInactiveAnnouncement();
       entity.removeInactiveAnnouncement();
+    });
+
+    it(`UpVote & DownVote entity`, () => {
+      entity.upVote();
+      entity.downVote();
+    });
+
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(entity.endPoint)) {
+      Object.values(CustomPropertyType).forEach((type) => {
+        it(`Set ${type} Custom Property `, () => {
+          entity.setCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].value
+          );
+        });
+
+        it(`Update ${type} Custom Property`, () => {
+          entity.updateCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].newValue
+          );
+        });
+      });
+    }
+
+    it(`Update displayName`, () => {
+      entity.renameEntity();
     });
 
     it(`Soft delete`, () => {
