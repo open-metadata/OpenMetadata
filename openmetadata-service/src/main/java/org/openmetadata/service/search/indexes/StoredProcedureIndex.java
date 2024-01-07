@@ -11,15 +11,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class StoredProcedureIndex implements SearchIndex {
-
+public record StoredProcedureIndex(StoredProcedure storedProcedure) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final StoredProcedure storedProcedure;
-
-  public StoredProcedureIndex(StoredProcedure storedProcedure) {
-    this.storedProcedure = storedProcedure;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(storedProcedure);

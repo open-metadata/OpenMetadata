@@ -131,7 +131,7 @@ export const AddEditPersonaForm = ({
         trigger: 'onUpdate',
         initialValue: [],
       },
-      formItemLayout: FormItemLayout.HORIZONATAL,
+      formItemLayout: FormItemLayout.HORIZONTAL,
       type: FieldTypes.USER_MULTI_SELECT,
       props: {
         'data-testid': 'user',

@@ -10,15 +10,9 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardServiceIndex implements SearchIndex {
-
-  final DashboardService dashboardService;
+public record DashboardServiceIndex(DashboardService dashboardService) implements SearchIndex {
 
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public DashboardServiceIndex(DashboardService dashboardService) {
-    this.dashboardService = dashboardService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(dashboardService);
