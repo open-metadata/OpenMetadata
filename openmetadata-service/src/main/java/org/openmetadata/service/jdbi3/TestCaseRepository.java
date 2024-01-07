@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getCollectionDAO;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
@@ -718,7 +717,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           (TestCaseResolutionStatusRepository)
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
 
-      this.dataQualityDataTimeSeriesDao = getCollectionDAO().dataQualityDataTimeSeriesDao();
+      this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
     }
 
     /**
