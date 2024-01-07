@@ -34,7 +34,7 @@
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange('columns', 'description')",
+        "condition": "matchAnyFieldChange({'columns', 'description'})",
         "inputType": "none"
       },
       {
@@ -43,7 +43,7 @@
         "displayName": "Get Table Metrics Updates",
         "description" : "Get Updates About Table Metrics",
         "effect" : "include",
-        "condition": "matchAnyFieldChange('customMetrics', 'profile')",
+        "condition": "matchAnyFieldChange({'customMetrics', 'profile'})",
         "inputType": "none"
       }
     ]
@@ -222,9 +222,9 @@
         "displayName": "Filter By Table Name",
         "description" : "Filter A Change Event By Pipeline Name",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "filterByTableNameTestCaseBelongsTo(${tableNameList})",
         "arguments": [
-          "fieldList"
+          "tableNameList"
         ],
         "inputType": "runtime"
       }

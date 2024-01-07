@@ -1,5 +1,6 @@
 package org.openmetadata.service.events.subscription;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
@@ -44,7 +45,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated source",
       description =
           "Returns true if the change event entity being accessed has source as mentioned in condition",
-      examples = {"matchAnySource('bot', 'user')"},
+      examples = {"matchAnySource({'bot', 'user'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchAnySource(List<String> originEntities) {
     if (changeEvent == null || changeEvent.getEntityType() == null) {
@@ -64,7 +65,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated ownerName",
       description =
           "Returns true if the change event entity being accessed has following owners from the List.",
-      examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
+      examples = {"matchAnyOwnerName({'Owner1', 'Owner2'})"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyOwnerName(List<String> ownerNameList) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
@@ -97,7 +98,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated entityName",
       description =
           "Returns true if the change event entity being accessed has following entityName from the List.",
-      examples = {"matchAnyEntityFqn('Name1', 'Name')"},
+      examples = {"matchAnyEntityFqn({'FQN1', 'FQN2'})"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyEntityFqn(List<String> entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
@@ -123,7 +124,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated entity Ids",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
+      examples = {"matchAnyEntityId({'uuid1', 'uuid2'})"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyEntityId(List<String> entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
@@ -165,7 +166,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated eventTypes",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
+      examples = {"matchTestResult({'Success', 'Failed', 'Aborted'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchTestResult(List<String> testResults) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
@@ -184,7 +185,8 @@ public class AlertsRuleEvaluator {
 
     for (FieldChange fieldChange : fieldChanges) {
       if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
-        TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
+        TestCaseResult testCaseResult =
+            JsonUtils.readOrConvertValue(fieldChange.getNewValue(), TestCaseResult.class);
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         for (String givenStatus : testResults) {
           if (givenStatus.equals(status.value())) {
@@ -197,11 +199,38 @@ public class AlertsRuleEvaluator {
   }
 
   @Function(
+      name = "filterByTableNameTestCaseBelongsTo",
+      input = "List of comma separated Test Suite",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"filterByTableNameTestCaseBelongsTo({'tableName1', 'tableName2'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean filterByTableNameTestCaseBelongsTo(List<String> tableNameList) {
+    if (changeEvent == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
+      // in case the entity is not test case return since the filter doesn't apply
+      return true;
+    }
+
+    EntityInterface entity = getEntity(changeEvent);
+    for (String name : tableNameList) {
+      if (entity.getFullyQualifiedName().contains(name)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
       name = "getTestCaseStatusIfInTestSuite",
       input = "List of comma separated Test Suite",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"getTestCaseStatusIfInTestSuite('Success', 'Failed', 'Aborted')"},
+      examples = {
+        "getTestCaseStatusIfInTestSuite({'testSuite1','testSuite2'}, {'Success', 'Failed', 'Aborted'})"
+      },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean getTestCaseStatusIfInTestSuite(
       List<String> testSuiteList, List<String> testResults) {
@@ -214,21 +243,18 @@ public class AlertsRuleEvaluator {
     }
 
     // we need to handle both fields updated and fields added
-    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
-    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
-      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
-    }
-
-    for (FieldChange fieldChange : fieldChanges) {
-      if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
-        TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
-        TestCaseStatus status = testCaseResult.getTestCaseStatus();
-        for (String givenStatus : testResults) {
-          if (givenStatus.equals(status.value())) {
-            return true;
-          }
-        }
-      }
+    EntityInterface entity = getEntity(changeEvent);
+    TestCase entityWithTestSuite =
+        Entity.getEntity(
+            changeEvent.getEntityType(), entity.getId(), "testSuites", Include.NON_DELETED);
+    boolean testSuiteFiltering =
+        listOrEmpty(entityWithTestSuite.getTestSuites()).stream()
+            .anyMatch(
+                testSuite ->
+                    testSuiteList.stream()
+                        .anyMatch(name -> testSuite.getFullyQualifiedName().equals(name)));
+    if (testSuiteFiltering) {
+      return matchTestResult(testResults);
     }
     return false;
   }
@@ -237,7 +263,7 @@ public class AlertsRuleEvaluator {
       name = "matchUpdatedBy",
       input = "List of comma separated user names that updated the entity",
       description = "Returns true if the change event entity is updated by the mentioned users",
-      examples = {"matchUpdatedBy('user1', 'user2')"},
+      examples = {"matchUpdatedBy({'user1', 'user2'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchUpdatedBy(List<String> updatedByUserList) {
     if (changeEvent == null || changeEvent.getUserName() == null) {
@@ -258,7 +284,7 @@ public class AlertsRuleEvaluator {
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {
-        "matchIngestionPipelineState('queued', 'success', 'failed', 'running', 'partialSuccess')"
+        "matchIngestionPipelineState({'queued', 'success', 'failed', 'running', 'partialSuccess'})"
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchIngestionPipelineState(List<String> pipelineState) {
@@ -287,7 +313,7 @@ public class AlertsRuleEvaluator {
       name = "matchAnyFieldChange",
       input = "List of comma separated fields change",
       description = "Returns true if the change event entity is updated by the mentioned users",
-      examples = {"matchAnyFieldChange('fieldName1', 'fieldName')"},
+      examples = {"matchAnyFieldChange({'fieldName1', 'fieldName'})"},
       paramInputType = NOT_REQUIRED)
   public boolean matchAnyFieldChange(List<String> fieldChangeUpdate) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
@@ -306,10 +332,10 @@ public class AlertsRuleEvaluator {
       name = "matchAnyDomain",
       input = "List of comma separated Domains",
       description = "Returns true if the change event entity belongs to a domain from the list",
-      examples = {"matchAnyDomain('domain1', 'domain2')"},
+      examples = {"matchAnyDomain({'domain1', 'domain2'})"},
       paramInputType = NOT_REQUIRED)
   public boolean matchAnyDomain(List<String> fieldChangeUpdate) {
-    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+    if (changeEvent == null) {
       return false;
     }
     EntityInterface entity = getEntity(changeEvent);
