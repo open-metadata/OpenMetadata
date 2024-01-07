@@ -29,12 +29,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "name": "GetTableSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTableSchemaChanges",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange({'columns', 'description'})",
+        "condition": "matchAnyFieldChange({'columns'})",
         "inputType": "none"
       },
       {
@@ -78,12 +78,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "name": "GetTopicSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTopicSchemaChanges",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "matchAnyFieldChange({'messageSchema'})",
         "arguments": [
           "fieldList"
         ],
@@ -121,12 +121,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "name": "GetContainerSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetContainerSchemaChanges",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "matchAnyFieldChange({'parent','children'})",
         "arguments": [
           "fieldList"
         ],
@@ -164,12 +164,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
+        "name": "GetPipelineSchemaChanges",
         "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation',''})",
         "arguments": [
           "fieldList"
         ],
@@ -231,12 +231,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
+        "name": "GetTestCaseSchemaChanges",
         "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "matchAnyFieldChange({'testDefinition','parameterValues'})",
         "arguments": [
           "fieldList"
         ],
@@ -298,12 +298,12 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetSchemaChanges",
+        "name": "GetTestSuiteSchemaChanges",
         "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange(${fieldList})",
+        "condition": "matchAnyFieldChange({'connection','pipelines'})",
         "arguments": [
           "fieldList"
         ],
