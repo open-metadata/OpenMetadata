@@ -16,6 +16,7 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
@@ -33,6 +34,7 @@ import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.Observability;
 import org.openmetadata.schema.entity.events.Argument;
@@ -140,6 +142,19 @@ public final class AlertUtil {
           func.setParamAdditionalContext(
               paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
         }
+        case matchAnyFieldChange -> {
+          Map<String, Set<String>> entityToFieldMap =
+              EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          Map.Entry::getKey,
+                          entry ->
+                              Entity.getEntityFields(
+                                  EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entry.getKey()))));
+          func.setParamAdditionalContext(paramAdditionalContext.withData(entityToFieldMap));
+        }
+        case matchAnyDomain -> func.setParamAdditionalContext(
+            paramAdditionalContext.withData(getEntitiesIndex(List.of(DOMAIN))));
         default -> LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);

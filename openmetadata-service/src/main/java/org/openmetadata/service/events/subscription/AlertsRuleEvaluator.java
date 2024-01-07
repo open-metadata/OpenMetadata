@@ -2,8 +2,8 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
-import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
+import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -314,7 +314,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated fields change",
       description = "Returns true if the change event entity is updated by the mentioned users",
       examples = {"matchAnyFieldChange({'fieldName1', 'fieldName'})"},
-      paramInputType = NOT_REQUIRED)
+      paramInputType = READ_FROM_PARAM_CONTEXT_PER_ENTITY)
   public boolean matchAnyFieldChange(List<String> fieldChangeUpdate) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
@@ -333,7 +333,7 @@ public class AlertsRuleEvaluator {
       input = "List of comma separated Domains",
       description = "Returns true if the change event entity belongs to a domain from the list",
       examples = {"matchAnyDomain({'domain1', 'domain2'})"},
-      paramInputType = NOT_REQUIRED)
+      paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyDomain(List<String> fieldChangeUpdate) {
     if (changeEvent == null) {
       return false;
