@@ -953,3 +953,30 @@ export const createNewEdge = (edge: Edge) => {
 
   return selectedEdge;
 };
+
+export const getUpstreamDownstreamEdges = (
+  edges: EdgeDetails[],
+  currentNode: string
+) => {
+  const downstreamEdges: EdgeDetails[] = [];
+  const upstreamEdges: EdgeDetails[] = [];
+
+  function findDownstream(node: string) {
+    const directDownstream = edges.filter(
+      (edge) => edge.fromEntity.fqn === node
+    );
+    downstreamEdges.push(...directDownstream);
+    directDownstream.forEach((edge) => findDownstream(edge.toEntity.fqn));
+  }
+
+  function findUpstream(node: string) {
+    const directUpstream = edges.filter((edge) => edge.toEntity.fqn === node);
+    upstreamEdges.push(...directUpstream);
+    directUpstream.forEach((edge) => findUpstream(edge.fromEntity.fqn));
+  }
+
+  findDownstream(currentNode);
+  findUpstream(currentNode);
+
+  return { downstreamEdges, upstreamEdges };
+};

@@ -49,7 +49,6 @@ const EntityInfoDrawer = ({
   show,
   onCancel,
   selectedNode,
-  isMainNode = false,
 }: LineageDrawerProps) => {
   const [entityDetail, setEntityDetail] = useState<EntityDetailUnion>(
     {} as EntityDetailUnion
@@ -169,7 +168,7 @@ const EntityInfoDrawer = ({
       open={show}
       style={{ position: 'absolute' }}
       title={
-        <Row gutter={[0, isMainNode ? 6 : 0]}>
+        <Row gutter={[0, 0]}>
           <Col span={24}>
             {'databaseSchema' in entityDetail && 'database' in entityDetail && (
               <span
@@ -179,9 +178,9 @@ const EntityInfoDrawer = ({
           </Col>
           <Col span={24}>
             <Typography
-              className={classNames('flex items-center text-base', {
-                'entity-info-header-link': !isMainNode,
-              })}>
+              className={classNames(
+                'flex items-center text-base entity-info-header-link'
+              )}>
               <span className="m-r-xs w-4">
                 {getEntityIcon(selectedNode.entityType as string)}
               </span>
@@ -189,7 +188,7 @@ const EntityInfoDrawer = ({
                 selectedNode.displayName ?? selectedNode.name,
                 selectedNode.fullyQualifiedName,
                 selectedNode.entityType as string,
-                isMainNode
+                false
               )}
             </Typography>
           </Col>
