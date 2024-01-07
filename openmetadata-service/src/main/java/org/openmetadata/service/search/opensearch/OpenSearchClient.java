@@ -166,9 +166,9 @@ public class OpenSearchClient implements SearchClient {
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public OpenSearchClient(ElasticSearchConfiguration esConfig) {
-    client = createOpenSearchClient(esConfig);
-    clusterAlias = esConfig.getClusterAlias();
+  public OpenSearchClient(ElasticSearchConfiguration config) {
+    client = createOpenSearchClient(config);
+    clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
   }
 

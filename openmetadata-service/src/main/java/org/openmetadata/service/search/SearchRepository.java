@@ -95,17 +95,18 @@ public class SearchRepository {
   public SearchRepository(
       ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
     elasticSearchConfiguration = config;
-    if (config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+    if (config != null
+        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {
       searchClient = new ElasticSearchClient(config);
     }
     this.searchIndexFactory = searchIndexFactory;
     language =
-        config.getSearchIndexMappingLanguage() != null
+        config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
-    clusterAlias = elasticSearchConfiguration.getClusterAlias();
+    clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
     Entity.setSearchRepository(this);
   }

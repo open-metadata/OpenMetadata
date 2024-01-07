@@ -173,9 +173,9 @@ public class ElasticSearchClient implements SearchClient {
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public ElasticSearchClient(ElasticSearchConfiguration esConfig) {
-    client = createElasticSearchClient(esConfig);
-    clusterAlias = esConfig.getClusterAlias();
+  public ElasticSearchClient(ElasticSearchConfiguration config) {
+    client = createElasticSearchClient(config);
+    clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
   }
 
