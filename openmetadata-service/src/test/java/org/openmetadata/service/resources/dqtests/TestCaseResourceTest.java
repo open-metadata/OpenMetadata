@@ -1106,7 +1106,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // We can get it via API with a list of ongoing incidents
     TestCase result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
-    assertListNotEmpty(result.getIncidents());
+    assertNotNull(result.getIncidentId());
 
     // Resolving the status triggers resolving the task, which triggers removing the ongoing
     // incident from the test case
@@ -1124,7 +1124,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // If we read again, the incident list will be empty
     result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
-    assertEquals(result.getIncidents(), List.of());
+    assertNull(result.getIncidentId());
   }
 
   @Test

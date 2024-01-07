@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -84,8 +85,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT_FIELD)
             ? getTestCaseResult(test)
             : test.getTestCaseResult());
-    test.setIncidents(
-        fields.contains(INCIDENTS_FIELD) ? getIncidentIds(test) : test.getIncidents());
+    test.setIncidentId(
+        fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
   @Override
@@ -512,13 +513,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   /**
    * Check all the test case results that have an ongoing incident and get the stateId of the incident
    */
-  private List<UUID> getIncidentIds(TestCase test) {
-    return daoCollection
+  private UUID getIncidentId(TestCase test) {
+    UUID ongoingIncident = null;
+
+    List<UUID> incidents = daoCollection
         .dataQualityDataTimeSeriesDao()
         .getResultsWithIncidents(test.getFullyQualifiedName())
         .stream()
         .map(UUID::fromString)
         .toList();
+
+    if (!nullOrEmpty(incidents)) {
+      ongoingIncident = incidents.get(0);
+    }
+
+    return ongoingIncident;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
