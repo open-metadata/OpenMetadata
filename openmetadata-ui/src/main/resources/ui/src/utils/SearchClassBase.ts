@@ -58,6 +58,12 @@ class SearchClassBase {
         icon: Icons.TABLE_GREY,
         selectedIcon: Icons.TABLE,
       },
+      [SearchIndex.DATABASE]: {
+        label: i18n.t('label.database-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databases',
+      },
       [SearchIndex.STORED_PROCEDURE]: {
         label: i18n.t('label.stored-procedure-plural'),
         sortingFields: entitySortingFields,

@@ -45,9 +45,11 @@ import {
   MOCK_EXPLORE_PAGE_COUNT,
 } from '../../constants/mockTourData.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
+import { getSearchIndexFromEntityType } from '../../utils/Assets/AssetsUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
@@ -380,12 +382,14 @@ const ExplorePageV1: FunctionComponent = () => {
         fetchSource: false,
         filters: '',
       }).then((res) => {
-        const buckets = res.aggregations[`index_count`].buckets;
+        const buckets = res.aggregations[`entityType`].buckets;
         const counts: Record<string, number> = {};
 
         buckets.forEach((item) => {
-          if (item && TABS_SEARCH_INDEXES.includes(item.key as SearchIndex)) {
-            counts[item.key ?? ''] = item.doc_count;
+          const searchIndexKey =
+            item && getSearchIndexFromEntityType(item.key as EntityType);
+          if (TABS_SEARCH_INDEXES.includes(searchIndexKey)) {
+            counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
         setSearchHitCounts(counts as SearchHitCounts);

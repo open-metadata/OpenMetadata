@@ -163,7 +163,7 @@ export const getEntityAPIfromSource = (
   }
 };
 
-export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
+export const getSearchIndexFromEntityType = (entityType: EntityType) => {
   const commonAssets: Record<string, SearchIndex> = {
     [EntityType.ALL]: SearchIndex.ALL,
     [EntityType.TABLE]: SearchIndex.TABLE,
@@ -172,6 +172,7 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.MLMODEL]: SearchIndex.MLMODEL,
     [EntityType.TOPIC]: SearchIndex.TOPIC,
     [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+    [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
     [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
     [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
     [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
@@ -184,14 +185,7 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
   };
 
-  if (
-    source === AssetsOfEntity.DOMAIN ||
-    source === AssetsOfEntity.DATA_PRODUCT
-  ) {
-    commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
-  }
-
-  return commonAssets;
+  return commonAssets[entityType];
 };
 
 export const getAssetsFields = (source: AssetsOfEntity) => {

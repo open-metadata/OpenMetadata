@@ -64,6 +64,16 @@ export const EXPLORE_TAB_ITEMS = [
     key: EntityType.DATABASE,
     children: [
       {
+        key: SearchIndex.DATABASE,
+        label: i18n.t('label.database-plural'),
+        sortingFields: tableSortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databases',
+        icon: Icons.TABLE_GREY,
+        selectedIcon: Icons.TABLE,
+        category: i18n.t('label.database'),
+      },
+      {
         key: SearchIndex.TABLE,
         label: i18n.t('label.table-plural'),
         sortingFields: tableSortingFields,
@@ -108,43 +118,73 @@ export const EXPLORE_TAB_ITEMS = [
     ],
   },
   {
-    key: SearchIndex.PIPELINE,
     label: i18n.t('label.pipeline-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'pipelines',
-    icon: Icons.PIPELINE_GREY,
-    selectedIcon: Icons.PIPELINE,
+    key: EntityType.PIPELINE,
+    children: [
+      {
+        key: SearchIndex.PIPELINE,
+        label: i18n.t('label.pipeline-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'pipelines',
+        icon: Icons.PIPELINE_GREY,
+        selectedIcon: Icons.PIPELINE,
+      },
+    ],
   },
   {
-    key: SearchIndex.TOPIC,
     label: i18n.t('label.topic-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'topics',
-    icon: Icons.TOPIC_GREY,
-    selectedIcon: Icons.TOPIC,
+    key: EntityType.TOPIC,
+    children: [
+      {
+        key: SearchIndex.TOPIC,
+        label: i18n.t('label.topic-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'topics',
+        icon: Icons.TOPIC_GREY,
+        selectedIcon: Icons.TOPIC,
+      },
+    ],
   },
   {
-    key: SearchIndex.MLMODEL,
     label: i18n.t('label.ml-model-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'mlmodels',
+    key: EntityType.MLMODEL,
+    children: [
+      {
+        key: SearchIndex.MLMODEL,
+        label: i18n.t('label.ml-model-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'mlmodels',
+      },
+    ],
   },
   {
-    key: SearchIndex.CONTAINER,
     label: i18n.t('label.container-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'containers',
+    key: EntityType.CONTAINER,
+    children: [
+      {
+        key: SearchIndex.CONTAINER,
+        label: i18n.t('label.container-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'containers',
+      },
+    ],
   },
   {
-    key: SearchIndex.SEARCH_INDEX,
     label: i18n.t('label.search-index-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'searchIndexes',
+    key: EntityType.SEARCH_INDEX,
+    children: [
+      {
+        key: SearchIndex.SEARCH_INDEX,
+        label: i18n.t('label.search-index-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'searchIndexes',
+      },
+    ],
   },
   {
     key: EntityType.GOVERN,
@@ -278,17 +318,6 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'tags.tagFQN',
 ];
 
-export const TABS_SEARCH_INDEXES = [
-  SearchIndex.TABLE,
-  SearchIndex.STORED_PROCEDURE,
-  SearchIndex.DASHBOARD,
-  SearchIndex.DASHBOARD_DATA_MODEL,
-  SearchIndex.PIPELINE,
-  SearchIndex.TOPIC,
-  SearchIndex.MLMODEL,
-  SearchIndex.CONTAINER,
-  SearchIndex.SEARCH_INDEX,
-  SearchIndex.GLOSSARY,
-  SearchIndex.TAG,
-  SearchIndex.DATA_PRODUCT,
-];
+export const TABS_SEARCH_INDEXES: ExploreSearchIndex[] = Object.keys(
+  tabsInfo
+) as ExploreSearchIndex[];
