@@ -382,10 +382,7 @@ describe('Classification Page', () => {
       'deleteTag'
     );
     cy.get('[data-testid="data-summary-container"]')
-      .should('contain', NEW_CLASSIFICATION.displayName)
-      .as('newCategory');
-
-    cy.get('@newCategory')
+      .contains(NEW_CLASSIFICATION.displayName)
       .click()
       .parent()
       .should('have.class', 'activeCategory');

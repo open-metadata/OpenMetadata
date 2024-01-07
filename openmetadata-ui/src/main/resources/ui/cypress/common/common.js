@@ -97,11 +97,13 @@ export const verifyResponseStatusCode = (
   hasMultipleResponseCode = false
 ) => {
   if (hasMultipleResponseCode) {
-    cy.wait(alias, option)
+    return cy
+      .wait(alias, option)
       .its('response.statusCode')
       .should('be.oneOf', responseCode);
   } else {
-    cy.wait(alias, option)
+    return cy
+      .wait(alias, option)
       .its('response.statusCode')
       .should('eq', responseCode);
   }
