@@ -26,6 +26,22 @@ slug: /connectors/database/db2
 
 {% /multiTablesWrapper %}
 
+{%important%}
+OpenMetadata doesn't ship DB2 connector in the ingestion contain by default.
+Please make sure you install the below Python package in the ingestion container if you are planning on running DB2 Connector.
+
+If you are running this as part of docker
+```code
+docker exec -it openmetadata_ingestion pip install '.[db2]'
+```
+
+Using python pip, Please make sure you provide appropriate version of ingestion in below command
+```code
+ pip install 'openmetadata-ingestion[db2]==1.2.4.0'
+```
+
+{%/important%}
+
 In this section, we provide guides and references to use the DB2 connector.
 
 Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata UI:
