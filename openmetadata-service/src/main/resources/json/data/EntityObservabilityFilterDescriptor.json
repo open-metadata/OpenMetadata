@@ -169,7 +169,7 @@
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation',''})",
+        "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation'})",
         "arguments": [
           "fieldList"
         ],
