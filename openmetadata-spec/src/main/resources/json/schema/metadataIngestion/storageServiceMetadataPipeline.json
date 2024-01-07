@@ -46,6 +46,9 @@
         },
         {
           "$ref": "./storage/storageMetadataADLSConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataGCSConfig.json"
         }
       ]
     },

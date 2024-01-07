@@ -14,7 +14,6 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.jwt.JWTTokenGenerator.SUBJECT_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
@@ -184,12 +183,6 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @SneakyThrows
   public String validateAndReturnUsername(Map<String, Claim> claims) {
-    // Get username from JWT token
-    String claimUserName = "";
-    if (!Objects.isNull(claims.get(SUBJECT_CLAIM))) {
-      claimUserName = claims.get(SUBJECT_CLAIM).as(TextNode.class).asText();
-    }
-
     // Get email from JWT token
     String jwtClaim =
         jwtPrincipalClaims.stream()
@@ -211,11 +204,6 @@ public class JwtFilter implements ContainerRequestFilter {
     } else {
       userName = jwtClaim;
       domain = StringUtils.EMPTY;
-    }
-
-    // Prefer userName over email
-    if (org.apache.commons.lang3.StringUtils.isNotBlank(claimUserName)) {
-      userName = claimUserName;
     }
 
     // validate principal domain

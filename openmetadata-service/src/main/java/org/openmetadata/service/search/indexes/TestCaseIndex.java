@@ -15,14 +15,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseIndex implements SearchIndex {
-  final TestCase testCase;
-
+public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public TestCaseIndex(TestCase testCase) {
-    this.testCase = testCase;
-  }
 
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
