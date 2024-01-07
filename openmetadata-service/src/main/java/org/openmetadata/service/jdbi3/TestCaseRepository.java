@@ -776,7 +776,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           latestTestCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
           latestTestCaseResolutionStatus.getStateId().toString());
 
-      return Entity.getEntity(testCaseResolutionStatus.getTestCaseReference(), "", Include.ALL);
+      // Return the TestCase with the StateId to avoid any unnecessary PATCH when resolving the task
+      // in the feed repo,
+      // since the `threadContext.getAboutEntity()` will give us the task with the `incidentId`
+      // informed, which
+      // we'll remove here.
+      TestCase testCaseEntity =
+          Entity.getEntity(testCaseResolutionStatus.getTestCaseReference(), "", Include.ALL);
+      return testCaseEntity.withIncidentId(latestTestCaseResolutionStatus.getStateId());
     }
 
     /**
