@@ -225,6 +225,7 @@ describe('RedShift Ingestion', () => {
       `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
+    cy.sidebarHover();
     cy.get('[data-testid="governance"]').click();
 
     cy.get('[data-testid="app-bar-item-tags"]').click({

@@ -10,17 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC } from 'react';
 import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
 class LeftSidebarClassBase {
-  /**
-   * getSidebarElements
-   */
-  public getSidebarElements(): FC | null {
-    return null;
-  }
-
   /**
    * getSidebarItems
    */

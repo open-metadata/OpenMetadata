@@ -34,7 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -69,7 +69,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
-import BrandImage from '../common/BrandImage/BrandImage';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from '../GlobalSearchProvider/GlobalSearchProvider';
@@ -330,16 +329,6 @@ const NavBar = ({
   return (
     <>
       <div className="navbar-container bg-white flex-nowrap w-full">
-        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-          <BrandImage
-            isMonoGram
-            alt="OpenMetadata Logo"
-            className="vertical-middle"
-            dataTestId="image"
-            height={30}
-            width={30}
-          />
-        </Link>
         <div
           className="m-auto relative"
           data-testid="navbar-search-container"

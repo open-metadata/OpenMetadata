@@ -23,6 +23,7 @@ import {
 export const visitGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'getGlossaries');
 
+  cy.sidebarHover();
   cy.get('[data-testid="governance"]').click({
     animationDistanceThreshold: 20,
     waitForAnimations: true,

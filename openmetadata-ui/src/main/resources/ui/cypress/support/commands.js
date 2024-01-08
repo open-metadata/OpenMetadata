@@ -139,9 +139,18 @@ Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
 });
 
+Cypress.Commands.add('sidebarHover', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseover'); // trigger mouseover event inside the sidebar
+});
+
+Cypress.Commands.add('sidebarHoverOutside', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseout'); // trigger mouseout event outside the sidebar
+});
+
 Cypress.Commands.add('logout', () => {
   interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
+
+  cy.get('[data-testid="app-bar-item-logout"]').click();
 
   cy.get('[data-testid="confirm-logout"]').click();
 

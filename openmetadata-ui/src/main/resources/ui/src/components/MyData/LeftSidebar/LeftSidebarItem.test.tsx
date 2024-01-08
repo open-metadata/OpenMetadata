@@ -10,22 +10,60 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { SETTING_ITEM } from '../../../constants/LeftSidebar.constants';
+import {
+  GOVERN_ITEM,
+  LOGOUT_ITEM,
+  SETTING_ITEM,
+} from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
+const mockOnClick = jest.fn();
+
 describe('LeftSidebar Items', () => {
-  it('renders sidebar items data', () => {
+  it('should renders sidebar items data', () => {
     render(
       <BrowserRouter>
         <LeftSidebarItem data={SETTING_ITEM} />
       </BrowserRouter>
     );
 
-    const item = screen.getByTestId('app-bar-item-settings');
+    expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
 
-    expect(item).toBeInTheDocument();
+    expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('should renders sidebar items without redirect url', () => {
+    render(
+      <BrowserRouter>
+        <LeftSidebarItem data={GOVERN_ITEM} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByTestId('governance')).toBeInTheDocument();
+
+    expect(screen.getByText('label.governance')).toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('should fire onClick event if provided', () => {
+    render(
+      <BrowserRouter>
+        <LeftSidebarItem data={{ ...LOGOUT_ITEM, onClick: mockOnClick }} />
+      </BrowserRouter>
+    );
+
+    const logoutItem = screen.getByTestId('app-bar-item-logout');
+
+    expect(logoutItem).toBeInTheDocument();
+
+    fireEvent.click(logoutItem);
+
+    expect(mockOnClick).toHaveBeenCalled();
   });
 });

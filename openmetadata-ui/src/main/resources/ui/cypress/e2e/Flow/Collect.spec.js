@@ -60,6 +60,7 @@ describe('Collect end point should work properly', () => {
 
   Object.values(PAGES).map((page) => {
     it(`Visit ${page.name} page should trigger collect API`, () => {
+      cy.sidebarHover();
       cy.get(page.mainMenuId)
         .should('be.visible')
         .click({ animationDistanceThreshold: 10 });

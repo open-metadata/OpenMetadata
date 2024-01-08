@@ -584,16 +584,15 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
+
+  cy.sidebarHover();
   cy.get('[data-testid="governance"]').click({
     animationDistanceThreshold: 20,
+    waitForAnimations: true,
   });
 
-  // Clicking on Glossary
-  cy.get('.govern-menu').then(($el) => {
-    cy.wrap($el)
-      .find('[data-testid="app-bar-item-glossary"]')
-      .click({ force: true });
-  });
+  cy.get('[data-testid="app-bar-item-glossary"]').click();
+  cy.sidebarHoverOutside();
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
@@ -1073,8 +1072,8 @@ describe('Glossary page should work properly', () => {
     cy.get(
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="icon"]'
     ).should('be.visible');
-    cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
+
+    goToGlossaryPage();
 
     cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
@@ -1166,8 +1165,7 @@ describe('Glossary page should work properly', () => {
       .should('not.contain', name)
       .and('not.contain', 'Personal');
 
-    cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
+    goToGlossaryPage();
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 
