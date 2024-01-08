@@ -60,7 +60,8 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
  */
 export const getTableViewData = (
   executions: PipelineStatus[] | undefined,
-  status: string | undefined
+  status: string | undefined,
+  searchString: string | undefined
 ): Array<ViewDataInterface> | undefined => {
   if (isUndefined(executions)) {
     return;
@@ -80,11 +81,17 @@ export const getTableViewData = (
     });
   });
 
-  return viewData.filter((data) =>
-    status !== MenuOptions.all
-      ? toLower(data.status)?.includes(toLower(status))
-      : data
-  );
+  return viewData
+    .filter((view) =>
+      searchString && searchString.length > 0
+        ? toLower(view.name)?.includes(toLower(searchString))
+        : true
+    )
+    .filter((view) =>
+      status !== MenuOptions.all
+        ? toLower(view.status)?.includes(toLower(status))
+        : true
+    );
 };
 
 /**
@@ -97,7 +104,7 @@ export const getTreeViewData = (
   executions: PipelineStatus[],
   status: string | undefined
 ) => {
-  const taskStatusArr = getTableViewData(executions, status);
+  const taskStatusArr = getTableViewData(executions, status, undefined);
 
   return groupBy(taskStatusArr, 'name');
 };
@@ -116,13 +123,66 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
+// Function to build a tree for all nodes
+export const buildCompleteTree = (
+  data: Task[],
+  viewElements: {
+    key: string;
+    value: any;
+  }[],
+  icon: any,
+  key: string,
+  parentKey: string
+) => {
+  let node: DataNode;
+
+  const nodeKey: string = parentKey + '-' + key;
+
+  if (icon != null) {
+    node = {
+      key: nodeKey,
+      title: viewElements.find((item) => item.key === key)?.value ?? null,
+      children: [],
+      icon,
+    };
+  } else {
+    node = {
+      key: nodeKey,
+      title: viewElements.find((item) => item.key === key)?.value ?? null,
+      children: [],
+    };
+  }
+  const entry = data.find((item) => item.name === key);
+
+  if (entry) {
+    const childrenKeys = entry.downstreamTasks ?? [];
+
+    for (const childKey of childrenKeys) {
+      const childNode = buildCompleteTree(
+        data,
+        viewElements,
+        icon,
+        childKey,
+        parentKey + '-' + entry.name
+      );
+      node.children?.push(childNode);
+    }
+  }
+
+  if (node.children?.length === 0) {
+    delete node.children;
+  }
+
+  return node;
+};
+
 export const getTreeData = (
   tasks: Task[],
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  let treeDataList: DataNode[] = [];
-  let treeLabelList: DataNode[] = [];
+  const treeDataList: DataNode[] = [];
+  const treeLabelList: DataNode[] = [];
 
   // map execution element to task name
   const viewElements = map(viewData, (value, key) => ({
@@ -154,96 +214,29 @@ export const getTreeData = (
     ),
   }));
 
+  const labelElements: { key: string; value: string }[] = [];
+
+  viewElements.forEach((value) => {
+    const object = { key: value.key, value: value.key };
+    labelElements.push(object);
+  });
+
+  const roots: string[] = [];
+
   for (const task of tasks) {
-    const taskName = task.name;
-
-    // list of downstream tasks
-    const downstreamTasks = task.downstreamTasks ?? [];
-
-    // check has downstream tasks or not
-    const hasDownStream = Boolean(downstreamTasks.length);
-
-    // check if current task is downstream task
-    const isDownStreamTask = checkIsDownStreamTask(task, tasks);
-
-    // check if it's an existing tree data
-    const existingData = treeDataList.find((tData) => tData.key === taskName);
-
-    // check if it's an existing label data
-    const existingLabel = treeLabelList.find((lData) => lData.key === taskName);
-
-    // get the execution element for current task
-    const currentViewElement = getExecutionElementByKey(taskName, viewElements);
-    const currentTreeData = {
-      key: taskName,
-      title: currentViewElement?.value ?? null,
-    };
-
-    const currentLabelData = {
-      key: taskName,
-      title: taskName,
-      icon,
-    };
-
-    // skip the down stream node as it will be render by the parent task
-    if (isDownStreamTask) {
-      continue;
-    } else if (hasDownStream) {
-      const dataChildren: DataNode[] = [];
-      const labelChildren: DataNode[] = [];
-      // get execution list of downstream tasks
-
-      for (const downstreamTask of downstreamTasks) {
-        const taskElement = getExecutionElementByKey(
-          downstreamTask,
-          viewElements
-        );
-
-        dataChildren.push({
-          key: downstreamTask,
-          title: taskElement?.value ?? null,
-        });
-
-        labelChildren.push({
-          key: downstreamTask,
-          title: downstreamTask,
-          icon,
-        });
-      }
-
-      /**
-       * if not existing data then push current tree data to tree data list
-       * else modified the existing data
-       */
-      treeDataList = isUndefined(existingData)
-        ? [...treeDataList, { ...currentTreeData, children: dataChildren }]
-        : treeDataList.map((currentData) => {
-            if (currentData.key === existingData.key) {
-              return { ...existingData, children: dataChildren };
-            } else {
-              return currentData;
-            }
-          });
-
-      treeLabelList = isUndefined(existingLabel)
-        ? [...treeLabelList, { ...currentLabelData, children: labelChildren }]
-        : treeLabelList.map((currentData) => {
-            if (currentData.key === existingLabel.key) {
-              return { ...existingLabel, children: labelChildren };
-            } else {
-              return currentData;
-            }
-          });
-    } else {
-      treeDataList = isUndefined(existingData)
-        ? [...treeDataList, currentTreeData]
-        : treeDataList;
-
-      treeLabelList = isUndefined(existingLabel)
-        ? [...treeLabelList, currentLabelData]
-        : treeLabelList;
+    if (!checkIsDownStreamTask(task, tasks)) {
+      roots.push(task.name);
     }
   }
+
+  roots.forEach((taskName) => {
+    treeDataList.push(
+      buildCompleteTree(tasks, viewElements, null, taskName, 'root')
+    );
+    treeLabelList.push(
+      buildCompleteTree(tasks, labelElements, icon, taskName, 'root')
+    );
+  });
 
   return { treeDataList, treeLabelList };
 };

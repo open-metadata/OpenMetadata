@@ -21,7 +21,7 @@ export type FormValidationRules = Record<
 >;
 
 export enum FormItemLayout {
-  HORIZONATAL = 'horizontal',
+  HORIZONTAL = 'horizontal',
   VERTICAL = 'vertical',
 }
 
