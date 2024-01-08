@@ -21,25 +21,7 @@
           "title": "Service Name",
           "placeholder": "Search Service",
           "description": "Service Name to get descriptions from.",
-          "type": "object",
-          "properties": {
-            "id": {
-              "description": "Unique identifier that identifies an entity instance.",
-              "type": "string"
-            },
-            "type": {
-              "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
-              "type": "string"
-            },
-            "name": {
-              "description": "Name of the entity instance.",
-              "type": "string"
-            },
-            "fullyQualifiedName": {
-              "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
-              "type": "string"
-            }
-          },
+          "type": "string",
           "format": "autoComplete",
           "autoCompleteType": "database_service_search_index",
           "additionalProperties": true
@@ -51,25 +33,7 @@
           "additionalProperties": true,
           "items": {
             "placeholder": "Search Databases",
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Unique identifier that identifies an entity instance.",
-                "type": "string"
-              },
-              "type": {
-                "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
-                "type": "string"
-              },
-              "name": {
-                "description": "Name of the entity instance.",
-                "type": "string"
-              },
-              "fullyQualifiedName": {
-                "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
-                "type": "string"
-              }
-            },
+            "type": "string",
             "format": "autoComplete",
             "autoCompleteType": "database_search_index",
             "additionalProperties": true
