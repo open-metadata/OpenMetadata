@@ -223,7 +223,7 @@ public class EventSubscriptionResourceTest
                 List.of(
                     new EventFilterRule()
                         .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType('entityCreated')")
+                        .withCondition("matchAnyEventType({'entityCreated'})")
                         .withEffect(INCLUDE)));
 
     FilteringRules rule2 =
@@ -234,7 +234,7 @@ public class EventSubscriptionResourceTest
                     new EventFilterRule()
                         .withName("EventTypeCreated")
                         .withCondition(
-                            "matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted')")
+                            "matchAnyEventType({'entityCreated', 'entityUpdated', 'entityDeleted'})")
                         .withEffect(INCLUDE)));
 
     FilteringRules rule3 =
@@ -244,7 +244,7 @@ public class EventSubscriptionResourceTest
                 List.of(
                     new EventFilterRule()
                         .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType('entityUpdated', 'entityDeleted')")
+                        .withCondition("matchAnyEventType({'entityUpdated', 'entityDeleted'})")
                         .withEffect(INCLUDE)));
 
     FilteringRules rule4 =
@@ -254,7 +254,7 @@ public class EventSubscriptionResourceTest
                 List.of(
                     new EventFilterRule()
                         .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType('entityUpdated')")
+                        .withCondition("matchAnyEventType({'entityUpdated'})")
                         .withEffect(INCLUDE)));
 
     // Set Filter Rules
