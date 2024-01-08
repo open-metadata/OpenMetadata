@@ -149,8 +149,7 @@ Cypress.Commands.add('sidebarHoverOutside', function () {
 
 Cypress.Commands.add('logout', () => {
   interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-
-  cy.get('[data-testid="app-bar-item-logout"]').click();
+  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
 
   cy.get('[data-testid="confirm-logout"]').click();
 
