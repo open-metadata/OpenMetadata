@@ -1,20 +1,30 @@
 grammar EntityLink;
 
 entitylink
-    : RESERVED_START (RESERVED_SEPARATOR ENTITY_TYPE RESERVED_SEPARATOR NAME_OR_FQN)+ 
-      (RESERVED_SEPARATOR ENTITY_FIELD (RESERVED_SEPARATOR NAME_OR_FQN)+)* RESERVED_END EOF
+    : RESERVED_START (separator entity_type separator name_or_fqn)+
+      (separator entity_field (separator name_or_fqn)*)* '>' EOF
     ;
 
-RESERVED_SEPARATOR
+
+entity_type
+    : ENTITY_TYPE # entityType
+    ;
+
+name_or_fqn
+    : NAME_OR_FQN # nameOrFQN
+    ;
+
+entity_field
+    : ENTITY_FIELD # entityField
+    ;
+
+
+separator
     : '::'
     ;
 
 RESERVED_START
     : '<#E'
-    ;
-
-RESERVED_END
-    : '>'
     ;
 
 ENTITY_TYPE
