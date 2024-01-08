@@ -601,7 +601,7 @@ export const TAG_INVALID_NAMES = {
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  WITH_SPECIAL_CHARS: '::normalName::',
 };
 
 export const NAME_VALIDATION_ERROR =
