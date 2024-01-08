@@ -71,8 +71,9 @@ const RichTextEditorPreviewer = ({
     const targetNodeDataTestId = targetNode.getAttribute('data-testid');
 
     if (targetNodeDataTestId === 'code-block-copy-icon' && previousSibling) {
-      const content =
-        targetNode.parentElement?.getAttribute('data-content') ?? '';
+      const codeNode = previousSibling.previousElementSibling;
+
+      const content = codeNode?.textContent ?? '';
 
       try {
         await navigator.clipboard.writeText(content);

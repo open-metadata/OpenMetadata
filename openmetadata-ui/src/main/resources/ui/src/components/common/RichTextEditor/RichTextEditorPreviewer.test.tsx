@@ -29,6 +29,10 @@ const mockDescription =
   // eslint-disable-next-line max-len
   '**Headings**\n\n# H1\n## H2\n### H3\n\n***\n**Bold**\n\n**bold text**\n\n\n***\n**Italic**\n\n*italic*\n\n***\n**BlockQuote**\n\n> blockquote\n\n***\n**Ordered List**\n\n1. First item\n2. Second item\n3. Third item\n\n\n***\n**Unordered List**\n\n- First item\n- Second item\n- Third item\n\n\n***\n**Code**\n\n`code`\n\n\n***\n**Horizontal Rule**\n\n---\n\n\n***\n**Link**\n[title](https://www.example.com)\n\n\n***\n**Image**\n\n![alt text](https://github.com/open-metadata/OpenMetadata/blob/main/docs/.gitbook/assets/openmetadata-banner.png?raw=true)\n\n\n***\n**Table**\n\n| Syntax | Description |\n| ----------- | ----------- |\n| Header | Title |\n| Paragraph | Text |\n***\n\n**Fenced Code Block**\n\n```\n{\n  "firstName": "John",\n  "lastName": "Smith",\n  "age": 25\n}\n```\n\n\n***\n**Strikethrough**\n~~The world is flat.~~\n';
 
+const mockCodeBlockMarkdown =
+  // eslint-disable-next-line max-len
+  "```\nIFERROR ( \n    IF (\n        SUM ( 'Запасы'[СЗ, руб2] ) <> BLANK (),\n        CALCULATE (\n            DIVIDE ( SUM ( 'Запасы'[СЗ, руб2] ), [Количество дней в периоде_new] ),\n            FILTER ( 'Место отгрузки', [Код предприятия] <> \"7001\" ),\n            FILTER ( 'Запасы', [Код типа запаса] <> \"E\" )\n        ),\n        BLANK ()\n    ),\n    0\n)\n```";
+
 const mockProp: PreviewerProp = {
   markdown: mockDescription,
   className: '',
@@ -434,5 +438,23 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(screen.getByText(markdown)).toBeInTheDocument();
     expect(screen.queryByTestId('read-more-button')).toBeNull();
+  });
+
+  it('Should render code block with copy button', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        markdown={mockCodeBlockMarkdown}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser.querySelector('pre')).toBeInTheDocument();
+
+    expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
   });
 });

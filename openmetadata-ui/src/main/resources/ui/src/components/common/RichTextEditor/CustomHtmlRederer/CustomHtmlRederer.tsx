@@ -103,7 +103,6 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         type: 'openTag',
         tagName: 'pre',
         classNames: preClasses,
-        attributes: { 'data-content': codeText },
       },
       {
         type: 'html',
@@ -116,11 +115,9 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               data-testid="copied-message">
               {t('label.copied')}
             </span>
-            <CopyIcon
-              className="code-copy-button"
-              data-copied="false"
-              data-testid="code-block-copy-icon"
-            />
+            <span data-testid="code-block-copy-icon">
+              <CopyIcon className="code-copy-button" data-copied="false" />
+            </span>
           </>
         ),
       },
