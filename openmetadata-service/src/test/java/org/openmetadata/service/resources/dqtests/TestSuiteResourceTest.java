@@ -225,11 +225,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite checkTestSuite = getEntity(deleteTestCases.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(checkTestSuite.getTests().size(), 0);
     nonEmptyTestSuites = getTestSuites(20, "*", "false", null, null, ADMIN_AUTH_HEADERS);
-    updateTableOwner.setOwner(TEAM11_REF);
     verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 17));
 
     // test pagination
-        table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     nonEmptyTestSuites = getTestSuites(10, "*", "false", null, null, ADMIN_AUTH_HEADERS);
     verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 9));
     nonEmptyTestSuites =
@@ -240,6 +238,36 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         getTestSuites(
             10, "*", "false", nonEmptyTestSuites.getPaging().getBefore(), null, ADMIN_AUTH_HEADERS);
     verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 9));
+  }
+
+  @Test
+  void test_inheritOwnerFromTable(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER1_REF);
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getOwner().getId(), table.getOwner().getId());
+    Table updateTableOwner = table;
+    updateTableOwner.setOwner(TEAM11_REF);
+    tableResourceTest.patchEntity(
+        table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
+    testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(table.getOwner().getId(), testSuite.getOwner().getId());
   }
 
   @Test
