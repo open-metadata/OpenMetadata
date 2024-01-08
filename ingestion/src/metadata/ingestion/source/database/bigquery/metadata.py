@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -53,6 +54,7 @@ from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -64,6 +66,7 @@ from metadata.ingestion.source.database.bigquery.models import (
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
 )
@@ -71,6 +74,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import (
@@ -195,7 +201,9 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class BigquerySource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -533,6 +541,37 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
             for temp_file_path in self.temp_credentials_file_path:
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
+                schema_name=self.context.database_schema,
+                table_name=self.context.table,
+                skip_es_search=True,
+            )
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            yield from self.get_life_cycle_data(
+                entity=table,
+                query=BIGQUERY_LIFE_CYCLE_QUERY.format(
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="lifeCycle",
+                    error=f"Error Processing life cycle data: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _get_source_url(
         self,

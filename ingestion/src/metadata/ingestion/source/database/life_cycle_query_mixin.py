@@ -26,10 +26,14 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -85,3 +89,32 @@ class LifeCycleQueryMixin:
                 )
 
         return queries_dict
+
+    def get_life_cycle_data(self, entity: Entity, query: str):
+        """
+        Get the life cycle data
+        """
+        if entity:
+            try:
+                life_cycle_data = self.life_cycle_query_dict(query=query).get(
+                    entity.name.__root__
+                )
+                if life_cycle_data:
+                    life_cycle = LifeCycle(
+                        created=AccessDetails(
+                            timestamp=convert_timestamp_to_milliseconds(
+                                life_cycle_data.created_at.timestamp()
+                            )
+                        )
+                    )
+                    yield Either(
+                        right=OMetaLifeCycleData(entity=entity, life_cycle=life_cycle)
+                    )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=entity.name.__root__,
+                        error=f"Unable to get the table life cycle data for table {entity.name.__root__}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )

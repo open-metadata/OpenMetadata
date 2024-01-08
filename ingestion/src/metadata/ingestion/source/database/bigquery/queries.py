@@ -130,3 +130,14 @@ JOIN Q_HISTORY Q
 ORDER BY procedure_start_time DESC
 """
 )
+
+BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select 
+table_name as table_name,
+creation_time as created_at
+from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+where table_schema = '{schema_name}'
+and table_catalog = '{database_name}'
+"""
+)

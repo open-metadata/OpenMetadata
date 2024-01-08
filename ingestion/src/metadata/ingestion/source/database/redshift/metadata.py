@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     EntityName,
     IntervalType,
+    Table,
     TableConstraint,
     TablePartition,
     TableType,
@@ -49,10 +50,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
@@ -61,6 +66,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
     REDSHIFT_GET_STORED_PROCEDURES,
+    REDSHIFT_LIFE_CYCLE_QUERY,
     REDSHIFT_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.redshift.utils import (
@@ -106,7 +112,9 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class RedshiftSource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -305,3 +313,34 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         )
 
         return queries_dict
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
+                schema_name=self.context.database_schema,
+                table_name=self.context.table,
+                skip_es_search=True,
+            )
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            yield from self.get_life_cycle_data(
+                entity=table,
+                query=REDSHIFT_LIFE_CYCLE_QUERY.format(
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="lifeCycle",
+                    error=f"Error Processing life cycle data: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )

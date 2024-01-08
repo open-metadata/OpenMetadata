@@ -354,3 +354,13 @@ from SP_HISTORY sp
 order by procedure_start_time DESC
     """
 )
+
+REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select "table" as table_name,
+create_time as created_at
+from pg_catalog.svv_table_info o
+where o.schema = '{schema_name}'
+and o.database = '{database_name}'
+"""
+)
