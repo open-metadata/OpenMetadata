@@ -220,7 +220,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
