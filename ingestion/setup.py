@@ -51,6 +51,7 @@ VERSIONS = {
     "snowflake": "snowflake-sqlalchemy~=1.4",
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
+    "validators": "validators~=0.22.0",
 }
 
 COMMONS = {
@@ -250,7 +251,7 @@ plugins: Dict[str, Set[str]] = {
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
-    "tableau": {VERSIONS["tableau"]},
+    "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
