@@ -158,7 +158,8 @@ public class SearchResource {
     }
 
     SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
+        new SearchRequest.ElasticSearchRequestBuilder(
+                query, size, Entity.getSearchRepository().getIndexOrAliasName(index))
             .from(from)
             .queryFilter(queryFilter)
             .postFilter(postFilter)

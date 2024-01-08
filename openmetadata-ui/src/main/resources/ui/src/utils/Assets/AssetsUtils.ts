@@ -16,7 +16,6 @@ import { EntityDetailUnion } from 'Models';
 import { MapPatchAPIResponse } from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Domain } from '../../generated/entity/domains/domain';
 import {
@@ -161,37 +160,6 @@ export const getEntityAPIfromSource = (
         return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
       };
   }
-};
-
-export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
-  const commonAssets: Record<string, SearchIndex> = {
-    [EntityType.ALL]: SearchIndex.ALL,
-    [EntityType.TABLE]: SearchIndex.TABLE,
-    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-    [EntityType.TOPIC]: SearchIndex.TOPIC,
-    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
-    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
-    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
-    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
-    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
-    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
-    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
-    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
-    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
-    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
-  };
-
-  if (
-    source === AssetsOfEntity.DOMAIN ||
-    source === AssetsOfEntity.DATA_PRODUCT
-  ) {
-    commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
-  }
-
-  return commonAssets;
 };
 
 export const getAssetsFields = (source: AssetsOfEntity) => {

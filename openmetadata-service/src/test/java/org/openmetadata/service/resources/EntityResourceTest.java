@@ -1901,7 +1901,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       IndexMapping indexMapping =
           Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1923,7 +1925,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       IndexMapping indexMapping =
           Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1939,7 +1943,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // search again in search after deleting
 
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexMapping.getIndexName());
+      response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1963,7 +1969,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1997,7 +2005,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2014,7 +2024,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexMapping.getIndexName());
+      response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();

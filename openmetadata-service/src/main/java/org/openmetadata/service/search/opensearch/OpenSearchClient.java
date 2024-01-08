@@ -45,6 +45,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
@@ -158,13 +159,16 @@ public class OpenSearchClient implements SearchClient {
   private static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
 
+  private final String clusterAlias;
+
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public OpenSearchClient(ElasticSearchConfiguration esConfig) {
-    client = createOpenSearchClient(esConfig);
+  public OpenSearchClient(ElasticSearchConfiguration config) {
+    client = createOpenSearchClient(config);
+    clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
   }
 
@@ -189,12 +193,15 @@ public class OpenSearchClient implements SearchClient {
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
     if (Boolean.TRUE.equals(isClientAvailable)) {
       try {
-        CreateIndexRequest request = new CreateIndexRequest(indexMapping.getIndexName());
+        CreateIndexRequest request =
+            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
         request.source(indexMappingContent, XContentType.JSON);
         CreateIndexResponse createIndexResponse =
             client.indices().create(request, RequestOptions.DEFAULT);
         LOG.debug(
-            "{} Created {}", indexMapping.getIndexName(), createIndexResponse.isAcknowledged());
+            "{} Created {}",
+            indexMapping.getIndexName(clusterAlias),
+            createIndexResponse.isAcknowledged());
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
@@ -209,25 +216,27 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      List<String> aliases = indexMapping.getParentAliases();
-      aliases.add(indexMapping.getAlias());
+      List<String> aliases = indexMapping.getParentAliases(clusterAlias);
+      aliases.add(indexMapping.getAlias(clusterAlias));
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName())
+              .index(indexMapping.getIndexName(clusterAlias))
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
       client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(
-          String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
+          String.format(
+              "Failed to create alias for %s due to", indexMapping.getIndexName(clusterAlias)),
+          e);
     }
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName());
+      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
       JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
       request.source(JsonUtils.getMap(readProperties));
       AcknowledgedResponse putMappingResponse =
@@ -235,17 +244,22 @@ public class OpenSearchClient implements SearchClient {
       LOG.debug(
           "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.warn(String.format("Failed to Update Open Search index %s", indexMapping.getIndexName()));
+      LOG.warn(
+          String.format(
+              "Failed to Update Open Search index %s", indexMapping.getIndexName(clusterAlias)));
     }
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName());
+      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
       AcknowledgedResponse deleteIndexResponse =
           client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
+      LOG.debug(
+          "{} Deleted {}",
+          indexMapping.getIndexName(clusterAlias),
+          deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Open Search indexes due to", e);
     }
@@ -255,35 +269,39 @@ public class OpenSearchClient implements SearchClient {
   public Response search(SearchRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
         switch (request.getIndex()) {
-          case "topic_search_index" -> buildTopicSearchBuilder(
+          case "topic_search_index", "topic" -> buildTopicSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_search_index" -> buildDashboardSearchBuilder(
+          case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "pipeline_search_index" -> buildPipelineSearchBuilder(
+          case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_search_index" -> buildMlModelSearchBuilder(
+          case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "table_search_index" -> buildTableSearchBuilder(
+          case "table_search_index", "table" -> buildTableSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "user_search_index", "team_search_index" -> buildUserOrTeamSearchBuilder(
+          case "user_search_index",
+              "user",
+              "team_search_index",
+              "team" -> buildUserOrTeamSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "glossary_term_search_index" -> buildGlossaryTermSearchBuilder(
+          case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "tag_search_index" -> buildTagSearchBuilder(
+          case "tag_search_index", "tag" -> buildTagSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "container_search_index" -> buildContainerSearchBuilder(
+          case "container_search_index", "container" -> buildContainerSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "query_search_index" -> buildQuerySearchBuilder(
+          case "query_search_index", "query" -> buildQuerySearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index" -> buildTestCaseSearch(
+          case "test_case_search_index", "testCase" -> buildTestCaseSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "stored_procedure_search_index" -> buildStoredProcedureSearch(
+          case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_data_model_search_index" -> buildDashboardDataModelsSearch(
+          case "dashboard_data_model_search_index",
+              "dashboardDataModel" -> buildDashboardDataModelsSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "domain_search_index" -> buildDomainsSearch(
+          case "domain_search_index", "domain" -> buildDomainsSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "search_entity_search_index" -> buildSearchEntitySearch(
+          case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(
               request.getQuery(), request.getFrom(), request.getSize());
           case "raw_cost_analysis_report_data_index",
               "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
@@ -398,7 +416,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
@@ -411,7 +430,8 @@ public class OpenSearchClient implements SearchClient {
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(index);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
@@ -442,7 +462,8 @@ public class OpenSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new os.org.opensearch.action.search.SearchRequest(index)
+                new os.org.opensearch.action.search.SearchRequest(
+                        Entity.getSearchRepository().getIndexOrAliasName(index))
                     .source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
@@ -498,7 +519,8 @@ public class OpenSearchClient implements SearchClient {
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+        new os.org.opensearch.action.search.SearchRequest(
+                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
             .source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();

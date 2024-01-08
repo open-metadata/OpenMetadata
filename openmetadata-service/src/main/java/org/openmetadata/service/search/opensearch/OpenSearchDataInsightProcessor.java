@@ -76,7 +76,9 @@ public class OpenSearchDataInsightProcessor
   private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest =
-        new UpdateRequest(indexMapping.getIndexName(), reportData.getId().toString());
+        new UpdateRequest(
+            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
+            reportData.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);

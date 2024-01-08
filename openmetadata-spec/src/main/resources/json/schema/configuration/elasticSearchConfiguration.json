@@ -66,6 +66,11 @@
       "type": "integer",
       "default": 10
     },
+    "clusterAlias": {
+      "description": "Alias for search indexes to provide segregation of indexes.",
+      "type": "string",
+      "default": null
+    },
     "searchIndexMappingLanguage": {
       "$ref": "#/definitions/searchIndexMappingLanguage"
     },
