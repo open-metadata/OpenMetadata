@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // Rest is the API client to interact with the OpenMetadata server
@@ -78,6 +79,7 @@ func (rest Rest) dispatchRequest() (map[string]any, error) {
 		}
 		if resp.StatusCode >= 400 && shouldRetry(rest.restConfig.RetryCodes, *resp) {
 			retries--
+			time.Sleep(time.Duration(rest.restConfig.RetryWait) * time.Second)
 			continue
 		}
 		break
