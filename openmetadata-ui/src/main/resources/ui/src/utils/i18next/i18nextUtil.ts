@@ -18,10 +18,10 @@ import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
 import frFR from '../../locale/languages/fr-fr.json';
 import jaJP from '../../locale/languages/ja-jp.json';
+import nlNL from '../../locale/languages/nl-nl.json';
 import ptBR from '../../locale/languages/pt-br.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import zhCN from '../../locale/languages/zh-cn.json';
-import nlNL from '../../locale/languages/nl-nl.json';
 
 export enum SupportedLocales {
   English = 'en-US',

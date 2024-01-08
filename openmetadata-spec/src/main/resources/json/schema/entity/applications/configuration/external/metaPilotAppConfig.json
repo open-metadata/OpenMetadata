@@ -17,22 +17,28 @@
       "description": "Choose the service and its databases you want to generate descriptions from.",
       "type": "object",
       "properties": {
-        "serviceName": {
+        "service": {
           "title": "Service Name",
+          "placeholder": "Search Service",
           "description": "Service Name to get descriptions from.",
-          "type": "string"
+          "$ref": "../../../../type/entityReference.json",
+          "format": "autoComplete",
+          "autoCompleteType": "database_service_search_index"
         },
         "databases": {
           "title": "Databases",
           "description": "List of database names from the Service to get descriptions from.",
           "type": "array",
           "items": {
-            "type": "string"
+            "placeholder": "Search Databases",
+            "$ref": "../../../../type/entityReference.json",
+            "format": "autoComplete",
+            "autoCompleteType": "database_search_index"
           }
         }
       },
       "additionalProperties": false,
-      "required": ["serviceName", "databases"]
+      "required": ["service", "databases"]
     }
   },
   "properties": {
