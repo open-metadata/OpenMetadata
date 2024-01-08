@@ -14,7 +14,7 @@ authenticationConfiguration:
   provider: "okta"
   publicKeyUrls:
     - "{ISSUER_URL}/v1/keys"
-    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+    - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"

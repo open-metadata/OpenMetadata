@@ -164,7 +164,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       EntityInterface entity, EntityInterface product, boolean inDataProduct)
       throws HttpResponseException {
     // Only table or topic is expected to assets currently in the tests
-    EntityResourceTest test =
+    EntityResourceTest<?, ?> test =
         entity.getEntityReference().getType().equals(Entity.TABLE)
             ? new TableResourceTest()
             : new TopicResourceTest();

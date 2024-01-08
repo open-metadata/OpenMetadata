@@ -19,6 +19,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Getter protected final SearchRepository searchRepository;
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
+  @Getter protected final CollectionDAO daoCollection;
 
   protected EntityTimeSeriesRepository(
       String collectionPath,
@@ -30,6 +31,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     this.entityClass = entityClass;
     this.entityType = entityType;
     this.searchRepository = Entity.getSearchRepository();
+    this.daoCollection = Entity.getCollectionDAO();
     Entity.registerEntity(entityClass, entityType, this);
   }
 

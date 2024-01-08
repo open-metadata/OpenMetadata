@@ -10,13 +10,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TagIndex implements SearchIndex {
-  final Tag tag;
+public record TagIndex(Tag tag) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public TagIndex(Tag tag) {
-    this.tag = tag;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(tag);
