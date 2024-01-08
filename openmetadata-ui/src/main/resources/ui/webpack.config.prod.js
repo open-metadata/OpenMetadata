@@ -33,8 +33,8 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: 'openmetadata.bundle.js',
-    chunkFilename: '[name].[contenthash].js',
+    filename: 'openmetadata.[hash].bundle.js',
+    chunkFilename: '[name].[hash].js',
     publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
   },
 
