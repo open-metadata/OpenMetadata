@@ -12,7 +12,7 @@
  */
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
+import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
@@ -58,6 +58,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
 
     [pipeLineType, serviceCategory]
+  );
+
+  const validator = useMemo(
+    () => customizeValidator<IngestionWorkflowData>(),
+    []
   );
 
   const isElasticSearchPipeline =
