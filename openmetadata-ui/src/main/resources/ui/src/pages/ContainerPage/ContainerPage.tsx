@@ -749,6 +749,7 @@ const ContainerPage = () => {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
+            key={containerData.fullyQualifiedName}
             permissions={containerPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
