@@ -145,6 +145,10 @@ UPDATE dbservice_entity de
 SET json = json #- '{connection,config,useUnityCatalog}'
 WHERE de.serviceType IN ('Databricks','UnityCatalog');
 
+-- Add Incident ID for test case results
+ALTER TABLE data_quality_data_time_series ADD COLUMN incidentId varchar(36);
+CREATE INDEX IF NOT EXISTS data_quality_data_time_series_incidentId ON data_quality_data_time_series(incidentId);
+
 -- Add new table for event subscription extensions
 CREATE TABLE IF NOT EXISTS change_event_consumers (
     id VARCHAR(36) NOT NULL,
@@ -167,3 +171,4 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
     UNIQUE(id, extension)
 );
+

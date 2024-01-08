@@ -3635,31 +3635,46 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
-    @ConnectionAwareSqlQuery(
+    @SqlQuery(
         value =
-            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
-                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
+            "SELECT DISTINCT incidentId FROM data_quality_data_time_series "
+                + "WHERE entityFQNHash = :testCaseFQNHash AND incidentId IS NOT NULL")
+    List<String> getResultsWithIncidents(@BindFQN("testCaseFQNHash") String testCaseFQNHash);
+
+    @SqlUpdate(
         value =
-            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :testCaseFQNHash "
-                + "AND json ->> 'incidentId' IS NOT NULL",
-        connectionType = POSTGRES)
-    List<String> getResultsWithIncidents(@Bind("testCaseFQNHash") String testCaseFQNHash);
+            "UPDATE data_quality_data_time_series SET incidentId = NULL "
+                + "WHERE entityFQNHash = :testCaseFQNHash and incidentId = :incidentStateId")
+    void cleanTestCaseIncident(
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("incidentStateId") String incidentStateId);
 
     @ConnectionAwareSqlUpdate(
         value =
-            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
-                + "AND JSON_EXTRACT(json, '$.incidentId') IS NOT NULL",
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "SELECT json FROM data_quality_data_time_series where entityFQNHash = :entityFQNHash "
-                + "AND json ->> 'incidentId' IS NOT NULL",
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
         connectionType = POSTGRES)
-    // TODO: need to find the right way to get this cleaned
-    void cleanTestCaseIncidents(
-        @Bind("entityFQNHash") String entityFQNHash, @Bind("stateId") String stateId);
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String entityFQNHash,
+        String extension,
+        String jsonSchema,
+        String json,
+        String incidentStateId) {
+      insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
+    }
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
