@@ -29,6 +29,9 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/new-tests/**/*.spec.{js,jsx,ts,tsx}',
+      'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    ],
   },
 });
