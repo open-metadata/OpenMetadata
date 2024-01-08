@@ -68,6 +68,7 @@ import {
 } from '../../utils/EntityLineageUtils';
 
 import { useParams } from 'react-router-dom';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -90,6 +91,7 @@ import { useTourProvider } from '../TourProvider/TourProvider';
 import {
   LineageContextType,
   LineageProviderProps,
+  UpstreamDownstreamData,
 } from './LineageProvider.interface';
 
 export const LineageContext = createContext({} as LineageContextType);
@@ -97,6 +99,7 @@ export const LineageContext = createContext({} as LineageContextType);
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: entityFqn } = useParams<{ fqn: string }>();
+  const decodedFqn = getDecodedFqn(entityFqn);
   const { isTourOpen } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -118,6 +121,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [updatedEntityLineage, setUpdatedEntityLineage] =
     useState<EntityLineageReponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [upstreamDownstreamData, setUpstreamDownstreamData] =
+    useState<UpstreamDownstreamData>({
+      downstreamEdges: [],
+      upstreamEdges: [],
+      downstreamNodes: [],
+      upstreamNodes: [],
+    });
   const [deletionState, setDeletionState] = useState<{
     loading: boolean;
     status: ElementLoadingState;
@@ -784,22 +794,37 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges, entityLineage]
   );
 
-  const redrawLineage = useCallback((lineageData: EntityLineageReponse) => {
-    const allNodes = uniqWith(
-      [...(lineageData.nodes ?? []), lineageData.entity],
-      isEqual
-    );
-    const updatedNodes = createNodes(allNodes, lineageData.edges ?? []);
-    const updatedEdges = createEdges(allNodes, lineageData.edges ?? []);
-    setNodes(updatedNodes);
-    setEdges(updatedEdges);
-  }, []);
+  const redrawLineage = useCallback(
+    (lineageData: EntityLineageReponse) => {
+      const allNodes = uniqWith(
+        [...(lineageData.nodes ?? []), lineageData.entity],
+        isEqual
+      );
+      const updatedNodes = createNodes(
+        allNodes,
+        lineageData.edges ?? [],
+        entityFqn
+      );
+      const updatedEdges = createEdges(allNodes, lineageData.edges ?? []);
+      setNodes(updatedNodes);
+      setEdges(updatedEdges);
+
+      // Get upstream downstream nodes and edges data
+      const data = getUpstreamDownstreamEdges(
+        lineageData.edges ?? [],
+        lineageData.nodes ?? [],
+        decodedFqn
+      );
+      setUpstreamDownstreamData(data);
+    },
+    [decodedFqn]
+  );
 
   useEffect(() => {
-    if (entityFqn) {
-      fetchLineageData(entityFqn, lineageConfig);
+    if (decodedFqn) {
+      fetchLineageData(decodedFqn, lineageConfig);
     }
-  }, [lineageConfig, entityFqn, queryFilter]);
+  }, [lineageConfig, decodedFqn, queryFilter]);
 
   useEffect(() => {
     if (!loading) {
@@ -812,6 +837,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       // On exit of edit mode, use updatedEntityLineage and update data.
       const { downstreamEdges, upstreamEdges } = getUpstreamDownstreamEdges(
         updatedEntityLineage.edges ?? [],
+        updatedEntityLineage.nodes ?? [],
         entityFqn
       );
 
@@ -855,6 +881,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       tracedNodes,
       tracedColumns,
       expandAllColumns,
+      upstreamDownstreamData,
       onInitReactFlow,
       onPaneClick,
       onConnect,
@@ -894,6 +921,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     tracedNodes,
     tracedColumns,
     expandAllColumns,
+    upstreamDownstreamData,
     onInitReactFlow,
     onPaneClick,
     onConnect,

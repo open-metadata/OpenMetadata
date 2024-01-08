@@ -26,12 +26,22 @@ import {
   EdgeTypeEnum,
   LineageConfig,
 } from '../Entity/EntityLineage/EntityLineage.interface';
-import { EntityLineageReponse } from '../Lineage/Lineage.interface';
+import {
+  EdgeDetails,
+  EntityLineageReponse,
+} from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProviderProps {
   children: ReactNode;
 }
+
+export type UpstreamDownstreamData = {
+  downstreamEdges: EdgeDetails[];
+  upstreamEdges: EdgeDetails[];
+  downstreamNodes: EntityReference[];
+  upstreamNodes: EntityReference[];
+};
 
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
@@ -48,6 +58,7 @@ export interface LineageContextType {
   isEditMode: boolean;
   entityLineage: EntityLineageReponse;
   selectedNode: SourceType;
+  upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   expandAllColumns: boolean;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;

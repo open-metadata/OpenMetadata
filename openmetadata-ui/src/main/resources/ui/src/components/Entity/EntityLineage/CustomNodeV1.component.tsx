@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   getIncomers,
   getOutgoers,
@@ -31,7 +30,6 @@ import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
@@ -47,7 +45,6 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { t } = useTranslation();
-  const { fqn: entityFqn } = useParams<{ fqn: string }>();
   const updateNodeInternals = useUpdateNodeInternals();
   const { data, type, isConnectable } = props;
 
@@ -59,15 +56,15 @@ const CustomNodeV1 = (props: NodeProps) => {
     selectedNode,
     nodes,
     edges,
+    upstreamDownstreamData,
     onColumnClick,
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
   } = useLineageProvider();
 
-  const { label, isNewNode, node = {} } = data;
+  const { label, isNewNode, node = {}, isRootNode } = data;
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
-
   const isSelected = selectedNode === node;
   const { columns, id, testSuite, lineage, fullyQualifiedName } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -76,28 +73,38 @@ const CustomNodeV1 = (props: NodeProps) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
-  const isRootNode = useMemo(() => {
-    return getDecodedFqn(entityFqn) === fullyQualifiedName;
-  }, [fullyQualifiedName, entityFqn]);
+  const getActiveNode = useCallback(
+    (nodeId) => {
+      return nodes.find((item) => item.id === nodeId);
+    },
+    [id, nodes]
+  );
 
   const { hasDownstream, hasUpstream } = useMemo(() => {
     return checkUpstreamDownstream(id, lineage ?? []);
   }, [id, lineage]);
 
-  const hasOutgoers = useMemo(() => {
-    const outgoers = getOutgoers(node, nodes, edges);
+  const { hasOutgoers, hasIncomers, isUpstreamLeafNode, isDownstreamLeafNode } =
+    useMemo(() => {
+      const activeNode = getActiveNode(id);
+      if (!activeNode) {
+        return {
+          hasOutgoers: false,
+          hasIncomers: false,
+          isUpstreamLeafNode: false,
+          isDownstreamLeafNode: false,
+        };
+      }
+      const outgoers = getOutgoers(activeNode, nodes, edges);
+      const incomers = getIncomers(activeNode, nodes, edges);
 
-    return outgoers.length > 0;
-  }, [node, nodes, edges]);
-
-  const { isUpstreamLeafNode, isDownstreamLeafNode } = useMemo(() => {
-    return {
-      isUpstreamLeafNode:
-        getIncomers(node, nodes, edges).length === 0 && hasUpstream,
-      isDownstreamLeafNode:
-        getOutgoers(node, nodes, edges).length === 0 && hasDownstream,
-    };
-  }, [node, nodes, edges]);
+      return {
+        hasOutgoers: outgoers.length > 0,
+        hasIncomers: incomers.length > 0,
+        isUpstreamLeafNode: incomers.length === 0 && hasUpstream,
+        isDownstreamLeafNode: outgoers.length === 0 && hasDownstream,
+      };
+    }, [id, nodes, edges, hasUpstream, hasDownstream]);
 
   const supportsColumns = useMemo(() => {
     if (node && node.entityType === EntityType.TABLE) {
@@ -106,6 +113,17 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return false;
   }, [node]);
+
+  const { isUpstreamNode, isDownstreamNode } = useMemo(() => {
+    return {
+      isUpstreamNode: upstreamDownstreamData.upstreamNodes.some(
+        (item) => item.fullyQualifiedName === fullyQualifiedName
+      ),
+      isDownstreamNode: upstreamDownstreamData.downstreamNodes.some(
+        (item) => item.fullyQualifiedName === fullyQualifiedName
+      ),
+    };
+  }, [fullyQualifiedName, upstreamDownstreamData]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,9 +166,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     [loadChildNodesHandler, node]
   );
 
-  const onCollapse = useCallback(() => {
-    onNodeCollapse(props, EdgeTypeEnum.DOWN_STREAM);
-  }, [loadChildNodesHandler, props]);
+  const onCollapse = useCallback(
+    (direction = EdgeTypeEnum.DOWN_STREAM) => {
+      onNodeCollapse(props, direction);
+    },
+    [loadChildNodesHandler, props]
+  );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
@@ -179,6 +200,47 @@ const CustomNodeV1 = (props: NodeProps) => {
     }
   }, [node, isNewNode, label, isSelected, isEditMode]);
 
+  const getExpandCollapseHandles = useCallback(() => {
+    if (isEditMode) {
+      return null;
+    }
+
+    return (
+      <>
+        {hasOutgoers &&
+          (isDownstreamNode || isRootNode) &&
+          getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
+        {isDownstreamLeafNode &&
+          (isDownstreamNode || isRootNode) &&
+          getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
+            onExpand(EdgeTypeEnum.DOWN_STREAM)
+          )}
+        {hasIncomers &&
+          (isUpstreamNode || isRootNode) &&
+          getCollapseHandle(EdgeTypeEnum.UP_STREAM, () =>
+            onCollapse(EdgeTypeEnum.UP_STREAM)
+          )}
+        {isUpstreamLeafNode &&
+          (isUpstreamNode || isRootNode) &&
+          getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
+            onExpand(EdgeTypeEnum.UP_STREAM)
+          )}
+      </>
+    );
+  }, [
+    node,
+    nodes,
+    edges,
+    hasOutgoers,
+    hasIncomers,
+    isUpstreamLeafNode,
+    isDownstreamLeafNode,
+    isUpstreamNode,
+    isDownstreamNode,
+    isEditMode,
+    isRootNode,
+  ]);
+
   const getHandle = useCallback(() => {
     switch (nodeType) {
       case EntityLineageNodeType.OUTPUT:
@@ -191,25 +253,13 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Left}
               type="target"
             />
-            {isDownstreamLeafNode &&
-              !isEditMode &&
-              getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
-                onExpand(EdgeTypeEnum.DOWN_STREAM)
-              )}
-            {hasOutgoers &&
-              !isEditMode &&
-              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
+            {getExpandCollapseHandles()}
           </>
         );
 
       case EntityLineageNodeType.INPUT:
         return (
           <>
-            {isUpstreamLeafNode &&
-              !isEditMode &&
-              getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
-                onExpand(EdgeTypeEnum.UP_STREAM)
-              )}
             <Handle
               className="lineage-node-handle"
               id={id}
@@ -217,9 +267,7 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasOutgoers &&
-              !isEditMode &&
-              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
+            {getExpandCollapseHandles()}
           </>
         );
 
@@ -243,15 +291,7 @@ const CustomNodeV1 = (props: NodeProps) => {
               position={Position.Right}
               type="source"
             />
-            {hasOutgoers &&
-              !isEditMode &&
-              getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
-
-            {isDownstreamLeafNode &&
-              !isEditMode &&
-              getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
-                onExpand(EdgeTypeEnum.DOWN_STREAM)
-              )}
+            {getExpandCollapseHandles()}
           </>
         );
     }
@@ -300,7 +340,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
-
         {supportsColumns && (
           <div className="column-container bg-grey-1 p-sm p-y-xs">
             <div className="d-flex justify-between items-center">
