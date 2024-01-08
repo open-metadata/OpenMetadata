@@ -345,6 +345,7 @@ const CustomNodeV1 = (props: NodeProps) => {
             <div className="d-flex justify-between items-center">
               <Button
                 className="flex-center text-primary rounded-4 p-xss"
+                data-testid="expand-cols-btn"
                 icon={
                   <div className="d-flex w-5 h-5 m-r-xs text-base-color">
                     {getEntityIcon(node.entityType || '')}
@@ -444,6 +445,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                 {!showAllColumns && (
                   <Button
                     className="m-t-xs text-primary"
+                    data-testid="show-more-cols-btn"
                     type="text"
                     onClick={handleShowMoreClick}>
                     {t('label.show-more-entity', {

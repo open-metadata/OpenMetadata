@@ -67,6 +67,8 @@ jest.mock('../../LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],
+    pipelineStatus: {},
+    fetchPipelineStatus: jest.fn(),
   })),
 }));
 
