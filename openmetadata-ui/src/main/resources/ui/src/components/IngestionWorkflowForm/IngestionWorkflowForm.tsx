@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
@@ -161,7 +161,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      validator={validator}
+      validator={validator as ValidatorType<IngestionWorkflowData>}
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>
