@@ -141,7 +141,8 @@ public final class AlertUtil {
     for (String entityType : entities) {
       try {
         IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
-        indexesToSearch.add(indexMapping.getIndexName());
+        indexesToSearch.add(
+            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       } catch (RuntimeException ex) {
         LOG.error("Failing to get Index for EntityType");
       }
