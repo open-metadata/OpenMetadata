@@ -19,10 +19,10 @@ server:
   rootPath: '/api/*'
   applicationConnectors:
     - type: http
-      port: ${SERVER_PORT:-9585}
+      port: ${SERVER_PORT:-8585}
   adminConnectors:
     - type: http
-      port: ${SERVER_ADMIN_PORT:-9586}
+      port: ${SERVER_ADMIN_PORT:-8586}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
