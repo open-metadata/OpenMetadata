@@ -86,10 +86,6 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseResolutionStatusReference": {
-            "description": "Reference to the failure status object for the test case result.",
-            "$ref": "./testCaseResolutionStatus.json"
-        },
         "passedRows": {
           "description": "Number of rows that passed.",
           "type": "integer"

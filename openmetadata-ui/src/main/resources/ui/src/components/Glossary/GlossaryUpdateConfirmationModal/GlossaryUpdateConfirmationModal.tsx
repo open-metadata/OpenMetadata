@@ -16,7 +16,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExclamationIcon } from '../../../assets/svg/ic-exclamation-circle.svg';
-import { ClientErrors } from '../../../enums/axios.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';

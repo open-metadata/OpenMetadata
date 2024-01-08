@@ -123,7 +123,7 @@ export const PersonaPage = () => {
       <Col span={6}>
         <Space align="center" className="w-full justify-end" size={16}>
           <Button
-            data-testid="add-user"
+            data-testid="add-persona-button"
             type="primary"
             onClick={handleAddNewPersona}>
             {t('label.add-entity', { entity: t('label.persona') })}
