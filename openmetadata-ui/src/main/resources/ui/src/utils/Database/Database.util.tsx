@@ -62,7 +62,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       <div className="d-inline-flex w-max-90">
         <Link
           className="break-word"
-          data-testid="database-schema-name-link"
+          data-testid={record.name}
           to={
             record.fullyQualifiedName
               ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
