@@ -28,6 +28,8 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -53,7 +55,7 @@ public class GenericPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) {
+  public void sendAlert(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
       // Post Message to default
@@ -76,14 +78,21 @@ public class GenericPublisher extends AbstractEventConsumer {
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
+      String message = "";
       if (cause != null && cause.getClass() == UnknownHostException.class) {
-        LOG.warn(
-            "Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
+        message =
+            String.format(
+                "Unknown Host Exception for EventSubscription : %s , WebhookEndpoint : %s",
+                eventSubscription.getName(), webhook.getEndpoint());
+        LOG.warn(message);
         setErrorStatus(attemptTime, 400, "UnknownHostException");
-
       } else {
-        LOG.debug("Exception occurred while publishing webhook", ex);
+        message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(
+                GENERIC_WEBHOOK, event, ex.getMessage());
+        LOG.error(message);
       }
+      throw new EventPublisherException(message, event);
     }
   }
 

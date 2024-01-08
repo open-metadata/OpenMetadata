@@ -16,6 +16,7 @@ package org.openmetadata.service.events.scheduled;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
+import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -110,7 +111,7 @@ public class EventSubscriptionScheduler {
       AbstractEventConsumer consumer, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
-    dataMap.put(ALERT_OFFSET_KEY, getEventSubscriptionFromScheduledJob(eventSubscription.getId()));
+    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
     JobBuilder jobBuilder =
         JobBuilder.newJob(consumer.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
