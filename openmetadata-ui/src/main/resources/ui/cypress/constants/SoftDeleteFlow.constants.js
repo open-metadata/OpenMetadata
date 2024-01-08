@@ -69,7 +69,7 @@ export const PIPELINE_SERVICE_DETAILS_SOFT_DELETE_TEST = {
 };
 
 export const ML_MODEL_SERVICE_DETAILS_SOFT_DELETE_TEST = {
-  settingsMenuId: 'services.mlModels',
+  settingsMenuId: 'services.mlmodels',
   serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
   serviceName: ML_MODEL_SERVICE.service.name,
   childName: ML_MODEL_SERVICE.entity.name,
