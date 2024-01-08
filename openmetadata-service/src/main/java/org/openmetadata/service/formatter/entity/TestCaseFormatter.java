@@ -68,6 +68,7 @@ public class TestCaseFormatter implements EntityFormatter {
       case Success -> "<span style=\"color:#48CA9E\">Passed</span>";
       case Failed -> "<span style=\"color:#F24822\">Failed</span>";
       case Aborted -> "<span style=\"color:#FFBE0E\">Aborted</span>";
+      case Queued -> "<span style=\"color:#959595\">Queued</span>";
     };
   }
 }

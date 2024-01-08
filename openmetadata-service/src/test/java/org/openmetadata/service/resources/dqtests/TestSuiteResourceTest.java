@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.dqtests;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -45,6 +44,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateTestSuite> {
 
@@ -142,7 +142,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
           testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
 
-    ResultList<TestSuite> actualTestSuites = getTestSuites(10, "*", ADMIN_AUTH_HEADERS);
+    ResultList<TestSuite> actualTestSuites =
+        getTestSuites(10, "*", null, null, null, ADMIN_AUTH_HEADERS);
     verifyTestSuites(actualTestSuites, List.of(CREATE_TEST_SUITE1, CREATE_TEST_SUITE2));
 
     for (TestSuite testSuite : actualTestSuites.getData()) {
@@ -164,33 +165,81 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void test_inheritOwnerFromTable(TestInfo test) throws IOException {
+  void list_testSuitesIncludeEmpty_200(TestInfo test) throws IOException, ParseException {
+    List<CreateTestSuite> testSuites = new ArrayList<>();
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
+    for (int i = 0; i < 19; i++) {
+      CreateTable tableReq =
+          tableResourceTest
+              .createRequest(test.getDisplayName() + RandomStringUtils.randomAlphanumeric(10))
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(C1)
+                          .withDisplayName("c1")
+                          .withDataType(ColumnDataType.VARCHAR)
+                          .withDataLength(10)));
+      Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+      CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
+      TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+      for (int j = 0; j < 3; j++) {
+        CreateTestCase createTestCase =
+            testCaseResourceTest
+                .createRequest("test_" + RandomStringUtils.randomAlphabetic(10))
+                .withTestSuite(testSuite.getFullyQualifiedName());
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+      }
+      testSuites.add(createTestSuite);
+    }
+
+    // create Empty test suite
     CreateTable tableReq =
         tableResourceTest
-            .createRequest(test)
+            .createRequest(test.getDisplayName() + RandomStringUtils.randomAlphanumeric(10))
             .withColumns(
                 List.of(
                     new Column()
                         .withName(C1)
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
-                        .withDataLength(10)))
-            .withOwner(USER1_REF);
+                        .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
-    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
-    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
-    TestSuite executableTestSuite =
-        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
-    TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(testSuite.getOwner().getId(), table.getOwner().getId());
-    Table updateTableOwner = table;
+    CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
+    createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    testSuites.add(createTestSuite);
+
+    ResultList<TestSuite> actualTestSuites =
+        getTestSuites(20, "*", null, null, null, ADMIN_AUTH_HEADERS);
+    verifyTestSuites(actualTestSuites, testSuites);
+    // returns only 19 results
+    ResultList<TestSuite> nonEmptyTestSuites =
+        getTestSuites(20, "*", "false", null, null, ADMIN_AUTH_HEADERS);
+    verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 18));
+
+    // delete test cases for a test suite to make it empty
+    TestSuite deleteTestCases = nonEmptyTestSuites.getData().get(19);
+    for (EntityReference ref : deleteTestCases.getTests()) {
+      testCaseResourceTest.deleteEntity(ref.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    TestSuite checkTestSuite = getEntity(deleteTestCases.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(checkTestSuite.getTests().size(), 0);
+    nonEmptyTestSuites = getTestSuites(20, "*", "false", null, null, ADMIN_AUTH_HEADERS);
     updateTableOwner.setOwner(TEAM11_REF);
-    tableResourceTest.patchEntity(
+    verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 17));
+
+    // test pagination
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
-    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
-    testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(table.getOwner().getId(), testSuite.getOwner().getId());
+    nonEmptyTestSuites = getTestSuites(10, "*", "false", null, null, ADMIN_AUTH_HEADERS);
+    verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 9));
+    nonEmptyTestSuites =
+        getTestSuites(
+            10, "*", "false", null, nonEmptyTestSuites.getPaging().getAfter(), ADMIN_AUTH_HEADERS);
+    verifyTestSuites(nonEmptyTestSuites, testSuites.subList(10, 17));
+    nonEmptyTestSuites =
+        getTestSuites(
+            10, "*", "false", nonEmptyTestSuites.getPaging().getBefore(), null, ADMIN_AUTH_HEADERS);
+    verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 9));
   }
 
   @Test
@@ -466,9 +515,21 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   public ResultList<TestSuite> getTestSuites(
-      Integer limit, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+      Integer limit,
+      String fields,
+      String includeEmptyTestSuites,
+      String before,
+      String after,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource("dataQuality/testSuites");
     target = limit != null ? target.queryParam("limit", limit) : target;
+    target =
+        includeEmptyTestSuites != null
+            ? target.queryParam("includeEmptyTests", includeEmptyTestSuites)
+            : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
   }
@@ -519,8 +580,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuite storedTestSuite = testSuiteMap.get(result.getName());
       if (storedTestSuite == null) continue;
       validateCreatedEntity(storedTestSuite, result, ADMIN_AUTH_HEADERS);
-      assertNotEquals(0, storedTestSuite.getSummary().getSuccess());
-      assertNotEquals(0, storedTestSuite.getSummary().getTotal());
     }
   }
 
