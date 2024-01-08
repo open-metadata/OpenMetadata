@@ -14,7 +14,8 @@ import { Card } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import Qs from 'qs';
-import React, { DragEvent, useCallback, useRef } from 'react';
+import React, { DragEvent, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import {
@@ -30,11 +31,19 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { useLineageProvider } from '../LineageProvider/LineageProvider';
 import { LineageProps } from './Lineage.interface';
 
-const Lineage = ({ deleted, hasEditAccess }: LineageProps) => {
+const Lineage = ({
+  deleted,
+  hasEditAccess,
+  entity,
+  entityType,
+}: LineageProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -78,15 +87,34 @@ const Lineage = ({ deleted, hasEditAccess }: LineageProps) => {
     onZoomUpdate(value);
   }, 150);
 
+  const breadcrumbs = useMemo(
+    () =>
+      entity
+        ? [
+            ...getEntityBreadcrumbs(entity, entityType),
+            {
+              name: t('label.lineage'),
+              url: '',
+              activeTitle: true,
+            },
+          ]
+        : [],
+    [entity]
+  );
+
   return (
     <Card
       className={classNames('lineage-card card-body-full w-auto border-none', {
         'full-screen-lineage': isFullScreen,
-      })}>
+      })}
+      data-testid="lineage-details">
       <div
         className="h-full"
         data-testid="lineage-container"
         ref={reactFlowWrapper}>
+        {isFullScreen && (
+          <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
+        )}
         <ReactFlowProvider>
           <ReactFlow
             className="custom-react-flow"

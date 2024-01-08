@@ -75,7 +75,6 @@ const CustomControls: FC<ControlProps> = ({
     onQueryFilterUpdate,
     onNodeClick,
   } = useLineageProvider();
-  const [zoom, setZoom] = useState<number>(zoomValue);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -93,12 +92,6 @@ const CustomControls: FC<ControlProps> = ({
       onClick: handleMenuClick,
     }));
   }, [filters]);
-
-  useEffect(() => {
-    if (zoomValue !== zoom) {
-      setZoom(zoomValue);
-    }
-  }, [zoomValue]);
 
   useEffect(() => {
     const dropdownItems = getAssetsPageQuickFilters();
@@ -258,7 +251,7 @@ const CustomControls: FC<ControlProps> = ({
               className="expand-btn"
               data-testid="expand-column"
               type="primary"
-              onClick={() => toggleColumnView()}>
+              onClick={toggleColumnView}>
               {expandAllColumns
                 ? t('label.collapse-all')
                 : t('label.expand-all')}

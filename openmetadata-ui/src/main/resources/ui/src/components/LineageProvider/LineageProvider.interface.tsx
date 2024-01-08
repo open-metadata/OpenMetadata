@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
-import { DragEvent } from 'react';
+import { DragEvent, ReactNode } from 'react';
 import {
   Connection,
   Edge,
@@ -28,6 +28,10 @@ import {
 } from '../Entity/EntityLineage/EntityLineage.interface';
 import { EntityLineageReponse } from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
+
+export interface LineageProviderProps {
+  children: ReactNode;
+}
 
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;

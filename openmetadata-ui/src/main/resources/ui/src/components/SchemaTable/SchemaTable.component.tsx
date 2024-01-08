@@ -19,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  lowerCase,
   set,
   sortBy,
   toLower,
@@ -48,6 +47,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
+  searchInColumns,
 } from '../../utils/EntityUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
@@ -55,7 +55,6 @@ import {
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
 import {
-  getDataTypeString,
   getFilterIcon,
   getTableExpandableConfig,
   makeData,
@@ -189,34 +188,6 @@ const SchemaTable = ({
       );
       await onUpdate(tableCols);
     }
-  };
-
-  const searchInColumns = (table: Column[], searchText: string): Column[] => {
-    const searchedValue: Column[] = table.reduce((searchedCols, column) => {
-      const isContainData =
-        lowerCase(column.name).includes(searchText) ||
-        lowerCase(column.description).includes(searchText) ||
-        lowerCase(getDataTypeString(column.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedCols, column];
-      } else if (!isUndefined(column.children)) {
-        const searchedChildren = searchInColumns(column.children, searchText);
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedCols,
-            {
-              ...column,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedCols;
-    }, [] as Column[]);
-
-    return searchedValue;
   };
 
   const handleUpdate = (column: Column) => {

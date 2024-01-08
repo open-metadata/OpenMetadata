@@ -24,7 +24,7 @@ import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTex
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getExplorePath } from '../constants/constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SettledStatus } from '../enums/Axios.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';

@@ -22,11 +22,11 @@ import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
-import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 

@@ -80,6 +80,10 @@ export const formatDataResponse = (
       newData.databaseSchema = source.databaseSchema?.name;
     }
 
+    if ('columns' in source) {
+      newData.columns = source.columns;
+    }
+
     newData.changeDescription = source.changeDescription;
 
     return newData;
@@ -191,6 +195,9 @@ export const formatSearchTagsResponse = (
   }));
 };
 
+/**
+ * @deprecated getURLWithQueryFields is deprecated, Please use params to pass query parameters wherever it is required
+ */
 export const getURLWithQueryFields = (
   url: string,
   lstQueryFields?: string | string[],

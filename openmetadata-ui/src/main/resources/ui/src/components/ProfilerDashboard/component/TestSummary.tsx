@@ -14,7 +14,7 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omitBy, round, uniqueId } from 'lodash';
 import Qs from 'qs';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -63,12 +63,16 @@ import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorP
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import { TestSummaryProps } from '../profilerDashboard.interface';
+import {
+  MetricChartType,
+  TestSummaryProps,
+} from '../profilerDashboard.interface';
 import './test-summary.less';
+import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
-  data: { [key: string]: string }[];
+  data: MetricChartType['data'];
 };
 
 export interface DateRangeObject {
@@ -110,7 +114,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const generateChartData = (currentData: TestCaseResult[]) => {
-    const chartData: { [key: string]: string }[] = [];
+    const chartData: ChartDataType['data'] = [];
     currentData.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
@@ -118,11 +122,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
+      const metric = {
+        passedRows: result.passedRows,
+        failedRows: result.failedRows,
+        passedRowsPercentage: isUndefined(result.passedRowsPercentage)
+          ? undefined
+          : `${result.passedRowsPercentage}%`,
+        failedRowsPercentage: isUndefined(result.failedRowsPercentage)
+          ? undefined
+          : `${result.failedRowsPercentage}%`,
+      };
 
       chartData.push({
         name: formatDateTime(result.timestamp),
-        status: result.testCaseStatus ?? '',
+        status: result.testCaseStatus,
         ...values,
+        ...omitBy(metric, isUndefined),
       });
     });
     chartData.reverse();
@@ -219,7 +234,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
           />
-          <Tooltip />
+          <Tooltip content={<TestSummaryCustomTooltip />} />
           <Legend />
           {data.parameterValues?.length === 2 && referenceArea()}
           {chartData?.information?.map((info) => (

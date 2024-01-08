@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import {
   getIncomers,
   getOutgoers,
@@ -30,6 +31,7 @@ import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
@@ -45,6 +47,7 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { t } = useTranslation();
+  const { fqn: entityFqn } = useParams<{ fqn: string }>();
   const updateNodeInternals = useUpdateNodeInternals();
   const { data, type, isConnectable } = props;
 
@@ -62,17 +65,20 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
   } = useLineageProvider();
 
-  /* eslint-disable-next-line */
   const { label, isNewNode, node = {} } = data;
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
 
   const isSelected = selectedNode === node;
-  const { columns, id, testSuite, lineage } = node;
+  const { columns, id, testSuite, lineage, fullyQualifiedName } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<ModifiedColumn[]>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [isTraced, setIsTraced] = useState<boolean>(false);
+
+  const isRootNode = useMemo(() => {
+    return getDecodedFqn(entityFqn) === fullyQualifiedName;
+  }, [fullyQualifiedName, entityFqn]);
 
   const { hasDownstream, hasUpstream } = useMemo(() => {
     return checkUpstreamDownstream(id, lineage ?? []);
@@ -153,9 +159,10 @@ const CustomNodeV1 = (props: NodeProps) => {
       return (
         <>
           <LineageNodeLabelV1 node={node} />
-          {isSelected && isEditMode ? (
+          {isSelected && isEditMode && !isRootNode ? (
             <Button
               className="lineage-node-remove-btn bg-body-hover"
+              data-testid="lineage-node-remove-btn"
               icon={
                 <SVGIcons
                   alt="times-circle"
@@ -288,7 +295,8 @@ const CustomNodeV1 = (props: NodeProps) => {
         'lineage-node p-0',
         isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
         { 'custom-node-header-tracing': isTraced }
-      )}>
+      )}
+      data-testid={`lineage-node-${fullyQualifiedName}`}>
       {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>

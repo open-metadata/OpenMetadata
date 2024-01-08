@@ -277,7 +277,7 @@ const EdgeInfoDrawer = ({
           header={t('label.edit-entity', {
             entity: t('label.sql-uppercase-query'),
           })}
-          value={mysqlQuery}
+          value={mysqlQuery ?? ''}
           visible={showSqlQueryModal}
           onCancel={() => setShowSqlQueryModal(false)}
           onSave={onSqlQueryUpdate}
