@@ -15,7 +15,6 @@
 /// <reference types="cypress" />
 
 import {
-  addOwner,
   deleteCreatedService,
   descriptionBox,
   goToAddNewServicePage,
@@ -31,7 +30,7 @@ import {
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
-import { removeOwner } from '../../common/Utils/Owner';
+import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import {
   API_SERVICE,
   DATA_ASSETS,
@@ -197,7 +196,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
-    cy.get('[data-menu-id*="databases"]').should('be.visible').click();
+    cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
       'GET',
@@ -578,7 +577,7 @@ describe('Data Quality and Profiler should work properly', () => {
     );
   });
 
-  it('Assign owner to test suite', () => {
+  it('User as Owner assign, update & delete for test suite', () => {
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*&index=test_case_search_index*',
@@ -594,7 +593,7 @@ describe('Data Quality and Profiler should work properly', () => {
     visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     addOwner(OWNER1);
-    addOwner(OWNER2);
+    updateOwner(OWNER2);
     removeOwner(OWNER2);
   });
 
