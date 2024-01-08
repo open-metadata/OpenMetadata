@@ -68,6 +68,9 @@ import {
 } from '../../utils/EntityLineageUtils';
 
 import { useParams } from 'react-router-dom';
+import { PipelineStatus } from '../../generated/entity/data/pipeline';
+import { getPipelineStatus } from '../../rest/pipelineAPI';
+import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -146,6 +149,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     nodesPerLayer: 50,
   });
   const [queryFilter, setQueryFilter] = useState<string>('');
+  const [pipelineStatus, setPipelineStatus] = useState<
+    Record<string, PipelineStatus>
+  >({});
 
   const fetchLineageData = async (fqn: string, config?: LineageConfig) => {
     if (isTourOpen) {
@@ -223,6 +229,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [nodes, edges, lineageConfig, entityLineage, setEntityLineage, queryFilter]
   );
+
+  const fetchPipelineStatus = useCallback(async (pipelineFQN: string) => {
+    try {
+      const currentTime = Date.now();
+      // past 1 day
+      const startDay = getEpochMillisForPastDays(1);
+      const response = await getPipelineStatus(pipelineFQN, {
+        startTs: startDay,
+        endTs: currentTime,
+      });
+      setPipelineStatus((prev) => {
+        return {
+          ...prev,
+          [pipelineFQN]: response.data[0],
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.fetch-pipeline-status-error')
+      );
+    }
+  }, []);
 
   const handleLineageTracing = useCallback(
     (selectedNode: Node) => {
@@ -882,6 +911,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       tracedNodes,
       tracedColumns,
       expandAllColumns,
+      pipelineStatus,
       upstreamDownstreamData,
       onInitReactFlow,
       onPaneClick,
@@ -897,6 +927,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       toggleColumnView,
       loadChildNodesHandler,
       fetchLineageData,
+      fetchPipelineStatus,
       removeNodeHandler,
       onNodeClick,
       onEdgeClick,
@@ -922,6 +953,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     tracedNodes,
     tracedColumns,
     expandAllColumns,
+    pipelineStatus,
     upstreamDownstreamData,
     onInitReactFlow,
     onPaneClick,
@@ -936,6 +968,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onDrawerClose,
     loadChildNodesHandler,
     fetchLineageData,
+    fetchPipelineStatus,
     toggleColumnView,
     removeNodeHandler,
     onNodeClick,

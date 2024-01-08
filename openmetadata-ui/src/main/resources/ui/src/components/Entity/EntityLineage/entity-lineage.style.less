@@ -74,10 +74,6 @@
   position: relative;
 }
 
-.custom-edge-pipeline-button.ant-btn {
-  background-color: @body-bg-color;
-}
-
 .custom-node {
   .custom-node-header-active {
     .react-flow__handle {
@@ -201,4 +197,27 @@
 .react-flow__controls-button {
   width: 20px;
   height: 20px;
+}
+
+.custom-edge-pipeline-button {
+  background-color: @body-bg-color;
+  color: @primary-color;
+  &.green {
+    background: @green-2;
+    border: 1px solid @green-5;
+    color: @green-5;
+  }
+  &.amber {
+    background: @yellow-1;
+    border: 1px solid @yellow-4;
+    color: @yellow-4;
+  }
+  &.red {
+    background: @red-2;
+    border: 1px solid @red-5;
+    color: @red-5;
+  }
+  svg {
+    color: inherit;
+  }
 }
