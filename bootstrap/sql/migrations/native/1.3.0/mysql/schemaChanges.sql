@@ -133,7 +133,6 @@ UPDATE dbservice_entity de
 SET de.json = JSON_REMOVE(de.json, '$.connection.config.useUnityCatalog')
 WHERE de.serviceType IN ('Databricks','UnityCatalog');
 
-=======
 -- Add Incident ID for test case results
 ALTER TABLE data_quality_data_time_series ADD COLUMN incidentId varchar(36);
 ALTER TABLE data_quality_data_time_series ADD INDEX data_quality_data_time_series_incidentId(incidentId);
