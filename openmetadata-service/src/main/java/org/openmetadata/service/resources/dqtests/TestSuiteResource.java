@@ -378,7 +378,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
-    testSuite = setExecutableTestSuiteOwner(testSuite);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -652,16 +651,5 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
-  }
-
-  private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) {
-    Table tableEntity =
-        Entity.getEntity(
-            testSuite.getExecutableEntityReference().getType(),
-            testSuite.getExecutableEntityReference().getId(),
-            "owner",
-            ALL);
-    EntityReference ownerReference = tableEntity.getOwner();
-    return testSuite.withOwner(ownerReference);
   }
 }
