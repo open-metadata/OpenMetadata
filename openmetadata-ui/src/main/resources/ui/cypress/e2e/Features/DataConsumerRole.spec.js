@@ -89,7 +89,7 @@ const ID = {
     api: '/api/v1/services/pipelineServices?*',
   },
   mlmodels: {
-    testid: '[data-menu-id*="services.mlModels"]',
+    testid: '[data-menu-id*="services.mlmodels"]',
     button: 'add-service-button',
     api: '/api/v1/services/mlmodelServices?*',
   },
