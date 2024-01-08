@@ -151,6 +151,8 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.5</picocli.version>
+    <logback-core.version>1.2.13</logback-core.version>
+    <logback-classic.version>1.2.13</logback-classic.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -218,10 +220,6 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
           </exclusion>
-          <exclusion>
-            <groupId>org.slf4j</groupId>
-            <artifactId>log4j-over-slf4j</artifactId>
-          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -246,12 +244,18 @@
               <groupId>ch.qos.logback</groupId>
               <artifactId>logback-classic</artifactId>
             </exclusion>
-            <exclusion>
-              <groupId>org.slf4j</groupId>
-              <artifactId>log4j-over-slf4j</artifactId>
-            </exclusion>
         </exclusions>
         <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>${logback-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback-classic.version}</version>
       </dependency>
       <dependency>
         <groupId>org.awaitility</groupId>
