@@ -73,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidents";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
