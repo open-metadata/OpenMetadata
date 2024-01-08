@@ -219,13 +219,13 @@ export const getDataAssetsHeaderInfo = (
               }
             />
           )}
-          {containerDetails.numberOfObjects && (
+          {!isUndefined(containerDetails.numberOfObjects) && (
             <ExtraInfoLabel
               label={t('label.number-of-object-plural')}
               value={containerDetails.numberOfObjects}
             />
           )}
-          {containerDetails.size && (
+          {!isUndefined(containerDetails.size) && (
             <ExtraInfoLabel
               label={t('label.size')}
               value={bytesToSize(containerDetails.size)}

@@ -36,7 +36,6 @@ export const uuid = () => Cypress._.random(0, 1e6);
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
-const ADMIN = 'admin';
 const RETRIES_COUNT = 4;
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -98,11 +97,13 @@ export const verifyResponseStatusCode = (
   hasMultipleResponseCode = false
 ) => {
   if (hasMultipleResponseCode) {
-    cy.wait(alias, option)
+    return cy
+      .wait(alias, option)
       .its('response.statusCode')
       .should('be.oneOf', responseCode);
   } else {
-    cy.wait(alias, option)
+    return cy
+      .wait(alias, option)
       .its('response.statusCode')
       .should('eq', responseCode);
   }
@@ -594,7 +595,7 @@ export const visitEntityDetailsPage = ({
           ).type(serviceName);
           verifyResponseStatusCode('@explorePageSearch', 200);
           cy.get(
-            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
+            `[data-testid="drop-down-menu"] [data-testid="${serviceName.toLowerCase()}"]`
           ).click();
           cy.get(
             `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
@@ -788,10 +789,10 @@ export const deleteSoftDeletedUser = (username) => {
 };
 
 export const toastNotification = (msg, closeToast = true) => {
-  cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
+  cy.get('.Toastify__toast-body').should('contain.text', msg);
   cy.wait(200);
   if (closeToast) {
-    cy.get('.Toastify__close-button').should('be.visible').click();
+    cy.get('.Toastify__close-button').click();
   }
 };
 
@@ -872,53 +873,6 @@ export const addCustomPropertiesForEntity = (
 
   // Navigating to home page
   cy.clickOnLogo();
-
-  if (entityObj) {
-    // Checking the added property in Entity
-
-    visitEntityDetailsPage({
-      term: entityObj.term,
-      serviceName: entityObj.serviceName,
-      entity: entityObj.entity,
-    });
-
-    cy.get('[data-testid="custom_properties"]').click();
-    cy.get('tbody').should('contain', propertyName);
-
-    // Adding value for the custom property
-
-    // Navigating through the created custom property for adding value
-    cy.get(`[data-row-key="${propertyName}"]`)
-      .find('[data-testid="edit-icon"]')
-      .as('editbutton');
-    cy.wait(1000);
-
-    cy.get('@editbutton').click();
-
-    interceptURL(
-      'PATCH',
-      `/api/v1/${customPropertyData.entityApiType}/*`,
-      'patchEntity'
-    );
-    // Checking for value text box or markdown box
-    cy.get('body').then(($body) => {
-      if ($body.find('[data-testid="value-input"]').length > 0) {
-        cy.get('[data-testid="value-input"]').type(value);
-        cy.get('[data-testid="inline-save-btn"]').click();
-      } else if (
-        $body.find(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-      ) {
-        cy.get(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        ).type(value);
-        cy.get('[data-testid="save"]').click();
-      }
-    });
-    verifyResponseStatusCode('@patchEntity', 200);
-    cy.get(`[data-row-key="${propertyName}"]`).should('contain', value);
-  }
 };
 
 export const editCreatedProperty = (propertyName) => {
@@ -1196,18 +1150,11 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (
-  ownerName,
-  entity,
-  isGlossaryPage,
-  isOwnerEmpty = false
-) => {
+export const addOwner = (ownerName, entity) => {
   interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
-  if (isGlossaryPage && isOwnerEmpty) {
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
-  } else {
-    cy.get('[data-testid="edit-owner"]').click();
-  }
+
+  cy.get('[data-testid="edit-owner"]').click();
+
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
@@ -1227,11 +1174,8 @@ export const addOwner = (
 
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"]').should('contain', ownerName);
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', ownerName);
-  }
+
+  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
 };
 
 export const removeOwner = (entity, isGlossaryPage) => {
@@ -1243,13 +1187,11 @@ export const removeOwner = (entity, isGlossaryPage) => {
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
-  if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
-  } else {
-    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
-  }
+
+  cy.get('[data-testid="owner-link"]').should(
+    'contain',
+    isGlossaryPage ? 'Add' : 'No Owner'
+  );
 };
 
 export const addTier = (tier, entity) => {

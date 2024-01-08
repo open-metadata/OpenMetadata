@@ -10,14 +10,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseSchemaIndex implements SearchIndex {
-  final DatabaseSchema databaseSchema;
-
+public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public DatabaseSchemaIndex(DatabaseSchema databaseSchema) {
-    this.databaseSchema = databaseSchema;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(databaseSchema);

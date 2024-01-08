@@ -668,7 +668,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           UUID id) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    ResourceContext resourceContext = getResourceContextById(id);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 
@@ -809,7 +809,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String fqn) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    ResourceContext resourceContext = getResourceContextByName(fqn);
+    ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 

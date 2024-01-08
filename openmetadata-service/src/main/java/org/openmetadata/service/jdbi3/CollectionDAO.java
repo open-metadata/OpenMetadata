@@ -3592,6 +3592,47 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @SqlQuery(
+        value =
+            "SELECT DISTINCT incidentId FROM data_quality_data_time_series "
+                + "WHERE entityFQNHash = :testCaseFQNHash AND incidentId IS NOT NULL")
+    List<String> getResultsWithIncidents(@BindFQN("testCaseFQNHash") String testCaseFQNHash);
+
+    @SqlUpdate(
+        value =
+            "UPDATE data_quality_data_time_series SET incidentId = NULL "
+                + "WHERE entityFQNHash = :testCaseFQNHash and incidentId = :incidentStateId")
+    void cleanTestCaseIncident(
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("incidentStateId") String incidentStateId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String entityFQNHash,
+        String extension,
+        String jsonSchema,
+        String json,
+        String incidentStateId) {
+      insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
+    }
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -3605,6 +3646,10 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
+    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
@@ -3760,7 +3805,6 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
-        default -> throw new IllegalArgumentException("Invalid Token Type.");
       };
     }
   }

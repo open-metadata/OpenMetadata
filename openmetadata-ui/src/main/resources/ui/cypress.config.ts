@@ -14,7 +14,6 @@ import { defineConfig } from 'cypress';
 import plugins from './cypress/plugins/index.js';
 
 export default defineConfig({
-  projectId: 'a9yxci',
   viewportWidth: 1240,
   viewportHeight: 660,
   watchForFileChanges: false,
@@ -30,6 +29,9 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/new-tests/**/*.spec.{js,jsx,ts,tsx}',
+      'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    ],
   },
 });

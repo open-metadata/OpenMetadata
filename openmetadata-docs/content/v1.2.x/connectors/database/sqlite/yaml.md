@@ -32,7 +32,6 @@ Configure and schedule SQLite metadata and profiler workflows from the OpenMetad
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)

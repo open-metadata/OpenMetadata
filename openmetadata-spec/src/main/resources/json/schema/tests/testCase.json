@@ -69,6 +69,7 @@
       }
     },
     "testCaseResult": {
+      "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"
     },
     "version": {
@@ -105,6 +106,10 @@
       "description": "Compute the passed and failed row count for the test case.",
       "type": "boolean",
       "default": false
+    },
+    "incidentId": {
+      "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
+      "$ref": "../type/basic.json#/definitions/uuid"
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

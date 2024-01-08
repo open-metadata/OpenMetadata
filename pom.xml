@@ -77,7 +77,7 @@
     <mockito.version>5.8.0</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.16.0</jackson.version>
+    <jackson.version>2.16.1</jackson.version>
     <dropwizard.version>2.1.11</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -98,10 +98,10 @@
     <commons-cli.version>1.6.0</commons-cli.version>
     <commons-io.version>2.15.1</commons-io.version>
     <flyway.version>9.22.3</flyway.version>
-    <redshift-jdbc.version>2.1.0.23</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.24</redshift-jdbc.version>
     <gson.version>2.10.1</gson.version>
     <mysql.connector.version>8.0.33</mysql.connector.version>
-    <postgres.connector.version>42.6.0</postgres.connector.version>
+    <postgres.connector.version>42.7.1</postgres.connector.version>
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.30</lombok.version>
@@ -109,7 +109,7 @@
     <elasticsearch.version>7.17.16</elasticsearch.version>
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.19</openapiswagger.version>
+    <openapiswagger.version>2.2.20</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
@@ -133,7 +133,7 @@
     <testng.version>7.6.1</testng.version>
     <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.0.87</json-schema-validator.version>
+    <json-schema-validator.version>1.1.0</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
@@ -141,16 +141,18 @@
     <freemarker.version>2.3.32</freemarker.version>
     <passay.version>1.6.4</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
-    <simplejavamail.version>8.3.3</simplejavamail.version>
+    <simplejavamail.version>8.5.1</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <unboundsdk.version>6.0.10</unboundsdk.version>
+    <unboundsdk.version>6.0.11</unboundsdk.version>
     <dropwizard-web.version>1.5.1</dropwizard-web.version>
     <snakeyaml.version>2.2</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.5</picocli.version>
+    <logback-core.version>1.2.13</logback-core.version>
+    <logback-classic.version>1.2.13</logback-classic.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -209,6 +211,16 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-assets</artifactId>
         <version>${dropwizard.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -224,8 +236,26 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
           </exclusion>
+            <exclusion>
+              <groupId>ch.qos.logback</groupId>
+              <artifactId>logback-core</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>ch.qos.logback</groupId>
+              <artifactId>logback-classic</artifactId>
+            </exclusion>
         </exclusions>
         <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>${logback-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback-classic.version}</version>
       </dependency>
       <dependency>
         <groupId>org.awaitility</groupId>
@@ -299,13 +329,11 @@
         <groupId>org.opensearch.client</groupId>
         <artifactId>opensearch-rest-high-level-client</artifactId>
         <version>${opensearch.version}</version>
-        <!--      <classifier>shaded</classifier>-->
       </dependency>
       <dependency>
         <groupId>org.elasticsearch.client</groupId>
         <artifactId>elasticsearch-rest-high-level-client</artifactId>
         <version>${elasticsearch.version}</version>
-        <!--      <classifier>shaded</classifier>-->
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -479,7 +507,7 @@
       <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
-        <version>2.1.0</version>
+        <version>2.2.0</version>
       </dependency>
       <dependency>
         <groupId>info.picocli</groupId>
@@ -682,6 +710,11 @@
           </executions>
         </plugin>
         <plugin>
+          <groupId>com.theoryinpractise</groupId>
+          <artifactId>googleformatter-maven-plugin</artifactId>
+          <version>1.7.5</version>
+        </plugin>
+        <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-clean-plugin</artifactId>
           <version>3.2.0</version>
@@ -762,6 +795,7 @@
           <artifactId>maven-release-plugin</artifactId>
           <version>${maven-release-plugin.version}</version>
           <configuration>
+            <!--suppress UnresolvedMavenProperty -->
             <arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
           </configuration>
         </plugin>
@@ -842,7 +876,7 @@
             <configuration>
               <rules>
                 <requireMavenVersion>
-                  <version>3.3</version>
+                  <version>3.6.0</version>
                 </requireMavenVersion>
               </rules>
             </configuration>
