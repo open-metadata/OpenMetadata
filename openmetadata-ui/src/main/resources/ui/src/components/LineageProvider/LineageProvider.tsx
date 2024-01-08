@@ -62,7 +62,7 @@ import {
   getModalBodyText,
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamEdges,
+  getUpstreamDownstreamNodesEdges,
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
@@ -810,7 +810,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEdges(updatedEdges);
 
       // Get upstream downstream nodes and edges data
-      const data = getUpstreamDownstreamEdges(
+      const data = getUpstreamDownstreamNodesEdges(
         lineageData.edges ?? [],
         lineageData.nodes ?? [],
         decodedFqn
@@ -835,11 +835,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   useEffect(() => {
     if (!isEditMode && updatedEntityLineage !== null) {
       // On exit of edit mode, use updatedEntityLineage and update data.
-      const { downstreamEdges, upstreamEdges } = getUpstreamDownstreamEdges(
-        updatedEntityLineage.edges ?? [],
-        updatedEntityLineage.nodes ?? [],
-        entityFqn
-      );
+      const { downstreamEdges, upstreamEdges } =
+        getUpstreamDownstreamNodesEdges(
+          updatedEntityLineage.edges ?? [],
+          updatedEntityLineage.nodes ?? [],
+          decodedFqn
+        );
 
       const updatedNodes =
         updatedEntityLineage.nodes?.filter(
@@ -855,7 +856,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         nodes: updatedNodes as EntityReference[],
       });
     }
-  }, [isEditMode, updatedEntityLineage, entityFqn]);
+  }, [isEditMode, updatedEntityLineage, decodedFqn]);
 
   useEffect(() => {
     if (isEditMode) {

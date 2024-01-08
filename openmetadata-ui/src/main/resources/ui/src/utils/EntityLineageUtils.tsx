@@ -957,7 +957,7 @@ export const createNewEdge = (edge: Edge) => {
   return selectedEdge;
 };
 
-export const getUpstreamDownstreamEdges = (
+export const getUpstreamDownstreamNodesEdges = (
   edges: EdgeDetails[],
   nodes: EntityReference[],
   currentNode: string
