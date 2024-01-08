@@ -1829,4 +1829,6 @@ site_menu:
     url: /sdk/python/api-reference/version-mixin
   - category: SDK / Java SDK
     url: /sdk/java
+  - category: SDK / Go
+    url: /sdk/go
 ---
