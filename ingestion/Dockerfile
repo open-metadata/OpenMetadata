@@ -88,7 +88,7 @@ RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" ]]; \
+RUN if [[ $(uname -m) != "aarch64" ]]; \
  then \
  pip install "ibm-db-sa~=0.4"; \
  fi
