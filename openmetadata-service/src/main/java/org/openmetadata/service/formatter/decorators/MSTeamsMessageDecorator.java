@@ -14,15 +14,15 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
+import org.openmetadata.service.util.FeedUtils;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
@@ -67,22 +67,22 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     TeamsMessage teamsMessage = new TeamsMessage();
     teamsMessage.setSummary("Change Event From OMD");
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();
+    EntityInterface entityInterface = getEntity(event);
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
       String headerText =
           String.format(
               headerTxt,
               event.getUserName(),
-              this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+              this.buildEntityUrl(event.getEntityType(), entityInterface));
       teamsSections.setActivityTitle(headerText);
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+    List<Thread> thread = FeedUtils.getThreads(event, "admin");
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
+    for (Thread entry : thread) {
       TeamsMessage.Section section = new TeamsMessage.Section();
       section.setActivityTitle(teamsSections.getActivityTitle());
-      section.setActivityText(entry.getValue());
+      section.setActivityText(entry.getMessage());
       attachmentList.add(section);
     }
     teamsMessage.setSections(attachmentList);

@@ -1,4 +1,4 @@
-package org.openmetadata.service.events.subscription.slack;
+package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

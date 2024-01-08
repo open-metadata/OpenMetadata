@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseFormatter implements EntityFormatter {
   private static final String TEST_RESULT_FIELD = "testCaseResult";
@@ -42,7 +43,7 @@ public class TestCaseFormatter implements EntityFormatter {
   private String transformTestCaseResult(
       MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String testCaseName = entity.getName();
-    TestCaseResult result = (TestCaseResult) fieldChange.getNewValue();
+    TestCaseResult result = JsonUtils.convertValue(fieldChange.getNewValue(), TestCaseResult.class);
     TestCase testCaseEntity = (TestCase) entity;
     if (result != null) {
       String format =

@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/events/filterResourceDescriptor.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FilterResourceDescriptor",
+  "description": "Filter descriptor",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.FilterResourceDescriptor",
+  "properties": {
+    "name": {
+      "description": "Name of the resource. For entity related resources, resource name is same as the entity name. Some resources such as lineage are not entities but are resources.",
+      "type": "string"
+    },
+    "supportedFilters": {
+      "description": "List of operations supported filters by the resource.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventFilterRule.json"
+      }
+    },
+    "supportedActions": {
+      "description": "List of actions supported filters by the resource.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventFilterRule.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

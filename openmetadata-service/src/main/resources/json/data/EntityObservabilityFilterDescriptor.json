@@ -1,0 +1,340 @@
+[
+  {
+    "name" : "table",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Table Name",
+        "description" : "Filter A Change Event By Table Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTableSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTableSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'columns'})",
+        "inputType": "none"
+      },
+      {
+        "name": "GetTableMetricsUpdates",
+        "fullyQualifiedName": "eventSubscription.GetTableMetricsUpdates",
+        "displayName": "Get Table Metrics Updates",
+        "description" : "Get Updates About Table Metrics",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'customMetrics', 'profile'})",
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "topic",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Table Name",
+        "description" : "Filter A Change Event By Topic Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTopicSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTopicSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'messageSchema'})",
+        "arguments": [
+          "fieldList"
+        ],
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "container",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Table Name",
+        "description" : "Filter A Change Event By Container Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetContainerSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetContainerSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'parent','children'})",
+        "arguments": [
+          "fieldList"
+        ],
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Table Name",
+        "description" : "Filter A Change Event By Pipeline Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetPipelineSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation'})",
+        "arguments": [
+          "fieldList"
+        ],
+        "inputType": "none"
+      },
+      {
+        "name": "GetPipelineStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetPipelineStatusUpdates",
+        "displayName": "Get Pipeline Status Updates",
+        "description" : "Get Updates for Pipeline Status Changes",
+        "effect" : "include",
+        "condition": "matchIngestionPipelineState(${pipelineStateList})",
+        "arguments": [
+          "pipelineStateList"
+        ],
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "testCase",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Test Case Name",
+        "description" : "Filter A Change Event By Test Case Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByTableNameTestCaseBelongsTo",
+        "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
+        "displayName": "Filter By Table Name",
+        "description" : "Filter A Change Event By Pipeline Name",
+        "effect" : "include",
+        "condition": "filterByTableNameTestCaseBelongsTo(${tableNameList})",
+        "arguments": [
+          "tableNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTestCaseSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'testDefinition','parameterValues'})",
+        "arguments": [
+          "fieldList"
+        ],
+        "inputType": "none"
+      },
+      {
+        "name": "GetTestCaseStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdates",
+        "displayName": "Get Test Case Status Updates",
+        "description" : "Get Status Updates Test Cases",
+        "effect" : "include",
+        "condition": "matchTestResult(${testResultList})",
+        "arguments": [
+          "testResultList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "testSuite",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Filter By Test Suite Name",
+        "description" : "Filter By Test Suite Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByTableNameTestCaseBelongsTo",
+        "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
+        "displayName": "Filter By Table Name For A Test Suite",
+        "description" : "Filter A Change Event By Pipeline Name",
+        "effect" : "include",
+        "condition": "matchByTableNameTestCaseBelongsTo(${tableNameList})",
+        "arguments": [
+          "tableNameList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Filter By Domain",
+        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTestSuiteSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'connection','pipelines'})",
+        "arguments": [
+          "fieldList"
+        ],
+        "inputType": "none"
+      },
+      {
+        "name": "GetTestCaseStatusUpdatesUnderSuite",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
+        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
+        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
+        "effect" : "include",
+        "condition": "getTestCaseStatusIfInTestSuite(${testSuiteList}, ${testStatusList})",
+        "arguments": [
+          "testSuiteList",
+          "testStatusList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "GetTestCaseAdditionOrDeletionToSuite",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseAdditionOrDeletionToSuite",
+        "displayName": "Get Test Case Addition Or Deletion To Suite Updates",
+        "description" : "Get Status Updates when a Test Case is added or deleted to a Test Suite",
+        "effect" : "include",
+        "condition": "getTestCaseAdditionOrDeletionToSuite(${testSuiteList}, ${opList})",
+        "arguments": [
+          "testSuiteList",
+          "opList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  }
+]

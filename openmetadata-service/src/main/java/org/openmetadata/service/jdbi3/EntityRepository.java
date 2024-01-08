@@ -865,6 +865,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -912,6 +913,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withId(UUID.randomUUID())
             .withEntity(originalEntity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -1099,6 +1101,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
