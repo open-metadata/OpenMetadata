@@ -105,7 +105,7 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
-                processor="yield_tag",
+                processor="yield_bulk_tags",
                 nullable=True,
             ),
         ],
@@ -133,6 +133,11 @@ class DashboardServiceTopology(ServiceTopology):
     dashboard = TopologyNode(
         producer="get_dashboard",
         stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                processor="yield_tags",
+                nullable=True,
+            ),
             NodeStage(
                 type_=Chart,
                 context="charts",
@@ -333,7 +338,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 dashboard_details, db_service_name
             ) or []
 
-    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_bulk_tags(
+        self, *args, **kwargs
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to bulk fetch dashboard tags
+        """
+
+    def yield_tags(
+        self, dashboard_details
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to fetch dashboard tags
         """
@@ -388,7 +402,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def process_owner(self, dashboard_details):
         """
-        Method to process the dashboard onwers
+        Method to process the dashboard owners
         """
         try:
             if self.source_config.includeOwners:
@@ -429,7 +443,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.dashboard_source_state.add(dashboard_fqn)
 
     def register_record_datamodel(
-        self, datamodel_requst: CreateDashboardDataModelRequest
+        self, datamodel_request: CreateDashboardDataModelRequest
     ) -> None:
         """
         Mark the datamodel record as scanned and update the datamodel_source_state
@@ -437,8 +451,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=datamodel_requst.service.__root__,
-            data_model_name=datamodel_requst.name.__root__,
+            service_name=datamodel_request.service.__root__,
+            data_model_name=datamodel_request.name.__root__,
         )
 
         self.datamodel_source_state.add(datamodel_fqn)
@@ -505,7 +519,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.context.project_name = (  # pylint: disable=assignment-from-none
                     self.get_project_name(dashboard_details=dashboard_details)
                 )
-                if self.context.project_name and filter_by_project(
+                if filter_by_project(
                     self.source_config.projectFilterPattern,
                     self.context.project_name,
                 ):

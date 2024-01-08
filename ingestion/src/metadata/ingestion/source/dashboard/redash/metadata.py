@@ -87,7 +87,7 @@ class RedashSource(DashboardServiceSource):
             for dashboard in self.dashboard_list:
                 self.tags.extend(dashboard.get("tags") or [])
 
-    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_bulk_tags(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         """Fetch Dashboard Tags"""
         yield from get_ometa_tag_and_classification(
             tags=self.tags,
