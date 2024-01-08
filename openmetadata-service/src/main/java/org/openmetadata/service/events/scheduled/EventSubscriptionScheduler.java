@@ -191,7 +191,7 @@ public class EventSubscriptionScheduler {
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
-    int countOfEvents = Entity.getCollectionDAO().changeEventDAO().listCount();
+    long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));

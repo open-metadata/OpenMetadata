@@ -8,7 +8,8 @@
   "properties": {
     "offset": {
       "description": "Name of this Event Filter.",
-      "type": "integer"
+      "type": "integer",
+      "existingJavaType": "Long"
     },
     "timestamp": {
       "description": "Update time of the job status.",

@@ -3197,7 +3197,7 @@ public interface CollectionDAO {
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
     @SqlQuery("SELECT count(*) FROM change_event")
-    int listCount();
+    long getLatestOffset();
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {

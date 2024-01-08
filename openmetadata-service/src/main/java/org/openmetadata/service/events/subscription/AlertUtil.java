@@ -269,8 +269,8 @@ public final class AlertUtil {
     return filteredEvents;
   }
 
-  public static EventSubscriptionOffset getInitialAlertOffsetFromDb(UUID eventSubscriptionId) {
-    int eventSubscriptionOffset;
+  public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
+    long eventSubscriptionOffset;
     String json =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -280,7 +280,7 @@ public final class AlertUtil {
           JsonUtils.readValue(json, EventSubscriptionOffset.class);
       eventSubscriptionOffset = offsetFromDb.getOffset();
     } else {
-      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().listCount();
+      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     }
     return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
   }

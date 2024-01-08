@@ -17,7 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvent;
-import static org.openmetadata.service.events.subscription.AlertUtil.getInitialAlertOffsetFromDb;
+import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
@@ -47,13 +47,14 @@ import org.quartz.PersistJobDataAfterExecution;
 @Slf4j
 @DisallowConcurrentExecution
 @PersistJobDataAfterExecution
-public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Job {
+public abstract class AbstractEventConsumer
+    implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
-  private int offset = -1;
+  private long offset = -1;
   private AlertMetrics alertMetrics;
 
   @Getter @Setter private JobDetail jobDetail;
@@ -71,11 +72,8 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     this.doInit(context);
   }
 
-  protected abstract void doInit(JobExecutionContext context);
-
-  protected void sendAlert(ChangeEvent event) throws EventPublisherException {
-    /* This method needs to be over-ridden by specific Publisher for sending Alert */
-
+  protected void doInit(JobExecutionContext context) {
+    // To be implemented by the Subclass if needed
   }
 
   @Override
@@ -143,7 +141,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
     }
   }
 
-  private int loadInitialOffset(JobExecutionContext context) {
+  private long loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     // If the Job Data Map has the latest offset, use it
@@ -151,7 +149,7 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
       return jobStoredOffset.getOffset();
     } else {
       EventSubscriptionOffset eventSubscriptionOffset =
-          getInitialAlertOffsetFromDb(eventSubscription.getId());
+              getStartingOffset(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
       return eventSubscriptionOffset.getOffset();
@@ -200,10 +198,9 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
+    // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
-
-    // Upsert Offset to Database
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -211,14 +208,12 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    // Update the Job Data Map with the latest offset
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
         .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
 
-    // Upsert Metrics to Database
+    // Upsert Metrics
     AlertMetrics metrics =
         new AlertMetrics()
             .withTotalEvents(alertMetrics.getTotalEvents())
@@ -232,8 +227,6 @@ public abstract class AbstractEventConsumer implements Consumer<ChangeEvent>, Jo
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
-
-    // Update the Job Data Map with latest Metrics
     jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
   }
 
