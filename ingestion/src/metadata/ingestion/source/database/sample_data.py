@@ -118,6 +118,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
+    OMetaTestCaseResolutionStatus,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -566,6 +567,7 @@ class SampleDataSource(
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+        yield from self.ingest_incidents()
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
@@ -1054,9 +1056,9 @@ class SampleDataSource(
         for pipeline in self.pipelines["pipelines"]:
             owner = None
             if pipeline.get("owner"):
-                user = self.metadata.get_user_by_email(email=pipeline.get("owner"))
-                if user:
-                    owner = EntityReference(id=user.id.__root__, type="user")
+                owner = self.metadata.get_reference_by_email(
+                    email=pipeline.get("owner")
+                )
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
@@ -1408,6 +1410,15 @@ class SampleDataSource(
                 )
                 yield Either(right=test_case_req)
 
+    def ingest_incidents(self) -> Iterable[Either[OMetaTestCaseResolutionStatus]]:
+        """
+        Ingest incidents after the first test failures have been added.
+
+        The test failure already creates the incident with NEW, so we
+        start always from ACK in the sample flows.
+        """
+        for test_suite in self.tests_suites["tests"]:
+            for test_case in test_suite["testCases"]:
                 test_case_fqn = f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}"
 
                 for _, resolutions in test_case["resolutions"].items():
@@ -1426,7 +1437,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
                                 assignee=EntityReference(
-                                    id=user.id.__root__, type="user"
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
                                 )
                             )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
@@ -1435,7 +1449,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
                                 resolvedBy=EntityReference(
-                                    id=user.id.__root__, type="user"
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
                                 ),
                                 testCaseFailureReason=random.choice(
                                     list(TestCaseFailureReasonType)
@@ -1443,8 +1460,10 @@ class SampleDataSource(
                                 testCaseFailureComment="Resolution comment",
                             )
 
-                        self.metadata.create_test_case_resolution(
-                            create_test_case_resolution
+                        yield Either(
+                            right=OMetaTestCaseResolutionStatus(
+                                test_case_resolution=create_test_case_resolution
+                            )
                         )
 
     def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:

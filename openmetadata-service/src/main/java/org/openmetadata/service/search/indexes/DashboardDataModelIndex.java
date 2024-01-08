@@ -17,15 +17,9 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardDataModelIndex implements ColumnIndex {
-
+public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
+    implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final DashboardDataModel dashboardDataModel;
-
-  public DashboardDataModelIndex(DashboardDataModel dashboardDataModel) {
-    this.dashboardDataModel = dashboardDataModel;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
@@ -33,7 +27,11 @@ public class DashboardDataModelIndex implements ColumnIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dashboardDataModel.getName()).weight(10).build());
-    suggest.add(SearchSuggest.builder().input(dashboardDataModel.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder()
+            .input(dashboardDataModel.getFullyQualifiedName())
+            .weight(5)
+            .build());
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
@@ -49,10 +47,13 @@ public class DashboardDataModelIndex implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
+    ParseTags parseTags =
+        new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("tags", flattenedTagList);
     doc.put("column_suggest", columnSuggest);
     doc.put("suggest", suggest);

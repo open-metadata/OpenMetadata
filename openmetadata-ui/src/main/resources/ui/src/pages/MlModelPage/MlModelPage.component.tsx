@@ -116,11 +116,17 @@ const MlModelPage = () => {
     }
   }, [mlModelPermissions, mlModelFqn]);
 
-  const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
-    const jsonPatch = compare(omitBy(mlModelDetail, isUndefined), updatedData);
+  const saveUpdatedMlModelData = useCallback(
+    (updatedData: Mlmodel) => {
+      const jsonPatch = compare(
+        omitBy(mlModelDetail, isUndefined),
+        updatedData
+      );
 
-    return patchMlModelDetails(mlModelDetail.id, jsonPatch);
-  };
+      return patchMlModelDetails(mlModelDetail.id, jsonPatch);
+    },
+    [mlModelDetail]
+  );
 
   const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
     try {
@@ -230,19 +236,25 @@ const MlModelPage = () => {
     }
   };
 
-  const handleExtensionUpdate = async (updatedMlModel: Mlmodel) => {
-    try {
-      const data = await saveUpdatedMlModelData(updatedMlModel);
-      setMlModelDetail(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: getEntityName(mlModelDetail),
-        })
-      );
-    }
-  };
+  const handleExtensionUpdate = useCallback(
+    async (updatedMlModel: Mlmodel) => {
+      try {
+        const data = await saveUpdatedMlModelData({
+          ...mlModelDetail,
+          extension: updatedMlModel.extension,
+        });
+        setMlModelDetail(data);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: getEntityName(mlModelDetail),
+          })
+        );
+      }
+    },
+    [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail]
+  );
 
   const createThread = async (data: CreateThread) => {
     try {

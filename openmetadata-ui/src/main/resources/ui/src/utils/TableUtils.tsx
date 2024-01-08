@@ -336,7 +336,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline service-icon h-7"
-        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType ?? '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source)}
       />
     );
   }
@@ -505,23 +505,23 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="d-inline-flex items-center">
+        <>
           {isDraggable && (
-            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
           )}
           <Icon
-            className="m-r-xs"
+            className="m-r-xs vertical-baseline"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
             style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
-        </div>
+        </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={12} />
-            <div className="expand-cell-empty-icon-container" />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <span className="expand-cell-empty-icon-container" />
           </>
         )
       ),

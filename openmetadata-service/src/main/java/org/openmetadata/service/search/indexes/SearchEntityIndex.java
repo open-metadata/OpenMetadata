@@ -10,22 +10,17 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchEntityIndex implements SearchIndex {
-
-  final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
-
+public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex)
+    implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex) {
-    this.searchIndex = searchIndex;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(searchIndex);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchIndex.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(searchIndex.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(searchIndex.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_INDEX);
     doc.put(

@@ -36,10 +36,11 @@ public class LdapUtil {
     SSLSocketVerifier sslSocketVerifier;
     LdapConfiguration.TruststoreConfigType configType = ldapConfiguration.getTruststoreConfigType();
     switch (configType) {
-      case CUSTOM_TRUST_STORE:
+      case CUSTOM_TRUST_STORE -> {
         CustomTrustManagerConfig customTrustManagerConfig =
             JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getCustomTrustManagerConfig(), CustomTrustManagerConfig.class);
+                ldapConfiguration.getTrustStoreConfig().getCustomTrustManagerConfig(),
+                CustomTrustManagerConfig.class);
         x509TrustManager =
             new TrustStoreTrustManager(
                 customTrustManagerConfig.getTrustStoreFilePath(),
@@ -48,33 +49,38 @@ public class LdapUtil {
                 customTrustManagerConfig.getExamineValidityDates());
         sslSocketVerifier = hostNameVerifier(customTrustManagerConfig.getVerifyHostname());
         connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
-        break;
-      case HOST_NAME:
+      }
+      case HOST_NAME -> {
         HostNameConfig hostNameConfig =
-            JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig().getHostNameConfig(), HostNameConfig.class);
+            JsonUtils.convertValue(
+                ldapConfiguration.getTrustStoreConfig().getHostNameConfig(), HostNameConfig.class);
         x509TrustManager =
-            new HostNameTrustManager(hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
-        break;
-      case JVM_DEFAULT:
+            new HostNameTrustManager(
+                hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
+      }
+      case JVM_DEFAULT -> {
         JVMDefaultConfig jvmDefaultConfig =
             JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getJvmDefaultConfig(), JVMDefaultConfig.class);
+                ldapConfiguration.getTrustStoreConfig().getJvmDefaultConfig(),
+                JVMDefaultConfig.class);
         x509TrustManager = JVMDefaultTrustManager.getInstance();
         sslSocketVerifier = hostNameVerifier(jvmDefaultConfig.getVerifyHostname());
         connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
-        break;
-      case TRUST_ALL:
+      }
+      case TRUST_ALL -> {
         TrustAllConfig trustAllConfig =
-            JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(), TrustAllConfig.class);
+            JsonUtils.convertValue(
+                ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(), TrustAllConfig.class);
         x509TrustManager = new TrustAllTrustManager(trustAllConfig.getExamineValidityDates());
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid Truststore type.");
+      }
+      default -> throw new IllegalArgumentException("Invalid Truststore type.");
     }
     return x509TrustManager;
   }
 
   private SSLSocketVerifier hostNameVerifier(boolean verifyHostName) {
-    return verifyHostName ? new HostNameSSLSocketVerifier(true) : TrustAllSSLSocketVerifier.getInstance();
+    return verifyHostName
+        ? new HostNameSSLSocketVerifier(true)
+        : TrustAllSSLSocketVerifier.getInstance();
   }
 }

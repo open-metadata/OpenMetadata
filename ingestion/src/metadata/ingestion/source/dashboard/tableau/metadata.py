@@ -14,6 +14,8 @@ Tableau source module
 import traceback
 from typing import Any, Iterable, List, Optional, Set
 
+from requests.utils import urlparse
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -39,11 +41,14 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -82,51 +87,6 @@ class TableauSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
     client: TableauClient
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata: OpenMetadata,
-    ):
-        super().__init__(config, metadata)
-        self.workbooks: List[
-            TableauDashboard
-        ] = []  # We will populate this in `prepare`
-        self.tags: Set[TableauTag] = set()
-
-    def prepare(self):
-        """Restructure the API response"""
-        try:
-            # get workbooks which are considered Dashboards in OM
-            self.workbooks = self.client.get_workbooks()
-
-            # get views which are considered charts in OM
-            charts = self.client.get_charts()
-
-            # get datasources which are considered as datamodels in OM
-            data_models = self.client.get_datasources()
-
-            # add all the charts (views) and datasources from the API to each workbook
-            for workbook in self.workbooks:
-                workbook.charts = [
-                    chart for chart in charts if chart.workbook.id == workbook.id
-                ]
-
-                for data_model in data_models or []:
-                    if data_model.workbook and data_model.workbook.luid == workbook.id:
-                        workbook.dataModels.append(data_model)
-
-            # collect all the tags from charts and workbooks before yielding final entities
-            if self.source_config.includeTags:
-                for container in [self.workbooks, charts]:
-                    for elem in container:
-                        self.tags.update(elem.tags)
-
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error("Error in fetching the Tableau Workbook metadata")
-
-        return super().prepare()
-
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -138,16 +98,22 @@ class TableauSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        return self.workbooks
+        return self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
 
     def get_dashboard_details(self, dashboard: TableauDashboard) -> TableauDashboard:
         """
-        Get Dashboard Details. Returning the identity here as we prepare everything
-        during the `prepare` stage
+        Get Dashboard Details including the dashboard charts and datamodels
         """
+
+        # Get the tableau views/sheets
+        dashboard.charts = self.client.get_workbook_charts(dashboard_id=dashboard.id)
+
+        # Get the tableau data sources
+        dashboard.dataModels = self.client.get_datasources(dashboard_id=dashboard.id)
+
         return dashboard
 
     def get_owner_details(
@@ -155,19 +121,28 @@ class TableauSource(DashboardServiceSource):
     ) -> Optional[EntityReference]:
         """Get dashboard owner from email"""
         if dashboard_details.owner and dashboard_details.owner.email:
-            user = self.metadata.get_user_by_email(dashboard_details.owner.email)
-            if user:
-                return EntityReference(id=user.id.__root__, type="user")
+            return self.metadata.get_reference_by_email(dashboard_details.owner.email)
         return None
 
-    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from get_ometa_tag_and_classification(
-            tags=[tag.label for tag in self.tags],
-            classification_name=TABLEAU_TAG_CATEGORY,
-            tag_description="Tableau Tag",
-            classification_description="Tags associated with tableau entities",
-            include_tags=self.source_config.includeTags,
-        )
+    def yield_tags(
+        self, dashboard_details: TableauDashboard
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to yield tags related to specific dashboards
+        """
+        if self.source_config.includeTags:
+            tags: Set[TableauTag] = set()
+            for container in [[dashboard_details], dashboard_details.charts]:
+                for elem in container:
+                    tags.update(elem.tags)
+
+            yield from get_ometa_tag_and_classification(
+                tags=[tag.label for tag in tags],
+                classification_name=TABLEAU_TAG_CATEGORY,
+                tag_description="Tableau Tag",
+                classification_description="Tags associated with tableau entities",
+                include_tags=self.source_config.includeTags,
+            )
 
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
@@ -190,14 +165,14 @@ class TableauSource(DashboardServiceSource):
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
 
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
                             name=data_model_name,
                             error=f"Error yielding Data Model [{data_model_name}]: {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -214,6 +189,10 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
+            dashboard_url = (
+                f"{clean_uri(str(self.config.serviceConnection.__root__.config.hostPort))}"
+                f"/#{urlparse(dashboard_details.webpageUrl).fragment}"
+            )
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
@@ -243,7 +222,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                sourceUrl=dashboard_details.webpageUrl,
+                sourceUrl=dashboard_url,
                 service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
@@ -253,7 +232,7 @@ class TableauSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.id,
                     error=f"Error to yield dashboard for {dashboard_details}: {exc}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -294,7 +273,7 @@ class TableauSource(DashboardServiceSource):
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {err}"
                         ),
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -342,7 +321,7 @@ class TableauSource(DashboardServiceSource):
                     left=StackTraceError(
                         name="Chart",
                         error=f"Error to yield dashboard chart [{chart}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

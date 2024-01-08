@@ -238,6 +238,7 @@ export const UserTeamSelectableList = ({
           centered
           activeKey={activeTab}
           className="select-owner-tabs"
+          data-testid="select-owner-tabs"
           destroyInactiveTabPane={false}
           items={[
             {

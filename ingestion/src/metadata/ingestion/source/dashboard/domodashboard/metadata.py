@@ -32,11 +32,14 @@ from metadata.generated.schema.entity.services.connections.dashboard.domoDashboa
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -97,12 +100,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 owner_details = self.client.domo.users_get(owner.id)
                 if owner_details.get("email"):
-                    user = self.metadata.get_user_by_email(owner_details["email"])
-                    if user:
-                        return EntityReference(id=user.id.__root__, type="user")
-                    logger.warning(
-                        f"No user found with email [{owner_details['email']}] in OMD"
-                    )
+                    return self.metadata.get_reference_by_email(owner_details["email"])
             except Exception as exc:
                 logger.warning(
                     f"Error while getting details of user {owner.displayName} - {exc}"
@@ -140,7 +138,7 @@ class DomodashboardSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error extracting data from {dashboard_details.name} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except ValidationError as err:
@@ -148,7 +146,7 @@ class DomodashboardSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Error building pydantic model for {dashboard_details.name} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
         except Exception as err:
@@ -156,7 +154,7 @@ class DomodashboardSource(DashboardServiceSource):
                 left=StackTraceError(
                     name=dashboard_details.name,
                     error=f"Wild error ingesting dashboard {dashboard_details.name} - {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -230,7 +228,7 @@ class DomodashboardSource(DashboardServiceSource):
                     left=StackTraceError(
                         name=name,
                         error=f"Error creating chart [{name}]: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 

@@ -12,11 +12,7 @@ import os
 from unittest import TestCase, mock
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    AuthProvider,
     OpenMetadataConnection,
-)
-from metadata.generated.schema.security.client.googleSSOClientConfig import (
-    GoogleSSOClientConfig,
 )
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -24,13 +20,10 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.ingestion.ometa.auth_provider import (
-    GoogleAuthenticationProvider,
-    NoOpAuthenticationProvider,
-)
+from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.singleton import Singleton
 
 
@@ -55,23 +48,14 @@ class OMetaSecretManagerTest(TestCase):
 
     def test_ometa_with_local_secret_manager(self):
         self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
-        assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
-
-    def test_ometa_with_local_secret_manager_with_google_auth(self):
-        self.local_server_config.authProvider = AuthProvider.google
-        self.local_server_config.securityConfig = GoogleSSOClientConfig(
-            secretKey="/fake/path"
-        )
-        self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is NoopSecretsManager
-        assert type(self.metadata._auth_provider) is GoogleAuthenticationProvider
+        assert type(self.metadata.secrets_manager_client) is DBSecretsManager
+        assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
 
     @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
     def test_ometa_with_aws_secret_manager(self):
         self._init_aws_secret_manager()
         assert type(self.metadata.secrets_manager_client) is AWSSecretsManager
-        assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
+        assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
 
     def _init_local_secret_manager(self):
         self.metadata = OpenMetadata(self.local_server_config)

@@ -264,6 +264,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
+      ROUTES.HOME,
     ].indexOf(pathname) === -1
   );
 };
@@ -282,7 +283,7 @@ export const getUrlPathnameExpiryAfterRoute = () => {
 
 /**
  * @exp expiry of token
- * @isExpired wether token is already expired or not
+ * @isExpired Whether token is already expired or not
  * @diff Difference between token expiry & current time in ms
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry

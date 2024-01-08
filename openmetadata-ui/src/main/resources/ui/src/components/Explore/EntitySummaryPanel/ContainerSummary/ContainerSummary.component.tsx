@@ -12,19 +12,22 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Container } from '../../../../generated/entity/data/container';
-import { getTagValue } from '../../../../utils/CommonUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -34,6 +37,7 @@ function ContainerSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
+  highlights,
 }: ContainerSummaryProps) {
   const { t } = useTranslation();
 
@@ -46,7 +50,8 @@ function ContainerSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        (entityDetails as Container).dataModel?.columns
+        (entityDetails as Container).dataModel?.columns,
+        highlights
       ),
     [entityDetails]
   );
@@ -64,28 +69,14 @@ function ContainerSummary({
         </Row>
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="profiler-header">
-              {t('label.tag-plural')}
-            </Typography.Text>
-          </Col>
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )}
+        />
 
-          <Col className="flex-grow" span={24}>
-            {entityDetails.tags && entityDetails.tags.length > 0 ? (
-              <TagsViewer
-                sizeCap={2}
-                tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
-              />
-            ) : (
-              <Typography.Text className="text-grey-body">
-                {t('label.no-tags-added')}
-              </Typography.Text>
-            )}
-          </Col>
-        </Row>
         <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>

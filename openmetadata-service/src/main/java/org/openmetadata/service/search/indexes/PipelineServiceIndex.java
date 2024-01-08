@@ -10,22 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class PipelineServiceIndex implements SearchIndex {
-
-  final PipelineService pipelineService;
-
+public record PipelineServiceIndex(PipelineService pipelineService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public PipelineServiceIndex(PipelineService pipelineService) {
-    this.pipelineService = pipelineService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(pipelineService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(pipelineService.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(pipelineService.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(pipelineService.getFullyQualifiedName()).weight(5).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.PIPELINE_SERVICE);
     doc.put(

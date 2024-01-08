@@ -19,16 +19,19 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Getter protected final SearchRepository searchRepository;
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
-
-  protected final boolean supportsSearchIndex = true;
+  @Getter protected final CollectionDAO daoCollection;
 
   protected EntityTimeSeriesRepository(
-      String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
+      String collectionPath,
+      EntityTimeSeriesDAO timeSeriesDao,
+      Class<T> entityClass,
+      String entityType) {
     this.collectionPath = collectionPath;
     this.timeSeriesDao = timeSeriesDao;
     this.entityClass = entityClass;
     this.entityType = entityType;
     this.searchRepository = Entity.getSearchRepository();
+    this.daoCollection = Entity.getCollectionDAO();
     Entity.registerEntity(entityClass, entityType, this);
   }
 
@@ -45,12 +48,11 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   protected void postCreate(T entity) {
-    if (supportsSearchIndex) {
-      searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
-    }
+    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
   }
 
-  public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total) {
+  public final ResultList<T> getResultList(
+      List<T> entities, String beforeCursor, String afterCursor, int total) {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
@@ -68,18 +70,20 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     int afterOffsetInt = offsetInt + limitParam;
     int beforeOffsetInt = offsetInt - limitParam;
 
-    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous page will
-    // be at offset 0
+    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
+    // page will be at offset 0
     if (beforeOffsetInt < 0) beforeOffsetInt = 0;
 
-    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no previous page
+    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
+    // previous page
     String beforeOffset = (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
 
     // If afterOffset is greater than total, then set it to null to indicate end of list
     String afterOffset = afterOffsetInt >= total ? null : String.valueOf(afterOffsetInt);
 
     if (limitParam > 0) {
-      List<String> jsons = timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
+      List<String> jsons =
+          timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
 
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, entityClass);
@@ -94,14 +98,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   public ResultList<T> list(
       String offset, Long startTs, Long endTs, int limitParam, ListFilter filter, boolean latest) {
     return listWithOffset(offset, filter, limitParam, startTs, endTs, latest);
-  }
-
-  public T getLatestRecord(String recordFQN, String extension) {
-    String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
-    if (jsonRecord == null) {
-      return null;
-    }
-    return JsonUtils.readValue(jsonRecord, entityClass);
   }
 
   public T getLatestRecord(String recordFQN) {

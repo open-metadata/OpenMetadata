@@ -35,7 +35,7 @@ The following configuration controls the auth mechanism for OpenMetadata. Update
 ```yaml
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://{your openmetadata domain}/api/v1/system/config/jwks]} # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
 ```

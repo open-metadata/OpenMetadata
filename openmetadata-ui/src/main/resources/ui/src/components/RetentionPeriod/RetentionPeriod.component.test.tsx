@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 
@@ -30,6 +31,7 @@ const mockOnUpdate = jest.fn();
 const mockRetentionPeriodProps: RetentionPeriodProps = {
   retentionPeriod: undefined,
   onUpdate: mockOnUpdate,
+  permissions: { EditAll: true } as OperationPermission,
 };
 
 describe('Test Retention Period Component', () => {
@@ -137,5 +139,21 @@ describe('Test Retention Period Component', () => {
     });
 
     expect(mockOnUpdate).toHaveBeenCalledWith('69 days and 16 hours');
+  });
+
+  it('Should not render Retention Period Component if has no permission', () => {
+    const permissions = { EditAll: false } as OperationPermission;
+    render(
+      <RetentionPeriod
+        {...mockRetentionPeriodProps}
+        permissions={permissions}
+      />
+    );
+
+    expect(
+      screen.getByTestId('retention-period-container')
+    ).toBeInTheDocument();
+
+    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
   });
 });

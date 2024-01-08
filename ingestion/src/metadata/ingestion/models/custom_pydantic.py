@@ -25,6 +25,8 @@ from pydantic.validators import constr_length_validator, str_validator
 
 logger = logging.getLogger("metadata")
 
+SECRET = "secret:"
+
 
 class CustomSecretStr(SecretStr):
     """
@@ -91,10 +93,10 @@ class CustomSecretStr(SecretStr):
 
         if (
             not skip_secret_manager
-            and self._secret_value.startswith("secret:")
+            and self._secret_value.startswith(SECRET)
             and SecretsManagerFactory().get_secrets_manager()
         ):
-            secret_id = self._secret_value.replace("secret:", "")
+            secret_id = self._secret_value.replace(SECRET, "")
             try:
                 return (
                     SecretsManagerFactory()

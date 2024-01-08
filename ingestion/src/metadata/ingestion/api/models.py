@@ -15,19 +15,13 @@ from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+
 # Entities are instances of BaseModel
 Entity = BaseModel
 T = TypeVar("T")
-
-
-class StackTraceError(BaseModel):
-    """
-    Class that represents a failure status
-    """
-
-    name: str
-    error: str
-    stack_trace: Optional[str]
 
 
 class Either(BaseModel, Generic[T]):

@@ -30,6 +30,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTag } from '../../common/UserTag/UserTag.component';
@@ -167,7 +168,7 @@ const AddGlossary = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: FormItemLayout.HORIZONATAL,
+      formItemLayout: FormItemLayout.HORIZONTAL,
     },
   ];
 
@@ -188,7 +189,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -213,7 +214,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
@@ -241,7 +242,8 @@ const AddGlossary = ({
                   {selectedOwner && (
                     <div className="m-y-xs" data-testid="owner-container">
                       <UserTag
-                        id={selectedOwner.id}
+                        id={selectedOwner.name ?? selectedOwner.id}
+                        isTeam={selectedOwner.type === UserTeam.Team}
                         name={getEntityName(selectedOwner)}
                         size={UserTagSize.small}
                       />
@@ -258,7 +260,7 @@ const AddGlossary = ({
                       size={[8, 8]}>
                       {reviewersList.map((d, index) => (
                         <UserTag
-                          id={d.id}
+                          id={d.name ?? d.id}
                           key={index}
                           name={getEntityName(d)}
                           size={UserTagSize.small}

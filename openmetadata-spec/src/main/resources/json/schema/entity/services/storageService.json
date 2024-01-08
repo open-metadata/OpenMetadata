@@ -19,6 +19,7 @@
       "enum": [
         "S3",
         "ADLS",
+        "GCS",
         "CustomStorage"
       ],
       "javaEnums": [
@@ -27,6 +28,9 @@
         },
         {
           "name": "ADLS"
+        },
+        {
+          "name": "GCS"
         },
         {
           "name": "CustomStorage"
@@ -48,7 +52,10 @@
               "$ref": "connections/storage/s3Connection.json"
             },
             {
-              "$ref": "connections/storage/adlsConection.json"
+              "$ref": "connections/storage/adlsConnection.json"
+            },
+            {
+              "$ref": "connections/storage/gcsConnection.json"
             },
             {
               "$ref": "connections/storage/customStorageConnection.json"

@@ -30,6 +30,7 @@ import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
+import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
 import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
@@ -76,7 +77,6 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     () => isAdminUser || isLoggedInUser,
     [isAdminUser, isLoggedInUser]
   );
-
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -200,6 +200,21 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
           },
         }),
       },
+      ...(isLoggedInUser
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={UserPageTabs.ACCESS_TOKEN}
+                  isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
+                  name={t('label.access-token')}
+                />
+              ),
+              key: UserPageTabs.ACCESS_TOKEN,
+              children: <AccessTokenCard isBot={false} />,
+            },
+          ]
+        : []),
     ],
     [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
   );

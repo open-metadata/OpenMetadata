@@ -17,14 +17,8 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ContainerIndex implements ColumnIndex {
+public record ContainerIndex(Container container) implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Container container;
-
-  public ContainerIndex(Container container) {
-    this.container = container;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(container);
@@ -49,13 +43,18 @@ public class ContainerIndex implements ColumnIndex {
       }
       doc.put("columnNames", columnsWithChildrenName);
     }
-    serviceSuggest.add(SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
+    serviceSuggest.add(
+        SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
     tagsWithChildren.add(parseTags.getTags());
     List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
-    doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
+    doc.put(
+        "displayName",
+        container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(container.getFollowers()));

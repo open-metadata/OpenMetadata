@@ -26,7 +26,7 @@ openmetadata:
     authentication:
       provider: "azure"
       publicKeys:
-      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
       - "https://login.microsoftonline.com/common/discovery/keys"
       authority: "https://login.microsoftonline.com/{Tenant ID}"
       clientId: "{Client ID}" # Azure Application

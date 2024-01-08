@@ -14,7 +14,7 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omitBy, round, uniqueId } from 'lodash';
 import Qs from 'qs';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -39,7 +39,7 @@ import {
 } from '../../../constants/Color.constants';
 import {
   COLORS,
-  DEFAULT_RANGE_DATA,
+  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -50,7 +50,11 @@ import {
 } from '../../../generated/tests/testCase';
 import { getListTestCaseResults } from '../../../rest/testAPI';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -59,12 +63,16 @@ import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorP
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import { TestSummaryProps } from '../profilerDashboard.interface';
+import {
+  MetricChartType,
+  TestSummaryProps,
+} from '../profilerDashboard.interface';
 import './test-summary.less';
+import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
-  data: { [key: string]: string }[];
+  data: MetricChartType['data'];
 };
 
 export interface DateRangeObject {
@@ -76,13 +84,26 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   data,
   showExpandIcon = true,
 }) => {
+  const defaultRange = useMemo(
+    () => ({
+      initialRange: {
+        startTs: getEpochMillisForPastDays(
+          PROFILER_FILTER_RANGE.last30days.days
+        ),
+        endTs: getCurrentMillis(),
+      },
+      key: 'last30days',
+    }),
+    []
+  );
   const history = useHistory();
   const [chartData, setChartData] = useState<ChartDataType>(
     {} as ChartDataType
   );
   const [results, setResults] = useState<TestCaseResult[]>([]);
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
+    defaultRange.initialRange
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
 
@@ -93,7 +114,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const generateChartData = (currentData: TestCaseResult[]) => {
-    const chartData: { [key: string]: string }[] = [];
+    const chartData: ChartDataType['data'] = [];
     currentData.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
@@ -101,11 +122,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
+      const metric = {
+        passedRows: result.passedRows,
+        failedRows: result.failedRows,
+        passedRowsPercentage: isUndefined(result.passedRowsPercentage)
+          ? undefined
+          : `${result.passedRowsPercentage}%`,
+        failedRowsPercentage: isUndefined(result.failedRowsPercentage)
+          ? undefined
+          : `${result.failedRowsPercentage}%`,
+      };
 
       chartData.push({
         name: formatDateTime(result.timestamp),
-        status: result.testCaseStatus ?? '',
+        status: result.testCaseStatus,
         ...values,
+        ...omitBy(metric, isUndefined),
       });
     });
     chartData.reverse();
@@ -202,7 +234,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
           />
-          <Tooltip />
+          <Tooltip content={<TestSummaryCustomTooltip />} />
           <Legend />
           {data.parameterValues?.length === 2 && referenceArea()}
           {chartData?.information?.map((info) => (
@@ -322,6 +354,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <DatePickerMenu
                     showSelectedCustomRange
+                    defaultValue={defaultRange.key}
                     handleDateRangeChange={handleDateRangeChange}
                   />
                 </Col>

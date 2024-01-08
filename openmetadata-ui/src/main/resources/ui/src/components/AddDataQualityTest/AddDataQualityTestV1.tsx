@@ -29,7 +29,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
 import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getTableTabPath } from '../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -77,7 +77,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
+        url: getTableTabPath(
+          getEncodedFqn(table.fullyQualifiedName ?? ''),
+          EntityTabs.PROFILER
+        ),
       },
       {
         name: t('label.add-entity-test', {
@@ -231,14 +234,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       />
       {isTableFqn && (
         <TableProfilerChart
-          dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
+          showHeader={false}
+          tableDetails={table}
         />
       )}
       {isColumnFqn && (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}
           dateRangeObject={DEFAULT_RANGE_DATA}
+          tableDetails={table}
         />
       )}
     </Fragment>

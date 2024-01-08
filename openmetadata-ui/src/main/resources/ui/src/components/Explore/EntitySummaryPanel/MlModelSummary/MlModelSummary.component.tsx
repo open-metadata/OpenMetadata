@@ -12,17 +12,22 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Mlmodel, TagLabel } from '../../../../generated/entity/data/mlmodel';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -33,6 +38,7 @@ interface MlModelSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 function MlModelSummary({
@@ -40,6 +46,7 @@ function MlModelSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: MlModelSummaryProps) {
   const { t } = useTranslation();
 
@@ -52,7 +59,8 @@ function MlModelSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.MLFEATURE,
-        entityDetails.mlFeatures
+        entityDetails.mlFeatures,
+        highlights
       ),
     [entityDetails]
   );
@@ -72,7 +80,13 @@ function MlModelSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
         />
         <Divider className="m-y-xs" />
 

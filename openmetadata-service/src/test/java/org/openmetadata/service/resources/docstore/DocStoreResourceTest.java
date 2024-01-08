@@ -46,7 +46,8 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   public void setupDocuments(TestInfo test) throws HttpResponseException {
-    CreateDocument createDoc = createRequest(test, 1).withName("activityFeed").withFullyQualifiedName("activityFeed");
+    CreateDocument createDoc =
+        createRequest(test, 1).withName("activityFeed").withFullyQualifiedName("activityFeed");
     ACTIVITY_FEED_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
 
     createDoc = createRequest(test, 11).withName("myData");
@@ -79,13 +80,18 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     KnowledgePanel knowledgePanel =
         new KnowledgePanel()
             .withConfiguration(
-                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/activityFeed'}"));
-    String fqn = FullyQualifiedName.build(knowledgePanel.getEntityType().toString(), "ActivityFeedTest");
+                new Configuration()
+                    .withAdditionalProperty("configuration", "{'api':'/api/v1/activityFeed'}"));
+    String fqn =
+        FullyQualifiedName.build(knowledgePanel.getEntityType().toString(), "ActivityFeedTest");
     CreateDocument create =
         createRequest(test, 1)
             .withName("ActivityFeedTest")
             .withFullyQualifiedName(fqn)
-            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withData(
+                new Data()
+                    .withAdditionalProperty(
+                        knowledgePanel.getEntityType().toString(), knowledgePanel))
             .withEntityType(knowledgePanel.getEntityType().toString());
     Document activityFeed = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     panelDocs.add(activityFeed);
@@ -93,13 +99,17 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     knowledgePanel =
         new KnowledgePanel()
             .withConfiguration(
-                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/knowledgePanel'}"));
+                new Configuration()
+                    .withAdditionalProperty("configuration", "{'api':'/api/v1/knowledgePanel'}"));
     fqn = FullyQualifiedName.build(knowledgePanel.getEntityType().toString(), "MyDataTest");
     create =
         createRequest(test, 1)
             .withName("MyDataTest")
             .withFullyQualifiedName(fqn)
-            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withData(
+                new Data()
+                    .withAdditionalProperty(
+                        knowledgePanel.getEntityType().toString(), knowledgePanel))
             .withEntityType(knowledgePanel.getEntityType().toString());
     Document myData = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     panelDocs.add(myData);
@@ -110,7 +120,10 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         createRequest(test, 1)
             .withName("FollowingTest")
             .withFullyQualifiedName(fqn)
-            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withData(
+                new Data()
+                    .withAdditionalProperty(
+                        knowledgePanel.getEntityType().toString(), knowledgePanel))
             .withEntityType(knowledgePanel.getEntityType().toString());
     Document following = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     panelDocs.add(following);
@@ -118,26 +131,32 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     knowledgePanel =
         new KnowledgePanel()
             .withConfiguration(
-                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/dataInsights'}"));
+                new Configuration()
+                    .withAdditionalProperty("configuration", "{'api':'/api/v1/dataInsights'}"));
     create =
         createRequest(test, 1)
-            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withData(
+                new Data()
+                    .withAdditionalProperty(
+                        knowledgePanel.getEntityType().toString(), knowledgePanel))
             .withName("DataInsights")
             .withFullyQualifiedName(fqn)
             .withEntityType(knowledgePanel.getEntityType().toString());
     Document dataInsights = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     panelDocs.add(dataInsights);
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
+    queryParams.put(
+        "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 7, panelList.getPaging().getTotal());
+    assertEquals(panelDocs.size() + 6, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();
     Page page =
         new Page()
             .withPageType(PageType.LANDING_PAGE)
-            .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+            .withKnowledgePanels(
+                List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
     fqn =
         FullyQualifiedName.build(
             PERSONA,
@@ -156,7 +175,8 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     page =
         new Page()
             .withPageType(PageType.GLOSSARY_TERM_LANDING_PAGE)
-            .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+            .withKnowledgePanels(
+                List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
     fqn =
         FullyQualifiedName.build(
             PERSONA,
@@ -174,7 +194,8 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams = new HashMap<>();
     queryParams.put(
         "fqnPrefix",
-        FullyQualifiedName.build(PERSONA, DATA_SCIENTIST.getFullyQualifiedName(), page.getEntityType().toString()));
+        FullyQualifiedName.build(
+            PERSONA, DATA_SCIENTIST.getFullyQualifiedName(), page.getEntityType().toString()));
     ResultList<Document> docList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(pageDocs.size(), docList.getPaging().getTotal());
   }
@@ -210,7 +231,11 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     String randomUserName = USER1_REF.getName();
     assertResponse(
         () ->
-            patchEntity(kp.getId(), originalJson, kp, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
+            patchEntity(
+                kp.getId(),
+                originalJson,
+                kp,
+                SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
         FORBIDDEN,
         permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_ALL)));
 
@@ -221,7 +246,11 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   private static void validateKnowledgePanel(
-      Document doc, String expectedDescription, String expectedDisplayName, Object data, String expectedUpdatedBy) {
+      Document doc,
+      String expectedDescription,
+      String expectedDisplayName,
+      Object data,
+      String expectedUpdatedBy) {
     assertListNotNull(doc.getId(), doc.getHref());
     assertEquals(expectedDescription, doc.getDescription());
     assertEquals(expectedUpdatedBy, doc.getUpdatedBy());
@@ -239,10 +268,12 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   @Override
-  public void validateCreatedEntity(Document document, CreateDocument createRequest, Map<String, String> authHeaders) {}
+  public void validateCreatedEntity(
+      Document document, CreateDocument createRequest, Map<String, String> authHeaders) {}
 
   @Override
-  public void compareEntities(Document expected, Document updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      Document expected, Document updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getEntityType(), updated.getEntityType());
     assertEquals(expected.getData(), updated.getData());
@@ -267,6 +298,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
   private void assertDocData(Object expected, Object actual) {
     Data data = (Data) expected;
-    assertEquals(data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
+    assertEquals(
+        data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
   }
 }

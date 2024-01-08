@@ -24,7 +24,7 @@ AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=azure
-AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys]
+AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys, http://{your openmetadata domain}/api/v1/system/config/jwks] # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY=https://login.microsoftonline.com/{Tenant ID} # Update with your Tenant ID
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID of Azure Application
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback

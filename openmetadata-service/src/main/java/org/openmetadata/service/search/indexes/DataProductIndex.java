@@ -10,22 +10,16 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DataProductIndex implements SearchIndex {
-
+public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final DataProduct dataProduct;
-
-  public DataProductIndex(DataProduct dataProduct) {
-    this.dataProduct = dataProduct;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(dataProduct);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dataProduct.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(dataProduct.getFullyQualifiedName()).weight(5).build());
+    suggest.add(
+        SearchSuggest.builder().input(dataProduct.getFullyQualifiedName()).weight(5).build());
     doc.put(
         "fqnParts",
         getFQNParts(

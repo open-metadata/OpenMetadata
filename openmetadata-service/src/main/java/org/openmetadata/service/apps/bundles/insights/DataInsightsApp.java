@@ -9,7 +9,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
+import org.openmetadata.schema.metadataIngestion.DataInsightPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -49,17 +49,23 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void bindExistingIngestionToApplication(IngestionPipelineRepository ingestionPipelineRepository) {
+  private void bindExistingIngestionToApplication(
+      IngestionPipelineRepository ingestionPipelineRepository) {
     // Check if the Pipeline Already Exists
     String fqn = FullyQualifiedName.add(SERVICE_NAME, INGESTION_PIPELINE_NAME);
     IngestionPipeline storedPipeline =
-        ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
+        ingestionPipelineRepository.getByName(
+            null, fqn, ingestionPipelineRepository.getFields("id"));
 
     // Init Application Code for Some Initialization
     List<CollectionDAO.EntityRelationshipRecord> records =
         collectionDAO
             .relationshipDAO()
-            .findTo(getApp().getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
+            .findTo(
+                getApp().getId(),
+                Entity.APPLICATION,
+                Relationship.HAS.ordinal(),
+                Entity.INGESTION_PIPELINE);
 
     if (records.isEmpty()) {
       // Add Ingestion Pipeline to Application
@@ -74,11 +80,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void createAndBindIngestionPipeline(IngestionPipelineRepository ingestionPipelineRepository) {
+  private void createAndBindIngestionPipeline(
+      IngestionPipelineRepository ingestionPipelineRepository) {
     // Pipeline needs to be created
-    EntityRepository<?> serviceRepository = Entity.getServiceEntityRepository(ServiceType.fromValue(SERVICE_TYPE));
+    EntityRepository<?> serviceRepository =
+        Entity.getServiceEntityRepository(ServiceType.fromValue(SERVICE_TYPE));
     EntityReference service =
-        serviceRepository.getByName(null, SERVICE_NAME, serviceRepository.getFields("id")).getEntityReference();
+        serviceRepository
+            .getByName(null, SERVICE_NAME, serviceRepository.getFields("id"))
+            .getEntityReference();
 
     Cron quartzCron = getCronParser().parse(getApp().getAppSchedule().getCronExpression());
 
@@ -88,14 +98,16 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .withDisplayName(INGESTION_PIPELINE_NAME)
             .withDescription(PIPELINE_DESCRIPTION)
             .withPipelineType(PipelineType.DATA_INSIGHT)
-            // We're configuring Data Insights to use ES as a sink, so we apply ES in the config
-            .withSourceConfig(new SourceConfig().withConfig(new MetadataToElasticSearchPipeline()))
-            .withAirflowConfig(new AirflowConfig().withScheduleInterval(getCronMapper().map(quartzCron).asString()))
+            .withSourceConfig(new SourceConfig().withConfig(new DataInsightPipeline()))
+            .withAirflowConfig(
+                new AirflowConfig()
+                    .withScheduleInterval(getCronMapper().map(quartzCron).asString()))
             .withService(service);
 
     // Get Pipeline
     IngestionPipeline dataInsightPipeline =
-        getIngestionPipeline(createPipelineRequest, String.format("%sBot", getApp().getName()), "admin")
+        getIngestionPipeline(
+                createPipelineRequest, String.format("%sBot", getApp().getName()), "admin")
             .withProvider(ProviderType.USER);
     ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
     ingestionPipelineRepository.initializeEntity(dataInsightPipeline);

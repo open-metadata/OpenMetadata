@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -53,21 +52,23 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/dataQuality/testCases/testCaseResolutionStatus")
-@Tag(name = "Test Case Failure Status", description = "APIs to test case failure status from resolution center.")
-@Hidden
+@Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
+@Tag(
+    name = "Test Case Incident Manager",
+    description = "APIs to test case incident status from incident manager.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
   }
 
-  public static class TestCaseResolutionStatusResultList extends ResultList<TestCaseResolutionStatus> {
+  public static class TestCaseResolutionStatusResultList
+      extends ResultList<TestCaseResolutionStatus> {
     /* Required for serde */
   }
 
@@ -91,7 +92,8 @@ public class TestCaseResolutionStatusResource
       })
   public ResultList<TestCaseResolutionStatus> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Case ID", schema = @Schema(type = "UUID")) @QueryParam("testCaseId")
+      @Parameter(description = "Test Case ID", schema = @Schema(type = "UUID"))
+          @QueryParam("testCaseId")
           UUID testCaseId,
       @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
@@ -99,7 +101,9 @@ public class TestCaseResolutionStatusResource
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tests at the offset", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of tests at the offset",
+              schema = @Schema(type = "string"))
           @QueryParam("offset")
           String offset,
       @Parameter(
@@ -123,13 +127,16 @@ public class TestCaseResolutionStatusResource
           @DefaultValue("false")
           @QueryParam("latest")
           Boolean latest,
-      @Parameter(description = "Filter test case statuses by assignee", schema = @Schema(type = "String"))
+      @Parameter(
+              description = "Filter test case statuses by assignee",
+              schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN) {
-    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
@@ -158,8 +165,10 @@ public class TestCaseResolutionStatusResource
       })
   public ResultList<TestCaseResolutionStatus> listForStateId(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId") UUID stateId) {
-    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
+      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId")
+          UUID stateId) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
@@ -183,9 +192,11 @@ public class TestCaseResolutionStatusResource
       })
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID testCaseResolutionStatusId) {
-    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
@@ -210,16 +221,22 @@ public class TestCaseResolutionStatusResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCaseResolutionStatus createTestCaseResolutionStatus) {
-    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     TestCase testCaseEntity =
         Entity.getEntityByName(
-            Entity.TEST_CASE, createTestCaseResolutionStatus.getTestCaseReference(), null, Include.ALL);
+            Entity.TEST_CASE,
+            createTestCaseResolutionStatus.getTestCaseReference(),
+            null,
+            Include.ALL);
     TestCaseResolutionStatus testCaseResolutionStatus =
         getTestCaseResolutionStatus(
-            testCaseEntity, createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
+            testCaseEntity,
+            createTestCaseResolutionStatus,
+            securityContext.getUserPrincipal().getName());
 
     return create(testCaseResolutionStatus, null, testCaseEntity.getFullyQualifiedName());
   }
@@ -230,12 +247,16 @@ public class TestCaseResolutionStatusResource
       operationId = "updateTestCaseResolutionStatus",
       summary = "Update an existing test case failure status",
       description = "Update an existing test case failure status",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test case result status", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the test case result status", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id,
       @RequestBody(
               description =
@@ -243,10 +264,13 @@ public class TestCaseResolutionStatusResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
-    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
@@ -255,26 +279,17 @@ public class TestCaseResolutionStatusResource
   }
 
   private TestCaseResolutionStatus getTestCaseResolutionStatus(
-      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseResolutionStatus, String userName) {
+      TestCase testCaseEntity,
+      CreateTestCaseResolutionStatus createTestCaseResolutionStatus,
+      String userName) {
     User userEntity = Entity.getEntityByName(Entity.USER, userName, null, Include.ALL);
-    TestCaseResolutionStatus latestTestCaseFailure = repository.getLatestRecord(testCaseEntity.getFullyQualifiedName());
-    UUID stateId;
-
-    if ((latestTestCaseFailure != null)
-        && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved)) {
-      // if the latest status is not resolved then use the same sequence id
-      stateId = latestTestCaseFailure.getStateId();
-    } else {
-      // if the latest status is resolved then create a new sequence id
-      // effectively creating a new test case failure status sequence
-      stateId = UUID.randomUUID();
-    }
 
     return new TestCaseResolutionStatus()
-        .withStateId(stateId)
         .withTimestamp(System.currentTimeMillis())
-        .withTestCaseResolutionStatusType(createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
-        .withTestCaseResolutionStatusDetails(createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())
+        .withTestCaseResolutionStatusType(
+            createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
+        .withTestCaseResolutionStatusDetails(
+            createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())
         .withUpdatedBy(userEntity.getEntityReference())
         .withUpdatedAt(System.currentTimeMillis())
         .withTestCaseReference(testCaseEntity.getEntityReference());

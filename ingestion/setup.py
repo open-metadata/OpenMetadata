@@ -13,13 +13,13 @@
 Python Dependencies
 """
 
-from typing import Dict, Set
+from typing import Dict, List, Set
 
 from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.6.3",
+    "airflow": "apache-airflow==2.7.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
@@ -28,8 +28,8 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
-    "pandas": "pandas==1.3.5",
-    "pyarrow": "pyarrow~=10.0",
+    "pandas": "pandas<=2,<3",
+    "pyarrow": "pyarrow~=14.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -45,12 +45,13 @@ VERSIONS = {
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
-    "pyhive": "pyhive~=0.7",
+    "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
+    "validators": "validators~=0.22.0",
 }
 
 COMMONS = {
@@ -58,7 +59,9 @@ COMMONS = {
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
-        "python-snappy~=0.6.1",
+        # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
+        # Using this as an alternative
+        "cramjam~=2.7",
     },
     "hive": {
         "presto-types-parser>=0.0.2",
@@ -189,7 +192,8 @@ plugins: Dict[str, Set[str]] = {
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
+        "pure-sasl",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
@@ -197,7 +201,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",
         "thrift>=0.13,<1",
-        "sasl~=0.3",
+        "pure-sasl",
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
@@ -246,7 +250,7 @@ plugins: Dict[str, Set[str]] = {
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
-    "tableau": {VERSIONS["tableau"]},
+    "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
@@ -301,6 +305,20 @@ e2e_test = {
     "pytest-base-url",
 }
 
+
+def filter_requirements(filtered: Set[str]) -> List[str]:
+    """Filter out requirements from base_requirements"""
+    return list(
+        base_requirements.union(
+            *[
+                requirements
+                for plugin, requirements in plugins.items()
+                if plugin not in filtered
+            ]
+        )
+    )
+
+
 setup(
     install_requires=list(base_requirements),
     extras_require={
@@ -310,14 +328,9 @@ setup(
         "e2e_test": list(e2e_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        "all": list(
-            base_requirements.union(
-                *[
-                    requirements
-                    for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow", "db2", "great-expectations"}
-                ]
-            )
+        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "slim": filter_requirements(
+            {"airflow", "db2", "great-expectations", "deltalake", "sklearn"}
         ),
     },
 )

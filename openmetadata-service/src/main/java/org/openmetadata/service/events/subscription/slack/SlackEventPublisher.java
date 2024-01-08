@@ -80,14 +80,16 @@ public class SlackEventPublisher extends SubscriptionPublisher {
     for (ChangeEvent event : list.getData()) {
       try {
         SlackMessage slackMessage = slackMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, daoCollection, event);
+        List<Invocation.Builder> targets =
+            getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, daoCollection, event);
         if (target != null) {
           targets.add(target);
         }
         for (Invocation.Builder actionTarget : targets) {
           postWebhookMessage(this, actionTarget, slackMessage);
         }
-      } catch (Exception e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
         throw new EventPublisherException(
             String.format("Failed to publish event %s to slack due to %s ", event, e.getMessage()));

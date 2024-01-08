@@ -22,7 +22,7 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-    - "http://openmetadata:8585/api/v1/config/jwks"
+    - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
     - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
     authority: "http://localhost:8080/realms/myrealm"
     clientId: "{Client ID}"

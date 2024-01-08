@@ -46,18 +46,38 @@ class Source(IterStep, ABC):
     def test_connection(self) -> None:
         pass
 
+    @property
+    def name(self) -> str:
+        return "Source"
+
 
 class Sink(ReturnStep, ABC):
     """All Sinks must inherit this base class."""
+
+    @property
+    def name(self) -> str:
+        return "Sink"
 
 
 class Processor(ReturnStep, ABC):
     """All Processor must inherit this base class"""
 
+    @property
+    def name(self) -> str:
+        return "Processor"
+
 
 class Stage(StageStep, ABC):
     """All Stages must inherit this base class."""
 
+    @property
+    def name(self) -> str:
+        return "Stage"
+
 
 class BulkSink(BulkStep, ABC):
     """All Stages must inherit this base class."""
+
+    @property
+    def name(self) -> str:
+        return "BulkSink"

@@ -172,6 +172,6 @@ Admin users can create, edit, or delete services. They can also view the connect
   color="violet-70"
   bold="Delete a Service Connection"
   icon="MdArrowForward"
-  href="/how-to-guides/admin-guide/how-to-ingest-metadata/delete-service-connection"%}
+  href="/how-to-guides/admin-guide/delete-service-connection"%}
   Permanently delete a service connection.
 {%/inlineCallout%}

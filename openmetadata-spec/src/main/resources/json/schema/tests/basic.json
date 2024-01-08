@@ -86,12 +86,27 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseResolutionStatusReference": {
-            "description": "Reference to the failure status object for the test case result.",
-            "$ref": "./testCaseResolutionStatus.json"
+        "incidentId": {
+            "description": "Reference to an ongoing Incident ID (stateId) for this result.",
+            "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "passedRows": {
+          "description": "Number of rows that passed.",
+          "type": "integer"
+        },
+        "failedRows": {
+          "description": "Number of rows that failed.",
+          "type": "integer"
+        },
+        "passedRowsPercentage": {
+          "description": "Percentage of rows that passed.",
+          "type": "number"
+        },
+        "failedRowsPercentage": {
+          "description": "Percentage of rows that failed.",
+          "type": "number"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",

@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.reports.ReportResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -25,7 +24,13 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
   public ReportRepository() {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, Entity.getCollectionDAO().reportDAO(), "", "");
+    super(
+        ReportResource.COLLECTION_PATH,
+        Entity.REPORT,
+        Report.class,
+        Entity.getCollectionDAO().reportDAO(),
+        "",
+        "");
   }
 
   @Override
@@ -56,8 +61,7 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void storeRelationships(Report report) {
-    EntityReference service = report.getService();
-    addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+    addServiceRelationship(report, report.getService());
   }
 
   private EntityReference getService(Report report) {

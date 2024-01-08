@@ -15,17 +15,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import AddAnnouncementModal from './AddAnnouncementModal';
 
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  nonSecureUserDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-}));
-
 jest.mock('../../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -49,6 +38,9 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
+}));
 const onCancel = jest.fn();
 
 const mockProps = {

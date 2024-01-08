@@ -12,6 +12,7 @@
 DBT source methods.
 """
 import traceback
+from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -27,6 +28,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -47,7 +51,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -56,6 +60,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
+    DBT_RUN_RESULT_DATE_FORMAT,
     REQUIRED_CATALOG_KEYS,
     REQUIRED_MANIFEST_KEYS,
     DbtCommonEnum,
@@ -266,7 +271,7 @@ class DbtSource(DbtServiceSource):
                         left=StackTraceError(
                             name=key,
                             error=f"Unable to process DBT tags for node: f{key} - {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
             try:
@@ -294,7 +299,7 @@ class DbtSource(DbtServiceSource):
                     left=StackTraceError(
                         name="Tags and Classification",
                         error=f"Unexpected exception creating DBT tags: {exc}",
-                        stack_trace=traceback.format_exc(),
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -465,7 +470,7 @@ class DbtSource(DbtServiceSource):
                         left=StackTraceError(
                             name=key,
                             error=f"Unexpected exception parsing DBT node due to {exc}",
-                            stack_trace=traceback.format_exc(),
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -673,7 +678,7 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
                         f" to capture lineage: {exc}"
                     ),
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -779,7 +784,7 @@ class DbtSource(DbtServiceSource):
                 left=StackTraceError(
                     name="Test Definition",
                     error=f"Failed to parse the node to capture tests {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -817,7 +822,7 @@ class DbtSource(DbtServiceSource):
                 left=StackTraceError(
                     name="Test Cases",
                     error=f"Failed to parse the node to capture tests {err}",
-                    stack_trace=traceback.format_exc(),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -854,12 +859,21 @@ class DbtSource(DbtServiceSource):
                         dbt_test_completed_at = dbt_test_timing.completed_at
                 dbt_timestamp = None
                 if dbt_test_completed_at:
-                    dbt_timestamp = dbt_test_completed_at.timestamp()
+                    dbt_timestamp = dbt_test_completed_at
                 elif self.context.run_results_generate_time:
-                    dbt_timestamp = self.context.run_results_generate_time.timestamp()
+                    dbt_timestamp = self.context.run_results_generate_time
+
+                # check if the timestamp is a str type and convert accordingly
+                if isinstance(dbt_timestamp, str):
+                    dbt_timestamp = datetime.strptime(
+                        dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT
+                    )
+
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=convert_timestamp_to_milliseconds(dbt_timestamp),
+                    timestamp=convert_timestamp_to_milliseconds(
+                        dbt_timestamp.timestamp()
+                    ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
