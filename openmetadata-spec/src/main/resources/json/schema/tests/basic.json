@@ -86,10 +86,6 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "incidentId": {
-            "description": "Reference to an ongoing Incident ID (stateId) for this result.",
-            "$ref": "../type/basic.json#/definitions/uuid"
-        },
         "passedRows": {
           "description": "Number of rows that passed.",
           "type": "integer"

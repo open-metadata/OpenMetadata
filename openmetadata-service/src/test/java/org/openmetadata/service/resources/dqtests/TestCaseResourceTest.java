@@ -1090,6 +1090,44 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void get_testCaseResultWithIncidentId(TestInfo test)
+      throws HttpResponseException, ParseException {
+
+    // We create a test case with a failure
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // We can get it via API with a list of ongoing incidents
+    TestCase result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result.getIncidentId());
+
+    // Resolving the status triggers resolving the task, which triggers removing the ongoing
+    // incident from the test case
+    CreateTestCaseResolutionStatus createResolvedStatus =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(
+                new Resolved()
+                    .withTestCaseFailureComment("resolved")
+                    .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
+                    .withResolvedBy(USER1_REF));
+    createTestCaseFailureStatus(createResolvedStatus);
+
+    // If we read again, the incident list will be empty
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    assertNull(result.getIncidentId());
+  }
+
+  @Test
   void post_createTestCaseResultFailure(TestInfo test)
       throws HttpResponseException, ParseException {
     // We're going to check how each test only has a single open stateID
@@ -1491,6 +1529,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
 
+  public TestCase getTestCase(String fqn, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/name/" + fqn);
+    target = target.queryParam("fields", "incidentId");
+    return TestUtils.get(target, TestCase.class, authHeaders);
+  }
+
   private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId)
       throws IOException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -1571,7 +1616,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
-      result.setIncidentId(null);
       testCaseResultMap.put(result.getTimestamp(), result);
     }
     for (TestCaseResult result : expectedTestCaseResults) {
