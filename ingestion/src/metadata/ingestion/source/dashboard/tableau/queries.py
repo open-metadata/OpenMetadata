@@ -15,6 +15,10 @@ GraphQL queries used during ingestion
 
 TABLEAU_DATASOURCES_QUERY = """
 {{
+workbooks(filter:{{luid: "{workbook_id}"}}){{
+  id
+  luid
+  name
   embeddedDatasourcesConnection(first: {first}, offset: {offset} ) {{
     nodes {{
       id
@@ -28,11 +32,6 @@ TABLEAU_DATASOURCES_QUERY = """
           remoteType
         }}
         description
-      }}
-      workbook {{
-        id
-        luid
-        name
       }}
       upstreamTables {{
         id
@@ -56,6 +55,7 @@ TABLEAU_DATASOURCES_QUERY = """
       }}
     }}
     totalCount
+  }}
   }}
 }}
 """
