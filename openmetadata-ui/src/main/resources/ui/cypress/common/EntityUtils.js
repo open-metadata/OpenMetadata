@@ -101,7 +101,7 @@ export const createSingleLevelEntity = ({
     expect(response.status).to.eq(201);
   });
 
-  entity.forEach((body) => {
+  (Array.isArray(entity) ? entity : [entity]).forEach((body) => {
     cy.request({
       method: 'POST',
       url: `/api/v1/${entityType}`,

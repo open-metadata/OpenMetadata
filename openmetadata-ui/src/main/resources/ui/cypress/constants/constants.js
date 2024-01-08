@@ -40,7 +40,7 @@ export const EXPLORE_PAGE_TABS = {
   mlmodels: 'ml models',
   storedProcedures: 'stored procedures',
   dataProducts: 'data products',
-  dataModel: 'dashboard data model',
+  dataModel: 'dashboard data models',
   searchIndexes: 'search indexes',
 };
 
@@ -51,6 +51,7 @@ export const SEARCH_INDEX = {
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
   containers: 'container_search_index',
+  searchIndexes: 'search_entity_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {

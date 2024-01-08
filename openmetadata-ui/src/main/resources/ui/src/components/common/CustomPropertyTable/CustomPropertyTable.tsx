@@ -162,7 +162,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     }
 
     return { extensionObject: versionDetails?.extension };
-  }, [isVersionView, versionDetails]);
+  }, [isVersionView, versionDetails?.extension]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [

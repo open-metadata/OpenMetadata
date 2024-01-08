@@ -1038,7 +1038,7 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
     entityCreationDetails: ML_MODEL_SERVICE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: COMMON_PATCH_PAYLOAD,
-    settingsMenuId: 'services.mlModels',
+    settingsMenuId: 'services.mlmodels',
   },
   Storage: {
     serviceName: STORAGE_SERVICE_NAME,

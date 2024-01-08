@@ -6,7 +6,7 @@ exports[`Database Util Database Util - schemaTableColumns should render the corr
 >
   <Link
     className="break-word"
-    data-testid="database-schema-name-link"
+    data-testid="schema1"
     to="/databaseSchema/database.schema1"
   >
     schema1

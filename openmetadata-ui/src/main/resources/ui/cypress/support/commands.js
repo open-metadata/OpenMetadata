@@ -78,15 +78,9 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
-  interceptURL('GET', '/api/v1/feed*', 'feed');
-  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
+  interceptURL('GET', '/api/v1/users/loggedInUser?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
-  cy.get('[data-testid="whats-new-alert-card"]')
-    .scrollIntoView()
-    .should('be.visible');
-  cy.get('[data-testid="close-whats-new-alert"]').click();
-  cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
-  //   verifyResponseStatusCode('@feed', 200);
+
   verifyResponseStatusCode('@userProfile', 200);
 });
 
@@ -114,15 +108,25 @@ Cypress.Commands.add('storeSession', (username, password) => {
     cy.get('[id="email"]').should('be.visible').clear().type(username);
     cy.get('[id="password"]').should('be.visible').clear().type(password);
     interceptURL('POST', '/api/v1/users/login', 'login');
-    cy.get('[data-testid="login"]')
-      .contains('Login')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="login"]').contains('Login').click();
     verifyResponseStatusCode('@login', 200);
     cy.url().should('not.eq', `${BASE_URL}/signin`);
 
     // Don't want to show any popup in the tests
     cy.setCookie(`STAR_OMD_USER_admin`, 'true');
+
+    // Get version and set cookie to hide version banner
+    cy.request({
+      method: 'GET',
+      url: `api/v1/system/version`,
+    }).then((res) => {
+      const version = res.body.version;
+      const versionCookie = `VERSION_${version
+        .split('-')[0]
+        .replaceAll('.', '_')}`;
+
+      cy.setCookie(versionCookie, 'true');
+    });
   });
 });
 

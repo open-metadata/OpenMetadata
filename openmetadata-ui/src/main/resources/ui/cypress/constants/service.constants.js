@@ -58,7 +58,7 @@ export const VISIT_SERVICE_PAGE_DETAILS = {
     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
   },
   [SERVICE_TYPE.MLModels]: {
-    settingsMenuId: 'services.mlModels',
+    settingsMenuId: 'services.mlmodels',
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
   },
   [SERVICE_TYPE.Storage]: {

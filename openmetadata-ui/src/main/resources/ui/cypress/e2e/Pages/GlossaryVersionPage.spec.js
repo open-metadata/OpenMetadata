@@ -143,7 +143,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaries', true, true);
+    addOwner(OWNER, 'glossaries');
 
     interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
     interceptURL(
@@ -157,7 +157,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
+    cy.get('[data-testid="owner-link"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 
@@ -270,7 +270,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaryTerms', true, true);
+    addOwner(OWNER, 'glossaryTerms');
 
     interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
     interceptURL(
@@ -284,7 +284,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
+    cy.get('[data-testid="owner-link"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 

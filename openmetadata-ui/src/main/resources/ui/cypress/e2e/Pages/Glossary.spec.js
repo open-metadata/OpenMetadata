@@ -27,6 +27,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   CYPRESS_ASSETS_GLOSSARY,
@@ -713,6 +714,33 @@ describe('Glossary page should work properly', () => {
     createGlossary(NEW_GLOSSARY_1);
   });
 
+  it('Assign Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    addOwner(CREDENTIALS.username);
+  });
+
+  it('Update Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    addOwner('Aaron Johnson');
+  });
+
+  it('Remove Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    removeOwner('Aaron Johnson');
+  });
+
   it('Verify and Remove Tags from Glossary', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
@@ -812,6 +840,10 @@ describe('Glossary page should work properly', () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
+
+    // Updating owner
+    addOwner(CREDENTIALS.username);
+
     // updating tags
     updateTags(false);
 

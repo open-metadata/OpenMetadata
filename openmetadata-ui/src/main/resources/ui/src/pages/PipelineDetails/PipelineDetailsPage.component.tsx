@@ -244,7 +244,10 @@ const PipelineDetailsPage = () => {
 
   const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
     try {
-      const data = await saveUpdatedPipelineData(updatedPipeline);
+      const data = await saveUpdatedPipelineData({
+        ...pipelineDetails,
+        extension: updatedPipeline.extension,
+      });
       setPipelineDetails(data);
     } catch (error) {
       showErrorToast(

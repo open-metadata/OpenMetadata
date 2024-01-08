@@ -198,6 +198,7 @@ rules:
   # Cypress rules
 
   cypress/no-unnecessary-waiting: warn
+  '@typescript-eslint/no-namespace': off
 
   # Cypress rules
 

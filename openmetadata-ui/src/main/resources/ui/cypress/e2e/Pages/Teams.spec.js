@@ -53,16 +53,10 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="app-bar-item-settings"]').click();
 
     // Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]')
-      .should('exist')
-      .should('be.visible')
-      .contains('Teams')
-      .click();
+    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
   });
 
   it('Add new team', () => {
@@ -85,6 +79,7 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
+
     updateOwner();
   });
 
@@ -98,23 +93,22 @@ describe('Teams flow should work properly', () => {
       .click();
     verifyResponseStatusCode('@getTeam', 200);
 
-    cy.get('[data-testid="edit-email"]').should('be.visible').scrollIntoView();
-    cy.get('[data-testid="edit-email"]').click();
+    cy.get('[data-testid="edit-email"]').scrollIntoView().click();
     cy.get('[data-testid="email-input"]')
-      .should('be.visible')
       .clear()
       .type(TEAM_DETAILS.updatedEmail);
 
-    cy.get('[data-testid="save-edit-email"]').should('be.visible').click();
+    cy.get('[data-testid="save-edit-email"]').click();
 
     verifyResponseStatusCode('@updateEmail', 200);
 
     cy.reload();
 
     // check for updated email
-    cy.get('[data-testid="email-value"]')
-      .should('be.visible')
-      .contains(TEAM_DETAILS.updatedEmail);
+    cy.get('[data-testid="email-value"]').should(
+      'contain',
+      TEAM_DETAILS.updatedEmail
+    );
   });
 
   it('Add user to created team', () => {
@@ -138,9 +132,7 @@ describe('Teams flow should work properly', () => {
       .find(`[title="${TEAM_DETAILS.username}"] input[type='checkbox']`)
       .should('be.checked');
 
-    cy.get('[data-testid="selectable-list-update-btn"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);
     cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('be.visible');
   });
@@ -155,14 +147,12 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="users"]').click();
     verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
-    cy.get('[data-testid="add-new-user"]').should('be.visible').click();
+    cy.get('[data-testid="add-new-user"]').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="selectable-list"]')
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();
-    cy.get('[data-testid="selectable-list-update-btn"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);
     verifyResponseStatusCode('@getUserDetails', 200);
     cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('not.exist');
@@ -180,10 +170,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@getUsers', 200);
 
     // Click on join teams button
-    cy.get('[data-testid="join-teams"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="join-teams"]').scrollIntoView().click();
 
     // Verify toast notification
     toastNotification('Team joined successfully!');
@@ -205,20 +192,15 @@ describe('Teams flow should work properly', () => {
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
     // Click on edit display name
-    cy.get('[data-testid="edit-team-name"]').should('be.visible').click();
+    cy.get('[data-testid="edit-team-name"]').click();
 
     // Enter the updated team name
     cy.get('[data-testid="team-name-input"]')
-      .should('exist')
-      .should('be.visible')
       .clear()
       .type(TEAM_DETAILS.updatedName);
 
     // Save the updated display name
-    cy.get('[data-testid="saveAssociatedTag"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
 
     verifyResponseStatusCode('@patchTeam', 200);
     verifyResponseStatusCode('@getSelectedTeam', 200);
@@ -252,21 +234,20 @@ describe('Teams flow should work properly', () => {
       `${TEAM_DETAILS.updatedName}`
     );
 
-    cy.get('[data-testid="inactive-link"]')
-      .should('be.visible')
-      .should('contain', TEAM_DETAILS.updatedName);
+    cy.get('[data-testid="inactive-link"]').should(
+      'contain',
+      TEAM_DETAILS.updatedName
+    );
 
     cy.get('[role="tablist"] [data-icon="right"]').click();
 
     // Click on edit description button
-    cy.get('[data-testid="edit-description"]')
-      .should('be.visible')
-      .click({ force: true });
+    cy.get('[data-testid="edit-description"]').click({ force: true });
 
     // Entering updated description
     cy.get(descriptionBox).clear().type(updatedDescription);
 
-    cy.get('[data-testid="save"]').should('be.visible').click();
+    cy.get('[data-testid="save"]').click();
     verifyResponseStatusCode('@patchDescription', 200);
 
     // Validating the updated description
@@ -289,9 +270,7 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    cy.get('[data-testid="team-heading"]')
-      .should('be.visible')
-      .contains(TEAM_DETAILS.name);
+    cy.get('[data-testid="team-heading"]').should('contain', TEAM_DETAILS.name);
     // //Click on Leave team
     cy.get('[data-testid="leave-team-button"]').click();
 
@@ -316,9 +295,10 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    cy.get('[data-testid="team-heading"]')
-      .should('be.visible')
-      .contains(TEAM_DETAILS.updatedName);
+    cy.get('[data-testid="team-heading"]').should(
+      'contain',
+      TEAM_DETAILS.updatedName
+    );
     cy.get(
       '[data-testid="team-detail-header"] [data-testid="manage-button"]'
     ).click();
@@ -327,14 +307,11 @@ describe('Teams flow should work properly', () => {
 
     cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('[data-testid="confirm-button"]')
-      .should('exist')
-      .should('be.disabled');
+    cy.get('[data-testid="confirm-button"]').should('be.disabled');
 
     // Click on soft delete option
     cy.get('[data-testid="soft-delete-option"]')
       .should('contain', TEAM_DETAILS.name)
-      .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
@@ -379,9 +356,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@getTeamParent', 200);
     verifyResponseStatusCode('@getChildrenCount', 200);
 
-    cy.get('[data-testid="team-heading"]')
-      .should('be.visible')
-      .contains(TEAM_DETAILS.updatedName);
+    cy.get('[data-testid="team-heading"]').contains(TEAM_DETAILS.updatedName);
 
     cy.get(
       '[data-testid="team-detail-header"] [data-testid="manage-button"]'
@@ -389,10 +364,7 @@ describe('Teams flow should work properly', () => {
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
-    cy.get('[data-testid="delete-button-title"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="delete-button-title"]').click();
 
     // Check if soft delete option is not present
     cy.get('[data-testid="soft-delete-option"]').should('not.exist');
@@ -400,16 +372,12 @@ describe('Teams flow should work properly', () => {
     // Click on permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
       .should('contain', TEAM_DETAILS.name)
-      .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
 
     interceptURL('DELETE', '/api/v1/teams/*', 'deleteTeam');
-    cy.get('[data-testid="confirm-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="confirm-button"]').click();
 
     verifyResponseStatusCode('@deleteTeam', 200);
 
@@ -442,33 +410,27 @@ describe('Teams flow should work properly', () => {
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
-    cy.get('[data-testid="delete-button-title"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="delete-button-title"]').click();
 
     cy.get('[data-testid="confirm-button"]')
       .should('exist')
       .should('be.disabled');
 
     // Check if soft delete option is present
-    cy.get('[data-testid="soft-delete-option"]')
-      .should('contain', HARD_DELETE_TEAM_DETAILS.name)
-      .should('be.visible');
+    cy.get('[data-testid="soft-delete-option"]').should(
+      'contain',
+      HARD_DELETE_TEAM_DETAILS.name
+    );
 
     // Click on permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
       .should('contain', HARD_DELETE_TEAM_DETAILS.name)
-      .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
 
     interceptURL('DELETE', '/api/v1/teams/*', 'deleteTeam');
-    cy.get('[data-testid="confirm-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="confirm-button"]').click();
 
     verifyResponseStatusCode('@deleteTeam', 200);
 

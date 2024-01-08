@@ -41,6 +41,7 @@ export const getServiceMainTabColumns = (
     render: (_, record: ServicePageData) => {
       return (
         <Link
+          data-testid={record.name}
           to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
           <Typography.Paragraph
             data-testid="child-asset-name-link"

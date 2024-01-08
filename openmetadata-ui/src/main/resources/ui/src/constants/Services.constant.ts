@@ -214,7 +214,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   messaging: ServiceCategory.MESSAGING_SERVICES,
   dashboards: ServiceCategory.DASHBOARD_SERVICES,
   pipelines: ServiceCategory.PIPELINE_SERVICES,
-  mlModels: ServiceCategory.ML_MODEL_SERVICES,
+  mlmodels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,

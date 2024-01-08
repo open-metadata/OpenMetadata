@@ -215,7 +215,7 @@ const GlossaryDetailsRightPanel = ({
           hasPermission={permissions.EditAll}
         />
       </Col>
-      <Col data-testid="glossary-owner-name" span="24">
+      <Col data-testid="owner-link" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
             {t('label.owner')}
@@ -246,6 +246,7 @@ const GlossaryDetailsRightPanel = ({
             onUpdate={handleUpdatedOwner}>
             <TagButton
               className="text-primary cursor-pointer"
+              dataTestId="edit-owner"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}
               tooltip=""

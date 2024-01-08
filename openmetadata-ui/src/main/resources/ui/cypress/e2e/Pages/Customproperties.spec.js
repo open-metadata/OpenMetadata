@@ -46,7 +46,6 @@ describe('Custom Properties should work properly', () => {
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);

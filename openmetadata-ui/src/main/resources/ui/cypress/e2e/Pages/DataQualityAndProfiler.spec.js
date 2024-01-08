@@ -30,6 +30,7 @@ import {
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import {
   API_SERVICE,
   DATA_ASSETS,
@@ -61,6 +62,9 @@ const testCase = {
   testSuite: testSuite.name,
 };
 let testCaseId = '';
+
+const OWNER1 = 'Aaron Johnson';
+const OWNER2 = 'Cynthia Meyer';
 
 const goToProfilerTab = () => {
   interceptURL(
@@ -192,7 +196,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
-    cy.get('[data-menu-id*="databases"]').should('be.visible').click();
+    cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
       'GET',
@@ -571,6 +575,26 @@ describe('Data Quality and Profiler should work properly', () => {
       'contain',
       'has been created successfully'
     );
+  });
+
+  it('User as Owner assign, update & delete for test suite', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=test_case_search_index*',
+      'searchTestCase'
+    );
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    interceptURL(
+      'PUT',
+      '/api/v1/dataQuality/testCases/logicalTestCases',
+      'putTestCase'
+    );
+
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
+
+    addOwner(OWNER1);
+    updateOwner(OWNER2);
+    removeOwner(OWNER2);
   });
 
   it('Add test case to logical test suite', () => {
