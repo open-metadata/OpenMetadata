@@ -107,12 +107,9 @@
       "type": "boolean",
       "default": false
     },
-    "incidents": {
-      "description": "List of incident IDs (stateId) for any testCaseResult of a given test case.",
-      "type": "array",
-      "items": {
-        "$ref": "../type/basic.json#/definitions/uuid"
-      }
+    "incidentId": {
+      "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
+      "$ref": "../type/basic.json#/definitions/uuid"
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],
