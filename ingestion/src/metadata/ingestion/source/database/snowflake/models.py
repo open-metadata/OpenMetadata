@@ -11,6 +11,7 @@
 """
 Snowflake models
 """
+import urllib
 from typing import Optional
 
 from pydantic import BaseModel, Field, validator
@@ -58,7 +59,8 @@ class SnowflakeStoredProcedure(BaseModel):
         try:
             clean_signature = signature.replace("(", "").replace(")", "")
             if not clean_signature:
-                return None
+                # If removing the () leaves us with nothing, then just return the parenthesis
+                return "()"
 
             signature_list = clean_signature.split(",")
             clean_signature_list = [elem.split(" ")[-1] for elem in signature_list]
@@ -67,3 +69,6 @@ class SnowflakeStoredProcedure(BaseModel):
         except Exception as exc:
             logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
             return signature
+
+    def unquote_signature(self) -> Optional[str]:
+        return urllib.parse.unquote(self.signature) if self.signature else "()"
