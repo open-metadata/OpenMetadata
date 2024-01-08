@@ -1175,7 +1175,7 @@
     "yes-comma-confirm": "Ja, bevestig",
     "yesterday": "Gisteren",
     "your-entity": "Je {{entity}}"
-},
+  },
   "message": {
     "access-block-time-message": "Toegang wordt geblokkeerd voor milliseconden nadat het maximale aantal mislukte aanmeldpogingen is uitgevoerd.",
     "access-to-collaborate": "Sta open toegang toe voor iedereen om lid te worden van het team, gegevens te bekijken en samen te werken.",
@@ -1656,7 +1656,7 @@
     "write-your-description": "Schrijf je beschrijving",
     "write-your-text": "Schrijf je {{text}}",
     "you-can-also-set-up-the-metadata-ingestion": "Je kunt ook de metadata-inname instellen."
-},
+  },
   "server": {
     "account-verify-success": "E-mail succesvol geverifieerd",
     "add-entity-error": "Fout bij het toevoegen van {{entity}}!",
