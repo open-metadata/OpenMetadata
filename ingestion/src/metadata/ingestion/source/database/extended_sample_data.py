@@ -62,7 +62,7 @@ class InvalidSampleDataException(Exception):
     """
 
 
-class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
+class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-attributes
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
