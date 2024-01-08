@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, ValidatorType } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
+import { RegistryFieldsType } from '@rjsf/utils';
+import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
@@ -58,6 +58,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
 
     [pipeLineType, serviceCategory]
+  );
+
+  const validator = useMemo(
+    () => customizeValidator<IngestionWorkflowData>(),
+    []
   );
 
   const isElasticSearchPipeline =
@@ -161,7 +166,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      validator={validator as ValidatorType<IngestionWorkflowData>}
+      validator={validator}
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>
