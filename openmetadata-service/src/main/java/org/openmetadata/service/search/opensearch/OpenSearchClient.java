@@ -363,6 +363,7 @@ public class OpenSearchClient implements SearchClient {
     } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
+        || request.getIndex().equalsIgnoreCase("knowledge_page_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
         || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
