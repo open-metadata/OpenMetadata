@@ -109,15 +109,19 @@ entities.forEach((entity) => {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(entity.endPoint)) {
-      Object.values(CustomPropertyType).forEach((type) => {
-        it(`Set ${type} Custom Property `, () => {
+      const properties = Object.values(CustomPropertyType).join(', ');
+
+      it(`Set ${properties} Custom Property `, () => {
+        Object.values(CustomPropertyType).forEach((type) => {
           entity.setCustomProperty(
             entity.customPropertyValue[type].property,
             entity.customPropertyValue[type].value
           );
         });
+      });
 
-        it(`Update ${type} Custom Property`, () => {
+      it(`Update ${properties} Custom Property`, () => {
+        Object.values(CustomPropertyType).forEach((type) => {
           entity.updateCustomProperty(
             entity.customPropertyValue[type].property,
             entity.customPropertyValue[type].newValue

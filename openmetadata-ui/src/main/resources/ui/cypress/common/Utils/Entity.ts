@@ -199,6 +199,8 @@ export const visitEntityDetailsPage = ({
   cy.get('[data-testid="searchBox"]').type(entityFqn ?? term);
 
   verifyResponseStatusCode('@explorePageSearch', 200).then(() => {
+    cy.wait(500);
+
     cy.get('body').then(($body) => {
       // checking if requested term is available in search suggestion
       if (
@@ -228,7 +230,7 @@ export const visitEntityDetailsPage = ({
     });
 
     verifyResponseStatusCode('@getEntityDetails', 200);
-    cy.get('body').click(1, 1);
+    cy.clickOutside();
     cy.get('[data-testid="searchBox"]').clear();
   });
 };
