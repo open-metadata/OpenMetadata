@@ -1,6 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
@@ -51,6 +53,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setSummary(
         fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
     entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
+  }
+
+  @Override
+  public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
+    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+      Table table =
+          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
+      inheritOwner(testSuite, fields, table);
+    }
   }
 
   @Override

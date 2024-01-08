@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -160,6 +161,36 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         getEntity(TEST_SUITE1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
     assertEquals(TEST_SUITE1.getId(), deletedTestSuite.getId());
     assertEquals(true, deletedTestSuite.getDeleted());
+  }
+
+  @Test
+  void test_inheritOwnerFromTable(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER1_REF);
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getOwner().getId(), table.getOwner().getId());
+    Table updateTableOwner = table;
+    updateTableOwner.setOwner(TEAM11_REF);
+    tableResourceTest.patchEntity(
+        table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
+    testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(table.getOwner().getId(), testSuite.getOwner().getId());
   }
 
   @Test
