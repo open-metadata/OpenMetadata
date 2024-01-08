@@ -10,6 +10,10 @@
       "description": "Name of this Event Filter.",
       "type": "string"
     },
+    "displayName": {
+      "description": "Display Name of the Filter.",
+      "type": "string"
+    },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName in the form `eventSubscription.eventFilterRuleName`.",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -28,6 +32,21 @@
     "condition" : {
       "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",
       "$ref" : "../type/basic.json#/definitions/expression"
+    },
+    "arguments": {
+      "description": "Arguments to the Condition.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inputType": {
+      "type": "string",
+        "enum": [
+          "static",
+          "runtime",
+          "none"
+        ]
     }
   },
   "required": ["effect", "condition"],

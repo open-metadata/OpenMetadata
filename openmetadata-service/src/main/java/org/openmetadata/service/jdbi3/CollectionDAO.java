@@ -1551,6 +1551,42 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @SqlQuery("SELECT json FROM change_event_consumers where id = :id AND extension = :extension")
+    String getSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json, jsonSchema = :jsonSchema",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
+        connectionType = POSTGRES)
+    void upsertSubscriberExtension(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void upsertFailedEvent(
+        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3156,6 +3192,12 @@ public interface CollectionDAO {
             + "ORDER BY eventTime ASC")
     List<String> listWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
+
+    @SqlQuery("SELECT json FROM change_event ORDER BY eventTime ASC LIMIT :limit OFFSET :offset")
+    List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
+
+    @SqlQuery("SELECT count(*) FROM change_event")
+    long getLatestOffset();
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {

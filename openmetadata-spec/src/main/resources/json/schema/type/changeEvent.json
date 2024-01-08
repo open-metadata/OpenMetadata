@@ -205,6 +205,10 @@
     }
   },
   "properties": {
+    "id": {
+        "description": "Unique identifier for the event.",
+        "$ref": "basic.json#/definitions/uuid"
+    },
     "eventType": {
       "$ref": "#/definitions/eventType"
     },
@@ -244,6 +248,6 @@
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }
   },
-  "required": ["eventType", "entityType", "entityId", "timestamp"],
+  "required": ["id", "eventType", "entityType", "entityId", "timestamp"],
   "additionalProperties": false
 }
