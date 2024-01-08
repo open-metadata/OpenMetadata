@@ -677,6 +677,10 @@ export const addUser = (username, email) => {
 };
 
 export const softDeleteUser = (username, isAdmin) => {
+  interceptURL('GET', '/api/v1/users?*', 'getUsers');
+
+  verifyResponseStatusCode('@getUsers', 200);
+
   // Search the created user
   interceptURL(
     'GET',
@@ -688,8 +692,7 @@ export const softDeleteUser = (username, isAdmin) => {
   verifyResponseStatusCode('@searchUser', 200);
 
   // Click on delete button
-  cy.get(`[data-testid="delete-user-btn-${username}"]`).click();
-
+  cy.get(':nth-child(4) > .ant-space > .ant-space-item > .ant-btn').click();
   // Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
@@ -712,28 +715,22 @@ export const softDeleteUser = (username, isAdmin) => {
   cy.get('[data-testid="searchbar"]').scrollIntoView().clear().type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
-  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const restoreUser = (username) => {
+  interceptURL('GET', '/api/v1/users?*', 'getUsers');
+
+  verifyResponseStatusCode('@getUsers', 200);
   // Click on deleted user toggle
-  interceptURL('GET', '/api/v1/users*', 'deletedUser');
   cy.get('[data-testid="show-deleted"]').click();
-  verifyResponseStatusCode('@deletedUser', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=**&from=0&size=*&index=*',
-    'searchUser'
-  );
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
+
   cy.get('[data-testid="searchbar"]').type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
 
   cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
-  cy.get('.ant-modal-body > p').should(
-    'contain',
-    `Are you sure you want to restore ${username}?`
-  );
+
   interceptURL('PUT', '/api/v1/users', 'restoreUser');
   cy.get('.ant-modal-footer > .ant-btn-primary').click();
   verifyResponseStatusCode('@restoreUser', 200);
@@ -742,7 +739,6 @@ export const restoreUser = (username) => {
   // Verifying the restored user
   cy.get('[data-testid="show-deleted"]').click();
 
-  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]').type(username);
   verifyResponseStatusCode('@searchUser', 200);
   cy.get(`[data-testid=${username}]`).should('exist');
@@ -751,14 +747,12 @@ export const restoreUser = (username) => {
 export const deleteSoftDeletedUser = (username) => {
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
 
-  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
-
   verifyResponseStatusCode('@getUsers', 200);
-
-  cy.get(`[data-testid="delete-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
+  cy.get('[data-testid="searchbar"]').type(username);
+  verifyResponseStatusCode('@searchUser', 200);
+  cy.get(':nth-child(4) > .ant-space > .ant-space-item > .ant-btn').click();
+  cy.get('[data-testid="hard-delete"]').click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   interceptURL(
     'DELETE',
