@@ -72,6 +72,7 @@ import sapHana from '../assets/img/service-icon-sap-hana.png';
 import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
+import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
@@ -182,6 +183,7 @@ export const SAGEMAKER = sagemaker;
 export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
 export const MS_AZURE = msAzure;
+export const SPARK = spark;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
@@ -377,6 +379,7 @@ export const SERVICE_TYPES_ENUM = {
 export const BETA_SERVICES = [
   DatabaseServiceType.SapHana,
   PipelineServiceType.Spline,
+  PipelineServiceType.Spark,
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
