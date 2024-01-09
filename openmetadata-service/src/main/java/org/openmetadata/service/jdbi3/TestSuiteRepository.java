@@ -71,13 +71,13 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
-  private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
-
+  private TestSummary buildTestSummary(Map<String, Integer> testCaseSummary) {
     return new TestSummary()
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
         .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(total);
+        .withQueued(testCaseSummary.getOrDefault(TestCaseStatus.Queued.toString(), 0))
+        .withTotal(testCaseSummary.values().stream().mapToInt(Integer::valueOf).sum());
   }
 
   @Override
@@ -91,37 +91,41 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  private HashMap<String, Integer> getResultSummary(TestSuite testSuite) {
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+  private Map<String, Integer> getResultSummary(TestSuite testSuite) {
+    Map<String, Integer> testCaseSummary = new HashMap<>();
+    List<EntityReference> testCases = getTestCases(testSuite);
     for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
       String status = resultSummary.getStatus().toString();
       testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
     }
-
+    List<EntityReference> testCasesWithNoResults =
+        testCases.stream()
+            .filter(
+                tc ->
+                    testSuite.getTestCaseResultSummary().stream()
+                        .noneMatch(tcr -> tc.getFullyQualifiedName().equals(tcr.getTestCaseName())))
+            .toList();
+    testCaseSummary.put(TestCaseStatus.Queued.toString(), testCasesWithNoResults.size());
     return testCaseSummary;
   }
 
   private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
-    if (entity.getTestCaseResultSummary().isEmpty()) return new TestSummary();
-    HashMap<String, Integer> testSummary = getResultSummary(entity);
-    return buildTestSummary(testSummary, entity.getTestCaseResultSummary().size());
+    Map<String, Integer> testCaseSummary = getResultSummary(entity);
+    return buildTestSummary(testCaseSummary);
   }
 
   private TestSummary getTestCasesExecutionSummary(List<TestSuite> entities) {
     if (entities.isEmpty()) return new TestSummary();
-
-    HashMap<String, Integer> testsSummary = new HashMap<>();
-    int total = 0;
+    Map<String, Integer> testsSummary = new HashMap<>();
     for (TestSuite testSuite : entities) {
-      HashMap<String, Integer> testSummary = getResultSummary(testSuite);
+      Map<String, Integer> testSummary = getResultSummary(testSuite);
       for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
         testsSummary.put(
             entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
       }
-      total += testSuite.getTestCaseResultSummary().size();
+      testSuite.getTestCaseResultSummary().size();
     }
-
-    return buildTestSummary(testsSummary, total);
+    return buildTestSummary(testsSummary);
   }
 
   public TestSummary getTestSummary(UUID testSuiteId) {

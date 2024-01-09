@@ -21,6 +21,10 @@
           "description": "Number of test cases that aborted.",
           "type": "integer"
         },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
         "total": {
           "description": "Total number of test cases.",
           "type": "integer"
@@ -46,7 +50,7 @@
       "description": "Status of Test Case run.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
       "type": "string",
-      "enum": ["Success", "Failed", "Aborted"],
+      "enum": ["Success", "Failed", "Aborted", "Queued"],
       "javaEnums": [
         {
           "name": "Success"
@@ -56,6 +60,9 @@
         },
         {
           "name": "Aborted"
+        },
+        {
+          "name": "Queued"
         }
       ]
     },
