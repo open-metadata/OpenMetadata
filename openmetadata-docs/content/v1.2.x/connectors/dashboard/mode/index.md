@@ -12,6 +12,7 @@ slug: /connectors/dashboard/mode
 | Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Datamodels | {% icon iconName="cross" /%} |
+| Projects   | {% icon iconName="cross" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the Mode connector.
