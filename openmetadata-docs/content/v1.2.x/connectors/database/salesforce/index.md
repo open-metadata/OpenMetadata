@@ -16,6 +16,8 @@ slug: /connectors/database/salesforce
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
 | Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
