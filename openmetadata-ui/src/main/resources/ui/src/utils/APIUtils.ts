@@ -28,6 +28,8 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
+  | SearchIndex.DATABASE
+  | SearchIndex.DATABASE_SCHEMA
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
   | SearchIndex.STORED_PROCEDURE

@@ -64,6 +64,18 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: 'storedProcedure',
       },
+      [SearchIndex.DATABASE]: {
+        label: i18n.t('label.database-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databases',
+      },
+      [SearchIndex.DATABASE_SCHEMA]: {
+        label: i18n.t('label.database-schema'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databaseSchemas',
+      },
       [SearchIndex.DASHBOARD]: {
         label: i18n.t('label.dashboard-plural'),
         sortingFields: entitySortingFields,

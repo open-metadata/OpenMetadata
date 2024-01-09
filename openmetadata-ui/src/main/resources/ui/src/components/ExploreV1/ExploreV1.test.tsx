@@ -71,6 +71,8 @@ const props = {
     table_search_index: 20,
     topic_search_index: 10,
     dashboard_search_index: 14,
+    database_search_index: 1,
+    database_schema_search_index: 1,
     pipeline_search_index: 0,
     mlmodel_search_index: 0,
     container_search_index: 0,
