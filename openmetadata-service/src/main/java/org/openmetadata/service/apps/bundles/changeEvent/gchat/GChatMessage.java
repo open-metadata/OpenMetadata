@@ -1,4 +1,4 @@
-package org.openmetadata.service.events.subscription.gchat;
+package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import java.util.List;
 import lombok.AllArgsConstructor;

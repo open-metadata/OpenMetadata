@@ -13,7 +13,6 @@ Snowflake source module
 """
 import json
 import traceback
-import urllib
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlparse
@@ -555,7 +554,7 @@ class SnowflakeSource(
                 database_name=self.context.database,
                 schema_name=self.context.database_schema,
                 procedure_name=stored_procedure.name,
-                procedure_signature=urllib.parse.unquote(stored_procedure.signature),
+                procedure_signature=stored_procedure.unquote_signature(),
             )
         )
         return dict(res.all()).get("body", "")

@@ -16,7 +16,11 @@ package org.openmetadata.service.formatter.decorators;
 import java.util.LinkedList;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 
 public interface MessageDecorator<T> {
   String getBold();
@@ -32,6 +36,16 @@ public interface MessageDecorator<T> {
   String getRemoveMarkerClose();
 
   String getEntityUrl(String entityType, String fqn);
+
+  default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
+    String fqn = entityInterface.getFullyQualifiedName();
+    if (CommonUtil.nullOrEmpty(fqn)) {
+      EntityInterface result =
+          Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
+      fqn = result.getFullyQualifiedName();
+    }
+    return getEntityUrl(entityType, fqn);
+  }
 
   default String httpAddMarker() {
     return "<!add>";

@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.KPI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -185,6 +186,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   private ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
         .withEventType(EventType.ENTITY_UPDATED)

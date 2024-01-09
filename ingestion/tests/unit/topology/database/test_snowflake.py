@@ -12,7 +12,6 @@
 """
 snowflake unit tests
 """
-
 # pylint: disable=line-too-long
 
 from unittest import TestCase
@@ -23,6 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 
 mock_snowflake_config = {
     "source": {
@@ -155,3 +155,27 @@ class SnowflakeUnitTest(TestCase):
                         table_type=TableType.View,
                     )
                 )
+
+    def test_stored_procedure_validator(self):
+        """Review how we are building the SP signature"""
+
+        sp_payload = SnowflakeStoredProcedure(
+            NAME="test_sp",
+            OWNER="owner",
+            LANGUAGE="SQL",
+            SIGNATURE="(NAME VARCHAR, NUMBER INT)",
+            COMMENT="comment",
+        )
+
+        self.assertEqual("(VARCHAR, INT)", sp_payload.unquote_signature())
+
+        # Check https://github.com/open-metadata/OpenMetadata/issues/14492
+        sp_payload = SnowflakeStoredProcedure(
+            NAME="test_sp",
+            OWNER="owner",
+            LANGUAGE="SQL",
+            SIGNATURE="()",
+            COMMENT="comment",
+        )
+
+        self.assertEqual("()", sp_payload.unquote_signature())
