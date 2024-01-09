@@ -47,7 +47,7 @@ export const getDropDownItems = (index: string) => {
   return searchClassBase.getDropDownItems(index);
 };
 
-export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
+export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
     case AssetsOfEntity.DATA_PRODUCT:
