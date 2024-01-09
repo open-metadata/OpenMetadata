@@ -50,15 +50,18 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
-import { CloseTask } from '../../../generated/api/feed/closeTask';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
   TaskDetails,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { TestCaseFailureReasonType } from '../../../generated/tests/testCase';
+import {
+  TestCaseFailureReasonType,
+  TestCaseResolutionStatusTypes,
+} from '../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
@@ -70,6 +73,7 @@ import {
   TaskActionMode,
 } from '../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -115,7 +119,8 @@ export const TaskTab = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
-  const { postFeed, setActiveThread } = useActivityFeedProvider();
+  const { postFeed, setActiveThread, fetchUpdatedThread } =
+    useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -317,32 +322,16 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && !isTaskTestCaseResult && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
     }
-    const closedTask = {
-      comment,
-    } as CloseTask;
-    if (isTaskGlossaryApproval) {
-      closedTask.comment = 'Rejected';
-    } else if (isTaskTestCaseResult) {
-      const assigneeFqn = updatedAssignees[0].name ?? '';
-      if (
-        taskDetails?.assignees.some((assignee) => assigneeFqn === assignee.name)
-      ) {
-        return;
-      }
-      closedTask.comment = updatedAssignees[0].name ?? '';
-      closedTask.testCaseFQN = entityFQN;
-    }
 
-    updateTask(
-      TaskOperation.REJECT,
-      taskDetails?.id + '',
-      closedTask as CloseTask
-    )
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
@@ -352,6 +341,57 @@ export const TaskTab = ({
         }
       })
       .catch((err: AxiosError) => showErrorToast(err));
+  };
+
+  const onTestCaseIncidentAssigneeUpdate = async () => {
+    const testCaseIncident: CreateTestCaseResolutionStatus = {
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      testCaseReference: entityFQN,
+      testCaseResolutionStatusDetails: {
+        assignee: {
+          id: updatedAssignees[0].value,
+          name: updatedAssignees[0].name,
+          type: updatedAssignees[0].type,
+        },
+      },
+    };
+    try {
+      await postTestCaseIncidentStatus(testCaseIncident);
+      fetchUpdatedThread(taskThread.id).finally(() => {
+        setIsEditAssignee(false);
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onTestCaseIncidentResolve = async ({
+    testCaseFailureReason,
+    testCaseFailureComment,
+  }: {
+    testCaseFailureReason: TestCaseFailureReasonType;
+    testCaseFailureComment: string;
+  }) => {
+    const testCaseIncident: CreateTestCaseResolutionStatus = {
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+      testCaseReference: entityFQN,
+      testCaseResolutionStatusDetails: {
+        resolvedBy: {
+          id: currentUser?.id ?? '',
+          name: currentUser?.name ?? '',
+          type: 'user',
+        },
+        testCaseFailureReason,
+        testCaseFailureComment,
+      },
+    };
+    try {
+      await postTestCaseIncidentStatus(testCaseIncident);
+      rest.onAfterClose?.();
+      setShowEditTaskModel(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const approvalWorkflowActions = useMemo(() => {
@@ -706,7 +746,7 @@ export const TaskTab = ({
             form={form}
             initialValues={initialFormValue}
             layout="vertical"
-            onFinish={onEditAndSuggest}>
+            onFinish={onTestCaseIncidentResolve}>
             <Form.Item
               label={t('label.reason')}
               name="testCaseFailureReason"
@@ -737,7 +777,8 @@ export const TaskTab = ({
                     field: t('label.comment'),
                   }),
                 },
-              ]}>
+              ]}
+              trigger="onTextChange">
               <RichTextEditor
                 height="200px"
                 initialValue=""
@@ -745,9 +786,6 @@ export const TaskTab = ({
                   text: t('label.comment'),
                 })}
                 ref={markdownRef}
-                onTextChange={(value) =>
-                  form.setFieldValue('testCaseFailureComment', value)
-                }
               />
             </Form.Item>
           </Form>
@@ -828,7 +866,10 @@ export const TaskTab = ({
           width={768}
           onCancel={() => setIsEditAssignee(false)}
           onOk={assigneesForm.submit}>
-          <Form form={assigneesForm} layout="vertical" onFinish={onTaskReject}>
+          <Form
+            form={assigneesForm}
+            layout="vertical"
+            onFinish={onTestCaseIncidentAssigneeUpdate}>
             <Form.Item
               data-testid="assignee"
               label={`${t('label.assignee')}:`}

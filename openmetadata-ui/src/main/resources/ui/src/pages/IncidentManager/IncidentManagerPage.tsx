@@ -46,7 +46,7 @@ import {
   Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
-} from '../../generated/tests/testCase';
+} from '../../generated/tests/testCaseResolutionStatus';
 import { usePaging } from '../../hooks/paging/usePaging';
 import {
   SearchHitBody,

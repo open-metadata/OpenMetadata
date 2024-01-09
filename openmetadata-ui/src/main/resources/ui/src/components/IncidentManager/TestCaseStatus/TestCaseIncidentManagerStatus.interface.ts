@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 
 export interface TestCaseStatusIncidentManagerProps {
   data: TestCaseResolutionStatus;

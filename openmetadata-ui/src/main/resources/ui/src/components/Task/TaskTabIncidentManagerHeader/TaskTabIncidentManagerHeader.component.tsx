@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Steps, Typography } from 'antd';
-import { last, toLower } from 'lodash';
+import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -104,7 +104,12 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
             <Typography.Text className="text-grey-muted">
               {`${t('label.assignee')}: `}
             </Typography.Text>
-            <AssigneeList assignees={thread.task?.assignees ?? []} />
+            {isUndefined(thread.task?.assignees) ||
+            isEmpty(thread.task?.assignees) ? (
+              NO_DATA_PLACEHOLDER
+            ) : (
+              <AssigneeList assignees={thread.task?.assignees ?? []} />
+            )}
           </div>
           <div className="gap-2 flex-center">
             <Typography.Text className="text-grey-muted">

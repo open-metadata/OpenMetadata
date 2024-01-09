@@ -20,7 +20,7 @@ import {
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
@@ -39,6 +39,7 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean
   ) => Promise<void>;
   postFeed: (value: string, id: string) => Promise<void>;
+  fetchUpdatedThread: (id: string) => Promise<void>;
   updateFeed: (
     threadId: string,
     postId: string,

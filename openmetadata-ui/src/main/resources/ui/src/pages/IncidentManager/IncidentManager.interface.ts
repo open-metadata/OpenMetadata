@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCaseResolutionStatus } from '../../generated/tests/testCase';
+
+import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 
 export enum IncidentManagerTabs {
   TEST_CASE_RESULTS = 'test-case-results',

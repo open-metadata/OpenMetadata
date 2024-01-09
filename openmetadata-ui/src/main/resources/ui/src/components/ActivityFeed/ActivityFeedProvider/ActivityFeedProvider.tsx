@@ -33,7 +33,7 @@ import {
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import {
@@ -45,10 +45,7 @@ import {
   updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
-import {
-  getListTestCaseIncidentByStateId,
-  getTestCaseIncidentById,
-} from '../../../rest/incidentManagerAPI';
+import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -83,13 +80,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
     try {
-      const res = await getTestCaseIncidentById(id);
-      const { data } = await getListTestCaseIncidentByStateId(
-        res.stateId ?? '',
-        {
-          limit: PAGE_SIZE_LARGE,
-        }
-      );
+      const { data } = await getListTestCaseIncidentByStateId(id, {
+        limit: PAGE_SIZE_LARGE,
+      });
 
       setTestCaseResolutionStatus(
         orderBy(data, (item) => item.timestamp, ['asc'])
@@ -131,6 +124,27 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       setIsDrawerLoading(false);
     }
   }, []);
+
+  const fetchUpdatedThread = useCallback(
+    async (id) => {
+      try {
+        const res = await getFeedById(id);
+        setSelectedThread(res.data);
+        setEntityThread((prev) => {
+          return prev.map((thread) => {
+            if (thread.id === id) {
+              return res.data;
+            } else {
+              return thread;
+            }
+          });
+        });
+      } catch (err) {
+        // no need to show error toast
+      }
+    },
+    [setEntityThread]
+  );
 
   const getFeedData = useCallback(
     async (
@@ -401,6 +415,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
+      fetchUpdatedThread,
     };
   }, [
     entityThread,
@@ -423,6 +438,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     user,
     currentUser,
     testCaseResolutionStatus,
+    fetchUpdatedThread,
   ]);
 
   return (

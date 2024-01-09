@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -46,7 +45,7 @@ const TestCaseIncidentManagerStatus = ({
     );
   }, [permissions]);
 
-  const onEditSeverity = useCallback(() => setIsEditStatus(true), []);
+  const onEditStatus = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
 
   if (!statusType) {
@@ -70,11 +69,13 @@ const TestCaseIncidentManagerStatus = ({
             label={statusType}
           />
           {hasEditPermission && (
-            <Icon
-              component={EditIcon}
+            <Button
+              className="flex-center p-0"
               data-testid="edit-resolution-icon"
-              style={{ color: DE_ACTIVE_COLOR }}
-              onClick={onEditSeverity}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={onEditStatus}
             />
           )}
         </Space>

@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Tabs, TabsProps, Typography } from 'antd';
+import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import IncidentManagerPageHeader from '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
@@ -30,19 +30,17 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import { getTableTabPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
+import IncidentManagerProvider from '../IncidentManagerProvider/IncidentManagerProvider';
 import { TestCaseData } from './IncidentManagerDetailPage.interface';
 
 const IncidentManagerDetailPage = () => {
@@ -59,24 +57,13 @@ const IncidentManagerDetailPage = () => {
     isLoading: true,
   });
 
-  const tableFqn = useMemo(
-    () => getEntityFQN(testCaseData.data?.entityLink ?? ''),
-    [testCaseData.data]
-  );
   const { permissions } = usePermissionProvider();
-  const { hasEditPermission, hasViewPermission } = useMemo(() => {
-    return {
-      hasViewPermission: checkPermission(
-        Operation.ViewAll,
-        ResourceEntity.TEST_CASE,
-        permissions
-      ),
-      hasEditPermission: checkPermission(
-        Operation.EditAll,
-        ResourceEntity.TEST_CASE,
-        permissions
-      ),
-    };
+  const hasViewPermission = useMemo(() => {
+    return checkPermission(
+      Operation.ViewAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
   }, [permissions]);
 
   const onTestCaseUpdate = (data: TestCase) => {
@@ -114,7 +101,13 @@ const IncidentManagerDetailPage = () => {
     setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
       const response = await getTestCaseByFqn(testCaseFQN, {
-        fields: ['testSuite', 'testCaseResult', 'testDefinition', 'owner'],
+        fields: [
+          'testSuite',
+          'testCaseResult',
+          'testDefinition',
+          'owner',
+          'incidentId',
+        ],
       });
       setTestCaseData((prev) => ({ ...prev, data: response.data }));
     } catch (error) {
@@ -194,68 +187,36 @@ const IncidentManagerDetailPage = () => {
 
   return (
     <PageLayoutV1 pageTitle="Incident Manager Detail Page">
-      <Row
-        data-testid="incident-manager-details-page-container"
-        gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
-        </Col>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
-          <EntityHeaderTitle
-            displayName={testCaseData.data?.displayName}
-            icon={<TestCaseIcon className="h-9" />}
-            name={testCaseData.data?.name ?? ''}
-            serviceName="testCase"
-          />
-        </Col>
-        <Col className="p-x-lg">
-          <Space align="center">
-            <OwnerLabel
-              hasPermission={hasEditPermission}
-              owner={testCaseData.data?.owner}
-              onUpdate={handleOwnerChange}
+      <IncidentManagerProvider testCaseData={testCaseData.data}>
+        <Row
+          data-testid="incident-manager-details-page-container"
+          gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
+          </Col>
+          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+            <EntityHeaderTitle
+              displayName={testCaseData.data?.displayName}
+              icon={<TestCaseIcon className="h-9" />}
+              name={testCaseData.data?.name ?? ''}
+              serviceName="testCase"
             />
-
-            {tableFqn && (
-              <>
-                <Divider className="self-center m-x-sm" type="vertical" />
-                <Typography.Text className="self-center text-xs whitespace-nowrap">
-                  <span className="text-grey-muted">{`${t(
-                    'label.table'
-                  )}: `}</span>
-
-                  <Link
-                    className="font-medium"
-                    data-testid="table-name"
-                    to={getTableTabPath(tableFqn, EntityTabs.PROFILER)}>
-                    {getNameFromFQN(tableFqn)}
-                  </Link>
-                </Typography.Text>
-              </>
-            )}
-
-            <Divider className="self-center m-x-sm" type="vertical" />
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
-              <span className="text-grey-muted">{`${t(
-                'label.test-type'
-              )}: `}</span>
-              <span className="font-medium" data-testid="test-definition-name">
-                {getEntityName(testCaseData?.data?.testDefinition)}
-              </span>
-            </Typography.Text>
-          </Space>
-        </Col>
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabDetails}
-            onChange={handleTabChange}
-          />
-        </Col>
-      </Row>
+          </Col>
+          <Col className="p-x-lg">
+            <IncidentManagerPageHeader onOwnerUpdate={handleOwnerChange} />
+          </Col>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabDetails}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </Row>
+      </IncidentManagerProvider>
     </PageLayoutV1>
   );
 };

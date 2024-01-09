@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateTestCaseResolutionStatus } from '../generated/api/tests/createTestCaseResolutionStatus';
-import { TestCaseResolutionStatus } from '../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
