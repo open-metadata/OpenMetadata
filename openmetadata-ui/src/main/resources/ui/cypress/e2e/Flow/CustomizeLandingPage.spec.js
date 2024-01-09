@@ -142,7 +142,7 @@ describe('Customize Landing Page Flow', () => {
 
     toastNotification('Page layout created successfully.');
 
-    navigateToLandingPage();
+    cy.goToHomePage();
 
     // Check if removed widgets are not present on landing page
     cy.get(`[data-testid="activity-feed-widget"]`).should('not.exist');
