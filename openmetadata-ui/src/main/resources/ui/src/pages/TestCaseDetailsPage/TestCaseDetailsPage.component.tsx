@@ -26,7 +26,6 @@ import { getTestCaseByFqn } from '../../rest/testAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-case-details-page.style.less';
 
@@ -37,7 +36,7 @@ function TestCaseDetailsPage() {
 
   const fetchTestCaseData = async () => {
     try {
-      const response = await getTestCaseByFqn(getEncodedFqn(testCaseFQN), {
+      const response = await getTestCaseByFqn(testCaseFQN, {
         fields: ['testSuite', 'testCaseResult'],
       });
       setTestCaseData(response.data);

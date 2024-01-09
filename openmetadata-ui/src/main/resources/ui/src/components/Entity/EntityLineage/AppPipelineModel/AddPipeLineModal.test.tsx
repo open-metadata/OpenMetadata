@@ -52,9 +52,7 @@ describe('Test CustomEdge Component', () => {
   });
 
   it('CTA should work properly', async () => {
-    render(
-      <AddPipeLineModal {...mockProps} selectedEdgeId="test-pipeline-1" />
-    );
+    render(<AddPipeLineModal {...mockProps} />);
 
     const removeEdge = await screen.findByTestId('remove-edge-button');
     const saveButton = await screen.findByTestId('save-button');

@@ -24,7 +24,6 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
@@ -51,6 +50,9 @@ import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThr
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../Lineage/Lineage.component';
+import LineageProvider from '../LineageProvider/LineageProvider';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
@@ -392,12 +394,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={topicDetails.deleted}
-            entity={topicDetails}
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={topicDetails.deleted}
+              entity={topicDetails as SourceType}
+              entityType={EntityType.TOPIC}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
