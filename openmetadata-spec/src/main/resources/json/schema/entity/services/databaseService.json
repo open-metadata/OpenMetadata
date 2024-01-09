@@ -169,8 +169,10 @@
         },
         {
           "name": "DuckDb"
+        },
+        {
+          "name": "SAS"
         }
-        
       ]
     },
     "databaseConnection": {
