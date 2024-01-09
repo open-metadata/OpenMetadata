@@ -213,36 +213,3 @@ update_ingestion_dockerfile_version:  ## To update the ingestion dockerfiles ver
 #make update_ingestion_dockerfile_version PY_RELEASE_VERSION=2.2.2.2
 
 #Upgrade release automation scripts above
-
-.PHONY: install_go_tools
-install_go_tools:  ## Install go tools
-	@echo "Installing go tools"
-	go install github.com/mgechev/revive@latest
-	go install golang.org/x/tools/cmd/cover@latest
-
-.PHONY: run_go_unit_tests
-run_go_unit_tests:  ## Run go unit tests
-	cd ./openmetadata-go-client && go test -v -cover ./...
-
-.PHONY: run_go_all_tests
-run_go_all_tests:  ## Run go integration tests
-	cd ./openmetadata-go-client && go test -v -cover -tags=integration ./...
-
-.PHONY: go_check_format
-go_check_format:  ## Run go format check
-	revive -formatter friendly ./openmetadata-go-client/...
-	gofmt -l -d ./openmetadata-go-client/
-
-.PHONY: go_code_format
-go_code_format:  ## Run go code format
-	gofmt -w ./openmetadata-go-client/
-
-.PHONY: run_go_check_format
-run_go_check_format:  ## Run go format check for CI/CD. Returns non-zero exit code if there are formatting issues
-	files=$$(revive -formatter friendly ./openmetadata-go-client/...) && [ -z "$$files" ]
-	files=$$(gofmt -l ./openmetadata-go-client/) && [ -z "$$files" ]
-
-.PHONY: run_go_tests
-run_go_tests:  ## Run go tests
-	$(MAKE) run_go_check_format
-	$(MAKE) run_go_all_tests

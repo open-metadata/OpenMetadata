@@ -15,7 +15,7 @@ You can find the source code for the OpenMetadata libraries in the [GitHub repos
 You can add the module to your application with the below command
 
 ```sh
-go get github.com/open-metadata/OpenMetadata/openmetadata-go-client
+go get github.com/open-metadata/openmetadata-sdk/openmetadata-go-client
 ```
 
 ## Establish OpenMetadata Server Connection
@@ -34,7 +34,7 @@ To create OpenMetadata Gateway, you will need to establish a connection with *Op
 package main
 
 import (
-	"github.com/open-metadata/OpenMetadata/openmetadata-go-client/pkg/ometa"
+	"github.com/open-metadata/openmetadata-sdk/openmetadata-go-client/pkg/ometa"
 )
 
 func main() {
