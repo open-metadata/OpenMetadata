@@ -118,7 +118,7 @@ describe('DataQualityTab test', () => {
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
 
-    expect(await findByText(header, 'label.resolution')).toBeInTheDocument();
+    expect(await findByText(header, 'label.incident')).toBeInTheDocument();
     expect(await findByText(header, 'label.last-run')).toBeInTheDocument();
     expect(await findByText(header, 'label.name')).toBeInTheDocument();
     expect(await findByText(header, 'label.table')).toBeInTheDocument();

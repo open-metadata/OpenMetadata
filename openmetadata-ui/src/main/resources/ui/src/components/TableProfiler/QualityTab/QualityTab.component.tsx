@@ -99,7 +99,13 @@ export const QualityTab = () => {
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
     ],
-    [isTestsLoading, filteredTestCase, onTestCaseUpdate]
+    [
+      isTestsLoading,
+      filteredTestCase,
+      onTestCaseUpdate,
+      testSuite,
+      fetchAllTests,
+    ]
   );
 
   const handleTestCaseStatusChange = (value: string) => {

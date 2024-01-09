@@ -346,6 +346,19 @@ const EditLoginConfiguration = withSuspenseFallback(
   )
 );
 
+const IncidentManagerPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
+);
+
+const IncidentManagerDetailPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage'
+      )
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { routeElements } = useApplicationConfigContext();
@@ -882,6 +895,36 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.DATA_QUALITY}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={IncidentManagerPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.INCIDENT_MANAGER}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={IncidentManagerDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.INCIDENT_MANAGER_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={IncidentManagerDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB}
       />
 
       <AdminProtectedRoute

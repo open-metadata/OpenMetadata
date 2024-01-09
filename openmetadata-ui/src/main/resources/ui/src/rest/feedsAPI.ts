@@ -17,7 +17,9 @@ import { isUndefined } from 'lodash';
 import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/Feeds.constants';
 import { FeedFilter } from '../enums/mydata.enum';
+import { CloseTask } from '../generated/api/feed/closeTask';
 import { CreateThread } from '../generated/api/feed/createThread';
+import { ResolveTask } from '../generated/api/feed/resolveTask';
 import {
   Post,
   TaskDetails,
@@ -161,7 +163,7 @@ export const getTask = async (taskID: string) => {
 export const updateTask = (
   operation: TaskOperation,
   taskId: string,
-  taskDetail: TaskDetails
+  taskDetail: TaskDetails | CloseTask | ResolveTask
 ) => {
   return APIClient.put(`/feed/tasks/${taskId}/${operation}`, taskDetail);
 };

@@ -12,9 +12,12 @@
  */
 
 import i18next from 'i18next';
+import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/globalsearch.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-bulb.svg';
+import { ReactComponent as DataContractIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as QualityIcon } from '../assets/svg/ic-quality-v1.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
@@ -31,11 +34,27 @@ export const SIDEBAR_LIST = [
     dataTestId: 'app-bar-item-explore',
   },
   {
-    key: ROUTES.DATA_QUALITY,
+    key: 'data-quality',
     label: i18next.t('label.quality'),
-    redirect_url: ROUTES.DATA_QUALITY,
     icon: QualityIcon,
-    dataTestId: 'app-bar-item-data-quality',
+    dataTestId: 'data-quality',
+    children: [
+      {
+        key: 'data-contract',
+        label: i18next.t('label.data-contract-plural'),
+        redirect_url: ROUTES.DATA_QUALITY,
+        icon: DataContractIcon,
+        dataTestId: 'app-bar-item-data-contract',
+      },
+      {
+        key: 'incident-manager',
+        label: i18next.t('label.incident-manager'),
+        redirect_url: ROUTES.INCIDENT_MANAGER,
+        icon: IncidentMangerIcon,
+        dataTestId: 'app-bar-item-incident-manager',
+        isBeta: true,
+      },
+    ],
   },
   {
     key: ROUTES.DATA_INSIGHT,
@@ -51,22 +70,27 @@ export const SIDEBAR_LIST = [
     icon: DomainsIcon,
     dataTestId: 'app-bar-item-domain',
   },
-];
-
-export const SIDEBAR_GOVERN_LIST = [
   {
-    key: 'glossary',
-    label: i18next.t('label.glossary'),
-    redirect_url: ROUTES.GLOSSARY,
-    icon: GlossaryIcon,
-    dataTestId: 'app-bar-item-glossary',
-  },
-  {
-    key: 'tags',
-    label: i18next.t('label.classification'),
-    redirect_url: ROUTES.TAGS,
-    icon: ClassificationIcon,
-    dataTestId: 'app-bar-item-tags',
+    key: 'governance',
+    label: i18next.t('label.govern'),
+    icon: GovernIcon,
+    dataTestId: 'governance',
+    children: [
+      {
+        key: 'glossary',
+        label: i18next.t('label.glossary'),
+        redirect_url: ROUTES.GLOSSARY,
+        icon: GlossaryIcon,
+        dataTestId: 'app-bar-item-glossary',
+      },
+      {
+        key: 'tags',
+        label: i18next.t('label.classification'),
+        redirect_url: ROUTES.TAGS,
+        icon: ClassificationIcon,
+        dataTestId: 'app-bar-item-tags',
+      },
+    ],
   },
 ];
 

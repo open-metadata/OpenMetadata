@@ -44,6 +44,7 @@ import ParameterForm from './components/ParameterForm';
 const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   visible,
   testCase,
+  showOnlyParameter,
   onCancel,
   onUpdate,
 }) => {
@@ -129,7 +130,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     const updatedTestCase = {
       ...testCase,
       parameterValues,
-      description: isEmpty(value.description) ? undefined : value.description,
+      description: showOnlyParameter
+        ? testCase.description
+        : isEmpty(value.description)
+        ? undefined
+        : value.description,
       displayName: value.displayName,
       computePassedFailedRowCount: value.computePassedFailedRowCount,
     };
@@ -234,55 +239,66 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label={t('label.table')} name="table">
-            <Input disabled />
-          </Form.Item>
-          {isColumn && (
-            <Form.Item required label={t('label.column')} name="column">
-              <Input disabled />
-            </Form.Item>
+          {!showOnlyParameter && (
+            <>
+              <Form.Item required label={t('label.table')} name="table">
+                <Input disabled />
+              </Form.Item>
+              {isColumn && (
+                <Form.Item required label={t('label.column')} name="column">
+                  <Input disabled />
+                </Form.Item>
+              )}
+              <Form.Item
+                required
+                label={t('label.name')}
+                name="name"
+                rules={[
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                ]}>
+                <Input
+                  disabled
+                  placeholder={t('message.enter-test-case-name')}
+                />
+              </Form.Item>
+              <Form.Item label={t('label.display-name')} name="displayName">
+                <Input placeholder={t('message.enter-test-case-name')} />
+              </Form.Item>
+              <Form.Item
+                required
+                label={t('label.test-entity', {
+                  entity: t('label.type'),
+                })}
+                name="testDefinition">
+                <Input
+                  disabled
+                  placeholder={t('message.enter-test-case-name')}
+                />
+              </Form.Item>
+            </>
           )}
-          <Form.Item
-            required
-            label={t('label.name')}
-            name="name"
-            rules={[
-              {
-                pattern: ENTITY_NAME_REGEX,
-                message: t('message.entity-name-validation'),
-              },
-            ]}>
-            <Input disabled placeholder={t('message.enter-test-case-name')} />
-          </Form.Item>
-          <Form.Item label={t('label.display-name')} name="displayName">
-            <Input placeholder={t('message.enter-test-case-name')} />
-          </Form.Item>
-          <Form.Item
-            required
-            label={t('label.test-entity', {
-              entity: t('label.type'),
-            })}
-            name="testDefinition">
-            <Input disabled placeholder={t('message.enter-test-case-name')} />
-          </Form.Item>
 
           {GenerateParamsField()}
 
-          <Form.Item
-            label={t('label.description')}
-            name="description"
-            trigger="onTextChange">
-            <RichTextEditor
-              height="200px"
-              initialValue={testCase?.description || ''}
-              style={{
-                margin: 0,
-              }}
-            />
-          </Form.Item>
-          {isComputeRowCountFieldVisible
-            ? generateFormFields(formFields)
-            : null}
+          {!showOnlyParameter && (
+            <>
+              <Form.Item label={t('label.description')} name="description">
+                <RichTextEditor
+                  height="200px"
+                  initialValue={testCase?.description || ''}
+                  style={{
+                    margin: 0,
+                  }}
+                />
+              </Form.Item>
+              {isComputeRowCountFieldVisible
+                ? generateFormFields(formFields)
+                : null}
+            </>
+          )}
         </Form>
       )}
     </Modal>

@@ -66,8 +66,14 @@ export const NAVBAR_DETAILS = {
     url: `${BASE_URL}/explore/tables`,
   },
   quality: {
-    testid: '[data-testid="app-bar-item-data-quality"]',
+    testid: `[data-testid="data-quality"]`,
+    subMenu: '[data-testid="app-bar-item-data-contract"]',
     url: `${BASE_URL}/data-quality`,
+  },
+  incidentManager: {
+    testid: `[data-testid="data-quality"]`,
+    subMenu: '[data-testid="app-bar-item-incident-manager"]',
+    url: `${BASE_URL}/incident-manager`,
   },
   insights: {
     testid: '[data-testid="app-bar-item-data-insight"]',

@@ -96,7 +96,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       const { data, paging } = await getListTestCase({
         ...params,
         limit: pageSize,
-        fields: 'testDefinition,testCaseResult,testSuite',
+        fields: 'testDefinition,testCaseResult,testSuite,incidentId',
         orderByLastExecutionDate: true,
       });
       setTestCase(data);
@@ -139,7 +139,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         >[]
       ).map((value) =>
         getTestCaseById(value._id ?? '', {
-          fields: 'testDefinition,testCaseResult,testSuite',
+          fields: 'testDefinition,testCaseResult,testSuite,incidentId',
         })
       );
 

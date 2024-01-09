@@ -18,8 +18,8 @@ import {
 } from './common';
 
 const owner = 'admin';
-const assignee = 'adam_rodriguez9';
-const secondAssignee = 'aaron_johnson0';
+const assignee = 'Adam Matthews';
+const secondAssignee = 'Aaron Johnson';
 
 export const verifyTaskDetails = (regexPattern) => {
   cy.get('#task-panel').should('be.visible');

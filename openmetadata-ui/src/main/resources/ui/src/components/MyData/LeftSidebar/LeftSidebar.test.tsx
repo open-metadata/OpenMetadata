@@ -24,7 +24,7 @@ describe('LeftSidebar', () => {
     );
 
     const exploreLink = screen.getByTestId('app-bar-item-explore');
-    const qualityLink = screen.getByTestId('app-bar-item-data-quality');
+    const qualityLink = screen.getByTestId('data-quality');
     const insightLink = screen.getByTestId('app-bar-item-data-insight');
     const settingsLink = screen.getByTestId('app-bar-item-settings');
 

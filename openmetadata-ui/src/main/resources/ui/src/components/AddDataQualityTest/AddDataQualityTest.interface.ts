@@ -75,6 +75,7 @@ export interface ParameterFormProps {
 export interface EditTestCaseModalProps {
   visible: boolean;
   testCase: TestCase;
+  showOnlyParameter?: boolean;
   onCancel: () => void;
   onUpdate?: (testCase: TestCase) => void;
 }

@@ -51,7 +51,7 @@ export const AsyncSelect = ({
       filterOption={false}
       notFoundContent={loadingOptions ? <Loader size="small" /> : null}
       options={optionsInternal}
-      suffixIcon={<Loader size="small" />}
+      suffixIcon={loadingOptions && <Loader size="small" />}
       onSearch={(value: string) => {
         fetchOptions(value);
         setLoadingOptions(true);

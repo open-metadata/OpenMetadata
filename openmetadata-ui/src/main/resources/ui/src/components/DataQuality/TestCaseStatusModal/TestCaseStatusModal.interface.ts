@@ -15,6 +15,7 @@ import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResol
 export interface TestCaseStatusModalProps {
   open: boolean;
   data?: TestCaseResolutionStatus;
+  testCaseFqn: string;
   onCancel: () => void;
-  onSubmit: (data: TestCaseResolutionStatus) => Promise<void>;
+  onSubmit: (data: TestCaseResolutionStatus) => void;
 }

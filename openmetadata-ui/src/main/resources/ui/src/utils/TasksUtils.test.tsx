@@ -176,18 +176,18 @@ describe('Tests for fetchOptions', () => {
     );
 
     await act(async () => {
-      fetchOptions('test_user', mockSetOptions);
+      fetchOptions({ query: 'test_user', setOptions: mockSetOptions });
     });
 
     expect(mockSetOptions).toHaveBeenCalledWith([
       {
-        label: 'ashish',
+        label: 'Ashish Gupta',
         name: 'ashish',
         type: 'user',
         value: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
       },
       {
-        label: 'ashley_king5',
+        label: 'Ashley King',
         name: 'ashley_king5',
         type: 'user',
         value: '0c83a592-7ced-4156-b235-01726259a0e7',
@@ -203,16 +203,16 @@ describe('Tests for fetchOptions', () => {
     );
 
     await act(async () => {
-      fetchOptions(
-        'test_user',
-        mockSetOptions,
-        '18ca6cd1-d696-4a22-813f-c7a42fc09dc4'
-      );
+      fetchOptions({
+        query: 'test_user',
+        setOptions: mockSetOptions,
+        currentUserId: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
+      });
     });
 
     expect(mockSetOptions).toHaveBeenCalledWith([
       {
-        label: 'ashley_king5',
+        label: 'Ashley King',
         name: 'ashley_king5',
         type: 'user',
         value: '0c83a592-7ced-4156-b235-01726259a0e7',

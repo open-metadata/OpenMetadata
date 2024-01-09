@@ -19,6 +19,7 @@ import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 const mockProps: TestCaseStatusModalProps = {
   open: true,
+  testCaseFqn: 'test',
   onCancel: jest.fn(),
   onSubmit: jest.fn().mockImplementation(() => Promise.resolve()),
 };

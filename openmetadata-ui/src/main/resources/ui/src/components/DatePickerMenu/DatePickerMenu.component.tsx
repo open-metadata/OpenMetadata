@@ -42,11 +42,13 @@ interface DatePickerMenuProps {
   options?: DateFilterType;
   defaultValue?: string;
   allowCustomRange?: boolean;
+  handleSelectedTimeRange?: (value: string) => void;
 }
 
 function DatePickerMenu({
   showSelectedCustomRange,
   handleDateRangeChange,
+  handleSelectedTimeRange,
   options,
   defaultValue,
   allowCustomRange = true,
@@ -113,6 +115,7 @@ function DatePickerMenu({
       setSelectedTimeRangeKey('customRange');
       setIsMenuOpen(false);
       handleDateRangeChange({ startTs, endTs }, daysCount);
+      handleSelectedTimeRange?.(selectedRangeLabel);
     }
   };
 
@@ -132,6 +135,7 @@ function DatePickerMenu({
     setIsMenuOpen(false);
 
     handleDateRangeChange({ startTs, endTs }, selectedNumberOfDays);
+    handleSelectedTimeRange?.(menuOptions[key].title);
   };
 
   const getMenuItems = () => {

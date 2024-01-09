@@ -80,7 +80,7 @@ describe('Task flow should work', () => {
     );
   });
 
-  const assignee = 'adam_rodriguez9';
+  const assignee = 'Adam Matthews';
   const tag = 'Personal';
 
   const createTagTask = (value) => {

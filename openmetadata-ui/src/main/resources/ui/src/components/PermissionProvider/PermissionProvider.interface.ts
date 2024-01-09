@@ -62,6 +62,7 @@ export enum ResourceEntity {
   CLASSIFICATION = 'classification',
   TEAM = 'team',
   TEST_CASE = 'testCase',
+  TEST_CASE_RESOLUTION_STATUS = 'testCaseResolutionStatus',
   TEST_DEFINITION = 'testDefinition',
   TEST_SUITE = 'testSuite',
   TOPIC = 'topic',
