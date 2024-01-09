@@ -1,4 +1,4 @@
-package org.openmetadata.service.events.subscription.email;
+package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;

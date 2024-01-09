@@ -26,7 +26,8 @@
         "DomoPipeline",
         "CustomPipeline",
         "DatabricksPipeline",
-        "Spline"
+        "Spline",
+        "Spark"
       ],
       "javaEnums": [
         {
@@ -58,6 +59,9 @@
         },
         {
           "name": "Spline"
+        },
+        {
+          "name": "Spark"
         }
       ]
     },
@@ -101,6 +105,9 @@
             },
             {
               "$ref": "./connections/pipeline/splineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/sparkConnection.json"
             }
           ]
         }

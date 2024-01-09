@@ -229,6 +229,7 @@ public class QueryRepository extends EntityRepository<Query> {
         new ChangeDescription().withPreviousVersion(updatedQuery.getVersion());
     change.getFieldsUpdated().add(fieldChange);
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updatedQuery)
         .withChangeDescription(change)
         .withEventType(EventType.ENTITY_UPDATED)
