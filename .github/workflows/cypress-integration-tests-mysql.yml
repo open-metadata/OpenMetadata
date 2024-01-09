@@ -54,9 +54,11 @@ jobs:
         id: cypress-project-id
         run: |
           if [ "${{ github.event_name }}" == "schedule" ]; then  
-            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_SCHEDULE_RECORD_KEY }}" >> $GITHUB_OUTPUT
           else  
-            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
           fi  
 
       - name: Free Disk Space (Ubuntu)
@@ -70,7 +72,7 @@ jobs:
             swap-storage: true
             docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.1
+        uses: lewagon/wait-on-check-action@v1.3.3
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -147,7 +149,7 @@ jobs:
           browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
-          CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
+          CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
@@ -160,9 +162,9 @@ jobs:
           CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
           CYPRESS_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-          CYPRESS_REDSHIFT_HOST: ${{ secrets.TEST_REDSHIFT_HOST }}
-          CYPRESS_REDSHIFT_USERNAME: ${{ secrets.TEST_REDSHIFT_USERNAME }}
-          CYPRESS_REDSHIFT_PASSWORD: ${{ secrets.TEST_REDSHIFT_PASSWORD }}
+          CYPRESS_REDSHIFT_HOST: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+          CYPRESS_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+          CYPRESS_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
           CYPRESS_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
           CYPRESS_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
           CYPRESS_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}

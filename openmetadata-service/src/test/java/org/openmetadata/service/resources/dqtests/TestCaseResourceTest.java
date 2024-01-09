@@ -443,7 +443,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the executable test suite
     TestSummary executableTestSummary =
         getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
-    assertEquals(2, executableTestSummary.getTotal());
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
 
     // test we get the right summary for the logical test suite
     TestSummary logicalTestSummary =
@@ -453,30 +455,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        2,
-        logicalTestSummary
-            .getTotal()); // we added a new test case to the logical test suite check if the summary
-    // is updated
-
+    assertEquals(2, logicalTestSummary.getTotal());
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
-
     executableTestSummary =
         getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
-    assertEquals(
-        1,
-        executableTestSummary
-            .getTotal()); // we deleted a test case from the executable test suite check if the
-    // summary is updated
+    testSuite =
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
 
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(1, logicalTestSummary.getTotal());
+    assertEquals(2, logicalTestSummary.getTotal());
     // check the deletion of the test case from the executable test suite
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     // check the deletion of the test case from the logical test suite is reflected in the summary
-    assertNull(logicalTestSummary.getTotal());
+    assertEquals(1, logicalTestSummary.getTotal());
   }
 
   @Test

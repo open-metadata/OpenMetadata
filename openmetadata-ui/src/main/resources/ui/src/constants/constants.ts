@@ -780,15 +780,15 @@ export const ENTITY_PATH = {
   topics: 'topic',
   dashboards: 'dashboard',
   pipelines: 'pipeline',
-  mlModels: 'mlmodel',
+  mlmodels: 'mlmodel',
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-  searchIndex: 'searchIndex',
-  storedProcedure: 'storedProcedure',
+  searchIndexes: 'searchIndex',
+  storedProcedures: 'storedProcedure',
   glossaryTerm: 'glossaryTerm',
-  database: 'database',
-  databaseSchema: 'databaseSchema',
+  databases: 'database',
+  databaseSchemas: 'databaseSchema',
 };
 
 export const VALIDATION_MESSAGES = {
