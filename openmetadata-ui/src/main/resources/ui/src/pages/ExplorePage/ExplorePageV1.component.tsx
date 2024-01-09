@@ -225,8 +225,8 @@ const ExplorePageV1: FunctionComponent = () => {
           <div
             className="d-flex items-center justify-between"
             data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <div className="d-flex">
-              <span className="explore-icon d-flex w-5 m-r-xs">
+            <div className="d-flex items-center">
+              <span className="explore-icon d-flex m-r-xs">
                 {getEntityIcon(tabSearchIndex)}
               </span>
               <Typography.Text

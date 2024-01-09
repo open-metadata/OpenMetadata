@@ -44,7 +44,6 @@ import {
   getEntityName,
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
-import { Icons } from './SvgUtils';
 import { getServiceIcon } from './TableUtils';
 
 class SearchClassBase {
@@ -55,8 +54,6 @@ class SearchClassBase {
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'tables',
-        icon: Icons.TABLE_GREY,
-        selectedIcon: Icons.TABLE,
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: i18n.t('label.stored-procedure-plural'),
@@ -81,11 +78,9 @@ class SearchClassBase {
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dashboards',
-        icon: Icons.DASHBOARD_GREY,
-        selectedIcon: Icons.DASHBOARD,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
-        label: i18n.t('label.dashboard-data-model-plural'),
+        label: i18n.t('label.data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dashboardDataModel',
@@ -95,16 +90,12 @@ class SearchClassBase {
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'pipelines',
-        icon: Icons.PIPELINE_GREY,
-        selectedIcon: Icons.PIPELINE,
       },
       [SearchIndex.TOPIC]: {
         label: i18n.t('label.topic-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'topics',
-        icon: Icons.TOPIC_GREY,
-        selectedIcon: Icons.TOPIC,
       },
       [SearchIndex.MLMODEL]: {
         label: i18n.t('label.ml-model-plural'),
@@ -179,6 +170,9 @@ class SearchClassBase {
         return [...TAG_DROPDOWN_ITEMS];
       case SearchIndex.DATA_PRODUCT:
         return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+      case SearchIndex.DATABASE:
+      case SearchIndex.DATABASE_SCHEMA:
+        return [...COMMON_DROPDOWN_ITEMS];
 
       default:
         return [];

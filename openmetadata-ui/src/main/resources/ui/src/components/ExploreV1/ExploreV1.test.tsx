@@ -105,6 +105,20 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />);
 
     expect(screen.getByTestId('explore-page')).toBeInTheDocument();
+    expect(screen.getByText('Tables')).toBeInTheDocument();
+    expect(screen.getByText('Stored Procedures')).toBeInTheDocument();
+    expect(screen.getByText('Databases')).toBeInTheDocument();
+    expect(screen.getByText('Database Schemas')).toBeInTheDocument();
+    expect(screen.getByText('Pipelines')).toBeInTheDocument();
+    expect(screen.getByText('Ml Models')).toBeInTheDocument();
+    expect(screen.getByText('Topics')).toBeInTheDocument();
+    expect(screen.getByText('Containers')).toBeInTheDocument();
+    expect(screen.getByText('Tags')).toBeInTheDocument();
+    expect(screen.getByText('Glossaries')).toBeInTheDocument();
+    expect(screen.getByText('Dashboards')).toBeInTheDocument();
+    expect(screen.getByText('Data Models')).toBeInTheDocument();
+    expect(screen.getByText('Search Indexes')).toBeInTheDocument();
+    expect(screen.getByText('Data Products')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {

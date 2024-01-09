@@ -615,7 +615,7 @@ export const AssetSelectionModal = ({
                 onScroll={onScroll}>
                 {({ _source: item }) => {
                   const { isError, errorMessage } = getErrorStatusAndMessage(
-                    item.id
+                    item.id ?? ''
                   );
 
                   return (
