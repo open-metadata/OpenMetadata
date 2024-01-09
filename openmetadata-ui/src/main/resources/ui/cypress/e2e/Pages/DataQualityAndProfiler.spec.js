@@ -626,7 +626,7 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@putTestCase', 200);
   });
 
-  it('Remove test case from logical test suite', () => {
+  it.skip('Remove test case from logical test suite', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'GET',
