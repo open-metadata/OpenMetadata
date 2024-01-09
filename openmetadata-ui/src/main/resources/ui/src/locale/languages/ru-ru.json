@@ -277,6 +277,7 @@
     "database-name": "Наименование базы данных",
     "database-plural": "Базы данных",
     "database-schema": "Схема базы данных",
+    "database-schema-plural": "Database Schemas",
     "database-service-name": "Наименование сервиса базы данных",
     "date": "Дата",
     "date-and-time": "Дата & Время",
