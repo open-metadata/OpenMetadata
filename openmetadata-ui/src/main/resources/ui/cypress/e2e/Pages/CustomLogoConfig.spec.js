@@ -28,6 +28,8 @@ describe('Custom Logo Config', () => {
 
     cy.get('[data-testid="app-bar-item-settings"]').click();
 
+    cy.sidebarHoverOutside();
+
     interceptURL(
       'GET',
       'api/v1/system/settings/customLogoConfiguration',

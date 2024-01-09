@@ -31,6 +31,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     'getSettingsPage'
   );
   cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarHoverOutside();
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page

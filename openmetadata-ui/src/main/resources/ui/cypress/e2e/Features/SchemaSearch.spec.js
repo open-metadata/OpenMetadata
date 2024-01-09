@@ -89,6 +89,9 @@ describe('Schema search', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
+
+    cy.sidebarHoverOutside();
+
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');

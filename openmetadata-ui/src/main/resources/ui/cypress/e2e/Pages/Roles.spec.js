@@ -65,6 +65,8 @@ describe('Roles page should work properly', () => {
       .should('be.visible')
       .click();
 
+    cy.sidebarHoverOutside();
+
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Roles')
       .should('be.visible')

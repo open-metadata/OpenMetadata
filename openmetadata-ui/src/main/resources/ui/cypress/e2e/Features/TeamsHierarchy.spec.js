@@ -41,6 +41,9 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
+
+    cy.sidebarHoverOutside();
+
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
     // Clicking on teams

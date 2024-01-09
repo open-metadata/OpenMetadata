@@ -109,6 +109,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
+    cy.sidebarHoverOutside();
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -231,6 +232,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="app-bar-item-tags"]').click({
       waitForAnimations: true,
     });
+    cy.sidebarHoverOutside();
 
     verifyResponseStatusCode('@fetchClassifications', 200);
 

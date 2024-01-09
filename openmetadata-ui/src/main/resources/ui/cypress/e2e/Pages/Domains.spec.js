@@ -37,6 +37,7 @@ describe('Domain page should work properly', () => {
     cy.get('[data-testid="app-bar-item-domain"]').click({
       waitForAnimations: true,
     });
+    cy.sidebarHoverOutside();
   });
 
   it('Create new domain flow should work properly', () => {
@@ -64,6 +65,7 @@ describe('Domain page should work properly', () => {
       cy.get('[data-testid="app-bar-item-domain"]').click({
         waitForAnimations: true,
       });
+      cy.sidebarHoverOutside();
     });
   });
 
@@ -73,6 +75,7 @@ describe('Domain page should work properly', () => {
       cy.get('[data-testid="app-bar-item-domain"]').click({
         waitForAnimations: true,
       });
+      cy.sidebarHoverOutside();
     });
 
     addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
@@ -84,6 +87,7 @@ describe('Domain page should work properly', () => {
       cy.get('[data-testid="app-bar-item-domain"]').click({
         waitForAnimations: true,
       });
+      cy.sidebarHoverOutside();
     });
 
     addAssetsToDataProduct(DOMAIN_3.dataProducts[0], DOMAIN_3);
@@ -105,6 +109,7 @@ describe('Domain page should work properly', () => {
     );
 
     cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarHoverOutside();
 
     verifyResponseStatusCode('@tableSearchQuery', 200);
   });

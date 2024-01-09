@@ -127,6 +127,9 @@ describe('Data Insight feature', () => {
       'triggerPipeline'
     );
     cy.get('[data-testid="app-bar-item-settings"]').click();
+
+    cy.sidebarHoverOutside();
+
     cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
     verifyResponseStatusCode('@apps', 200);
     cy.get(

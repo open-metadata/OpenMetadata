@@ -65,6 +65,7 @@ describe('Alerts page should work properly', () => {
       .should('exist')
       .and('be.visible')
       .click();
+    cy.sidebarHoverOutside();
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')

@@ -55,6 +55,8 @@ describe('Teams flow should work properly', () => {
 
     cy.get('[data-testid="app-bar-item-settings"]').click();
 
+    cy.sidebarHoverOutside();
+
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
   });

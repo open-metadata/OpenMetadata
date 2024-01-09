@@ -31,6 +31,7 @@ describe('Test Add role and assign it to the user', () => {
     cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
+    cy.sidebarHoverOutside();
   });
 
   it('Create role', () => {

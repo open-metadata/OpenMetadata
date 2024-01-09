@@ -36,6 +36,8 @@ describe.skip('Data Insight Alert', () => {
       .and('be.visible')
       .click();
 
+    cy.sidebarHoverOutside();
+
     interceptURL(
       'GET',
       'api/v1/events/subscriptions/name/DataInsightReport?include=all',

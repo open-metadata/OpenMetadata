@@ -74,6 +74,8 @@ describe('Bots Page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+
+    cy.sidebarHoverOutside();
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',

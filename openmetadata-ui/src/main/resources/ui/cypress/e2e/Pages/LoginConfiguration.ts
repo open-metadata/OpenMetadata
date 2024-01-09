@@ -15,6 +15,8 @@ describe('template spec', () => {
     cy.login();
     cy.get('[data-testid="app-bar-item-settings"]').click();
 
+    cy.sidebarHoverOutside();
+
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Login Configuration')
       .scrollIntoView()

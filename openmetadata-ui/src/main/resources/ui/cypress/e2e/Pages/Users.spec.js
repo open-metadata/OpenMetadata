@@ -64,6 +64,7 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+    cy.sidebarHoverOutside();
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
@@ -112,6 +113,7 @@ describe('Admin flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+    cy.sidebarHoverOutside();
     interceptURL('GET', '/api/v1/users?*isAdmin=true*', 'getAdmins');
     cy.get('.ant-menu-title-content')
       .contains('Admins')

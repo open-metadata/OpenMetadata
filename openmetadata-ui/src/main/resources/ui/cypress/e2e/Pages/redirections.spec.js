@@ -45,6 +45,7 @@ describe('Redirection link should work properly', () => {
   it('Check redirection links on settings page', () => {
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(SETTINGS_LEFT_PANEL).map((settingsLeftPanel) => {
+      cy.sidebarHoverOutside();
       cy.get(settingsLeftPanel.testid)
         .scrollIntoView()
         .should('be.visible')
