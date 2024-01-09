@@ -76,6 +76,7 @@ import {
   SCIKIT,
   SINGLESTORE,
   SNOWFLAKE,
+  SPARK,
   SPLINE,
   SQLITE,
   SUPERSET,
@@ -306,6 +307,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.GluePipeline:
         return GLUE;
+
+      case PipelineServiceType.Spark:
+        return SPARK;
 
       case PipelineServiceType.Spline:
         return SPLINE;

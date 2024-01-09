@@ -9,7 +9,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.DataInsightPipeline;
+import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -98,7 +98,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .withDisplayName(INGESTION_PIPELINE_NAME)
             .withDescription(PIPELINE_DESCRIPTION)
             .withPipelineType(PipelineType.DATA_INSIGHT)
-            .withSourceConfig(new SourceConfig().withConfig(new DataInsightPipeline()))
+            // We're configuring Data Insights to use ES as a sink, so we apply ES in the config
+            .withSourceConfig(new SourceConfig().withConfig(new MetadataToElasticSearchPipeline()))
             .withAirflowConfig(
                 new AirflowConfig()
                     .withScheduleInterval(getCronMapper().map(quartzCron).asString()))

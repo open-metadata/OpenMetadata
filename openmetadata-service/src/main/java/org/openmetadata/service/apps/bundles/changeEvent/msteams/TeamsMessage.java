@@ -1,4 +1,4 @@
-package org.openmetadata.service.events.subscription.msteams;
+package org.openmetadata.service.apps.bundles.changeEvent.msteams;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
