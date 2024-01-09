@@ -12,20 +12,24 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import Loader from '../../Loader/Loader';
+import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import './entity-info-drawer.less';
 import {
@@ -39,13 +43,14 @@ const EdgeInfoDrawer = ({
   onClose,
   nodes,
   hasEditAccess,
-  onEdgeDescriptionUpdate,
+  onEdgeDetailsUpdate,
 }: EdgeInfoDrawerInfo) => {
   const [edgeData, setEdgeData] = useState<EdgeInformationType>();
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
 
   const { t } = useTranslation();
 
@@ -95,12 +100,14 @@ const EdgeInfoDrawer = ({
       },
       pipeline: {
         key: t('label.edge'),
-        value: data?.pipeline ? getEntityName(data?.pipeline) : undefined,
+        value: data?.edge?.pipeline
+          ? getEntityName(data?.edge?.pipeline)
+          : undefined,
         link:
-          data?.pipeline &&
+          data?.edge?.pipeline &&
           getEntityLink(
-            data?.pipeline.type,
-            getEncodedFqn(data?.pipeline.fullyQualifiedName)
+            data?.edge?.pipeline.type,
+            getEncodedFqn(data?.edge?.pipeline.fullyQualifiedName)
           ),
       },
       functionInfo: {
@@ -112,114 +119,171 @@ const EdgeInfoDrawer = ({
   };
 
   const edgeDescription = useMemo(() => {
-    return edgeEntity?.lineageDetails?.description ?? '';
+    return edgeEntity?.description ?? '';
   }, [edgeEntity]);
 
   const onDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
-      if (edgeDescription !== updatedHTML && edgeEntity) {
+      if (edgeDescription !== updatedHTML && edge) {
         const lineageDetails = {
-          ...edgeEntity.lineageDetails,
+          ...getLineageDetailsObject(edge),
           description: updatedHTML,
         };
+
         const updatedEdgeDetails = {
           edge: {
             fromEntity: {
-              id: edgeEntity.fromEntity,
-              type: edge.data.sourceType,
+              id: edgeEntity.fromEntity.id,
+              type: edgeEntity.fromEntity.type,
             },
             toEntity: {
-              id: edgeEntity.toEntity,
-              type: edge.data.sourceType,
+              id: edgeEntity.toEntity.id,
+              type: edgeEntity.toEntity.type,
             },
             lineageDetails,
           },
         };
-        await onEdgeDescriptionUpdate(updatedEdgeDetails);
-        setIsDescriptionEditable(false);
-      } else {
-        setIsDescriptionEditable(false);
+        await onEdgeDetailsUpdate?.(updatedEdgeDetails);
       }
+      setIsDescriptionEditable(false);
     },
-    [edgeDescription, edgeEntity, edge.data]
+    [edgeDescription, edgeEntity, edge]
+  );
+
+  const onSqlQueryUpdate = useCallback(
+    async (updatedQuery: string) => {
+      if (mysqlQuery !== updatedQuery && edge) {
+        const lineageDetails = {
+          ...getLineageDetailsObject(edge),
+          sqlQuery: updatedQuery,
+        };
+
+        const updatedEdgeDetails = {
+          edge: {
+            fromEntity: {
+              id: edgeEntity.fromEntity.id,
+              type: edgeEntity.fromEntity.type,
+            },
+            toEntity: {
+              id: edgeEntity.toEntity.id,
+              type: edgeEntity.toEntity.type,
+            },
+            lineageDetails,
+          },
+        };
+        await onEdgeDetailsUpdate?.(updatedEdgeDetails);
+        setMysqlQuery(updatedQuery);
+      }
+      setShowSqlQueryModal(false);
+    },
+    [edgeEntity, edge, mysqlQuery]
   );
 
   useEffect(() => {
     setIsLoading(true);
     getEdgeInfo();
-    setMysqlQuery(edge.data.edge?.lineageDetails?.sqlQuery);
+    setMysqlQuery(edge.data.edge?.sqlQuery);
   }, [edge, visible]);
 
   return (
-    <Drawer
-      destroyOnClose
-      bodyStyle={{ padding: 16 }}
-      className="entity-panel-container"
-      closable={false}
-      extra={<CloseOutlined onClick={onClose} />}
-      getContainer={false}
-      headerStyle={{ padding: 16 }}
-      mask={false}
-      open={visible}
-      style={{ position: 'absolute' }}
-      title={t('label.edge-information')}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Row gutter={[8, 8]}>
-          {edgeData &&
-            Object.values(edgeData).map(
-              (data) =>
-                data.value && (
-                  <Col key={data.key} span={24}>
-                    <Typography.Text className="m-r-sm summary-panel-section-title">
-                      {`${data.key}:`}
-                    </Typography.Text>
+    <>
+      <Drawer
+        destroyOnClose
+        bodyStyle={{ padding: 16 }}
+        className="entity-panel-container"
+        closable={false}
+        extra={<CloseOutlined onClick={onClose} />}
+        getContainer={false}
+        headerStyle={{ padding: 16 }}
+        mask={false}
+        open={visible}
+        style={{ position: 'absolute' }}
+        title={t('label.edge-information')}>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Row gutter={[8, 8]}>
+            {edgeData &&
+              Object.values(edgeData).map(
+                (data) =>
+                  data.value && (
+                    <Col key={data.key} span={24}>
+                      <Typography.Text className="m-r-sm summary-panel-section-title">
+                        {`${data.key}:`}
+                      </Typography.Text>
 
-                    {isUndefined(data.link) ? (
-                      <Typography.Text>{data.value}</Typography.Text>
-                    ) : (
-                      <Typography.Link>
-                        <Link to={data.link}>{data.value}</Link>
-                      </Typography.Link>
-                    )}
-                  </Col>
-                )
-            )}
-          <Col span={24}>
-            <Divider />
-            <DescriptionV1
-              description={edgeDescription}
-              entityName="Edge"
-              entityType={EntityType.GLOSSARY}
-              hasEditAccess={hasEditAccess}
-              isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
-              onCancel={() => setIsDescriptionEditable(false)}
-              onDescriptionEdit={() => setIsDescriptionEditable(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
-          </Col>
-          <Col span={24}>
-            <Divider />
-            <Typography.Paragraph className="summary-panel-section-title">
-              {`${t('label.sql-uppercase-query')}:`}
-            </Typography.Paragraph>
-            {mysqlQuery ? (
-              <SchemaEditor
-                className="edge-drawer-sql-editor"
-                mode={{ name: CSMode.SQL }}
-                value={mysqlQuery}
+                      {isUndefined(data.link) ? (
+                        <Typography.Text>{data.value}</Typography.Text>
+                      ) : (
+                        <Typography.Link>
+                          <Link to={data.link}>{data.value}</Link>
+                        </Typography.Link>
+                      )}
+                    </Col>
+                  )
+              )}
+            <Col span={24}>
+              <Divider />
+              <DescriptionV1
+                description={edgeDescription}
+                entityName="Edge"
+                entityType={EntityType.GLOSSARY}
+                hasEditAccess={hasEditAccess}
+                isEdit={isDescriptionEditable}
+                showCommentsIcon={false}
+                onCancel={() => setIsDescriptionEditable(false)}
+                onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                onDescriptionUpdate={onDescriptionUpdate}
               />
-            ) : (
-              <Typography.Paragraph className="m-b-0">
-                {t('server.no-query-available')}
-              </Typography.Paragraph>
-            )}
-          </Col>
-        </Row>
+            </Col>
+            <Col span={24}>
+              <Divider />
+              <div className="d-flex items-center gap-4 m-b-sm">
+                <Typography.Paragraph className="right-panel-label m-b-0">
+                  {`${t('label.sql-uppercase-query')}`}
+                </Typography.Paragraph>
+                {hasEditAccess && (
+                  <Button
+                    className="p-0 flex-center"
+                    data-testid="edit-sql"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setShowSqlQueryModal(true)}
+                  />
+                )}
+              </div>
+              {mysqlQuery ? (
+                <SchemaEditor
+                  className="edge-drawer-sql-editor"
+                  mode={{ name: CSMode.SQL }}
+                  options={{
+                    styleActiveLine: false,
+                    readOnly: 'nocursor',
+                  }}
+                  value={mysqlQuery}
+                />
+              ) : (
+                <Typography.Paragraph className="m-b-0">
+                  {t('server.no-query-available')}
+                </Typography.Paragraph>
+              )}
+            </Col>
+          </Row>
+        )}
+      </Drawer>
+      {showSqlQueryModal && (
+        <ModalWithQueryEditor
+          header={t('label.edit-entity', {
+            entity: t('label.sql-uppercase-query'),
+          })}
+          value={mysqlQuery ?? ''}
+          visible={showSqlQueryModal}
+          onCancel={() => setShowSqlQueryModal(false)}
+          onSave={onSqlQueryUpdate}
+        />
       )}
-    </Drawer>
+    </>
   );
 };
 

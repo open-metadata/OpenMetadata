@@ -73,12 +73,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
+});
 
 jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);

@@ -14,118 +14,27 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
+import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
-import { isLeafNode } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
-import {
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-  SelectedNode,
-} from './EntityLineage.interface';
+import { EdgeTypeEnum } from './EntityLineage.interface';
 
-export const getHandle = (
-  node: EntityReference,
-  nodeType: string,
+export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
-  lineageLeafNodes: LeafNodes,
-  isNodeLoading: LoadingNodeState,
+  position: Position,
+  type: HandleType,
   className?: string,
-  onSelect?: (state: boolean, value: SelectedNode) => void,
-  loadNodeHandler?: (node: EntityReference, pos: LineagePos) => void
+  id?: string
 ) => {
-  if (nodeType === EntityLineageNodeType.OUTPUT) {
-    return (
-      <>
-        {getHandleByType(isConnectable, Position.Left, 'target', className)}
-        {generateExpandButton(
-          lineageLeafNodes,
-          node,
-          isNodeLoading,
-          'to',
-          nodeType,
-          onSelect,
-          loadNodeHandler
-        )}
-      </>
-    );
-  } else if (nodeType === EntityLineageNodeType.INPUT) {
-    return (
-      <>
-        {generateExpandButton(
-          lineageLeafNodes,
-          node,
-          isNodeLoading,
-          'from',
-          nodeType,
-          onSelect,
-          loadNodeHandler
-        )}
-        {getHandleByType(isConnectable, Position.Right, 'source', className)}
-      </>
-    );
-  } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
-    return null;
-  } else {
-    return (
-      <>
-        {getHandleByType(isConnectable, Position.Left, 'target', className)}
-        {getHandleByType(isConnectable, Position.Right, 'source', className)}
-      </>
-    );
-  }
-};
-
-const generateExpandButton = (
-  lineageLeafNodes: LeafNodes,
-  node: EntityReference,
-  isNodeLoading: LoadingNodeState,
-  direction: LineagePos,
-  nodeType: EntityLineageNodeType,
-  onSelect?: (state: boolean, value: SelectedNode) => void,
-  loadNodeHandler?: (node: EntityReference, pos: LineagePos) => void
-) => {
-  const isLeaf = isLeafNode(lineageLeafNodes, node?.id as string, direction);
-  const isLoading = node.id.includes(isNodeLoading.id as string);
-
-  if (!isLeaf && !isLoading) {
-    return (
-      <Button
-        className={classNames(
-          'absolute lineage-node-handle flex-center',
-          {
-            'react-flow__handle-right':
-              nodeType === EntityLineageNodeType.OUTPUT,
-          },
-          {
-            'react-flow__handle-left': nodeType === EntityLineageNodeType.INPUT,
-          }
-        )}
-        icon={<PlusIcon className="lineage-expand-icon" />}
-        shape="circle"
-        size="small"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect?.(false, {} as SelectedNode);
-          if (node) {
-            loadNodeHandler?.(
-              {
-                ...node,
-                fullyQualifiedName: getEncodedFqn(
-                  node.fullyQualifiedName ?? ''
-                ),
-              },
-              direction
-            );
-          }
-        }}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <Handle
+      className={className}
+      id={id}
+      isConnectable={isConnectable}
+      position={position}
+      type={type}
+    />
+  );
 };
 
 export const getColumnHandle = (
@@ -152,20 +61,53 @@ export const getColumnHandle = (
   }
 };
 
-export const getHandleByType = (
-  isConnectable: HandleProps['isConnectable'],
-  position: Position,
-  type: HandleType,
-  className?: string,
-  id?: string
+export const getExpandHandle = (
+  direction: EdgeTypeEnum,
+  onClickHandler: () => void
 ) => {
   return (
-    <Handle
-      className={className}
-      id={id}
-      isConnectable={isConnectable}
-      position={position}
-      type={type}
+    <Button
+      className={classNames(
+        'absolute lineage-node-handle flex-center',
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'react-flow__handle-right'
+          : 'react-flow__handle-left'
+      )}
+      icon={<PlusIcon className="lineage-expand-icon" />}
+      shape="circle"
+      size="small"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClickHandler();
+      }}
+    />
+  );
+};
+
+export const getCollapseHandle = (
+  direction: EdgeTypeEnum,
+  onClickHandler: () => void
+) => {
+  return (
+    <Button
+      className={classNames(
+        'absolute lineage-node-minus lineage-node-handle flex-center',
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'react-flow__handle-right'
+          : 'react-flow__handle-left'
+      )}
+      data-testid={
+        direction === EdgeTypeEnum.DOWN_STREAM
+          ? 'downstream-collapse-handle'
+          : 'upstream-collapse-handle'
+      }
+      icon={<MinusIcon className="lineage-expand-icon" />}
+      shape="circle"
+      size="small"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClickHandler();
+      }}
     />
   );
 };

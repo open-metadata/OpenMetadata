@@ -24,7 +24,6 @@ import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPan
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -44,6 +43,8 @@ import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../Lineage/Lineage.component';
+import LineageProvider from '../LineageProvider/LineageProvider';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -332,12 +333,14 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={dataModelData as SourceType}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={dataModelData as SourceType}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
     ];

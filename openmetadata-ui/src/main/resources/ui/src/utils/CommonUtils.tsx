@@ -552,7 +552,7 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNmber = (number: number) => {
+export const formTwoDigitNumber = (number: number) => {
   return number.toLocaleString('en-US', {
     minimumIntegerDigits: 2,
     useGrouping: false,
