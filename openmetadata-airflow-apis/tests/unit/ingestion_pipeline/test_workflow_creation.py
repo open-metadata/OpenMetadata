@@ -52,6 +52,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.applicationPipeline import (
+    ApplicationConfigType,
     ApplicationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -376,7 +377,7 @@ class OMetaServiceTest(TestCase):
             fullyQualifiedName="OpenMetadata.test_auto_tagger_application",
             sourceConfig=SourceConfig(
                 config=ApplicationPipeline(
-                    type="Application",
+                    type=ApplicationConfigType.Application,
                     appConfig=AppConfig(
                         __root__=AutoTaggerAppConfig(confidenceLevel=80)
                     ),

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +35,6 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -57,15 +57,15 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.events.scheduled.ReportsHandler;
+import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -115,8 +115,8 @@ public class EventSubscriptionResource
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ReportsHandler.initialize();
+          listOrEmpty(EventSubscriptionResource.getDescriptors()),
+          listOrEmpty(EventSubscriptionResource.getFilterDescriptors()));
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -133,12 +133,11 @@ public class EventSubscriptionResource
               .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
-      eventSubList.forEach(
-          subscription -> {
-            if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
-              repository.addSubscriptionPublisher(subscription);
-            }
-          });
+      for (EventSubscription subscription : eventSubList) {
+        if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
+          EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
+        }
+      }
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initializeEventSubscriptions", ex);
@@ -273,17 +272,41 @@ public class EventSubscriptionResource
   public Response createEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateEventSubscription request) {
+      @Valid CreateEventSubscription request)
+      throws SchedulerException {
     EventSubscription eventSub =
         getEventSubscription(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
-    if (eventSub.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT
-        && ReportsHandler.getInstance() != null
-        && ReportsHandler.getInstance().getReportMap().size() > 0) {
-      throw new BadRequestException("Data Insight Report Alert already exists.");
-    }
     Response response = create(uriInfo, securityContext, eventSub);
-    repository.addSubscriptionPublisher(eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
+    return response;
+  }
+
+  @POST
+  @Path("/observability")
+  @Operation(
+      operationId = "createObservabilitySubscription",
+      summary = "Create a new Observability Subscription",
+      description = "Create a new Observability Subscription",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Observability Subscription Created",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateEventSubscription.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createObservabilitySubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventSubscription request)
+      throws SchedulerException {
+    EventSubscription eventSub =
+        getObservabilitySubscription(request, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
   }
 
@@ -306,21 +329,11 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
-    // Only one Creation is allowed for Data Insight
-    if (create.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
-      try {
-        repository.getByName(null, create.getName(), repository.getFields("id"));
-      } catch (EntityNotFoundException ex) {
-        if (ReportsHandler.getInstance() != null
-            && ReportsHandler.getInstance().getReportMap().size() > 0) {
-          throw new BadRequestException("Data Insight Report Alert already exists.");
-        }
-      }
-    }
     EventSubscription eventSub =
         getEventSubscription(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
-    repository.updateEventSubscription((EventSubscription) response.getEntity());
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -351,7 +364,8 @@ public class EventSubscriptionResource
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    repository.updateEventSubscription((EventSubscription) response.getEntity());
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -377,6 +391,33 @@ public class EventSubscriptionResource
           @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
+  }
+
+  @GET
+  @Path("/{id}/processedEvents")
+  @Operation(
+      operationId = "checkIfThePublisherProcessedALlEvents",
+      summary = "Check If the Publisher Processed All Events",
+      description =
+          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Event Subscription versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public Response checkIfThePublisherProcessedALlEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return Response.ok()
+        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
+        .build();
   }
 
   @GET
@@ -434,11 +475,10 @@ public class EventSubscriptionResource
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id)
-      throws InterruptedException, SchedulerException {
-    Response response = delete(uriInfo, securityContext, id, true, true);
-    EventSubscription deletedEntity = (EventSubscription) response.getEntity();
-    repository.deleteEventSubscriptionPublisher(deletedEntity);
-    return response;
+      throws SchedulerException {
+    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    return delete(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -457,11 +497,11 @@ public class EventSubscriptionResource
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("name")
           String name)
-      throws InterruptedException, SchedulerException {
-    Response response = deleteByName(uriInfo, securityContext, name, true, true);
-    EventSubscription deletedEntity = (EventSubscription) response.getEntity();
-    repository.deleteEventSubscriptionPublisher(deletedEntity);
-    return response;
+      throws SchedulerException {
+    EventSubscription eventSubscription =
+        repository.getByName(null, name, repository.getFields("id"));
+    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
   @GET
@@ -489,7 +529,7 @@ public class EventSubscriptionResource
           String name) {
     authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
-    return repository.getStatusForEventSubscription(sub.getId());
+    return EventSubscriptionScheduler.getInstance().getStatusForEventSubscription(sub.getId());
   }
 
   @GET
@@ -515,8 +555,7 @@ public class EventSubscriptionResource
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
           UUID id) {
-    authorizer.authorizeAdmin(securityContext);
-    return repository.getStatusForEventSubscription(id);
+    return EventSubscriptionScheduler.getInstance().getStatusForEventSubscription(id);
   }
 
   @GET
@@ -543,6 +582,19 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     return new ResultList<>(EventsSubscriptionRegistry.listResourceDescriptors());
+  }
+
+  @GET
+  @Path("/observability/resources")
+  @Operation(
+      operationId = "listDataObservabilityResources",
+      summary = "Get list of Data Observability Resources used in filtering Event Subscription",
+      description =
+          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
+  public ResultList<FilterResourceDescriptor> listObservabilityResources(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
   }
 
   @GET
@@ -576,12 +628,43 @@ public class EventSubscriptionResource
         .withFilteringRules(create.getFilteringRules())
         .withSubscriptionType(create.getSubscriptionType())
         .withSubscriptionConfig(create.getSubscriptionConfig())
-        .withProvider(create.getProvider());
+        .withProvider(create.getProvider())
+        .withRetries(create.getRetries())
+        .withPollInterval(create.getPollInterval());
+  }
+
+  public EventSubscription getObservabilitySubscription(
+      CreateEventSubscription create, String user) {
+    return repository
+        .copy(new EventSubscription(), create, user)
+        .withAlertType(create.getAlertType())
+        .withTrigger(create.getTrigger())
+        .withEnabled(create.getEnabled())
+        .withBatchSize(create.getBatchSize())
+        .withTimeout(create.getTimeout())
+        .withFilteringRules(validateAndBuildFilteringConditions(create))
+        .withSubscriptionType(create.getSubscriptionType())
+        .withSubscriptionConfig(create.getSubscriptionConfig())
+        .withProvider(create.getProvider())
+        .withRetries(create.getRetries())
+        .withPollInterval(create.getPollInterval())
+        .withObservability(create.getObservability());
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
+    return getDescriptorsFromFile(
+        "EventSubResourceDescriptor.json", SubscriptionResourceDescriptor.class);
+  }
+
+  public static List<FilterResourceDescriptor> getFilterDescriptors() throws IOException {
+    return getDescriptorsFromFile(
+        "EntityObservabilityFilterDescriptor.json", FilterResourceDescriptor.class);
+  }
+
+  public static <T> List<T> getDescriptorsFromFile(String fileName, Class<T> classType)
+      throws IOException {
     List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
+        EntityUtil.getJsonDataResources(String.format(".*json/data/%s$", fileName));
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
       return Collections.emptyList();
@@ -591,7 +674,7 @@ public class EventSubscriptionResource
       String json =
           CommonUtil.getResourceAsStream(
               EventSubscriptionResource.class.getClassLoader(), jsonDataFile);
-      return JsonUtils.readObjects(json, SubscriptionResourceDescriptor.class);
+      return JsonUtils.readObjects(json, classType);
     } catch (Exception e) {
       LOG.warn(
           "Failed to initialize the events subscription resource descriptors from file {}",
