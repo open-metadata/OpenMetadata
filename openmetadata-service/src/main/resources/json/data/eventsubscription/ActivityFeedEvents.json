@@ -10,12 +10,12 @@
       {
         "name": "matchUpdatedBy",
         "effect": "exclude",
-        "condition": "matchUpdatedBy('ingestion-bot')"
+        "condition": "matchUpdatedBy({'ingestion-bot'})"
       },
       {
         "name": "matchAnyFieldChange",
         "effect": "exclude",
-        "condition": "matchAnyFieldChange('usageSummary')"
+        "condition": "matchAnyFieldChange({'usageSummary'})"
       }
     ]
   },
