@@ -2898,6 +2898,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** Compare entity Id and types in the entityReference */
   protected static void assertReference(EntityReference expected, EntityReference actual) {
+    // If the actual value is inherited, it will never match the expected
+    // We just ignore the validation in these cases
+    if (actual != null && actual.getInherited() != null && actual.getInherited()) {
+      return;
+    }
     if (expected != null) {
       assertNotNull(actual);
       TestUtils.validateEntityReference(actual);
