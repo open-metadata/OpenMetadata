@@ -13,10 +13,10 @@ slug: /connectors/database/unity-catalog
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Data Quality       | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Databricks Runtime Version 9+ |
+| Supported Versions | Databricks Runtime Version 9+|
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |

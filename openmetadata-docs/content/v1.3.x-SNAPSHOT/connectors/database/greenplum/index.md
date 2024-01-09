@@ -9,18 +9,18 @@ slug: /connectors/database/greenplum
 
 | Feature            | Status                       |
 | :----------------- | :--------------------------- |
-| Stage              | PROD                         |
+| Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions |  -                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
