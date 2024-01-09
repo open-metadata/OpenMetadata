@@ -217,7 +217,7 @@ public class ListFilter {
           yield String.format(
               "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
         }
-        yield "(json->>'executable' = 'true')";
+        yield String.format("(%s.json->>'executable' = 'true')", tableName);
       }
       case ("logical") -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
