@@ -12,6 +12,8 @@
 SQL Queries used during ingestion
 """
 
+import textwrap
+
 ORACLE_ALL_TABLE_COMMENTS = """
 SELECT 
 	comments table_comment,
@@ -62,6 +64,44 @@ col.default_on_null,
 	AND col.owner = id.owner
 ) AS identity_options
 """
+
+ORACLE_GET_STORED_PROCEDURES = """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT
+FROM
+    ALL_SOURCE
+WHERE
+    type = 'PROCEDURE' and owner = '{schema}'
+"""
+
+ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+SELECT 
+  NULL AS user_name,
+  NULL AS database_name,
+  NULL AS aborted,
+  NULL as query_type,
+  NULL as query_start_time,                                                                                                        
+  PARSING_SCHEMA_NAME as schema_name,
+  SQL_ID as procedure_id,
+  SQL_ID as query_id,
+  SQL_TEXT as procedure_text,                                                                                                                                                            
+  SQL_FULLTEXT AS query_text,
+  TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS procedure_start_time,
+  ELAPSED_TIME / 1000 AS duration,
+  TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS 
+  procedure_end_time                                                    
+FROM gv$sql
+WHERE OBJECT_STATUS = 'VALID'
+  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+ORDER BY FIRST_LOAD_TIME DESC
+"""
+)
 
 ORACLE_GET_COLUMNS = """
         SELECT

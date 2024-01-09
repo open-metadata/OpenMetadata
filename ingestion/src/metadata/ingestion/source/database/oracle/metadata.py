@@ -12,24 +12,45 @@
 # pylint: disable=protected-access
 """Oracle source module"""
 import traceback
-from typing import Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
 from sqlalchemy.engine import Inspector
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.database import EntityName
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.oracle.models import OracleStoredProcedure
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_GET_STORED_PROCEDURE_QUERIES,
+    ORACLE_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
@@ -41,6 +62,12 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_names,
     get_view_definition,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
+from metadata.utils import fqn
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -70,7 +97,7 @@ Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
 
 
-class OracleSource(CommonDbSourceService):
+class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Oracle Source
@@ -131,3 +158,107 @@ class OracleSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch view definition for {table_name}: {exc}")
         return None
+
+    def process_result(self, data):
+        """Process data as per our stored procedure format"""
+        result_dict = {}
+
+        for row in data:
+            owner, name, line, text = row
+            key = (owner, name)
+            if key not in result_dict:
+                result_dict[key] = {"lines": [], "text": ""}
+            result_dict[key]["lines"].append(line)
+            result_dict[key]["text"] += text
+
+        # Print the concatenated text for each procedure name, ordered by line
+        return result_dict
+
+    def get_stored_procedures(self) -> Iterable[OracleStoredProcedure]:
+        """List Oracle Stored Procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(
+                ORACLE_GET_STORED_PROCEDURES.format(
+                    schema=self.context.database_schema.upper()
+                )
+            ).all()
+            results = self.process_result(data=results)
+            for row in results.items():
+                stored_procedure = OracleStoredProcedure(
+                    name=row[0][1], definition=row[1]["text"], owner=row[0][0]
+                )
+                yield stored_procedure
+
+    def get_owner_entity_reference(self, owner_name: str) -> Optional[EntityReference]:
+        """
+        Returns owner's entity reference
+        """
+        owner = None
+        user_owner_fqn = fqn.build(
+            self.metadata, entity_type=User, user_name=owner_name
+        )
+        if user_owner_fqn:
+            owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
+        else:
+            team_owner_fqn = fqn.build(
+                self.metadata, entity_type=Team, team_name=owner_name
+            )
+            if team_owner_fqn:
+                owner = self.metadata.get_entity_reference(
+                    entity=Team, fqn=team_owner_fqn
+                )
+            else:
+                logger.warning(
+                    "Unable to ingest owner since no user or"
+                    f" team was found with name {owner_name}"
+                )
+        return owner
+
+    def yield_stored_procedure(
+        self, stored_procedure: OracleStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=stored_procedure.definition,
+                ),
+                owner=self.get_owner_entity_reference(
+                    owner_name=stored_procedure.owner.lower()
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+            )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = ORACLE_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+        )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
+
+        return queries_dict
