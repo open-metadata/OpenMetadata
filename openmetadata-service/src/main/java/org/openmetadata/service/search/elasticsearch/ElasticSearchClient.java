@@ -495,14 +495,15 @@ public class ElasticSearchClient implements SearchClient {
         if (direction.equalsIgnoreCase("lineage.fromEntity.fqn.keyword")) {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
+            getLineage(
+                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
-          getLineage(toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
         } else {
           if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
-          getLineage(
-              fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
         }
       }
     }

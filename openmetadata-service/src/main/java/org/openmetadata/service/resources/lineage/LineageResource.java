@@ -194,7 +194,7 @@ public class LineageResource {
           @QueryParam("query_filter")
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @QueryParam("deleted")
+          @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
 
