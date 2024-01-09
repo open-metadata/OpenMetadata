@@ -200,7 +200,7 @@ public class TestCaseResolutionStatusRepository
     TestCase testCase =
         Entity.getEntity(incidentStatus.getTestCaseReference(), "owner", Include.NON_DELETED);
 
-    createTask(incidentStatus, List.of(testCase.getOwner()), "New Incident");
+    createTask(incidentStatus, Collections.singletonList(testCase.getOwner()), "New Incident");
   }
 
   private void assignTask(
