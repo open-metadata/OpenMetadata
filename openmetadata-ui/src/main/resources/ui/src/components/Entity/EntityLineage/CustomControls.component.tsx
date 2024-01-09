@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { SettingOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Select, Space } from 'antd';
-import Input from 'antd/lib/input/Input';
+import { RightOutlined, SettingOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, {
   FC,
@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useReactFlow } from 'reactflow';
+import { Node } from 'reactflow';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
@@ -32,94 +32,91 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.
 import { PRIMERY_COLOR } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
-  MAX_ZOOM_VALUE,
-  MIN_ZOOM_VALUE,
-  ZOOM_BUTTON_STEP,
-  ZOOM_SLIDER_STEP,
+  LINEAGE_DEFAULT_QUICK_FILTERS,
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import {
+  getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
+} from '../../../utils/Explore.utils';
+import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
+import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 
 const CustomControls: FC<ControlProps> = ({
   style,
-  isColumnsExpanded,
-  showFitView = true,
-  showZoom = true,
-  fitViewParams,
   className,
   deleted,
-  isEditMode,
   hasEditAccess,
-  onEditLinageClick,
-  onExpandColumnClick,
   handleFullScreenViewClick,
   onExitFullScreenViewClick,
-  loading,
-  status,
-  zoomValue,
-  lineageData,
-  lineageConfig,
-  onOptionSelect,
-  onLineageConfigUpdate,
 }: ControlProps) => {
   const { t } = useTranslation();
-  const { fitView, zoomTo } = useReactFlow();
-  const [zoom, setZoom] = useState<number>(zoomValue);
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
+  const {
+    nodes,
+    lineageConfig,
+    expandAllColumns,
+    onLineageEditClick,
+    zoomValue,
+    loading,
+    status,
+    reactFlowInstance,
+    toggleColumnView,
+    isEditMode,
+    onLineageConfigUpdate,
+    onQueryFilterUpdate,
+    onNodeClick,
+  } = useLineageProvider();
+  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([]);
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
 
-  const onZoomHandler = useCallback(
-    (zoomLevel: number) => {
-      zoomTo?.(zoomLevel, { duration: ZOOM_TRANSITION_DURATION });
-    },
-    [zoomTo]
-  );
-
-  const onZoomInHandler = useCallback(() => {
-    setZoom((pre) => {
-      const zoomInValue = pre < MAX_ZOOM_VALUE ? pre + ZOOM_BUTTON_STEP : pre;
-      onZoomHandler(zoomInValue);
-
-      return zoomInValue;
-    });
-  }, [onZoomHandler]);
-
-  const onZoomOutHandler = useCallback(() => {
-    setZoom((pre) => {
-      const zoomOutValue = pre > MIN_ZOOM_VALUE ? pre - ZOOM_BUTTON_STEP : pre;
-      onZoomHandler(zoomOutValue);
-
-      return zoomOutValue;
-    });
-  }, [onZoomHandler]);
-
-  const onFitViewHandler = useCallback(() => {
-    fitView?.(fitViewParams);
-  }, [fitView, fitViewParams]);
-
-  const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const zoomValue = parseFloat(event.target.value);
-    onZoomHandler(zoomValue);
-    setZoom(zoomValue);
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => [...prevSelected, key]);
   };
 
+  const filterMenu: ItemType[] = useMemo(() => {
+    return filters.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      onClick: handleMenuClick,
+    }));
+  }, [filters]);
+
   useEffect(() => {
-    if (zoomValue !== zoom) {
-      setZoom(zoomValue);
-    }
-  }, [zoomValue]);
+    const dropdownItems = getAssetsPageQuickFilters();
+
+    setFilters(
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(item, dropdownItems),
+      }))
+    );
+
+    const defaultFilterValues = dropdownItems
+      .filter((item) => LINEAGE_DEFAULT_QUICK_FILTERS.includes(item.key))
+      .map((item) => item.key);
+
+    setSelectedFilter(defaultFilterValues);
+  }, []);
 
   const nodeOptions = useMemo(
     () =>
-      [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
-        label: getEntityName(node),
+      [...(nodes || [])].map((node) => ({
+        label: getEntityName(node.data.node),
         value: node.id,
       })),
-    [lineageData]
+    [nodes]
   );
 
   const editIcon = useMemo(() => {
@@ -136,11 +133,74 @@ const CustomControls: FC<ControlProps> = ({
 
   const handleDialogSave = useCallback(
     (config: LineageConfig) => {
-      onLineageConfigUpdate(config);
+      onLineageConfigUpdate?.(config);
       setDialogVisible(false);
     },
     [onLineageConfigUpdate, setDialogVisible]
   );
+
+  const onOptionSelect = useCallback(
+    (value?: string) => {
+      const selectedNode = nodes.find((node: Node) => node.id === value);
+      if (selectedNode) {
+        const { position } = selectedNode;
+        onNodeClick(selectedNode);
+        // moving selected node in center
+        reactFlowInstance?.setCenter(position.x, position.y, {
+          duration: ZOOM_TRANSITION_DURATION,
+          zoom: zoomValue,
+        });
+      }
+    },
+    [onNodeClick, reactFlowInstance]
+  );
+
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const quickFilterQuery = getQuickFilterQuery(data);
+    onQueryFilterUpdate(JSON.stringify(quickFilterQuery));
+  };
+
+  const handleQuickFiltersValueSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          if (preField.key === field.key) {
+            return field;
+          } else {
+            return preField;
+          }
+        });
+
+        handleQuickFiltersChange(data);
+
+        return data;
+      });
+    },
+    [setSelectedQuickFilters]
+  );
+
+  useEffect(() => {
+    const updatedQuickFilters = filters
+      .filter((filter) => selectedFilter.includes(filter.key))
+      .map((selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
+
+        return originalFilterItem || selectedFilterItem;
+      });
+
+    const newItems = updatedQuickFilters.filter(
+      (item) =>
+        !selectedQuickFilters.some(
+          (existingItem) => item.key === existingItem.key
+        )
+    );
+
+    if (newItems.length > 0) {
+      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
+    }
+  }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
     <>
@@ -148,7 +208,7 @@ const CustomControls: FC<ControlProps> = ({
         className={classNames('z-10 w-full', className)}
         gutter={[8, 8]}
         style={style}>
-        <Col span={12}>
+        <Col flex="auto">
           <Select
             allowClear
             showSearch
@@ -163,75 +223,40 @@ const CustomControls: FC<ControlProps> = ({
             })}
             onChange={onOptionSelect}
           />
+          <Space className="m-l-xs" size={16}>
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button ghost className="expand-btn" type="primary">
+                {t('label.advanced')}
+                <RightOutlined />
+              </Button>
+            </Dropdown>
+            <ExploreQuickFilters
+              aggregations={{}}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Space>
         </Col>
-        <Col span={12}>
+        <Col flex="250px">
           <Space className="justify-end w-full" size={16}>
             <Button
               ghost
               className="expand-btn"
               data-testid="expand-column"
               type="primary"
-              onClick={onExpandColumnClick}>
-              {isColumnsExpanded
+              onClick={toggleColumnView}>
+              {expandAllColumns
                 ? t('label.collapse-all')
                 : t('label.expand-all')}
             </Button>
 
-            {showZoom && (
-              <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide items-center">
-                <Button
-                  className={classNames('control-button', 'p-y-0')}
-                  data-testid="zoom-in-button"
-                  icon={
-                    <SVGIcons
-                      alt="minus-icon"
-                      icon="icon-control-minus"
-                      width="12"
-                    />
-                  }
-                  type="text"
-                  onClick={onZoomOutHandler}
-                />
-
-                <Input
-                  className="border-none bg-transparent p-0"
-                  data-testid="lineage-zoom-slider"
-                  max={MAX_ZOOM_VALUE}
-                  min={MIN_ZOOM_VALUE}
-                  step={ZOOM_SLIDER_STEP}
-                  type="range"
-                  value={zoom}
-                  onChange={onRangeChange}
-                />
-
-                <Button
-                  className={classNames('control-button', 'p-y-0')}
-                  data-testid="zoom-out-button"
-                  icon={
-                    <SVGIcons
-                      alt="plus-icon"
-                      icon="icon-control-plus"
-                      width="12"
-                    />
-                  }
-                  type="text"
-                  onClick={onZoomInHandler}
-                />
-              </div>
-            )}
-            {showFitView && (
-              <Button
-                className=" custom-control-fit-screen-button"
-                data-testid="fit-to-screen"
-                icon={
-                  <span className="anticon">
-                    <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
-                  </span>
-                }
-                title={t('label.fit-to-screen')}
-                onClick={onFitViewHandler}
-              />
-            )}
             {handleFullScreenViewClick && (
               <Button
                 className="custom-control-fit-screen-button"
@@ -292,7 +317,7 @@ const CustomControls: FC<ControlProps> = ({
                     ? t('label.edit-entity', { entity: t('label.lineage') })
                     : NO_PERMISSION_FOR_ACTION
                 }
-                onClick={onEditLinageClick}
+                onClick={onLineageEditClick}
               />
             )}
           </Space>

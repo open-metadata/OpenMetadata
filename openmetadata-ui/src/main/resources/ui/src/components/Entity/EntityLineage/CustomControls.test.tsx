@@ -16,22 +16,20 @@ import { LOADING_STATE } from '../../../enums/common.enum';
 import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
 
-const mockFitView = jest.fn();
-const mockZoomTo = jest.fn();
 const mockOnOptionSelect = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
-const mockOnEditLinageClick = jest.fn();
+const mockOnEditLineageClick = jest.fn();
 const mockOnExpandColumnClick = jest.fn();
 const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
 const mockZoomValue = 1;
 
+jest.mock('../../Explore/ExploreQuickFilters', () =>
+  jest.fn().mockReturnValue(<p>ExploreQuickFilters</p>)
+);
+
 jest.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    fitView: mockFitView,
-    zoomTo: mockZoomTo,
-  }),
   Position: () => ({
     Left: 'left',
     Top: 'top',
@@ -44,13 +42,16 @@ jest.mock('reactflow', () => ({
   }),
 }));
 
+jest.mock('../../LineageProvider/LineageProvider', () => ({
+  useLineageProvider: jest.fn().mockImplementation(() => ({
+    toggleColumnView: mockOnExpandColumnClick,
+    onLineageEditClick: mockOnEditLineageClick,
+  })),
+}));
+
 const customProps = {
-  fitView: mockFitView,
-  zoomTo: mockZoomTo,
   onOptionSelect: mockOnOptionSelect,
   onLineageConfigUpdate: mockOnLineageConfigUpdate,
-  onEditLinageClick: mockOnEditLinageClick,
-  onExpandColumnClick: mockOnExpandColumnClick,
   handleFullScreenViewClick: mockHandleFullScreenViewClick,
   onExitFullScreenViewClick: mockOnExitFullScreenViewClick,
   onZoomHandler: mockOnZoomHandler,
@@ -74,42 +75,6 @@ describe('CustomControls', () => {
     jest.clearAllMocks();
   });
 
-  it('calls fitView on Fit View button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const fitViewButton = getByTestId('fit-to-screen');
-    fireEvent.click(fitViewButton);
-
-    expect(mockFitView).toHaveBeenCalled();
-  });
-
-  it('calls zoomTo with zoomInValue on Zoom In button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const zoomInButton = getByTestId('zoom-in-button');
-    fireEvent.click(zoomInButton);
-    const zoomRangeInput = getByTestId(
-      'lineage-zoom-slider'
-    ) as HTMLInputElement;
-
-    expect(zoomRangeInput.value).toBe('0.75');
-  });
-
-  it('calls zoomTo with zoomOutValue on Zoom Out button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const zoomOutButton = getByTestId('zoom-out-button');
-    fireEvent.click(zoomOutButton);
-    const zoomRangeInput = getByTestId(
-      'lineage-zoom-slider'
-    ) as HTMLInputElement;
-
-    expect(zoomRangeInput.value).toBe('1.25');
-  });
-
   it('calls onEditLinageClick on Edit Lineage button click', () => {
     const { getByTestId } = render(
       <CustomControlsComponent {...customProps} />
@@ -117,7 +82,7 @@ describe('CustomControls', () => {
     const editLineageButton = getByTestId('edit-lineage');
     fireEvent.click(editLineageButton);
 
-    expect(mockOnEditLinageClick).toHaveBeenCalled();
+    expect(mockOnEditLineageClick).toHaveBeenCalled();
   });
 
   it('calls onExpandColumnClick on Expand Column button click', () => {
