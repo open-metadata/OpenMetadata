@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, lowerCase, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -104,14 +104,13 @@ const TaskFeedCard = ({
   };
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text>
-      <Button
-        className="p-0"
-        data-testid="redirect-task-button-link"
-        type="link"
-        onClick={handleTaskLinkClick}>
+    <Typography.Text
+      className="cursor-pointer"
+      data-testid="redirect-task-button-link"
+      onClick={handleTaskLinkClick}>
+      <Typography.Text className="p-0 text-primary">
         {`#${taskDetails?.id} `}
-      </Button>
+      </Typography.Text>
 
       <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>

@@ -157,13 +157,13 @@ export const TaskTab = ({
   };
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text className="font-medium text-md" data-testid="task-title">
-      <Button
-        className="p-r-xss text-md font-medium"
-        type="link"
-        onClick={handleTaskLinkClick}>
+    <Typography.Text
+      className="font-medium text-md cursor-pointer"
+      data-testid="task-title"
+      onClick={handleTaskLinkClick}>
+      <Typography.Text className="p-r-xss text-md font-medium text-primary">
         {`#${taskDetails?.id} `}
-      </Button>
+      </Typography.Text>
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
