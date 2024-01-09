@@ -54,31 +54,29 @@ export const SIDEBAR_LIST = [
     icon: DomainsIcon,
     dataTestId: 'app-bar-item-domain',
   },
-];
-
-export const SIDEBAR_GOVERN_LIST = [
   {
-    key: ROUTES.GLOSSARY,
-    label: i18next.t('label.glossary'),
-    redirect_url: ROUTES.GLOSSARY,
-    icon: GlossaryIcon,
-    dataTestId: 'app-bar-item-glossary',
-  },
-  {
-    key: ROUTES.TAGS,
-    label: i18next.t('label.classification'),
-    redirect_url: ROUTES.TAGS,
-    icon: ClassificationIcon,
-    dataTestId: 'app-bar-item-tags',
+    key: 'governance',
+    label: i18next.t('label.governance'),
+    icon: GovernIcon,
+    dataTestId: 'governance',
+    children: [
+      {
+        key: ROUTES.GLOSSARY,
+        label: i18next.t('label.glossary'),
+        redirect_url: ROUTES.GLOSSARY,
+        icon: GlossaryIcon,
+        dataTestId: 'app-bar-item-glossary',
+      },
+      {
+        key: ROUTES.TAGS,
+        label: i18next.t('label.classification'),
+        redirect_url: ROUTES.TAGS,
+        icon: ClassificationIcon,
+        dataTestId: 'app-bar-item-tags',
+      },
+    ],
   },
 ];
-
-export const GOVERN_ITEM = {
-  key: 'governance',
-  label: i18next.t('label.governance'),
-  icon: GovernIcon,
-  dataTestId: 'governance',
-};
 
 export const SETTING_ITEM = {
   key: ROUTES.SETTINGS,
@@ -89,7 +87,7 @@ export const SETTING_ITEM = {
 };
 
 export const LOGOUT_ITEM = {
-  key: ROUTES.LOGOUT,
+  key: 'logout',
   label: i18next.t('label.logout'),
   icon: LogoutIcon,
   dataTestId: 'app-bar-item-logout',

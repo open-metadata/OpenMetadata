@@ -14,7 +14,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
-  GOVERN_ITEM,
   LOGOUT_ITEM,
   SETTING_ITEM,
 } from '../../../constants/LeftSidebar.constants';
@@ -37,16 +36,34 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
-  it('should renders sidebar items without redirect url', () => {
+  it('should renders sidebar items with redirect url', () => {
     render(
       <BrowserRouter>
-        <LeftSidebarItem data={GOVERN_ITEM} />
+        <LeftSidebarItem data={SETTING_ITEM} />
       </BrowserRouter>
     );
 
-    expect(screen.getByTestId('governance')).toBeInTheDocument();
+    expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
 
-    expect(screen.getByText('label.governance')).toBeInTheDocument();
+    expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
+
+    expect(screen.getByRole('link')).toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('should renders sidebar items without redirect url', () => {
+    render(
+      <BrowserRouter>
+        <LeftSidebarItem data={LOGOUT_ITEM} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();
+
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
 
     expect(screen.getByRole('img')).toBeInTheDocument();
   });

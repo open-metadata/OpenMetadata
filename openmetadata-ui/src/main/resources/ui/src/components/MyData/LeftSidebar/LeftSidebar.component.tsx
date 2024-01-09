@@ -17,12 +17,9 @@ import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import {
-  GOVERN_ITEM,
   LOGOUT_ITEM,
   SETTING_ITEM,
-  SIDEBAR_GOVERN_LIST,
 } from '../../../constants/LeftSidebar.constants';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -58,18 +55,14 @@ const LeftSidebar = () => {
         return {
           key: item.key,
           label: <LeftSidebarItem data={item} />,
+          children: item.children?.map((item) => {
+            return {
+              key: item.key,
+              label: <LeftSidebarItem data={item} />,
+            };
+          }),
         };
       }),
-      {
-        key: GOVERN_ITEM.key,
-        label: <LeftSidebarItem data={GOVERN_ITEM} />,
-        children: SIDEBAR_GOVERN_LIST.map((item) => {
-          return {
-            key: item.key,
-            label: <LeftSidebarItem data={item} />,
-          };
-        }),
-      },
     ];
   }, []);
 
@@ -81,7 +74,7 @@ const LeftSidebar = () => {
           <LeftSidebarItem
             data={{
               ...item,
-              onClick: ROUTES.LOGOUT === item.key ? handleLogoutClick : noop,
+              onClick: item.key === 'logout' ? handleLogoutClick : noop,
             }}
           />
         ),
@@ -114,11 +107,13 @@ const LeftSidebar = () => {
           <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
             <BrandImage
               alt="OpenMetadata Logo"
-              className="vertical-middle"
+              className={classNames('vertical-middle ', {
+                'm-l-sm': !isSidebarCollapsed,
+              })}
               dataTestId="image"
               height={isSidebarCollapsed ? 30 : 34}
               isMonoGram={isSidebarCollapsed}
-              width={isSidebarCollapsed ? 30 : 120}
+              width={isSidebarCollapsed ? 30 : 'auto'}
             />
           </Link>
         </Col>
