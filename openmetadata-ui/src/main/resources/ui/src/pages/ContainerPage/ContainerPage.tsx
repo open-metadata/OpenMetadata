@@ -86,7 +86,7 @@ const ContainerPage = () => {
     useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
@@ -150,14 +150,24 @@ const ContainerPage = () => {
     }
   };
 
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
+
   const fetchResourcePermission = async (containerFQN: string) => {
-    setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.CONTAINER,
         containerFQN
       );
       setContainerPermissions(entityPermission);
+
+      const viewBasicPermission =
+        entityPermission.ViewAll || entityPermission.ViewBasic;
+
+      if (viewBasicPermission) {
+        await fetchContainerDetail(containerName);
+        getEntityFeedCount();
+      }
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -233,9 +243,6 @@ const ContainerPage = () => {
     () => isEmpty(containerData?.dataModel),
     [containerData]
   );
-
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
@@ -727,20 +734,8 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (viewBasicPermission) {
-      fetchContainerDetail(containerName);
-    }
-  }, [containerName, viewBasicPermission]);
-
-  useEffect(() => {
     fetchResourcePermission(containerName);
   }, [containerName]);
-
-  useEffect(() => {
-    if (viewBasicPermission) {
-      getEntityFeedCount();
-    }
-  }, [containerName, viewBasicPermission]);
 
   // Rendering
   if (isLoading) {
@@ -777,7 +772,6 @@ const ContainerPage = () => {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
-            key={containerData.fullyQualifiedName}
             permissions={containerPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
