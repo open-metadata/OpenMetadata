@@ -421,11 +421,8 @@ export const deleteCreatedService = (
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="app-bar-item-settings"]')
-    .should('be.visible')
-    .click({ force: true });
 
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
@@ -511,9 +508,7 @@ export const goToAddNewServicePage = (service_type) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
@@ -1103,9 +1098,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-settings');
 
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
@@ -1279,9 +1272,7 @@ export const visitServiceDetailsPage = (
   );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getOrganization', 200);
 
@@ -1313,9 +1304,7 @@ export const visitServiceDetailsPage = (
 export const visitDataModelPage = (dataModelFQN, dataModelName) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getOrganization', 200);
 

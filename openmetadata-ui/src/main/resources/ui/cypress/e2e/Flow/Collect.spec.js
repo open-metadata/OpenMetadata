@@ -75,6 +75,7 @@ describe('Collect end point should work properly', () => {
         cy.wait(500);
         cy.get(page.subMenu).should('be.visible').click({ force: true });
       }
+      cy.sidebarHoverOutside();
       assertCollectEndPoint();
     });
   });

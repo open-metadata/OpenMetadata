@@ -65,8 +65,7 @@ export const visitClassificationPage = () => {
     waitForAnimations: true,
   });
 
-  cy.get('[data-testid="app-bar-item-tags"]').click();
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-tags');
 
   verifyResponseStatusCode('@getTags', 200);
 };

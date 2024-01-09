@@ -86,11 +86,8 @@ describe('Schema search', () => {
       'api/v1/teams/name/Organization?fields=*',
       'getSettingsPage'
     );
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
 
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page

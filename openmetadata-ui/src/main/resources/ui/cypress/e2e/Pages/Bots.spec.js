@@ -70,12 +70,7 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',

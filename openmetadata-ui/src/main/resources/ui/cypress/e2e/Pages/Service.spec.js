@@ -39,11 +39,7 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')

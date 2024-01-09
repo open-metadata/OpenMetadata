@@ -59,12 +59,7 @@ const revokeToken = () => {
 describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
@@ -108,12 +103,7 @@ describe('Users flow should work properly', () => {
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
     interceptURL('GET', '/api/v1/users?*isAdmin=true*', 'getAdmins');
     cy.get('.ant-menu-title-content')
       .contains('Admins')

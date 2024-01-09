@@ -591,8 +591,7 @@ const goToGlossaryPage = () => {
     waitForAnimations: true,
   });
 
-  cy.get('[data-testid="app-bar-item-glossary"]').click();
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-glossary');
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {

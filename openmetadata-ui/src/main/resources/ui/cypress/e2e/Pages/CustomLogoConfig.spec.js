@@ -26,9 +26,7 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="app-bar-item-settings"]').click();
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     interceptURL(
       'GET',

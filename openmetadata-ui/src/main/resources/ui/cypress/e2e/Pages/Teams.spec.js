@@ -53,9 +53,7 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.get('[data-testid="app-bar-item-settings"]').click();
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();

@@ -61,11 +61,7 @@ describe('Alerts page should work properly', () => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')

@@ -18,9 +18,7 @@ describe('Data Insight settings page should work properly', () => {
     cy.login();
     interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-    cy.get('[data-testid="app-bar-item-settings"]').click();
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');

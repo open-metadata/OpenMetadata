@@ -30,9 +30,8 @@ export const visitGlossaryPage = () => {
   });
 
   // Applying force true as the hover over tooltip
-  cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
-  cy.sidebarHoverOutside();
+  cy.sidebarClick('app-bar-item-glossary');
 
   verifyResponseStatusCode('@getGlossaries', 200);
 };

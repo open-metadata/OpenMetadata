@@ -158,3 +158,10 @@ Cypress.Commands.add('logout', () => {
 
   cy.url().should('eq', `${BASE_URL}/signin`);
 });
+
+Cypress.Commands.add('sidebarClick', (id) => {
+  cy.get(`[data-testid="${id}"]`).click({
+    waitForAnimations: true,
+  });
+  cy.sidebarHoverOutside();
+});

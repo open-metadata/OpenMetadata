@@ -229,9 +229,8 @@ describe('Prerequisite for data steward role tests', () => {
     cy.login();
 
     // Assign data steward role to the created user
-    cy.get('[data-testid="app-bar-item-settings"]').click();
 
-    cy.sidebarHoverOutside();
+    cy.sidebarClick('app-bar-item-settings');
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
