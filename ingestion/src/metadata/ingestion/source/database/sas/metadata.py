@@ -652,7 +652,7 @@ class SasSource(
             "id"
         ]
         for attr in TABLE_CUSTOM_ATTR:
-            if attr["propertyType"]["id"] == "9fc463a5-84bc-49c8-84f2-acfdcd3dc705":
+            if attr["propertyType"]["id"] == "STRING_TYPE":
                 attr["propertyType"]["id"] = string_type
             else:
                 attr["propertyType"]["id"] = integer_type
