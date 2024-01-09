@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Badge, Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 
 interface LeftSidebarItemProps {
   data: {
@@ -22,13 +24,16 @@ interface LeftSidebarItemProps {
     dataTestId: string;
     redirect_url?: string;
     icon: SvgComponent;
+    isBeta?: boolean;
     onClick?: () => void;
   };
 }
 
 const LeftSidebarItem = ({
-  data: { label, redirect_url, dataTestId, onClick, icon },
+  data: { label, redirect_url, dataTestId, icon, isBeta, onClick },
 }: LeftSidebarItemProps) => {
+  const { t } = useTranslation();
+
   return redirect_url ? (
     <NavLink
       className="left-panel-item no-underline"
@@ -39,6 +44,16 @@ const LeftSidebarItem = ({
       <div className="d-flex items-center">
         <Icon component={icon} />
         <Typography.Text className="left-panel-label">{label}</Typography.Text>
+
+        {isBeta && (
+          <Badge
+            className="service-beta-tag m-b-xs"
+            color={PRIMERY_COLOR}
+            count={t('label.beta')}
+            offset={[10, 0]}
+            size="small"
+          />
+        )}
       </div>
     </NavLink>
   ) : (
