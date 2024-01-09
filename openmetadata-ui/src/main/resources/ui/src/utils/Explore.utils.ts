@@ -18,6 +18,8 @@ import {
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
@@ -146,4 +148,32 @@ export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
       };
 
   return quickFilterQuery;
+};
+
+export const getSearchIndexFromEntityType = (entityType: EntityType) => {
+  const commonAssets: Record<string, SearchIndex> = {
+    [EntityType.ALL]: SearchIndex.ALL,
+    [EntityType.TABLE]: SearchIndex.TABLE,
+    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
+    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
+    [EntityType.TOPIC]: SearchIndex.TOPIC,
+    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+    [EntityType.TAG]: SearchIndex.TAG,
+    [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
+    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
+    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
+    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
+    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
+    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
+    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
+    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
+    [EntityType.DOMAIN]: SearchIndex.DOMAIN,
+    [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
+  };
+
+  return commonAssets[entityType];
 };

@@ -32,6 +32,7 @@ import {
   getLineageEdge,
   getLineageEdgeForAPI,
   getUpdatedColumnsFromEdge,
+  getUpstreamDownstreamNodesEdges,
   isColumnLineageTraced,
   isTracedEdge,
 } from './EntityLineageUtils';
@@ -503,6 +504,69 @@ describe('Test EntityLineageUtils utility', () => {
           },
         },
       });
+    });
+  });
+
+  describe('getUpstreamDownstreamNodesEdges', () => {
+    const edges = [
+      {
+        fromEntity: { fqn: 'node1', type: 'table', id: '1' },
+        toEntity: { fqn: 'node2', type: 'table', id: '2' },
+      },
+      {
+        fromEntity: { fqn: 'node2', type: 'table', id: '2' },
+        toEntity: { fqn: 'node3', type: 'table', id: '3' },
+      },
+      {
+        fromEntity: { fqn: 'node3', type: 'table', id: '3' },
+        toEntity: { fqn: 'node4', type: 'table', id: '4' },
+      },
+    ];
+
+    const nodes = [
+      { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+      { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+      { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+      { fullyQualifiedName: 'node4', type: 'table', id: '4' },
+    ];
+
+    it('should return empty arrays for downstream and upstream edges and nodes if activeNode is not found', () => {
+      const currentNode = 'node5';
+      const result = getUpstreamDownstreamNodesEdges(edges, nodes, currentNode);
+
+      expect(result.downstreamEdges).toEqual([]);
+      expect(result.upstreamEdges).toEqual([]);
+      expect(result.downstreamNodes).toEqual([]);
+      expect(result.upstreamNodes).toEqual([]);
+    });
+
+    it('should return correct downstream edges, upstream edges, downstream nodes, and upstream nodes', () => {
+      const currentNode = 'node2';
+      const result = getUpstreamDownstreamNodesEdges(edges, nodes, currentNode);
+
+      expect(result.downstreamEdges).toEqual([
+        {
+          fromEntity: { fqn: 'node2', type: 'table', id: '2' },
+          toEntity: { fqn: 'node3', type: 'table', id: '3' },
+        },
+        {
+          fromEntity: { fqn: 'node3', type: 'table', id: '3' },
+          toEntity: { fqn: 'node4', type: 'table', id: '4' },
+        },
+      ]);
+      expect(result.upstreamEdges).toEqual([
+        {
+          fromEntity: { fqn: 'node1', type: 'table', id: '1' },
+          toEntity: { fqn: 'node2', type: 'table', id: '2' },
+        },
+      ]);
+      expect(result.downstreamNodes).toEqual([
+        { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+        { fullyQualifiedName: 'node4', type: 'table', id: '4' },
+      ]);
+      expect(result.upstreamNodes).toEqual([
+        { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+      ]);
     });
   });
 });

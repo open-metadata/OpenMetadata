@@ -1,5 +1,15 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+
+import java.io.IOException;
+import java.security.KeyStoreException;
+import java.text.ParseException;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -9,18 +19,6 @@ import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
-
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.security.KeyStoreException;
-import java.text.ParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
 public interface SearchClient {
 
@@ -74,7 +72,9 @@ public interface SearchClient {
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
-  Response searchLineage(String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted) throws IOException;
+  Response searchLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
 
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
@@ -104,7 +104,8 @@ public interface SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
-  void updateLineage(String indexName, Pair<String, String> fieldAndValue, HashMap<String, Object> lineagaData);
+  void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,

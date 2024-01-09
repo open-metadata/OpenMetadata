@@ -1,5 +1,26 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -68,6 +89,20 @@ import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryConte
 import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -80,6 +115,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
@@ -121,42 +157,6 @@ import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
-
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
-
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class ElasticSearchClient implements SearchClient {
@@ -167,13 +167,16 @@ public class ElasticSearchClient implements SearchClient {
   private final boolean isClientAvailable;
   private static final NamedXContentRegistry xContentRegistry;
 
+  private final String clusterAlias;
+
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public ElasticSearchClient(ElasticSearchConfiguration esConfig) {
-    client = createElasticSearchClient(esConfig);
+  public ElasticSearchClient(ElasticSearchConfiguration config) {
+    client = createElasticSearchClient(config);
+    clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
   }
 
@@ -198,12 +201,15 @@ public class ElasticSearchClient implements SearchClient {
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
     if (Boolean.TRUE.equals(isClientAvailable)) {
       try {
-        CreateIndexRequest request = new CreateIndexRequest(indexMapping.getIndexName());
+        CreateIndexRequest request =
+            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
         request.source(indexMappingContent, XContentType.JSON);
         CreateIndexResponse createIndexResponse =
             client.indices().create(request, RequestOptions.DEFAULT);
         LOG.debug(
-            "{} Created {}", indexMapping.getIndexName(), createIndexResponse.isAcknowledged());
+            "{} Created {}",
+            indexMapping.getIndexName(clusterAlias),
+            createIndexResponse.isAcknowledged());
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
@@ -218,25 +224,27 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases());
-      aliases.add(indexMapping.getAlias());
+      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.add(indexMapping.getAlias(clusterAlias));
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName())
+              .index(indexMapping.getIndexName(clusterAlias))
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
       client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(
-          String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
+          String.format(
+              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
+          e);
     }
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName());
+      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
       JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
       request.source(JsonUtils.getMap(readProperties));
       AcknowledgedResponse putMappingResponse =
@@ -245,17 +253,21 @@ public class ElasticSearchClient implements SearchClient {
           "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
       LOG.warn(
-          String.format("Failed to Update Elastic Search index %s", indexMapping.getIndexName()));
+          String.format(
+              "Failed to Update Elastic Search index %s", indexMapping.getIndexName(clusterAlias)));
     }
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName());
+      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
       AcknowledgedResponse deleteIndexResponse =
           client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
+      LOG.debug(
+          "{} Deleted {}",
+          indexMapping.getIndexName(clusterAlias),
+          deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
@@ -265,35 +277,42 @@ public class ElasticSearchClient implements SearchClient {
   public Response search(SearchRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
         switch (request.getIndex()) {
-          case "topic_search_index" -> buildTopicSearchBuilder(
+          case "topic_search_index", "topic" -> buildTopicSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_search_index" -> buildDashboardSearchBuilder(
+          case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "pipeline_search_index" -> buildPipelineSearchBuilder(
+          case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_search_index" -> buildMlModelSearchBuilder(
+          case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "table_search_index" -> buildTableSearchBuilder(
+          case "table_search_index", "table" -> buildTableSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "user_search_index", "team_search_index" -> buildUserOrTeamSearchBuilder(
+          case "user_search_index",
+              "user",
+              "team_search_index",
+              "team" -> buildUserOrTeamSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "glossary_term_search_index" -> buildGlossaryTermSearchBuilder(
+          case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "tag_search_index" -> buildTagSearchBuilder(
+          case "tag_search_index", "tag" -> buildTagSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "container_search_index" -> buildContainerSearchBuilder(
+          case "container_search_index", "container" -> buildContainerSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "query_search_index" -> buildQuerySearchBuilder(
+          case "query_search_index", "query" -> buildQuerySearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index", "test_suite_search_index" -> buildTestCaseSearch(
+          case "test_case_search_index",
+              "testCase",
+              "test_suite_search_index",
+              "testSuite" -> buildTestCaseSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "stored_procedure_search_index" -> buildStoredProcedureSearch(
+          case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_data_model_search_index" -> buildDashboardDataModelsSearch(
+          case "dashboard_data_model_search_index",
+              "dashboardDataModel" -> buildDashboardDataModelsSearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "search_entity_search_index" -> buildSearchEntitySearch(
+          case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "domain_search_index" -> buildDomainsSearch(
+          case "domain_search_index", "domain" -> buildDomainsSearch(
               request.getQuery(), request.getFrom(), request.getSize());
           case "raw_cost_analysis_report_data_index",
               "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
@@ -402,7 +421,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+  public Response searchLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();
@@ -410,14 +430,17 @@ public class ElasticSearchClient implements SearchClient {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
       responseMap.put("entity", hit.getSourceAsMap());
     }
-    getLineage(fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
-    getLineage(fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -429,17 +452,22 @@ public class ElasticSearchClient implements SearchClient {
       List<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
       String queryFilter,
-      String direction, boolean deleted)
+      String direction,
+      boolean deleted)
       throws IOException {
     if (depth <= 0) {
       return;
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest("all");
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
-    if (CommonUtil.nullOrEmpty(deleted)){
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)).must(QueryBuilders.termQuery("deleted", deleted)));
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
+    if (CommonUtil.nullOrEmpty(deleted)) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(QueryBuilders.termQuery(direction, fqn))
+              .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
       try {
@@ -448,7 +476,8 @@ public class ElasticSearchClient implements SearchClient {
                 .xContent()
                 .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
@@ -457,7 +486,8 @@ public class ElasticSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage = (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+      List<Map<String, Object>> lineage =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       nodes.add(hit.getSourceAsMap());
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
@@ -471,7 +501,8 @@ public class ElasticSearchClient implements SearchClient {
           if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
           }
-          getLineage(fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          getLineage(
+              fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
         }
       }
     }
@@ -480,7 +511,8 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
@@ -493,7 +525,8 @@ public class ElasticSearchClient implements SearchClient {
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(index);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
@@ -525,7 +558,8 @@ public class ElasticSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new es.org.elasticsearch.action.search.SearchRequest(index)
+                new es.org.elasticsearch.action.search.SearchRequest(
+                        Entity.getSearchRepository().getIndexOrAliasName(index))
                     .source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
@@ -561,7 +595,8 @@ public class ElasticSearchClient implements SearchClient {
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+        new es.org.elasticsearch.action.search.SearchRequest(
+                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
             .source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
@@ -1195,13 +1230,16 @@ public class ElasticSearchClient implements SearchClient {
    * @param fieldAndValue
    */
   @Override
-  public void updateLineage(String indexName, Pair<String, String> fieldAndValue, HashMap<String, Object> lineageData) {
+  public void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineageData) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+              .operator(Operator.AND));
       Map<String, Object> params = Collections.singletonMap("lineageData", lineageData);
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
+      Script script =
+          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
     }

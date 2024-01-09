@@ -426,6 +426,34 @@ const ContainerPage = () => {
     }
   };
 
+  const handleTagUpdate = useCallback(
+    async (updatedContainer: Container) => {
+      if (isUndefined(containerData)) {
+        return;
+      }
+
+      try {
+        const response = await handleUpdateContainerData({
+          ...containerData,
+          tags: updatedContainer.tags,
+        });
+        setContainerData({
+          ...response,
+          tags: sortTagsCaseInsensitive(response.tags ?? []),
+        });
+        getEntityFeedCount();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      containerData,
+      handleUpdateContainerData,
+      getEntityFeedCount,
+      setContainerData,
+    ]
+  );
+
   const handleExtensionUpdate = useCallback(
     async (updatedContainer: Container) => {
       if (isUndefined(containerData)) {
@@ -511,7 +539,7 @@ const ContainerPage = () => {
     if (updatedTags && containerData) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedContainer = { ...containerData, tags: updatedTags };
-      await handleExtensionUpdate(updatedContainer);
+      await handleTagUpdate(updatedContainer);
     }
   };
 

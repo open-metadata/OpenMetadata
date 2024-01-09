@@ -407,7 +407,7 @@ class LookerSource(DashboardServiceSource):
                     project=model.project_name,
                 )
                 yield Either(right=explore_datamodel)
-                self.register_record_datamodel(datamodel_requst=explore_datamodel)
+                self.register_record_datamodel(datamodel_request=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
                 self.context.dataModel = self._build_data_model(datamodel_name)
@@ -508,7 +508,7 @@ class LookerSource(DashboardServiceSource):
                 self._view_data_model = self._build_data_model(
                     build_datamodel_name(explore.model_name, view.name)
                 )
-                self.register_record_datamodel(datamodel_requst=data_model_request)
+                self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
                 yield Either(

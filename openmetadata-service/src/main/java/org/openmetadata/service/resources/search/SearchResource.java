@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.resources.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
+
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.search.suggest.Suggest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,15 +24,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.SearchRequest;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.JsonUtils;
-
+import java.io.IOException;
+import java.util.List;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -40,11 +36,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.List;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @Path("/v1/search")
@@ -159,7 +158,8 @@ public class SearchResource {
     }
 
     SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
+        new SearchRequest.ElasticSearchRequestBuilder(
+                query, size, Entity.getSearchRepository().getIndexOrAliasName(index))
             .from(from)
             .queryFilter(queryFilter)
             .postFilter(postFilter)
@@ -222,36 +222,6 @@ public class SearchResource {
       throws IOException {
 
     return searchRepository.searchBySourceUrl(sourceUrl);
-  }
-
-  @GET
-  @Path("/getLineage")
-  @Operation(
-      operationId = "searchLineage",
-      summary = "Search lineage",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
-      })
-  public Response searchLineage(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") int downstreamDepth,
-      @Parameter(
-              description =
-                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
-          @QueryParam("query_filter")
-          String queryFilter,
-      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-      @QueryParam("deleted")
-      boolean deleted)
-      throws IOException {
-
-    return searchRepository.searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   @GET

@@ -1,5 +1,21 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -10,23 +26,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 public interface SearchIndex {
   Map<String, Object> buildESDoc();
@@ -59,21 +58,26 @@ public interface SearchIndex {
     List<HashMap<String, Object>> data = new ArrayList<>();
     CollectionDAO dao = Entity.getCollectionDAO();
     List<CollectionDAO.EntityRelationshipRecord> toRelationshipsRecords =
-        dao.relationshipDAO().findTo(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
+        dao.relationshipDAO()
+            .findTo(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
     for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : toRelationshipsRecords) {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       SearchIndex.getLineageDataDirection(entity, ref, lineageDetails, data);
     }
     List<CollectionDAO.EntityRelationshipRecord> fromRelationshipsRecords =
-        dao.relationshipDAO().findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : fromRelationshipsRecords) {
+        dao.relationshipDAO()
+            .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
+    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord :
+        fromRelationshipsRecords) {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       SearchIndex.getLineageDataDirection(ref, entity, lineageDetails, data);
     }
     return data;
@@ -93,14 +97,22 @@ public interface SearchIndex {
     toDetails.put("id", toEntity.getId().toString());
     toDetails.put("type", toEntity.getType());
     toDetails.put("fqn", toEntity.getFullyQualifiedName());
-    relationshipDetails.put("doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
+    relationshipDetails.put(
+        "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
     relationshipDetails.put("fromEntity", fromDetails);
     relationshipDetails.put("toEntity", toDetails);
     if (lineageDetails != null) {
       relationshipDetails.put(
           "pipeline",
-          JsonUtils.getMap(CommonUtil.nullOrEmpty(lineageDetails.getPipeline()) ? null : lineageDetails.getPipeline()));
-      relationshipDetails.put("description", CommonUtil.nullOrEmpty(lineageDetails.getDescription()) ? null : lineageDetails.getDescription());
+          JsonUtils.getMap(
+              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
+                  ? null
+                  : lineageDetails.getPipeline()));
+      relationshipDetails.put(
+          "description",
+          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
+              ? null
+              : lineageDetails.getDescription());
       if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
         List<Map<String, Object>> colummnLineageList = new ArrayList<>();
         for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
@@ -109,9 +121,13 @@ public interface SearchIndex {
         relationshipDetails.put("columns", colummnLineageList);
       }
       relationshipDetails.put(
-          "sqlQuery", CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery()) ? null : lineageDetails.getSqlQuery());
+          "sqlQuery",
+          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
+              ? null
+              : lineageDetails.getSqlQuery());
       relationshipDetails.put(
-          "source", CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
+          "source",
+          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
     }
     data.add(relationshipDetails);
   }

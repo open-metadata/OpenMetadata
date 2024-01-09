@@ -73,6 +73,7 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
+import { getDecodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -594,7 +595,8 @@ const getNodeType = (
 
 export const createNodes = (
   nodesData: EntityReference[],
-  edgesData: EdgeDetails[]
+  edgesData: EdgeDetails[],
+  entityFqn: string
 ) => {
   const uniqueNodesData = removeDuplicateNodes(nodesData);
 
@@ -635,6 +637,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
+        isRootNode: getDecodedFqn(entityFqn) === node.fullyQualifiedName,
       },
       position: {
         x: position.x,
@@ -954,29 +957,61 @@ export const createNewEdge = (edge: Edge) => {
   return selectedEdge;
 };
 
-export const getUpstreamDownstreamEdges = (
+export const getUpstreamDownstreamNodesEdges = (
   edges: EdgeDetails[],
+  nodes: EntityReference[],
   currentNode: string
 ) => {
   const downstreamEdges: EdgeDetails[] = [];
   const upstreamEdges: EdgeDetails[] = [];
+  const downstreamNodes: EntityReference[] = [];
+  const upstreamNodes: EntityReference[] = [];
+  const activeNode = nodes.find(
+    (node) => node.fullyQualifiedName === currentNode
+  );
 
-  function findDownstream(node: string) {
+  if (!activeNode) {
+    return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+  }
+
+  function findDownstream(node: EntityReference) {
     const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fqn === node
+      (edge) => edge.fromEntity.fqn === node.fullyQualifiedName
     );
     downstreamEdges.push(...directDownstream);
-    directDownstream.forEach((edge) => findDownstream(edge.toEntity.fqn));
+    directDownstream.forEach((edge) => {
+      const toNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.toEntity.fqn
+      );
+      if (!isUndefined(toNode)) {
+        if (!downstreamNodes.includes(toNode)) {
+          downstreamNodes.push(toNode);
+          findDownstream(toNode);
+        }
+      }
+    });
   }
 
-  function findUpstream(node: string) {
-    const directUpstream = edges.filter((edge) => edge.toEntity.fqn === node);
+  function findUpstream(node: EntityReference) {
+    const directUpstream = edges.filter(
+      (edge) => edge.toEntity.fqn === node.fullyQualifiedName
+    );
     upstreamEdges.push(...directUpstream);
-    directUpstream.forEach((edge) => findUpstream(edge.fromEntity.fqn));
+    directUpstream.forEach((edge) => {
+      const fromNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.fromEntity.fqn
+      );
+      if (!isUndefined(fromNode)) {
+        if (!upstreamNodes.includes(fromNode)) {
+          upstreamNodes.push(fromNode);
+          findUpstream(fromNode);
+        }
+      }
+    });
   }
 
-  findDownstream(currentNode);
-  findUpstream(currentNode);
+  findDownstream(activeNode);
+  findUpstream(activeNode);
 
-  return { downstreamEdges, upstreamEdges };
+  return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
 };

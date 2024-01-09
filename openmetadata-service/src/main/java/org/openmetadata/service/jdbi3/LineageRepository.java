@@ -13,6 +13,15 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -33,16 +42,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
 @Repository
 public class LineageRepository {
@@ -94,16 +93,27 @@ public class LineageRepository {
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
-        .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
+        .insert(
+            from.getId(),
+            to.getId(),
+            from.getType(),
+            to.getType(),
+            Relationship.UPSTREAM.ordinal(),
+            detailsJson);
     addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
   }
 
-  private void addLineageToSearch(EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    IndexMapping sourceIndexMapping = Entity.getSearchRepository().getIndexMapping(fromEntity.getType());
-    String sourceIndexName = sourceIndexMapping.getIndexName();
-    IndexMapping destinationIndexMapping = Entity.getSearchRepository().getIndexMapping(toEntity.getType());
-    String destinationIndexName = destinationIndexMapping.getIndexName();
-    HashMap<String, Object> relationshipDetails = new HashMap<>();
+  private void addLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    IndexMapping sourceIndexMapping =
+        Entity.getSearchRepository().getIndexMapping(fromEntity.getType());
+    String sourceIndexName =
+        sourceIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    IndexMapping destinationIndexMapping =
+        Entity.getSearchRepository().getIndexMapping(toEntity.getType());
+    String destinationIndexName =
+        destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    Map<String, Object> relationshipDetails = new HashMap<>();
     Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
     processLineageData(fromEntity, toEntity, lineageDetails, relationshipDetails);
@@ -115,23 +125,31 @@ public class LineageRepository {
       EntityReference fromEntity,
       EntityReference toEntity,
       LineageDetails lineageDetails,
-      HashMap<String, Object> relationshipDetails) {
-    HashMap<String, Object> fromDetails = new HashMap<>();
-    HashMap<String, Object> toDetails = new HashMap<>();
+      Map<String, Object> relationshipDetails) {
+    Map<String, Object> fromDetails = new HashMap<>();
+    Map<String, Object> toDetails = new HashMap<>();
     fromDetails.put("id", fromEntity.getId().toString());
     fromDetails.put("type", fromEntity.getType());
     fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
     toDetails.put("id", toEntity.getId().toString());
     toDetails.put("type", toEntity.getType());
     toDetails.put("fqn", toEntity.getFullyQualifiedName());
-    relationshipDetails.put("doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
+    relationshipDetails.put(
+        "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
     relationshipDetails.put("fromEntity", fromDetails);
     relationshipDetails.put("toEntity", toDetails);
     if (lineageDetails != null) {
       relationshipDetails.put(
           "pipeline",
-          JsonUtils.getMap(CommonUtil.nullOrEmpty(lineageDetails.getPipeline()) ? null : lineageDetails.getPipeline()));
-      relationshipDetails.put("description", CommonUtil.nullOrEmpty(lineageDetails.getDescription()) ? null : lineageDetails.getDescription());
+          JsonUtils.getMap(
+              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
+                  ? null
+                  : lineageDetails.getPipeline()));
+      relationshipDetails.put(
+          "description",
+          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
+              ? null
+              : lineageDetails.getDescription());
       if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
         List<Map<String, Object>> colummnLineageList = new ArrayList<>();
         for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
@@ -140,9 +158,13 @@ public class LineageRepository {
         relationshipDetails.put("columns", colummnLineageList);
       }
       relationshipDetails.put(
-          "sqlQuery", CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery()) ? null : lineageDetails.getSqlQuery());
+          "sqlQuery",
+          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
+              ? null
+              : lineageDetails.getSqlQuery());
       relationshipDetails.put(
-          "source", CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
+          "source",
+          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
     }
   }
 
@@ -201,7 +223,12 @@ public class LineageRepository {
     // Finally, delete lineage relationship
     boolean result =
         dao.relationshipDAO()
-                .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
+                .delete(
+                    from.getId(),
+                    from.getType(),
+                    to.getId(),
+                    to.getType(),
+                    Relationship.UPSTREAM.ordinal())
             > 0;
     deleteLineageFromSearch(from, to);
     return result;
@@ -211,9 +238,12 @@ public class LineageRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>(
-            "lineage.doc_id.keyword", fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+            "lineage.doc_id.keyword",
+            fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
         new ImmutablePair<>(
-            String.format(REMOVE_LINEAGE_SCRIPT, fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+            String.format(
+                REMOVE_LINEAGE_SCRIPT,
+                fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
             null));
   }
 
