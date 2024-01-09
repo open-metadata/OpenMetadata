@@ -38,6 +38,7 @@ jest.mock('../constants/constants', () => ({
   getTableTabPath: jest.fn(),
   getTagsDetailsPath: jest.fn(),
   getTopicDetailsPath: jest.fn(),
+  getUserPath: jest.fn(),
 }));
 
 jest.mock('./CommonUtils', () => ({
@@ -49,6 +50,7 @@ jest.mock('./RouterUtils', () => ({
   getDomainDetailsPath: jest.fn(),
   getGlossaryPath: jest.fn(),
   getSettingPath: jest.fn(),
+  getTeamsWithFqnPath: jest.fn(),
 }));
 
 jest.mock('./SearchIndexUtils', () => ({

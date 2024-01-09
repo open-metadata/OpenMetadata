@@ -25,6 +25,7 @@ import {
   getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
+  getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -35,6 +36,7 @@ import {
   getDomainDetailsPath,
   getGlossaryPath,
   getSettingPath,
+  getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 import { getDecodedFqn } from './StringsUtils';
@@ -121,6 +123,14 @@ class EntityUtilClassBase {
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
         return getDataProductsDetailsPath(fullyQualifiedName);
+
+      case EntityType.USER:
+      case SearchIndex.USER:
+        return getUserPath(fullyQualifiedName);
+
+      case EntityType.TEAM:
+      case SearchIndex.TEAM:
+        return getTeamsWithFqnPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
