@@ -76,6 +76,7 @@ import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
@@ -84,7 +85,6 @@ import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -293,7 +293,10 @@ export const getBreadCrumbList = (
 ) => {
   const activeEntity = {
     name: getEntityName(entityData),
-    url: getEntityLink(entityType, entityData.fullyQualifiedName || ''),
+    url: entityUtilClassBase.getEntityLink(
+      entityType,
+      entityData.fullyQualifiedName || ''
+    ),
   };
 
   const database = {

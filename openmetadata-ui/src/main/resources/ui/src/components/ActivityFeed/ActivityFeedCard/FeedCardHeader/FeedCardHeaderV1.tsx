@@ -28,7 +28,8 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../../utils/FeedUtils';
-import { getEntityLink } from '../../../../utils/TableUtils';
+
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v1.style.less';
 
@@ -68,7 +69,7 @@ const FeedCardHeaderV1 = ({
             <Link
               className="break-all"
               data-testid="entitylink"
-              to={getEntityLink(entityType, entityFQN)}>
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>{entityDisplayName(entityType, entityFQN)}</span>
             </Link>
           </EntityPopOverCard>

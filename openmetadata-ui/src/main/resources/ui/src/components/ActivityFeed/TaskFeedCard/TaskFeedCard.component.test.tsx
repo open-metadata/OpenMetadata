@@ -58,10 +58,6 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockReturnValue('/'),
-}));
-
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
   getEntityType: jest.fn().mockReturnValue('entityType'),

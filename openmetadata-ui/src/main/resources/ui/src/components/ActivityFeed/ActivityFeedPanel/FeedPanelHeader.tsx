@@ -18,6 +18,7 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   entityDisplayName,
   getEntityField,
@@ -26,7 +27,6 @@ import {
   getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
@@ -57,7 +57,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             <Link
               className="break-all"
               data-testid="entitylink"
-              to={getEntityLink(entityType, entityFQN)}>
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>{entityDisplayName(entityType, entityFQN)}</span>
             </Link>
           )}
