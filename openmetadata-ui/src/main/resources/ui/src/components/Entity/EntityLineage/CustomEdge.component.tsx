@@ -12,13 +12,18 @@
  */
 
 import { Button } from 'antd';
-import React, { Fragment, useCallback } from 'react';
+import classNames from 'classnames';
+import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
+import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { StatusType } from '../../../generated/entity/data/pipeline';
+import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 interface LineageEdgeIconProps {
@@ -59,8 +64,29 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { onEdgeClick, addPipelineClick, ...rest } = data;
+  const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
   const offset = 4;
+
+  const {
+    tracedNodes,
+    tracedColumns,
+    isEditMode,
+    pipelineStatus,
+    onAddPipelineClick,
+    onColumnEdgeRemove,
+    fetchPipelineStatus,
+  } = useLineageProvider();
+
+  const isColumnHighlighted = useMemo(() => {
+    if (!isColumnLineage) {
+      return false;
+    }
+
+    return (
+      tracedColumns.includes(sourceHandle) &&
+      tracedColumns.includes(targetHandle)
+    );
+  }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
   const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
@@ -87,6 +113,23 @@ export const CustomEdge = ({
     targetPosition,
   });
 
+  const updatedStyle = useMemo(() => {
+    const isNodeTraced =
+      tracedNodes.includes(edge.fromEntity.id) &&
+      tracedNodes.includes(edge.toEntity.id);
+
+    let isStrokeNeeded = isNodeTraced;
+
+    if (isColumnLineage) {
+      isStrokeNeeded = isColumnHighlighted;
+    }
+
+    return {
+      ...style,
+      ...{ stroke: isStrokeNeeded ? INFO_COLOR : undefined },
+    };
+  }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
+
   const isPipelineEdgeAllowed = (
     sourceType: EntityType,
     targetType: EntityType
@@ -98,10 +141,21 @@ export const CustomEdge = ({
   };
 
   const isColumnLineageAllowed =
-    !data.isColumnLineage &&
-    isPipelineEdgeAllowed(data.sourceType, data.targetType);
-  const hasLabel = data.label;
-  const isSelectedEditMode = selected && data.isEditMode;
+    !isColumnLineage &&
+    isPipelineEdgeAllowed(data.edge.fromEntity.type, data.edge.toEntity.type);
+
+  const hasLabel = useMemo(() => {
+    if (isColumnLineage) {
+      return false;
+    }
+    if (data.edge?.pipeline) {
+      return getEntityName(data.edge?.pipeline);
+    }
+
+    return false;
+  }, [isColumnLineage, data]);
+
+  const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
 
   const getInvisiblePath = (path: string) => {
@@ -118,17 +172,17 @@ export const CustomEdge = ({
   };
 
   const getLineageEdgeIcon = useCallback(
-    (icon: React.ReactNode, dataTestId: string) => {
+    (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
           <Button
-            className="flex-center custom-edge-pipeline-button"
+            className={classNames(
+              'flex-center custom-edge-pipeline-button',
+              pipelineClass
+            )}
             data-testid={dataTestId}
             icon={icon}
-            onClick={(event) =>
-              data.isEditMode &&
-              data.addPipelineClick?.(event, rest as CustomEdgeData)
-            }
+            onClick={() => isEditMode && onAddPipelineClick()}
           />
         </LineageEdgeIcon>
       );
@@ -171,15 +225,46 @@ export const CustomEdge = ({
     [offset, edgeCenterX, edgeCenterY, rest, data]
   );
 
+  const dataTestId = useMemo(() => {
+    if (!isColumnLineage) {
+      return `edge-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`;
+    } else {
+      return `column-edge-${sourceHandle}-${targetHandle}`;
+    }
+  }, [edge, isColumnLineage, sourceHandle, targetHandle]);
+
+  useEffect(() => {
+    if (data.edge.pipeline) {
+      fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
+    }
+  }, [data.edge.pipeline]);
+
+  const currentPipelineStatus = useMemo(() => {
+    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+    if (pipelineData) {
+      switch (pipelineData.executionStatus) {
+        case StatusType.Failed:
+          return 'red';
+        case StatusType.Skipped:
+        case StatusType.Pending:
+          return 'amber';
+        case StatusType.Successful:
+          return 'green';
+      }
+    } else {
+      return '';
+    }
+  }, [data, pipelineStatus]);
+
   return (
     <Fragment>
       <path
         className="react-flow__edge-path"
         d={edgePath}
-        data-testid="react-flow-edge-path"
+        data-testid={dataTestId}
         id={id}
         markerEnd={markerEnd}
-        style={style}
+        style={updatedStyle}
       />
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}
@@ -187,16 +272,17 @@ export const CustomEdge = ({
       {isColumnLineageAllowed &&
         hasLabel &&
         getLineageEdgeIcon(
-          <PipelineIcon className="text-primary" />,
-          'pipeline-label'
+          <PipelineIcon />,
+          'pipeline-label',
+          currentPipelineStatus
         )}
       {isColumnLineageAllowed &&
         isSelectedEditMode &&
-        getEditLineageIcon('add-pipeline', true, addPipelineClick)}
+        getEditLineageIcon('add-pipeline', true, onAddPipelineClick)}
       {!isColumnLineageAllowed &&
         isSelectedEditMode &&
         isSelected &&
-        getEditLineageIcon('delete-button', false, onEdgeClick)}
+        getEditLineageIcon('delete-button', false, onColumnEdgeRemove)}
       {!isColumnLineageAllowed &&
         data.columnFunctionValue &&
         data.isExpanded &&

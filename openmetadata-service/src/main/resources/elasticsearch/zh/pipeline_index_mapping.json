@@ -117,6 +117,9 @@
       "sourceUrl": {
         "type": "text"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "domain" : {
         "properties": {
           "id": {

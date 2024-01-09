@@ -94,6 +94,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "domain" : {
         "properties": {
           "id": {

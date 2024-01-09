@@ -30,7 +30,6 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -52,11 +51,7 @@ import {
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { Aggregations } from '../../../interface/search.interface';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-  QueryFilterInterface,
-} from '../../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addAssetsToDataProduct,
   getDataProductByName,
@@ -71,6 +66,7 @@ import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import {
   getAggregations,
+  getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
 } from '../../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
@@ -422,30 +418,7 @@ export const AssetSelectionModal = ({
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must: QueryFieldInterface[] = [];
-    data.forEach((filter) => {
-      if (!isEmpty(filter.value)) {
-        const should: QueryFieldValueInterface[] = [];
-        if (filter.value) {
-          filter.value.forEach((filterValue) => {
-            const term: Record<string, string> = {};
-            term[filter.key] = filterValue.key;
-            should.push({ term });
-          });
-        }
-
-        must.push({
-          bool: { should },
-        });
-      }
-    });
-
-    const quickFilterQuery = isEmpty(must)
-      ? undefined
-      : {
-          query: { bool: { must } },
-        };
-
+    const quickFilterQuery = getQuickFilterQuery(data);
     setQuickFilterQuery(quickFilterQuery);
   };
 

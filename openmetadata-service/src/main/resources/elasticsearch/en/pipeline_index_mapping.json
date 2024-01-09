@@ -136,6 +136,9 @@
       "href": {
         "type": "text"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "sourceUrl": {
         "type": "text"
       },

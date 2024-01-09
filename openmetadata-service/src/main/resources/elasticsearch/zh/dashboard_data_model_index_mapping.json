@@ -130,6 +130,9 @@
       "entityType": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [

@@ -111,6 +111,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -418,6 +419,95 @@ public class ElasticSearchClient implements SearchClient {
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    List<Map<String, Object>> edges = new ArrayList<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      responseMap.put("entity", hit.getSourceAsMap());
+    }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  private void getLineage(
+      String fqn,
+      int depth,
+      List<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction,
+      boolean deleted)
+      throws IOException {
+    if (depth <= 0) {
+      return;
+    }
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
+    if (CommonUtil.nullOrEmpty(deleted)) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(QueryBuilders.termQuery(direction, fqn))
+              .must(QueryBuilders.termQuery("deleted", deleted)));
+    }
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> lineage =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+      nodes.add(hit.getSourceAsMap());
+      for (Map<String, Object> lin : lineage) {
+        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+        if (direction.equalsIgnoreCase("lineage.fromEntity.fqn.keyword")) {
+          if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
+            edges.add(lin);
+            getLineage(
+                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        } else {
+          if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
+            edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        }
+      }
+    }
   }
 
   @Override
@@ -1132,6 +1222,26 @@ public class ElasticSearchClient implements SearchClient {
               Script.DEFAULT_SCRIPT_LANG,
               updates.getKey(),
               JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  /**
+   * @param indexName
+   * @param fieldAndValue
+   */
+  @Override
+  public void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineageData) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+              .operator(Operator.AND));
+      Map<String, Object> params = Collections.singletonMap("lineageData", lineageData);
+      Script script =
+          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
     }

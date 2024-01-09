@@ -98,12 +98,9 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+});
 
 jest.mock('../../components/SampleDataTable/SampleDataTable.component', () => {
   return jest.fn().mockImplementation(() => <p>testSampleDataTable</p>);

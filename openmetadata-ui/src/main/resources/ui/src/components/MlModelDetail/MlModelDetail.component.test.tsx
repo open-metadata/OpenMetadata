@@ -206,12 +206,9 @@ jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
+});
 
 jest.mock('./MlModelFeaturesList', () => {
   return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);

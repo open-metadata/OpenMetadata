@@ -391,6 +391,9 @@
       "lifeCycle": {
         "type": "object"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataProducts": {
         "properties": {
           "id": {

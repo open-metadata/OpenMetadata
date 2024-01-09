@@ -13,7 +13,8 @@
 
 @import (reference) url('../../../styles/variables.less');
 
-@lineage-sidebar-width: 100px;
+@lineage-sidebar-width: 110px;
+@lineage-breadcrumb-panel: 50px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -35,6 +36,12 @@
   border: 1px solid @primary-color;
   .react-flow__handle {
     border-color: @primary-color;
+  }
+  .lineage-node-handle {
+    border: 1px solid @primary-color;
+    svg {
+      color: @primary-color;
+    }
   }
 }
 .custom-node-header-active {
@@ -67,10 +74,6 @@
   position: relative;
 }
 
-.custom-edge-pipeline-button.ant-btn {
-  background-color: @body-bg-color;
-}
-
 .custom-node {
   .custom-node-header-active {
     .react-flow__handle {
@@ -83,7 +86,7 @@
 }
 
 .custom-control-search-box {
-  width: 400px;
+  width: 220px;
   height: 32px;
 }
 .ant-select.custom-control-search-box-edit-mode {
@@ -151,7 +154,7 @@
 }
 
 .entity-lineage.sidebar {
-  height: 110%;
+  height: 100%;
   background: @white;
   position: absolute;
   top: 0;
@@ -177,7 +180,7 @@
   left: @sidebar-width;
   position: fixed !important;
   width: calc(100vw - @sidebar-width);
-  height: calc(100vh - @navbar-height);
+  height: calc(100vh - (@navbar-height + @lineage-breadcrumb-panel));
 }
 
 .lineage-node-remove-btn {
@@ -185,4 +188,36 @@
   top: -20px;
   right: -20px;
   cursor: pointer;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__controls-button {
+  width: 20px;
+  height: 20px;
+}
+
+.custom-edge-pipeline-button {
+  background-color: @body-bg-color;
+  color: @primary-color;
+  &.green {
+    background: @green-2;
+    border: 1px solid @green-5;
+    color: @green-6;
+  }
+  &.amber {
+    background: @yellow-1;
+    border: 1px solid @yellow-4;
+    color: @yellow-4;
+  }
+  &.red {
+    background: @red-2;
+    border: 1px solid @red-5;
+    color: @red-5;
+  }
+  svg {
+    color: inherit;
+  }
 }

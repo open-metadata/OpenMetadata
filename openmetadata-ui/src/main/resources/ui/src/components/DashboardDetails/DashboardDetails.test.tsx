@@ -124,12 +124,9 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+});
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
