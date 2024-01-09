@@ -52,7 +52,7 @@
         "source": {
           "description": "Lineage type describes how a lineage was created.",
           "type": "string",
-          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage"],
+          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage"],
           "default": "Manual"
         }
       }
