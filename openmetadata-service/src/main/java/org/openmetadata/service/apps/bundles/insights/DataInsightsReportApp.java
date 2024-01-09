@@ -46,7 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.exception.DataInsightJobException;
+import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -93,7 +93,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
-      throw new DataInsightJobException(e);
+      throw new EventSubscriptionJobException(e);
     }
   }
 
