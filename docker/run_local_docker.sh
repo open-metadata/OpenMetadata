@@ -163,3 +163,4 @@ curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/Search
 sleep 60 # Sleep for 60 seconds to make sure the elasticsearch reindexing from UI finishes
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
+

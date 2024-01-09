@@ -58,7 +58,7 @@
             },
             {
               "$ref": "./connections/metadata/alationConnection.json"
-            },
+            }
           ]
         }
       },

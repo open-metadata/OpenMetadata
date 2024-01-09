@@ -1,6 +1,6 @@
 ---
 title: sasConnection
-slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/sasconnection
+slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/sasconnection
 ---
 
 # SASConnection
