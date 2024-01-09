@@ -59,11 +59,24 @@ airflowConfiguration:
 **After 0.12.1**
 
 ```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
+pipelineServiceClientConfiguration:
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
+    # If we need to use SSL to reach Airflow
+    truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
+    truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
 ```
 
 **Note:** Follow [this](/how-to-guides/quick-start-guide-for-admins/bots) guide to configure the `ingestion-bot` credentials for
