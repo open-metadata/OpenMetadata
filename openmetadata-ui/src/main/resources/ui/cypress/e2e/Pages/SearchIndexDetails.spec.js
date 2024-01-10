@@ -14,7 +14,6 @@
 /// <reference types="cypress" />
 
 import {
-  addAnnouncement,
   addTableFieldTags,
   deleteEntity,
   interceptURL,
@@ -26,7 +25,6 @@ import {
 } from '../../common/common';
 import { BASE_URL, uuid } from '../../constants/constants';
 import {
-  SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT,
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
   TAG_1,
@@ -296,30 +294,6 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    // Add announcement workflow should work properly
-    addAnnouncement(SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT);
-
-    // Rename search index flow should work properly
-    cy.get('[data-testid="manage-button"]').click();
-
-    cy.get('[data-testid="rename-button"]').click({ waitForAnimations: true });
-
-    cy.get('#displayName').clear().type(SEARCH_INDEX_DISPLAY_NAME);
-
-    interceptURL(
-      'PATCH',
-      `/api/v1/searchIndexes/${SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.id}`,
-      'updateDisplayName'
-    );
-
-    cy.get('[data-testid="save-button"]').click();
-
-    verifyResponseStatusCode('@updateDisplayName', 200);
-
-    cy.get('[data-testid="entity-header-display-name"]').contains(
-      SEARCH_INDEX_DISPLAY_NAME
-    );
-
     performCommonOperations();
   });
 

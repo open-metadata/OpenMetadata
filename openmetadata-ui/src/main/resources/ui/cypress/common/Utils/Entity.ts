@@ -268,15 +268,12 @@ export const checkLineageTabActions = ({ deleted }) => {
 
   cy.get('[data-testid="lineage"]').click();
 
-  !deleted && verifyResponseStatusCode('@getLineageData', 200);
+  verifyResponseStatusCode('@getLineageData', 200);
 
   if (!deleted) {
     cy.get('[data-testid="edit-lineage"]').should('be.visible');
   } else {
-    cy.get('[data-testid="no-data-placeholder"]').should(
-      'contain',
-      'Lineage data is not available for deleted entities.'
-    );
+    cy.get('[data-testid="edit-lineage"]').should(`not.exist`);
   }
 };
 
