@@ -239,10 +239,10 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
-  name: 'table_column_name_to_exist_in_id',
+  name: `table_column_name_to_exist_in_id_${uuid()}`,
   label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
-  field: 'id',
+  field: 'testCase',
   description: 'New table test case for TableColumnNameToExist',
 };
 

@@ -64,15 +64,11 @@ const TasksDAGViewProps = {
 
 jest.mock('../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
-  getDeletedLineagePlaceholder: jest
-    .fn()
-    .mockReturnValue(<p>Task data is not available for deleted entities.</p>),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
   getLayoutedElements: jest.fn().mockImplementation(() => ({
     node: mockNodes,
     edge: mockEdges,
   })),
-  getLineageData: jest.fn().mockReturnValue([]),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),

@@ -454,6 +454,9 @@
           }
         }
       },
+      "lineage": {
+        "type" : "object"
+      },
       "lifeCycle": {
         "type": "keyword"
       },

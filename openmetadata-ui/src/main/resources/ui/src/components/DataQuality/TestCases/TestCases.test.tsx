@@ -124,7 +124,7 @@ describe('TestCases component', () => {
     render(<TestCases {...mockProps} />);
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
-      fields: 'testDefinition,testCaseResult,testSuite',
+      fields: 'testDefinition,testCaseResult,testSuite,incidentId',
       limit: 15,
       orderByLastExecutionDate: true,
     });
