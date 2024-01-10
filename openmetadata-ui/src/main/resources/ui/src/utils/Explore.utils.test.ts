@@ -10,11 +10,70 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getSearchIndexFromEntityType } from './Explore.utils';
+import {
+  getQuickFilterQuery,
+  getSearchIndexFromEntityType,
+} from './Explore.utils';
 
 describe('Explore Utils', () => {
+  it('should return undefined if data is empty', () => {
+    const data: ExploreQuickFilterField[] = [];
+    const result = getQuickFilterQuery(data);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should generate quick filter query correctly', () => {
+    const data = [
+      {
+        label: 'Domain',
+        key: 'domain.displayName.keyword',
+        value: [],
+      },
+      {
+        label: 'Owner',
+        key: 'owner.displayName.keyword',
+        value: [],
+      },
+      {
+        label: 'Tag',
+        key: 'tags.tagFQN',
+        value: [
+          {
+            key: 'personaldata.personal',
+            label: 'personaldata.personal',
+            count: 1,
+          },
+        ],
+      },
+    ];
+    const result = getQuickFilterQuery(data);
+    const expectedQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      'tags.tagFQN': 'personaldata.personal',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    expect(result).toEqual(expectedQuery);
+  });
+
   it('getSearchIndexFromEntityType should return the correct search index for each entity type', () => {
     expect(getSearchIndexFromEntityType(EntityType.ALL)).toEqual(
       SearchIndex.ALL

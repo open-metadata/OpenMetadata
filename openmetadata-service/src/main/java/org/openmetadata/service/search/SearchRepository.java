@@ -637,6 +637,12 @@ public class SearchRepository {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
 
+  public Response searchLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index);

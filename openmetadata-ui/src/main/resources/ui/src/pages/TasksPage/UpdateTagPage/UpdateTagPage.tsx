@@ -121,7 +121,11 @@ const UpdateTag = () => {
   };
 
   const onSearch = (query: string) => {
-    fetchOptions(query, setOptions);
+    const data = {
+      query,
+      setOptions,
+    };
+    fetchOptions(data);
   };
 
   const getTaskAbout = () => {

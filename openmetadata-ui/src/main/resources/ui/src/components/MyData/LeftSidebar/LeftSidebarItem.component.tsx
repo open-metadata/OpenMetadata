@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Badge, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 
 interface LeftSidebarItemProps {
   data: {
@@ -22,12 +24,14 @@ interface LeftSidebarItemProps {
     dataTestId: string;
     redirect_url: string;
     icon: SvgComponent;
+    isBeta?: boolean;
   };
 }
 
 const LeftSidebarItem = ({
-  data: { key, label, icon, redirect_url, dataTestId },
+  data: { key, label, icon, redirect_url, dataTestId, isBeta },
 }: LeftSidebarItemProps) => {
+  const { t } = useTranslation();
   const Icon = icon;
 
   return (
@@ -48,6 +52,15 @@ const LeftSidebarItem = ({
         to={{
           pathname: redirect_url,
         }}>
+        {isBeta && (
+          <Badge
+            className="service-beta-tag m-b-xs"
+            color={PRIMERY_COLOR}
+            count={t('label.beta')}
+            offset={[10, 0]}
+            size="small"
+          />
+        )}
         <Icon width={30} />
       </NavLink>
     </Tooltip>

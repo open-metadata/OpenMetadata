@@ -128,7 +128,7 @@ const TestSuiteDetailsPage = () => {
     setIsTestCaseLoading(true);
     try {
       const response = await getListTestCase({
-        fields: 'testCaseResult,testDefinition,testSuite',
+        fields: 'testCaseResult,testDefinition,testSuite,incidentId',
         testSuiteId,
         orderByLastExecutionDate: true,
         ...param,
