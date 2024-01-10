@@ -41,7 +41,8 @@ export const createCustomPropertyForEntity = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
+
   verifyResponseStatusCode('@settingsPage', 200);
 
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
@@ -85,7 +86,7 @@ export const deleteCustomPropertyForEntity = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
   verifyResponseStatusCode('@settingsPage', 200);
 
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');

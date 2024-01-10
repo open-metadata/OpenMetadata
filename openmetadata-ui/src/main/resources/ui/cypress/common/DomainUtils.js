@@ -145,9 +145,7 @@ export const updateAssets = (domainObj) => {
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
 
-  cy.get('[data-testid="app-bar-item-domain"]')
-    .should('be.visible')
-    .click({ force: true });
+  cy.sidebarClick('app-bar-item-domain');
 
   goToAssetsTab(domainObj);
 
@@ -181,9 +179,7 @@ export const removeAssets = (domainObj) => {
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
 
-  cy.get('[data-testid="app-bar-item-domain"]')
-    .should('be.visible')
-    .click({ force: true });
+  cy.sidebarClick('app-bar-item-domain');
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
