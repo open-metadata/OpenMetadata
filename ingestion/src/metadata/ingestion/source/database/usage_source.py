@@ -107,12 +107,13 @@ class UsageSource(QueryParserSource, ABC):
                             row = dict(row)
                             try:
                                 query_type = row.get("query_type")
+                                query = self.format_query(row["query_text"])
                                 queries.append(
                                     TableQuery(
-                                        query=self.format_query(row["query_text"]),
+                                        query=query,
                                         query_type=query_type,
                                         exclude_usage=self.check_life_cycle_query(
-                                            query_type=query_type
+                                            query_type=query_type, query_text=query
                                         ),
                                         userName=row["user_name"],
                                         startTime=str(row["start_time"]),

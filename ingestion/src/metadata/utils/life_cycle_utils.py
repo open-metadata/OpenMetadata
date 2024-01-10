@@ -27,12 +27,12 @@ QUERY_TYPES_DICT = {
 }
 
 
-select_pattern = re.compile(r"^\s*(SELECT|SHOW|DESCRIBE)", re.IGNORECASE)
-create_pattern = re.compile(r"^\s*CREATE", re.IGNORECASE)
+select_pattern = re.compile(r".*\s*(SELECT|SHOW|DESCRIBE)", re.IGNORECASE)
+create_pattern = re.compile(r".*\s*CREATE", re.IGNORECASE)
 update_pattern = re.compile(
-    r"^\s*(UPDATE|INSERT|DELETE|MERGE|TRUNCATE_TABLE|ALTER)", re.IGNORECASE
+    r".*\s*(UPDATE|INSERT|DELETE|MERGE|TRUNCATE_TABLE|ALTER)", re.IGNORECASE
 )
-drop_pattern = re.compile(r"^\s*DROP", re.IGNORECASE)
+drop_pattern = re.compile(r".*\s*DROP", re.IGNORECASE)
 
 logger = utils_logger()
 
