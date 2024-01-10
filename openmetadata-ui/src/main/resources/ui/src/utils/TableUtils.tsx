@@ -98,7 +98,7 @@ import {
 } from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getDecodedFqn, ordinalize } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
@@ -215,7 +215,7 @@ export const getEntityLink = (
   fullyQualifiedName: string
 ) => {
   // encode the FQN for entities that can have "/" in their names
-  fullyQualifiedName = encodeURIComponent(fullyQualifiedName);
+  fullyQualifiedName = getEncodedFqn(fullyQualifiedName);
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
