@@ -12,6 +12,7 @@ slug: /connectors/dashboard/qliksense
 | Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Datamodels | {% icon iconName="check" /%} |
+| Projects   | {% icon iconName="cross" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the Qlik Sense connector.
