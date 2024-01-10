@@ -91,7 +91,11 @@ const RequestTag = () => {
   const back = () => history.goBack();
 
   const onSearch = (query: string) => {
-    fetchOptions(query, setOptions);
+    const data = {
+      query,
+      setOptions,
+    };
+    fetchOptions(data);
   };
 
   const getTaskAbout = () => {

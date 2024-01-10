@@ -143,7 +143,7 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../Entity/EntityLineage/EntityLineage.component', () => {
+jest.mock('../Lineage/Lineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
