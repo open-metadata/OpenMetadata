@@ -201,8 +201,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     language=Language.SQL,
                     code=stored_procedure.definition,
                 ),
-                owner=self.metadata.get_reference_by_email(
-                    email=stored_procedure.owner.lower()
+                owner=self.metadata.get_reference_by_name(
+                    name=stored_procedure.owner.lower()
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
