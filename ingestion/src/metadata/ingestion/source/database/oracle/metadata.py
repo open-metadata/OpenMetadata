@@ -33,12 +33,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -47,7 +44,10 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.oracle.models import OracleStoredProcedure
+from metadata.ingestion.source.database.oracle.models import (
+    FetchProcedureList,
+    OracleStoredProcedure,
+)
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PROCEDURE_QUERIES,
     ORACLE_GET_STORED_PROCEDURES,
@@ -159,7 +159,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
             logger.warning(f"Failed to fetch view definition for {table_name}: {exc}")
         return None
 
-    def process_result(self, data):
+    def process_result(self, data: FetchProcedureList):
         """Process data as per our stored procedure format"""
         result_dict = {}
 
@@ -171,13 +171,13 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
             result_dict[key]["lines"].append(line)
             result_dict[key]["text"] += text
 
-        # Print the concatenated text for each procedure name, ordered by line
+        # Return the concatenated text for each procedure name, ordered by line
         return result_dict
 
     def get_stored_procedures(self) -> Iterable[OracleStoredProcedure]:
         """List Oracle Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
+            results: FetchProcedureList = self.engine.execute(
                 ORACLE_GET_STORED_PROCEDURES.format(
                     schema=self.context.database_schema.upper()
                 )
@@ -188,31 +188,6 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     name=row[0][1], definition=row[1]["text"], owner=row[0][0]
                 )
                 yield stored_procedure
-
-    def get_owner_entity_reference(self, owner_name: str) -> Optional[EntityReference]:
-        """
-        Returns owner's entity reference
-        """
-        owner = None
-        user_owner_fqn = fqn.build(
-            self.metadata, entity_type=User, user_name=owner_name
-        )
-        if user_owner_fqn:
-            owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
-        else:
-            team_owner_fqn = fqn.build(
-                self.metadata, entity_type=Team, team_name=owner_name
-            )
-            if team_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=Team, fqn=team_owner_fqn
-                )
-            else:
-                logger.warning(
-                    "Unable to ingest owner since no user or"
-                    f" team was found with name {owner_name}"
-                )
-        return owner
 
     def yield_stored_procedure(
         self, stored_procedure: OracleStoredProcedure
@@ -226,8 +201,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     language=Language.SQL,
                     code=stored_procedure.definition,
                 ),
-                owner=self.get_owner_entity_reference(
-                    owner_name=stored_procedure.owner.lower()
+                owner=self.metadata.get_reference_by_email(
+                    email=stored_procedure.owner.lower()
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
