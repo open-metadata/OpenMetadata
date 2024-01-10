@@ -12,19 +12,19 @@
  */
 
 import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../../src/utils/date-time/DateTimeUtils';
-import {
-  addUser,
-  deleteSoftDeletedUser,
   descriptionBox,
   interceptURL,
-  restoreUser,
-  softDeleteUser,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
+import { addOwner, removeOwner } from '../Utils/Owner';
+import {
+  addUser,
+  deleteSoftDeletedUser,
+  restoreUser,
+  softDeleteUser,
+} from '../Utils/Users';
 
 const editedUserName = `Edited${uuid()}`;
 const teamName = `Applications`;
@@ -32,7 +32,7 @@ const updatedDescription = 'This is updated description';
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
 const stewardRole = `Data Steward`;
-const consumerRole = `Consumer`;
+const consumerRole = `Data Consumer`;
 const stewardRoleClass = `DataSteward`;
 
 const stewardUserName = `StewardUsercttest${uuid()}`;
@@ -65,16 +65,34 @@ class UsersTestClass {
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   }
+
+  visitConsumerUser() {
+    cy.get('#email').should('be.visible').type(consumerEmail);
+    cy.get('#password').should('be.visible').type(consumerPassword);
+    interceptURL('POST', '/api/v1/users/login', 'login');
+    cy.get('[data-testid="login"]').contains('Login').click();
+    verifyResponseStatusCode('@login', 200);
+  }
+
+  visitStewardUser() {
+    cy.get('#email').should('be.visible').type(stewardEmail);
+    cy.get('#password').should('be.visible').type(stewardPassword);
+    interceptURL('POST', '/api/v1/users/login', 'login');
+    cy.get('[data-testid="login"]').contains('Login').click();
+    verifyResponseStatusCode('@login', 200);
+  }
   softDeleteUser() {
     softDeleteUser(userName);
   }
 
   restoreSoftDeletedUser() {
-    restoreUser(userName);
+    restoreUser(userName, editedUserName);
   }
 
   permanentlyDeleteSoftDeletedUser() {
     deleteSoftDeletedUser(userName);
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
   }
 
   editDisplayName() {
@@ -125,16 +143,14 @@ class UsersTestClass {
   editDescription() {
     cy.get('[data-testid="edit-description"]').click();
     cy.get(descriptionBox).clear().type(updatedDescription);
-
     interceptURL('PATCH', '/api/v1/users/*', 'patchDescription');
     cy.get('[data-testid="save"]').should('be.visible').click();
-
     verifyResponseStatusCode('@patchDescription', 200);
-
     cy.get(
       ':nth-child(2) > :nth-child(1) > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
     ).should('contain', updatedDescription);
   }
+
   visitProfileSection() {
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     verifyResponseStatusCode('@getUsers', 200);
@@ -143,47 +159,6 @@ class UsersTestClass {
       force: true,
     });
     cy.get('[data-testid="access-token"] > .ant-space-item').click();
-  }
-  generateToken() {
-    cy.get('[data-testid="no-token"]').should('be.visible');
-    cy.get('[data-testid="auth-mechanism"] > span').click();
-    cy.get('[data-testid="token-expiry"]').should('be.visible').click();
-    cy.contains('1 hr').should('exist').should('be.visible').click();
-    cy.get('[data-testid="token-expiry"]').should('be.visible');
-    cy.get('[data-testid="save-edit"]').should('be.visible').click();
-  }
-  revokeToken() {
-    cy.get('[data-testid="revoke-button"]').should('be.visible').click();
-    cy.get('[data-testid="body-text"]').should(
-      'contain',
-      'Are you sure you want to revoke access for Personal Access Token?'
-    );
-    cy.get('[data-testid="save-button"]').click();
-    cy.get('[data-testid="revoke-button"]').should('not.exist');
-    Cypress.session.clearAllSavedSessions();
-  }
-  updateExpiration(expiry) {
-    cy.get('[data-testid="dropdown-profile"]').click();
-    cy.get('[data-testid="user-name"] > .ant-typography').click();
-    cy.get('[data-testid="access-token"] > .ant-space-item').click();
-    cy.get('[data-testid="no-token"]').should('be.visible');
-    cy.get('[data-testid="auth-mechanism"] > span').click();
-
-    cy.get('[data-testid="token-expiry"]').click();
-    cy.contains(`${expiry} days`).click();
-    const expiryDate = customFormatDateTime(
-      getEpochMillisForFutureDays(expiry),
-      `ccc d'th' MMMM, yyyy`
-    );
-    cy.get('[data-testid="save-edit"]').click();
-    cy.get('[data-testid="center-panel"]')
-      .find('[data-testid="revoke-button"]')
-      .should('be.visible');
-    cy.get('[data-testid="token-expiry"]')
-      .invoke('text')
-      .should('contain', `Expires on ${expiryDate}`);
-    cy.get('[data-testid="token-expiry"]').click();
-    this.revokeToken();
   }
 
   addDataStewardUser() {
@@ -218,20 +193,15 @@ class UsersTestClass {
     interceptURL('POST', '/api/v1/users/login', 'login');
     cy.get('[data-testid="login"]').contains('Login').click();
     verifyResponseStatusCode('@login', 200);
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    cy.get(
-      '[data-testid="sample_data-dim_address"] > .w-full > [data-testid="entity-link"] > [data-testid="entity-header-display-name"]'
-    ).should('have.text', 'dim_address');
-    cy.get(
-      '[data-testid="sample_data-dim_address"] > .w-full > [data-testid="entity-link"] > [data-testid="entity-header-display-name"]'
-    ).click();
-    cy.get(
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_address.address_id"] > .ant-table-cell-fix-left > .d-inline-flex > .inline > [data-testid="column-name"]'
-    ).click();
-    cy.get('[data-testid="edit-tier"]').should('be.visible');
-    cy.logout();
-    Cypress.session.clearAllSavedSessions();
+    this.visitProfileSection();
+    cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+    cy.get('[data-testid="DataSteward"] > .ant-typography').should(
+      'have.text',
+      stewardRole
+    );
   }
+
   addDataConsumerUser() {
     cy.get('[data-testid="add-user"]').click();
     cy.get('[data-testid="email"]')
@@ -264,19 +234,192 @@ class UsersTestClass {
     interceptURL('POST', '/api/v1/users/login', 'login');
     cy.get('[data-testid="login"]').contains('Login').click();
     verifyResponseStatusCode('@login', 200);
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
+    verifyResponseStatusCode('@getUsers', 200);
+    cy.get('[data-testid="dropdown-profile"]').click({ force: true });
+    cy.get('[data-testid="user-name"] > .ant-typography').click({
+      force: true,
+    });
+    cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+    cy.get(
+      '.m-b-md > [data-testid="chip-container"] > [data-testid="DataConsumer"] > .ant-typography'
+    ).should('have.text', consumerRole);
+  }
+  checkConsumerButtonVisibility() {
     cy.get('[data-testid="app-bar-item-explore"]').click();
+    interceptURL(
+      'GET',
+      `/api/v1/tables/name/*?fields=testSuite&include=all`,
+      'getTables'
+    );
+    verifyResponseStatusCode('@getTables', 200);
+    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
     cy.get(
-      '[data-testid="sample_data-dim_address"] > .w-full > [data-testid="entity-link"] > [data-testid="entity-header-display-name"]'
-    ).should('have.text', 'dim_address');
-    cy.get(
-      '[data-testid="sample_data-dim_address"] > .w-full > [data-testid="entity-link"] > [data-testid="entity-header-display-name"]'
+      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
     ).click();
+    // check Add domain permission
+    cy.get('[data-testid="add-domain"]').should('not.be.exist');
+    cy.get('[data-testid="edit-displayName-button"]').should('not.be.exist');
+    // check edit owner permission
+    cy.get('[data-testid="edit-owner"]').should('not.be.exist');
+    // check edit description permission
+    cy.get('[data-testid="edit-description"]').should('be.exist');
+    // check edit tier permission
+    cy.get('[data-testid="edit-tier"]').should('be.exist');
+    // check add tags button
     cy.get(
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_address.address_id"] > .ant-table-cell-fix-left > .d-inline-flex > .inline > [data-testid="column-name"]'
+      ':nth-child(2) > [data-testid="tags-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('be.exist');
+    // check add glossary term button
+    cy.get(
+      ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('be.exist');
+    // check edit tier permission
+    cy.get('[data-testid="manage-button"]').should('not.be.exist');
+    cy.get('[data-testid="lineage"] > .ant-space-item').click();
+    cy.get('[data-testid="edit-lineage"]').should('be.disabled');
+  }
+
+  checkStewardButtonVisibility() {
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    interceptURL(
+      'GET',
+      `/api/v1/tables/name/*?fields=testSuite&include=all`,
+      'getTables'
+    );
+    verifyResponseStatusCode('@getTables', 200);
+    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
+    cy.get(
+      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
     ).click();
-    cy.get('[data-testid="edit-tier"]').should('be.not.exist');
+    // check Add domain permission
+    cy.get('[data-testid="add-domain"]').should('not.be.exist');
+    cy.get('[data-testid="edit-displayName-button"]').should('not.be.exist');
+    // check edit owner permission
+    cy.get('[data-testid="edit-owner"]').should('not.be.exist');
+    // check edit description permission
+    cy.get('[data-testid="edit-description"]').should('be.exist');
+    // check edit tier permission
+    cy.get('[data-testid="edit-tier"]').should('be.exist');
+    // check add tags button
+    cy.get(
+      ':nth-child(2) > [data-testid="tags-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('be.exist');
+    // check add glossary term button
+    cy.get(
+      ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('be.exist');
+    // check edit tier permission
+    cy.get('[data-testid="manage-button"]').should('be.exist');
+    cy.get('[data-testid="lineage"] > .ant-space-item').click();
+    cy.get('[data-testid="edit-lineage"]').should('be.enabled');
+  }
+
+  cleanupConsumer() {
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    interceptURL(
+      'GET',
+      `/api/v1/tables/name/*?fields=testSuite&include=all`,
+      'getTables'
+    );
+    verifyResponseStatusCode('@getTables', 200);
+    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
+    cy.get(
+      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
+    ).click();
+    removeOwner('Aaron Warren');
+    this.visitUser();
+    deleteSoftDeletedUser(consumerName);
+  }
+
+  cleanupSteward() {
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    interceptURL(
+      'GET',
+      `/api/v1/tables/name/*?fields=testSuite&include=all`,
+      'getTables'
+    );
+    verifyResponseStatusCode('@getTables', 200);
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=**&from=*&size=*&index=all`,
+      'searchTables'
+    );
+    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
+    verifyResponseStatusCode('@searchTables', 200);
+    cy.get(
+      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
+    ).click();
+    removeOwner('Aaron Warren');
+    this.visitUser();
+    deleteSoftDeletedUser(stewardUserName);
+  }
+
+  checkStewardPermissions() {
+    this.visitStewardUser();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
+      cy.get('[data-testid="app-bar-item-settings"]').click();
+      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
+      cy.get('[data-testid="add-service-button"] > span').should('not.exist');
+    });
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.get('[data-testid="tables-tab"] > .ant-space').click();
+    cy.get(
+      '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
+    ).click();
+    cy.get('[data-testid="edit-tier"]').should('be.visible');
     cy.logout();
     Cypress.session.clearAllSavedSessions();
+  }
+
+  checkStewardServicesPermissions() {
+    this.visitStewardUser();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
+      cy.get('[data-testid="app-bar-item-settings"]').click();
+      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
+      cy.get('[data-testid="add-service-button"] > span').should('not.exist');
+    });
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.get('[data-testid="tables-tab"] > .ant-space').click();
+    cy.get(
+      '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
+    ).click();
+    cy.get('[data-testid="edit-tier"]').should('be.visible');
+  }
+
+  checkConsumerServicesPermissions() {
+    this.visitConsumerUser();
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
+      cy.get('[data-testid="app-bar-item-settings"]').click();
+      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
+      cy.get('[data-testid="add-service-button"] > span').should('not.exist');
+    });
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.get('[data-testid="tables-tab"] > .ant-space').click();
+    cy.get(
+      '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
+    ).click();
+    cy.get('[data-testid="edit-tier"]').should('be.visible');
+  }
+
+  assignOwner() {
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    interceptURL(
+      'GET',
+      `/api/v1/tables/name/*?fields=testSuite&include=all`,
+      'getTables'
+    );
+    verifyResponseStatusCode('@getTables', 200);
+
+    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
+    cy.get(
+      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
+    ).click();
+    addOwner('Aaron Warren');
   }
 }
 

@@ -12,6 +12,11 @@
  */
 // eslint-disable-next-line spaced-comment
 import UsersTestClass from '../../common/Entities/UserClass';
+import {
+  generateToken,
+  revokeToken,
+  updateExpiration,
+} from '../../common/Utils/Users';
 
 const entity = new UsersTestClass();
 const expirationTime = {
@@ -28,7 +33,7 @@ describe('Users Page', () => {
     entity.visitUser();
   });
 
-  it('Add new User', () => {
+  it('Create Data Consumer User', () => {
     entity.createUser();
   });
 
@@ -41,22 +46,14 @@ describe('Users Page', () => {
 
   it('Token generation and revocation', function () {
     entity.visitProfileSection();
-    entity.generateToken();
-    entity.revokeToken();
+    generateToken();
+    revokeToken();
   });
 
   it(`Update token expiration`, () => {
     Object.values(expirationTime).forEach((expiry) => {
-      entity.updateExpiration(expiry);
+      updateExpiration(expiry);
     });
-  });
-
-  it('Create Data Steward User', function () {
-    entity.addDataStewardUser();
-  });
-
-  it('Create Data Consumer User', function () {
-    entity.addDataConsumerUser();
   });
 
   it('Soft delete user', () => {
@@ -69,5 +66,57 @@ describe('Users Page', () => {
 
   it('Permanently Delete User', () => {
     entity.permanentlyDeleteSoftDeletedUser();
+  });
+});
+
+describe('Data Steward User', function () {
+  beforeEach(() => {
+    cy.login();
+    entity.visitUser();
+  });
+
+  it('Create Data Steward User', () => {
+    entity.addDataStewardUser();
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+  });
+
+  it('Check permission for Data Steward', () => {
+    entity.assignOwner();
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+    entity.checkStewardServicesPermissions();
+    entity.checkStewardButtonVisibility();
+  });
+
+  after(() => {
+    cy.login();
+    entity.cleanupSteward();
+  });
+});
+
+describe('Data Consumer User', function () {
+  beforeEach(() => {
+    cy.login();
+    entity.visitUser();
+  });
+
+  it('Create Data Consumer User', () => {
+    entity.addDataConsumerUser();
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+  });
+
+  it('Check permission for Data Consumer', () => {
+    entity.assignOwner();
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+    entity.checkConsumerServicesPermissions();
+    entity.checkConsumerButtonVisibility();
+  });
+
+  after(() => {
+    cy.login();
+    entity.cleanupConsumer();
   });
 });

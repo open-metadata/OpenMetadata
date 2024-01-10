@@ -21,6 +21,10 @@ declare global {
        * @example cy.login()
        */
       login(): void;
+      logout(): void;
+      goToHomePage(doNotNavigate: boolean): void;
+      clickOnLogo(): void;
+      clickOutside(): void;
     }
   }
 }
