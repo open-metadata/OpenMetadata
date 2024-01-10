@@ -128,11 +128,10 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(
-          entityFQN,
-          'owner',
-          Include.All
-        );
+        promise = getDatabaseSchemaDetailsByFQN(entityFQN, {
+          fields: 'owner',
+          include: Include.All,
+        });
 
         break;
       case EntityType.GLOSSARY_TERM:

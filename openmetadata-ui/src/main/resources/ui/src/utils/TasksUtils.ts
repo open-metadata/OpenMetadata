@@ -471,7 +471,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.DATABASE_SCHEMA:
-      getDatabaseSchemaDetailsByFQN(entityFQN, DatabaseSchemaFields)
+      getDatabaseSchemaDetailsByFQN(entityFQN, { fields: DatabaseSchemaFields })
         .then((res) => {
           setEntityData(res);
         })
