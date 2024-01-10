@@ -141,6 +141,15 @@ class DatabricksClient:
             or query_text.startswith(QUERY_WITH_OM_VERSION)
         )
 
+    def list_jobs_test_connection(self) -> None:
+        data = {"limit": 1, "expand_tasks": True, "offset": 0}
+        self.client.get(
+            self.jobs_list_url,
+            data=json.dumps(data),
+            headers=self.headers,
+            timeout=API_TIMEOUT,
+        ).json()
+
     def list_jobs(self) -> List[dict]:
         """
         Method returns List all the created jobs in a Databricks Workspace
