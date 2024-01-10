@@ -186,16 +186,22 @@ export const getDescriptionDiff = (
   return diffWordsWithSpace(oldValue, newValue);
 };
 
-export const fetchOptions = (
-  query: string,
-  setOptions: (value: React.SetStateAction<Option[]>) => void,
-  currentUserId?: string
-) => {
-  getUserSuggestions(query)
+export const fetchOptions = ({
+  query,
+  setOptions,
+  onlyUsers,
+  currentUserId,
+}: {
+  query: string;
+  setOptions: (value: React.SetStateAction<Option[]>) => void;
+  onlyUsers?: boolean;
+  currentUserId?: string;
+}) => {
+  getUserSuggestions(query, onlyUsers)
     .then((res) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       const suggestOptions = hits.map((hit) => ({
-        label: hit._source.name ?? hit._source.displayName,
+        label: getEntityName(hit._source),
         value: hit._id,
         type: hit._source.entityType,
         name: hit._source.name,
