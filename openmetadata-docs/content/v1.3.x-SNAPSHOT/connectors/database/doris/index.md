@@ -1,9 +1,9 @@
 ---
-title: PinotDB
-slug: /connectors/database/pinotdb
+title: Doris
+slug: /connectors/database/doris
 ---
 
-# PinotDB
+# Doris
 
 {% multiTablesWrapper %}
 
@@ -14,23 +14,23 @@ slug: /connectors/database/pinotdb
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
 | Owners             | {% icon iconName="cross" /%} |
 | Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | ---                       |
+| DBT                | {% icon iconName="cross" /%} |
+| Supported Versions | Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2 |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
 | Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
+| Table-level  | {% icon iconName="cross" /%} |
+| Column-level | {% icon iconName="cross" /%} |
+
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the PinotDB connector.
+In this section, we provide guides and references to use the Doris connector.
 
-Configure and schedule PinotDB metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Doris metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -38,24 +38,24 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/pinotdb/yaml"} /%}
+{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+{%inlineCallout icon="description" bold="OpenMetadata 1.2.x or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
 ## Metadata Ingestion
 
-{% partial 
-  file="/v1.2/connectors/metadata-ingestion-ui.md" 
-  variables={
-    connector: "PinotDB", 
-    selectServicePath: "/images/v1.2/connectors/pinotdb/select-service.png",
-    addNewServicePath: "/images/v1.2/connectors/pinotdb/add-new-service.png",
-    serviceConnectionPath: "/images/v1.2/connectors/pinotdb/service-connection.png",
-} 
+{% partial
+file="/v1.2/connectors/metadata-ingestion-ui.md"
+variables={
+connector: "Doris",
+selectServicePath: "/images/v1.2/connectors/doris/select-service.png",
+addNewServicePath: "/images/v1.2/connectors/doris/add-new-service.png",
+serviceConnectionPath: "/images/v1.2/connectors/doris/service-connection.png",
+}
 /%}
 
 {% stepsContainer %}
@@ -63,9 +63,9 @@ To deploy OpenMetadata, check the Deployment guides.
 
 #### Connection Details
 
-- **Username**: Specify the User to connect to PinotDB. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to PinotDB.
-- **Host and Port**: Enter the fully qualified hostname and port number for your PinotDB deployment in the Host and Port field.
+- **Username**: Specify the User to connect to Doris. It should have enough privileges to read all the metadata.
+- **Password**: Password to connect to Doris.
+- **Host and Port**: Enter the fully qualified hostname and port number for your Doris deployment in the Host and Port field.
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 - **sslCA**: Provide the path to ssl ca file.
