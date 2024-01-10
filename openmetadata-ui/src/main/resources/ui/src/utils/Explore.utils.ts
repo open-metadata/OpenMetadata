@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -114,6 +114,40 @@ export const getAggregations = (data: Aggregations) => {
       value,
     ])
   ) as Aggregations;
+};
+
+/**
+ * Generates a ElasticSearch Query filter based on the given data.
+ *
+ * @param {ExploreQuickFilterField[]} data - An array of ExploreQuickFilterField objects representing the filter data.
+ * @return {object} - The generated quick filter query.
+ */
+export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
+  const must: QueryFieldInterface[] = [];
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should: QueryFieldValueInterface[] = [];
+      if (filter.value) {
+        filter.value.forEach((filterValue) => {
+          const term: Record<string, string> = {};
+          term[filter.key] = filterValue.key;
+          should.push({ term });
+        });
+      }
+
+      must.push({
+        bool: { should },
+      });
+    }
+  });
+
+  const quickFilterQuery = isEmpty(must)
+    ? undefined
+    : {
+        query: { bool: { must } },
+      };
+
+  return quickFilterQuery;
 };
 
 export const getSearchIndexFromEntityType = (entityType: EntityType) => {

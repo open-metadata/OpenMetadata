@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Menu, Row, Tooltip, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
-import { ReactComponent as GovernIcon } from '../../../assets/svg/bank.svg';
 import { ReactComponent as LogoutIcon } from '../../../assets/svg/logout.svg';
-import {
-  SETTING_ITEM,
-  SIDEBAR_GOVERN_LIST,
-} from '../../../constants/LeftSidebar.constants';
+import { SETTING_ITEM } from '../../../constants/LeftSidebar.constants';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './left-sidebar.less';
@@ -36,59 +31,14 @@ const LeftSidebar = () => {
       return ['glossary'];
     } else if (location.pathname.startsWith('/tags')) {
       return ['tags'];
+    } else if (location.pathname.startsWith('/incident-manager')) {
+      return ['incident-manager'];
+    } else if (location.pathname.startsWith('/data-quality')) {
+      return ['data-contract'];
     }
 
     return [];
   }, [location.pathname]);
-
-  const items: MenuProps['items'] = useMemo(() => {
-    return [
-      {
-        key: 'governance',
-        popupClassName: 'govern-menu',
-        label: (
-          <Tooltip
-            overlayClassName="left-panel-tooltip"
-            placement="topLeft"
-            title={
-              <Typography.Text className="left-panel-label">
-                {t('label.govern')}
-              </Typography.Text>
-            }>
-            <GovernIcon data-testid="governance" width={30} />
-          </Tooltip>
-        ),
-        children: SIDEBAR_GOVERN_LIST.map(
-          ({ key, label, icon, redirect_url, dataTestId }) => {
-            const Icon = icon;
-
-            return {
-              key,
-              label: (
-                <Tooltip
-                  overlayClassName="left-panel-tooltip"
-                  placement="right"
-                  title={
-                    <Typography.Text className="left-panel-label">
-                      {label}
-                    </Typography.Text>
-                  }>
-                  <NavLink
-                    className="no-underline d-flex justify-center"
-                    data-testid={dataTestId}
-                    to={{
-                      pathname: redirect_url,
-                    }}>
-                    <Icon className="left-panel-item p-y-sm" width={30} />
-                  </NavLink>
-                </Tooltip>
-              ),
-            };
-          }
-        ),
-      },
-    ];
-  }, []);
 
   const sideBarItems = leftSidebarClassBase.getSidebarItems();
   const SideBarElements = leftSidebarClassBase.getSidebarElements();
@@ -104,18 +54,49 @@ const LeftSidebar = () => {
   return (
     <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
-        {sideBarItems.map((item) => (
-          <Col key={item.key} span={24}>
-            <LeftSidebarItem data={item} />
-          </Col>
-        ))}
-        <Menu
-          className="left-panel-item"
-          items={items}
-          mode="vertical"
-          selectedKeys={subMenuItemSelected}
-          triggerSubMenuAction="click"
-        />
+        {sideBarItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Col key={item.key} span={24}>
+              {item.children ? (
+                <Menu
+                  className="left-panel-item"
+                  items={[
+                    {
+                      key: item.key,
+                      popupClassName: 'govern-menu',
+                      label: (
+                        <Tooltip
+                          overlayClassName="left-panel-tooltip"
+                          placement="topLeft"
+                          title={
+                            <Typography.Text className="left-panel-label">
+                              {item.label}
+                            </Typography.Text>
+                          }>
+                          <Icon data-testid={item.dataTestId} width={30} />
+                        </Tooltip>
+                      ),
+                      children: item.children.map((child) => {
+                        return {
+                          key: child.key,
+                          label: <LeftSidebarItem data={child} />,
+                        };
+                      }),
+                    },
+                  ]}
+                  mode="vertical"
+                  selectedKeys={subMenuItemSelected}
+                  triggerSubMenuAction="click"
+                />
+              ) : (
+                <LeftSidebarItem data={item} />
+              )}
+            </Col>
+          );
+        })}
+
         {SideBarElements && <SideBarElements />}
       </Row>
       <Row className="p-y-sm">

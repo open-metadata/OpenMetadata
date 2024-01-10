@@ -82,6 +82,10 @@ export const formatDataResponse = (
       newData.databaseSchema = source.databaseSchema?.name;
     }
 
+    if ('columns' in source) {
+      newData.columns = source.columns;
+    }
+
     newData.changeDescription = source.changeDescription;
 
     return newData;
