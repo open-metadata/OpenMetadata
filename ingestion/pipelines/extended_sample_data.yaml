@@ -5,7 +5,7 @@ source:
   serviceConnection:
     config:
       type: CustomDatabase
-      sourcePythonClass: metadata.ingestion.source.database.extended_sample_data.SampleDataSource
+      sourcePythonClass: metadata.ingestion.source.database.extended_sample_data.ExtendedSampleDataSource
       connectionOptions:
         sampleDataFolder: "./examples/sample_data"
   sourceConfig: {}
