@@ -12,7 +12,9 @@ slug: /connectors/dashboard/tableau
 | Owners     | {% icon iconName="check" /%} |
 | Tags       | {% icon iconName="check" /%} |
 | Datamodels | {% icon iconName="check" /%} |
+| Projects   | {% icon iconName="check" /%} |
 | Lineage    | {% icon iconName="check" /%} |
+
 
 In this section, we provide guides and references to use the Tableau connector.
 
