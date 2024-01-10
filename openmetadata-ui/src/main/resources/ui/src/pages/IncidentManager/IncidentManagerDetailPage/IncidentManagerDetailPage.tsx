@@ -40,7 +40,6 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
-import IncidentManagerProvider from '../IncidentManagerProvider/IncidentManagerProvider';
 import { TestCaseData } from './IncidentManagerDetailPage.interface';
 
 const IncidentManagerDetailPage = () => {
@@ -87,11 +86,7 @@ const IncidentManagerDetailPage = () => {
       {
         label: <TabsLabel id="issue" name={t('label.issue-plural')} />,
         key: IncidentManagerTabs.ISSUES,
-        children: (
-          <ActivityFeedProvider>
-            <TestCaseIssueTab owner={testCaseData.data?.owner} />
-          </ActivityFeedProvider>
-        ),
+        children: <TestCaseIssueTab owner={testCaseData.data?.owner} />,
       },
     ],
     [testCaseData]
@@ -187,7 +182,7 @@ const IncidentManagerDetailPage = () => {
 
   return (
     <PageLayoutV1 pageTitle="Incident Manager Detail Page">
-      <IncidentManagerProvider testCaseData={testCaseData.data}>
+      <ActivityFeedProvider>
         <Row
           data-testid="incident-manager-details-page-container"
           gutter={[0, 12]}>
@@ -203,7 +198,10 @@ const IncidentManagerDetailPage = () => {
             />
           </Col>
           <Col className="p-x-lg">
-            <IncidentManagerPageHeader onOwnerUpdate={handleOwnerChange} />
+            <IncidentManagerPageHeader
+              testCaseData={testCaseData.data}
+              onOwnerUpdate={handleOwnerChange}
+            />
           </Col>
           <Col span={24}>
             <Tabs
@@ -216,7 +214,7 @@ const IncidentManagerDetailPage = () => {
             />
           </Col>
         </Row>
-      </IncidentManagerProvider>
+      </ActivityFeedProvider>
     </PageLayoutV1>
   );
 };

@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { isEqual, last } from 'lodash';
 import React, {
   RefObject,
   useCallback,
@@ -34,7 +33,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { useIncidentManagerProvider } from '../../../pages/IncidentManager/IncidentManagerProvider/IncidentManagerProvider';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -57,10 +55,7 @@ const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
     getFeedData,
     loading,
     entityPaging,
-    testCaseResolutionStatus,
   } = useActivityFeedProvider();
-  const { onIncidentStatusUpdate, testCaseStatusData } =
-    useIncidentManagerProvider();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
@@ -80,18 +75,6 @@ const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
     },
     [decodedFqn, getFeedData]
   );
-
-  useEffect(() => {
-    if (decodedFqn) {
-      getFeedData(
-        undefined,
-        undefined,
-        ThreadType.Task,
-        EntityType.TEST_CASE,
-        decodedFqn
-      );
-    }
-  }, [decodedFqn]);
 
   useEffect(() => {
     if (fqn && isInView && entityPaging.after && !loading) {
@@ -149,17 +132,6 @@ const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
     handleUpdateTaskFilter(taskFilter === 'close' ? 'open' : 'close');
     setActiveThread();
   };
-
-  useEffect(() => {
-    const lastStatus = last(testCaseResolutionStatus);
-    if (
-      lastStatus &&
-      testCaseStatusData.status &&
-      !isEqual(testCaseStatusData.status, lastStatus)
-    ) {
-      onIncidentStatusUpdate(lastStatus);
-    }
-  }, [testCaseResolutionStatus, testCaseStatusData, onIncidentStatusUpdate]);
 
   return (
     <div className="incident-page-issue-tab" data-testid="issue-tab-container">

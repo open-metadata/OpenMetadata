@@ -119,8 +119,13 @@ export const TaskTab = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
-  const { postFeed, setActiveThread, fetchUpdatedThread } =
-    useActivityFeedProvider();
+  const {
+    postFeed,
+    setActiveThread,
+    fetchUpdatedThread,
+    updateTestCaseIncidentStatus,
+    testCaseResolutionStatus,
+  } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -356,7 +361,8 @@ export const TaskTab = ({
       },
     };
     try {
-      await postTestCaseIncidentStatus(testCaseIncident);
+      const response = await postTestCaseIncidentStatus(testCaseIncident);
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, response]);
       fetchUpdatedThread(taskThread.id).finally(() => {
         setIsEditAssignee(false);
       });
@@ -386,7 +392,8 @@ export const TaskTab = ({
       },
     };
     try {
-      await postTestCaseIncidentStatus(testCaseIncident);
+      const response = await postTestCaseIncidentStatus(testCaseIncident);
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, response]);
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
