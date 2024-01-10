@@ -64,7 +64,9 @@ export const getEntityExtentionDetailsFromEntityType = <
         fields: TabSpecificField.EXTENSION,
       });
     case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsByFQN(fqn, TabSpecificField.EXTENSION);
+      return getDatabaseSchemaDetailsByFQN(fqn, {
+        fields: TabSpecificField.EXTENSION,
+      });
     default:
       // eslint-disable-next-line no-console
       console.error(`Custom properties for Entity: ${type} not supported yet.`);
