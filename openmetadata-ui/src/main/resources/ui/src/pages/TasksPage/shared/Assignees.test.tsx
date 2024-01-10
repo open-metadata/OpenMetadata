@@ -18,6 +18,7 @@ import Assignees from './Assignees';
 const mockOptions = [
   {
     label: 'adam_matthews2',
+    name: 'adam_matthews2',
     value: 'b76b005d-3540-4f85-86db-197abdcaf351',
     type: 'user',
   },
