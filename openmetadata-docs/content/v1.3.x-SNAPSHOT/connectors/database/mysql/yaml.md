@@ -14,9 +14,11 @@ slug: /connectors/database/mysql/yaml
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | MySQL >= 8.0.0                         |
+| Supported Versions | MySQL >= 8.0.0               |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |

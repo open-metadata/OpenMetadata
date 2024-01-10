@@ -14,9 +14,11 @@ slug: /connectors/database/postgres/yaml
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="check" /%} |
+| Tags               | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Postgres>=11                       |
+| Supported Versions | Postgres>=11                 |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
