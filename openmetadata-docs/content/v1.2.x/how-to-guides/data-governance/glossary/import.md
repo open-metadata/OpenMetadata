@@ -7,6 +7,8 @@ slug: /how-to-guides/data-governance/glossary/import
 
 OpenMetadata supports **Glossary Bulk Upload** to save time and effort by uploading a CSV with thousands of terms in one go. You can create or update multiple glossary terms simultaneously. When bulk uploading, Owners and Reviewers can be defined, who will be further propagated to every glossary term.
 
+{% youtube videoId="8qfFl-ujZz0" start="0:00" end="6:47" width="560px" height="315px" /%}
+
 To import a glossary into OpenMetadata:
 - Navigate to **Govern > Glossary**
 - Click on the **⋮** icon and **Export** the glossary file. If you have glossary terms in your Glossary, the same will be exported as a CSV file. If you have If there are no terms in the Glossary, then a blank CSV template will be downloaded.
