@@ -28,8 +28,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -163,7 +164,7 @@ const MyDataWidgetInternal = ({
                   <div className="d-flex items-center">
                     <Link
                       className=""
-                      to={getEntityLink(
+                      to={entityUtilClassBase.getEntityLink(
                         item.entityType ?? '',
                         item.fullyQualifiedName as string
                       )}>

@@ -8,7 +8,7 @@ slug: /connectors/storage/s3/yaml
 
 | Feature            | Status                       |
 | :----------------- |:-----------------------------|
-| Stage              | BETA                         |
+| Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 
 
