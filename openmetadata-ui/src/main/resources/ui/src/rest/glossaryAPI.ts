@@ -24,7 +24,6 @@ import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListGlossaryTermsParams = ListParams & {
@@ -112,7 +111,7 @@ export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
 
 export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
   const response = await APIClient.get<GlossaryTerm>(
-    `/glossaryTerms/name/${getEncodedFqn(fqn)}`,
+    `/glossaryTerms/name/${encodeURIComponent(fqn)}`,
     { params }
   );
 
