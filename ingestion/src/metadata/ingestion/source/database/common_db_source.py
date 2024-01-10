@@ -339,7 +339,7 @@ class CommonDbSourceService(
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == TableType.View or table_type == TableType.MaterializedView:
+        if table_type in (TableType.View, TableType.MaterializedView):
             try:
                 view_definition = inspector.get_view_definition(table_name, schema_name)
                 view_definition = (

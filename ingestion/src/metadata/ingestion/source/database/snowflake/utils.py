@@ -101,7 +101,7 @@ def get_table_names(self, connection, schema, **kw):
     return result
 
 
-def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
+def get_view_names(self, connection, schema, **kw):
     if kw.get("materialized_views"):
         query = SNOWFLAKE_GET_MVIEW_NAMES
     else:
