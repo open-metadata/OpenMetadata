@@ -33,7 +33,7 @@ describe('Users Page', () => {
     entity.visitUser();
   });
 
-  it('Create Data Consumer User', () => {
+  it('Create  User', () => {
     entity.createUser();
   });
 
