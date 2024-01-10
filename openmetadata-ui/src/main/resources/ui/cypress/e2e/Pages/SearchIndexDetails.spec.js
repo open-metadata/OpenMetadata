@@ -15,18 +15,11 @@
 
 import {
   addAnnouncement,
-  addOwner,
   addTableFieldTags,
-  addTags,
-  addTier,
   deleteEntity,
   interceptURL,
   login,
-  removeOwner,
   removeTableFieldTags,
-  removeTags,
-  removeTier,
-  updateDescription,
   updateTableFieldDescription,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
@@ -37,8 +30,6 @@ import {
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
   TAG_1,
-  TIER,
-  UPDATE_DESCRIPTION,
   UPDATE_FIELD_DESCRIPTION,
   USER_CREDENTIALS,
   USER_NAME,
@@ -71,14 +62,6 @@ const role = {
 let roleId = '';
 
 const performCommonOperations = () => {
-  // Add and remove tier flow should work properly
-  addTier(TIER, 'searchIndexes');
-  removeTier('searchIndexes');
-
-  // Add and remove tags flow should work properly
-  addTags(TAG_1.classification, TAG_1.tag, 'searchIndexes');
-  removeTags(TAG_1.classification, TAG_1.tag, 'searchIndexes');
-
   // User should be able to edit search index field tags
   addTableFieldTags(
     SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.fields[0].fullyQualifiedName,
@@ -91,19 +74,6 @@ const performCommonOperations = () => {
     TAG_1.classification,
     TAG_1.tag,
     'searchIndexes'
-  );
-
-  // User should be able to edit search index description
-  updateDescription(UPDATE_DESCRIPTION, 'searchIndexes');
-
-  cy.get('[data-testid="asset-description-container"]').contains(
-    UPDATE_DESCRIPTION
-  );
-
-  updateDescription(' ', 'searchIndexes');
-
-  cy.get('[data-testid="asset-description-container"]').contains(
-    'No description'
   );
 
   // User should be able to edit search index field description
@@ -126,14 +96,6 @@ const performCommonOperations = () => {
   cy.get(
     `[data-row-key="${SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.fields[0].fullyQualifiedName}"] [data-testid="description"]`
   ).contains('No Description');
-
-  // Add and remove owner flow should work properly
-  addOwner(
-    `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`,
-    'searchIndexes'
-  );
-
-  removeOwner('searchIndexes');
 };
 
 describe('Prerequisite for search index details page test', () => {

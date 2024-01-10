@@ -262,7 +262,7 @@ export const checkCustomPropertyEditButton = ({ deleted }) => {
 export const checkLineageTabActions = ({ deleted }) => {
   interceptURL(
     'GET',
-    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1*`,
+    `/api/v1/lineage/getLineage?fqn=*&upstreamDepth=3&downstreamDepth=3&query_filter=*&includeDeleted=false`,
     'getLineageData'
   );
 
