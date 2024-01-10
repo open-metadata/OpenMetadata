@@ -14,8 +14,10 @@ slug: /connectors/database/datalake
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |

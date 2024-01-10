@@ -14,7 +14,6 @@ slug: /connectors/database/doris/yaml
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
 | Owners             | {% icon iconName="cross" /%} |
 | Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |

@@ -12,6 +12,7 @@ slug: /connectors/dashboard/metabase
 | Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Datamodels | {% icon iconName="cross" /%} |
+| Projects   | {% icon iconName="check" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the Metabase connector.

@@ -7,22 +7,25 @@ slug: /connectors/database/doris
 
 {% multiTablesWrapper %}
 
-| Feature            | Status                                                  |
-| :----------------- |:--------------------------------------------------------|
-| Stage              | PROD                                                    |
-| Metadata           | {% icon iconName="check" /%}                            |
-| Query Usage        | {% icon iconName="cross" /%}                            |
-| Data Profiler      | {% icon iconName="check" /%}                            |
-| Data Quality       | {% icon iconName="cross" /%}                            |
-| Stored Procedures            | {% icon iconName="cross" /%}                            |
-| DBT                | {% icon iconName="cross" /%}                            |
+| Feature            | Status                       |
+| :----------------- | :--------------------------- |
+| Stage              | PROD                         |
+| Metadata           | {% icon iconName="check" /%} |
+| Query Usage        | {% icon iconName="cross" /%} |
+| Data Profiler      | {% icon iconName="check" /%} |
+| Data Quality       | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2 |
 
 | Feature      | Status                       |
-| :----------- |:-----------------------------|
+| :----------- | :--------------------------- |
 | Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
+| Table-level  | {% icon iconName="cross" /%} |
+| Column-level | {% icon iconName="cross" /%} |
+
 
 {% /multiTablesWrapper %}
 

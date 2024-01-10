@@ -11,7 +11,7 @@ slug: /connectors/dashboard/superset/yaml
 | Charts     | {% icon iconName="check" /%} |
 | Owners     | {% icon iconName="check" /%} |
 | Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="check" /%} |
 | Projects   | {% icon iconName="cross" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 

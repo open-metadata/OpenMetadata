@@ -12,6 +12,7 @@ slug: /connectors/dashboard/looker
 | Owners     | {% icon iconName="check" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Datamodels | {% icon iconName="check" /%} |
+| Projects   | {% icon iconName="cross" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the Looker connector.
