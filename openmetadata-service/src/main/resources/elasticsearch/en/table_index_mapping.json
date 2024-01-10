@@ -565,6 +565,9 @@
           }
         }
       },
+      "lineage": {
+        "type" : "object"
+      },
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
