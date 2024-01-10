@@ -73,8 +73,8 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getDecodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -100,7 +100,7 @@ export const getHeaderLabel = (
           className="m-b-0 text-base"
           level={5}
           title={name || prepareLabel(type, fqn, false)}>
-          <Link className="" to={getEntityLink(type, fqn)}>
+          <Link className="" to={entityUtilClassBase.getEntityLink(type, fqn)}>
             <Button
               className="text-base font-semibold p-0"
               data-testid="link-button"

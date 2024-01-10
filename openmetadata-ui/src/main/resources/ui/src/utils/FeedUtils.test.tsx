@@ -99,10 +99,6 @@ jest.mock('./StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('./TableUtils', () => ({
-  getEntityLink: jest.fn(),
-}));
-
 jest.mock('./FeedUtils', () => ({
   ...jest.requireActual('./FeedUtils'),
   getEntityField: jest.fn().mockReturnValue('entityField'),

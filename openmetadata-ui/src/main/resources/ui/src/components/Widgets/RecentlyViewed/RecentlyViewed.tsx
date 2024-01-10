@@ -25,8 +25,9 @@ import {
   getRecentlyViewedData,
   prepareLabel,
 } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './recently-viewed.less';
@@ -126,7 +127,7 @@ const RecentlyViewed = ({
                     <div className=" flex items-center">
                       <Link
                         className=""
-                        to={getEntityLink(
+                        to={entityUtilClassBase.getEntityLink(
                           item.type || '',
                           item.fullyQualifiedName as string
                         )}>

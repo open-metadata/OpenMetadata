@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
-import { getEntityLink } from '../../utils/TableUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import './source-list.less';
 
 const SourceList = ({ feature }: { feature: MlFeature }) => {
@@ -77,7 +77,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
                 </Col>
                 <Col flex="auto">
                   <Link
-                    to={getEntityLink(
+                    to={entityUtilClassBase.getEntityLink(
                       EntityType.TABLE,
                       source.dataSource?.fullyQualifiedName ||
                         source.dataSource?.name ||

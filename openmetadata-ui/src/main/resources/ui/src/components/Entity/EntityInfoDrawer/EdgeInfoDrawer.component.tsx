@@ -25,9 +25,9 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
 import Loader from '../../Loader/Loader';
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
@@ -75,7 +75,7 @@ const EdgeInfoDrawer = ({
         value: sourceData && getEntityName(sourceData?.data?.node),
         link:
           sourceData &&
-          getEntityLink(
+          entityUtilClassBase.getEntityLink(
             data.sourceType,
             sourceData.data.node.fullyQualifiedName
           ),
@@ -89,7 +89,7 @@ const EdgeInfoDrawer = ({
         value: targetData ? getEntityName(targetData?.data?.node) : undefined,
         link:
           targetData &&
-          getEntityLink(
+          entityUtilClassBase.getEntityLink(
             data.targetData,
             targetData.data.node.fullyQualifiedName
           ),
@@ -105,7 +105,7 @@ const EdgeInfoDrawer = ({
           : undefined,
         link:
           data?.edge?.pipeline &&
-          getEntityLink(
+          entityUtilClassBase.getEntityLink(
             data?.edge?.pipeline.type,
             getEncodedFqn(data?.edge?.pipeline.fullyQualifiedName)
           ),

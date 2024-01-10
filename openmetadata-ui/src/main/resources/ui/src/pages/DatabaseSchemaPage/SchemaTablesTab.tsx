@@ -29,7 +29,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
@@ -81,10 +80,7 @@ function SchemaTablesTab({
               <Link
                 className="break-word"
                 data-testid="table-name-link"
-                to={getEntityLink(
-                  EntityType.TABLE,
-                  record.fullyQualifiedName as string
-                )}>
+                to={(EntityType.TABLE, record.fullyQualifiedName as string)}>
                 {getEntityName(record)}
               </Link>
             </div>

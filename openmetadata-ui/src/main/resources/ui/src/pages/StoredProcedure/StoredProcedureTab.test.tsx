@@ -60,7 +60,6 @@ jest.mock('../../utils/StringsUtils', () => ({
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockImplementation((link) => link),
   getTableExpandableConfig: jest.fn(),
 }));
 

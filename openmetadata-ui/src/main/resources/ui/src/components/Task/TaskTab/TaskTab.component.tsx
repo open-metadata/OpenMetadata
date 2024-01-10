@@ -76,10 +76,10 @@ import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchOptions,
   getTaskDetailPath,
@@ -202,7 +202,7 @@ export const TaskTab = ({
             <Link
               className="break-all p-r-xss"
               data-testid="entitylink"
-              to={getEntityLink(entityType, entityFQN)}
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
               <Typography.Text className="text-md font-medium text-color-inherit">
                 {' '}

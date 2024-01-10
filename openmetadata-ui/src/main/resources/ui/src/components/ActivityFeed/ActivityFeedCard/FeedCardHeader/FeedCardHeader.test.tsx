@@ -41,7 +41,6 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 }));
 
 jest.mock('../../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn(),
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
 }));
