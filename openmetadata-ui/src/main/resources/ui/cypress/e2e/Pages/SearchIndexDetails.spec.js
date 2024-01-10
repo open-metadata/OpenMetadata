@@ -294,6 +294,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('All permissible actions on search index details page should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     performCommonOperations();
   });
 

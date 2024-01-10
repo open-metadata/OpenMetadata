@@ -62,7 +62,7 @@ describe('Test assignees component', () => {
 
     fireEvent.change(container, { target: { value: 'adam_matthews2' } });
 
-    const options = await screen.findByTestId(`assignee-option-adam_matthews2`);
+    const options = await screen.findByTestId(`adam_matthews2`);
 
     expect(container).toBeInTheDocument();
 
