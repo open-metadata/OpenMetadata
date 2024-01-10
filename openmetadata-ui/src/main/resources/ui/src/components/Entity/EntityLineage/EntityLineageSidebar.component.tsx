@@ -40,14 +40,15 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className=" m-b-lg text-center">
+    <div className=" m-b-sm text-center">
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
         })}
+        data-testid={`${type}-draggable-icon`}
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
-        onDragStart={(event) => onDragStart(event, `${type}-default`)}>
+        onDragStart={(event) => onDragStart(event, type)}>
         <span
           className="d-flex"
           onDragStart={(e) => {

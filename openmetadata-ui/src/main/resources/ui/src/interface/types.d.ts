@@ -93,6 +93,7 @@ declare module 'Models' {
     deleted?: boolean;
     entityType?: string;
     changeDescription?: ChangeDescription;
+    columns?: TableColumn[];
   };
 
   export type SearchedUsersAndTeams = {
