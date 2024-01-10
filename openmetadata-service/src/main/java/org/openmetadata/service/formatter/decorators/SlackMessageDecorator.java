@@ -95,7 +95,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       }
       slackMessage.setText(headerText);
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<SlackAttachment> attachmentList = new ArrayList<>();
     for (Thread entry : thread) {
       SlackAttachment attachment = new SlackAttachment();

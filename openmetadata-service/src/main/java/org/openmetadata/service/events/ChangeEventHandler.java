@@ -14,6 +14,7 @@
 package org.openmetadata.service.events;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
 
@@ -28,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -59,44 +59,41 @@ public class ChangeEventHandler implements EventHandler {
       CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
       FeedRepository feedRepository = new FeedRepository();
-      if (responseContext.getEntity() != null
-          && responseContext.getEntity().getClass().equals(Thread.class)) {
-        // we should move this to Email Application notifications instead of processing it here.
-        notificationHandler.processNotifications(responseContext);
-      } else {
-        ChangeEvent changeEvent =
-            getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
-        if (changeEvent != null) {
-          // Always set the Change Event Username as context Principal, the one creating the CE
-          changeEvent.setUserName(loggedInUserName);
-          LOG.info(
-              "Recording change event {}:{}:{}:{}",
-              changeEvent.getTimestamp(),
-              changeEvent.getEntityId(),
-              changeEvent.getEventType(),
-              changeEvent.getEntityType());
-          if (changeEvent.getEntity() != null) {
-            Object entity = changeEvent.getEntity();
-            changeEvent = copyChangeEvent(changeEvent);
-            changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-          }
+      ChangeEvent changeEvent =
+          getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
+      if (changeEvent != null) {
+        // Always set the Change Event Username as context Principal, the one creating the CE
+        changeEvent.setUserName(loggedInUserName);
+        LOG.info(
+            "Recording change event {}:{}:{}:{}",
+            changeEvent.getTimestamp(),
+            changeEvent.getEntityId(),
+            changeEvent.getEventType(),
+            changeEvent.getEntityType());
+        if (changeEvent.getEntity() != null) {
+          Object entity = changeEvent.getEntity();
+          changeEvent = copyChangeEvent(changeEvent);
+          changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+        }
 
-          changeEventDAO.insert(JsonUtils.pojoToJson(changeEvent));
+        changeEventDAO.insert(JsonUtils.pojoToJson(changeEvent));
 
-          // Add a new thread to the entity for every change event
-          // for the event to appear in activity feeds
-          if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
-              && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
-            for (Thread thread : listOrEmpty(FeedUtils.getThreads(changeEvent, loggedInUserName))) {
-              // Don't create a thread if there is no message
-              if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
-                feedRepository.create(thread, changeEvent);
-                String jsonThread = mapper.writeValueAsString(thread);
-                WebSocketManager.getInstance()
-                    .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-                if (changeEvent.getEventType().equals(EventType.ENTITY_DELETED)) {
-                  deleteAllConversationsRelatedToEntity(getEntity(changeEvent), collectionDAO);
-                }
+        // Add a new thread (change event itself should not be for the thread) to the entity for
+        // every change event
+        // for the event to appear in activity feeds
+        if (!changeEvent.getEntityType().equals(Entity.THREAD)
+            && Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
+            && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
+          for (Thread thread :
+              listOrEmpty(FeedUtils.getThreadWithMessage(changeEvent, loggedInUserName))) {
+            // Don't create a thread if there is no message
+            if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
+              feedRepository.create(thread, changeEvent);
+              String jsonThread = mapper.writeValueAsString(thread);
+              WebSocketManager.getInstance()
+                  .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
+              if (changeEvent.getEventType().equals(ENTITY_DELETED)) {
+                deleteAllConversationsRelatedToEntity(getEntity(changeEvent), collectionDAO);
               }
             }
           }

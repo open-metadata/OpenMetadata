@@ -92,7 +92,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<GChatMessage.Widget> widgets = new ArrayList<>();
     for (Thread entry : thread) {
       GChatMessage.Widget widget = new GChatMessage.Widget();

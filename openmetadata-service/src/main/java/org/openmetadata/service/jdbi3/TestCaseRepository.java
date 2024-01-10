@@ -2,13 +2,16 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
-import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
-import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,7 +42,6 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -269,8 +271,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         getChangeEvent(
             updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private UUID getOrCreateIncidentOnFailure(TestCase testCase, String updatedBy) {
@@ -332,8 +333,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
       setTestSuiteSummary(testCase, timestamp, storedTestCaseResult.getTestCaseStatus(), true);
       setTestCaseResult(testCase, storedTestCaseResult, true);
-      return new RestUtil.PutResponse<>(
-          Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
         String.format(
@@ -472,7 +472,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
@@ -590,7 +590,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
 
     testSuite.setTests(testCasesEntityReferences);
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
   @Transaction
@@ -603,7 +603,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference entityReference =
         Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
     testCase.setTestSuite(entityReference);
-    return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
+    return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
   /** Remove test case from test suite summary and update test suite */

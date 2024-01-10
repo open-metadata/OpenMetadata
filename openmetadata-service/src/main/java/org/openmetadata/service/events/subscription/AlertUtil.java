@@ -47,7 +47,6 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
@@ -126,9 +125,10 @@ public final class AlertUtil {
         case matchAnyEntityFqn, matchAnyEntityId -> func.setParamAdditionalContext(
             paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
         case matchAnyEventType -> {
-          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
-          func.setParamAdditionalContext(
-              paramAdditionalContext.withData(new HashSet<>(eventTypes)));
+          // TODO:
+          // List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
+          // func.setParamAdditionalContext(
+          //     paramAdditionalContext.withData(new HashSet<>(eventTypes)));
         }
         case matchIngestionPipelineState -> {
           List<String> ingestionPipelineState =

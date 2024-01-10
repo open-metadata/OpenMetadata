@@ -77,7 +77,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
               this.buildEntityUrl(event.getEntityType(), entityInterface));
       teamsSections.setActivityTitle(headerText);
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
     for (Thread entry : thread) {
       TeamsMessage.Section section = new TeamsMessage.Section();

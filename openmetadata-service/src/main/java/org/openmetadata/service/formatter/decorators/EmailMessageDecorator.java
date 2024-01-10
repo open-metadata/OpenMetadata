@@ -76,7 +76,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
         emailMessage.setEntityUrl(this.buildEntityUrl(event.getEntityType(), entityInterface));
       }
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<String> changeMessage = new ArrayList<>();
     for (Thread entry : thread) {
       changeMessage.add(entry.getMessage());

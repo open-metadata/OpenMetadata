@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.schema.type.EventType.POST_CREATED;
+import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
+import static org.openmetadata.service.util.RestUtil.CHANGE_CUSTOM_HEADER;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -428,7 +432,10 @@ public class FeedResource {
       @Valid CreateThread create) {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
-    return Response.created(thread.getHref()).entity(thread).build();
+    return Response.created(thread.getHref())
+        .entity(thread)
+        .header(CHANGE_CUSTOM_HEADER, THREAD_CREATED)
+        .build();
   }
 
   @POST
@@ -458,7 +465,10 @@ public class FeedResource {
     Thread thread =
         addHref(
             uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
-    return Response.created(thread.getHref()).entity(thread).build();
+    return Response.created(thread.getHref())
+        .header(CHANGE_CUSTOM_HEADER, POST_CREATED)
+        .entity(thread)
+        .build();
   }
 
   @PATCH

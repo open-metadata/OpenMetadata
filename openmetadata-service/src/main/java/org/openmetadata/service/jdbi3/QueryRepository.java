@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.*;
@@ -15,7 +17,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -148,8 +149,7 @@ public class QueryRepository extends EntityRepository<Query> {
     ChangeEvent changeEvent =
         getQueryChangeEvent(
             updatedBy, QUERY_USERS_FIELD, oldValue, query.getUsers(), withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> addQueryUsedBy(
@@ -165,8 +165,7 @@ public class QueryRepository extends EntityRepository<Query> {
             query.getUsers(),
             withHref(uriInfo, query));
     update(uriInfo, oldQuery, query);
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> addQueryUsage(
@@ -193,8 +192,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> removeQueryUsedIn(
@@ -217,8 +215,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private ChangeEvent getQueryChangeEvent(
@@ -232,7 +229,7 @@ public class QueryRepository extends EntityRepository<Query> {
         .withId(UUID.randomUUID())
         .withEntity(updatedQuery)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updatedQuery.getId())
         .withEntityFullyQualifiedName(updatedQuery.getFullyQualifiedName())

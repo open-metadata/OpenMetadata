@@ -15,6 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.POST_UPDATED;
+import static org.openmetadata.schema.type.EventType.TASK_CLOSED;
+import static org.openmetadata.schema.type.EventType.TASK_RESOLVED;
+import static org.openmetadata.schema.type.EventType.THREAD_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.ADDRESSED_TO;
@@ -28,10 +34,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
-import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_DISPLAY;
-import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_NAME;
-import static org.openmetadata.service.util.RestUtil.DELETED_USER_DISPLAY;
-import static org.openmetadata.service.util.RestUtil.DELETED_USER_NAME;
 
 import io.jsonwebtoken.lang.Collections;
 import java.util.ArrayList;
@@ -88,7 +90,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
@@ -105,6 +106,10 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Repository
 public class FeedRepository {
+  public static final String DELETED_USER_NAME = "DeletedUser";
+  public static final String DELETED_USER_DISPLAY = "User was deleted";
+  public static final String DELETED_TEAM_NAME = "DeletedTeam";
+  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =
       new FeedMessageDecorator();
@@ -134,11 +139,12 @@ public class FeedRepository {
     return dao.feedDAO().getTaskId();
   }
 
+  @Getter
   public static class ThreadContext {
-    @Getter protected final Thread thread;
-    @Getter @Setter protected EntityLink about;
-    @Getter @Setter protected EntityInterface aboutEntity;
-    @Getter private final EntityReference createdBy;
+    protected final Thread thread;
+    @Setter protected EntityLink about;
+    @Setter protected EntityInterface aboutEntity;
+    private final EntityReference createdBy;
 
     ThreadContext(Thread thread) {
       this.thread = thread;
@@ -152,7 +158,7 @@ public class FeedRepository {
     ThreadContext(Thread thread, ChangeEvent event) {
       this.thread = thread;
       this.about = EntityLink.parse(thread.getAbout());
-      if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+      if (event.getEventType().equals(ENTITY_DELETED)) {
         String json = (String) event.getEntity();
         this.aboutEntity =
             JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
@@ -329,7 +335,7 @@ public class FeedRepository {
     // Update the attributes
     closeTask(thread, user, closeTask);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
-    return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
+    return new PatchResponse<>(Status.OK, updatedHref, TASK_CLOSED);
   }
 
   public PatchResponse<Thread> resolveTask(
@@ -338,7 +344,7 @@ public class FeedRepository {
     ThreadContext threadContext = getThreadContext(thread);
     resolveTask(threadContext, user, resolveTask);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
-    return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
+    return new PatchResponse<>(Status.OK, updatedHref, TASK_RESOLVED);
   }
 
   protected void resolveTask(ThreadContext threadContext, String user, ResolveTask resolveTask) {
@@ -470,8 +476,7 @@ public class FeedRepository {
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
-    posts =
-        posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
+    posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).toList();
     thread
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(userName)
@@ -479,14 +484,14 @@ public class FeedRepository {
         .withPostsCount(posts.size());
     // update the json document
     dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
-    return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
+    return new DeleteResponse<>(post, ENTITY_DELETED);
   }
 
   @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
-    return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+    return new DeleteResponse<>(thread, ENTITY_DELETED);
   }
 
   @Transaction
@@ -703,8 +708,7 @@ public class FeedRepository {
     }
 
     sortPosts(thread);
-    String change =
-        patchUpdate(thread, post, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    EventType change = patchUpdate(thread, post, updated) ? POST_UPDATED : ENTITY_NO_CHANGE;
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
@@ -742,8 +746,7 @@ public class FeedRepository {
     }
 
     // Update the attributes
-    String change =
-        patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    EventType change = patchUpdate(original, updated) ? THREAD_UPDATED : ENTITY_NO_CHANGE;
     sortPosts(updated);
     Thread updatedHref = FeedResource.addHref(uriInfo, updated);
     return new PatchResponse<>(Status.OK, updatedHref, change);
@@ -1081,10 +1084,7 @@ public class FeedRepository {
     List<String> teamIds = null;
     if (userId != null) {
       User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
-      teamIds =
-          listOrEmpty(user.getTeams()).stream()
-              .map(ref -> ref.getId().toString())
-              .collect(Collectors.toList());
+      teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).toList();
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
   }
@@ -1121,7 +1121,7 @@ public class FeedRepository {
       teamNames =
           listOrEmpty(user.getTeams()).stream()
               .map(x -> FullyQualifiedName.buildHash(x.getFullyQualifiedName()))
-              .collect(Collectors.toList());
+              .toList();
     }
     return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
   }

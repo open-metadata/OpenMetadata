@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
@@ -39,7 +41,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityUsage;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
@@ -150,8 +151,7 @@ public class UsageRepository {
             table.getVersion(), updated.getUsageSummary(), table.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, table.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> dashboardEntityUsage(
@@ -165,8 +165,7 @@ public class UsageRepository {
             dashboard.getVersion(), updated.getUsageSummary(), dashboard.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, dashboard.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> chartEntityUsage(
@@ -180,8 +179,7 @@ public class UsageRepository {
             chart.getVersion(), updated.getUsageSummary(), chart.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, chart.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> mlModelEntityUsage(
@@ -195,8 +193,7 @@ public class UsageRepository {
             mlModel.getVersion(), updated.getUsageSummary(), mlModel.getUsageSummary());
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, mlModel.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private void insertToUsageRepository(
@@ -214,7 +211,7 @@ public class UsageRepository {
         .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())

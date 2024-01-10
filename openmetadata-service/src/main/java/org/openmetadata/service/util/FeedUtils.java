@@ -21,61 +21,89 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
+@Slf4j
 public final class FeedUtils {
   private FeedUtils() {}
 
-  public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) {
+  public static List<Thread> getThreadWithMessage(
+      ChangeEvent changeEvent, String loggedInUserName) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
 
+    // Change Event is of Thread or Data Assets
+    if (changeEvent.getEntityType().equals(Entity.THREAD)) {
+      return List.of(AlertsRuleEvaluator.getThread(changeEvent));
+    } else if (Entity.getEntityList().contains(changeEvent.getEntityType())) {
+      return populateMessageForDataAssets(changeEvent, loggedInUserName);
+    } else {
+      LOG.error(
+          "Invalid Entity Type: {}, Currently Change Events are expected as Thread or Data Assets",
+          changeEvent.getEntityType());
+      return Collections.emptyList();
+    }
+  }
+
+  private static List<Thread> populateMessageForThread(
+      ChangeEvent changeEvent, String loggedInUserName) {
+    return null;
+  }
+
+  private static List<Thread> populateMessageForDataAssets(
+      ChangeEvent changeEvent, String loggedInUserName) {
     String message;
     EntityInterface entityInterface = getEntity(changeEvent);
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(
             changeEvent.getEntityType(), entityInterface.getFullyQualifiedName(), null, null, null);
-
-    switch (changeEvent.getEventType()) {
-      case ENTITY_CREATED:
+    // In Case EventType is not valid
+    return switch (changeEvent.getEventType()) {
+      case ENTITY_CREATED -> {
         message =
             String.format(
                 "Created **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        return List.of(getThread(about.getLinkString(), message, loggedInUserName));
-      case ENTITY_UPDATED:
-        return getThreads(entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
-      case ENTITY_SOFT_DELETED:
+        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+      }
+      case ENTITY_UPDATED -> getThreadWithMessage(
+          entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
+      case ENTITY_SOFT_DELETED -> {
         message =
             String.format(
                 "Soft deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        return List.of(getThread(about.getLinkString(), message, loggedInUserName));
-      case ENTITY_DELETED:
+        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+      }
+      case ENTITY_DELETED -> {
         message =
             String.format(
                 "Permanently Deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        return List.of(getThread(about.getLinkString(), message, loggedInUserName));
-    }
-
-    // In Case EventType is not valid
-    if (entityInterface.getChangeDescription() == null) {
-      return Collections.emptyList();
-    }
-
-    return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
+        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+      }
+      default -> {
+        if (entityInterface.getChangeDescription() == null) {
+          yield Collections.emptyList();
+        }
+        yield getThreadWithMessage(
+            entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
+      }
+    };
   }
 
-  private static List<Thread> getThreads(
+  private static List<Thread> getThreadWithMessage(
       EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
 

@@ -16,6 +16,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -368,5 +369,22 @@ public class AlertsRuleEvaluator {
         String.format(
             "Change Event Data Asset is not an entity %s",
             JsonUtils.pojoToJson(event.getEntity())));
+  }
+
+  public static Thread getThread(ChangeEvent event) {
+    try {
+      Thread thread;
+      if (event.getEntity() instanceof String str) {
+        thread = JsonUtils.readValue(str, Thread.class);
+      } else {
+        thread = JsonUtils.convertValue(event.getEntity(), Thread.class);
+      }
+      return thread;
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Change Event Data Asset is not an Thread %s",
+              JsonUtils.pojoToJson(event.getEntity())));
+    }
   }
 }

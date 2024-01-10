@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -755,7 +757,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     if (testCaseIds == null || testCaseIds.isEmpty()) {
-      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE)
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
           .toResponse();
     }
 
