@@ -69,7 +69,7 @@ import {
   getDashboardVersions,
 } from '../../rest/dashboardAPI';
 import {
-  getDataModelDetailsByFQN,
+  getDataModelByFqn,
   getDataModelVersion,
   getDataModelVersionsList,
 } from '../../rest/dataModelsAPI';
@@ -94,7 +94,7 @@ import {
   getContainerVersions,
 } from '../../rest/storageAPI';
 import {
-  getStoredProceduresDetailsByFQN,
+  getStoredProceduresByFqn,
   getStoredProceduresVersion,
   getStoredProceduresVersionsList,
 } from '../../rest/storedProceduresAPI';
@@ -322,7 +322,7 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const { id } = await getTableDetailsByFQN(entityFQN, '');
+          const { id } = await getTableDetailsByFQN(entityFQN);
 
           setEntityId(id);
 
@@ -334,7 +334,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(entityFQN, '');
+          const { id } = await getTopicByFqn(entityFQN);
 
           setEntityId(id);
 
@@ -346,7 +346,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(entityFQN, '');
+          const { id } = await getDashboardByFqn(entityFQN);
 
           setEntityId(id);
 
@@ -358,7 +358,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(entityFQN, '');
+          const { id } = await getPipelineByFqn(entityFQN);
 
           setEntityId(id);
 
@@ -370,7 +370,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(entityFQN, '');
+          const { id } = await getMlModelByFQN(entityFQN);
 
           setEntityId(id);
 
@@ -382,7 +382,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.CONTAINER: {
-          const { id } = await getContainerByName(entityFQN, '');
+          const { id } = await getContainerByName(entityFQN);
 
           setEntityId(id);
 
@@ -394,7 +394,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.SEARCH_INDEX: {
-          const { id } = await getSearchIndexDetailsByFQN(entityFQN, '');
+          const { id } = await getSearchIndexDetailsByFQN(entityFQN);
 
           setEntityId(id);
 
@@ -406,7 +406,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD_DATA_MODEL: {
-          const { id } = await getDataModelDetailsByFQN(entityFQN, '');
+          const { id } = await getDataModelByFqn(entityFQN);
 
           setEntityId(id ?? '');
 
@@ -418,7 +418,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.STORED_PROCEDURE: {
-          const { id } = await getStoredProceduresDetailsByFQN(entityFQN, '');
+          const { id } = await getStoredProceduresByFqn(entityFQN);
 
           setEntityId(id ?? '');
 

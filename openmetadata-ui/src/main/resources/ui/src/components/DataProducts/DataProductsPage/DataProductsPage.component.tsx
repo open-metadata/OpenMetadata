@@ -33,6 +33,7 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -99,10 +100,9 @@ const DataProductsPage = () => {
   const fetchDataProductByFqn = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDataProductByName(
-        encodeURIComponent(fqn),
-        'domain,owner,experts,assets'
-      );
+      const data = await getDataProductByName(getEncodedFqn(fqn), {
+        fields: 'domain,owner,experts,assets',
+      });
       setDataProduct(data);
 
       if (version) {

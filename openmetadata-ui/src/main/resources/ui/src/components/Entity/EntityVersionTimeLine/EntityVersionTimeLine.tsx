@@ -42,7 +42,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 
   const fetchUserName = async (id: string) => {
     try {
-      const userData = await getUserById(id, 'displayName');
+      const userData = await getUserById(id, { fields: 'displayName' });
 
       const name: string = getEntityName(userData);
       setUname(name);

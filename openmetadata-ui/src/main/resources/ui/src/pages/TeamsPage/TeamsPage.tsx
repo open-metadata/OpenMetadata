@@ -32,6 +32,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
+import { Include } from '../../generated/type/include';
 import { searchData } from '../../rest/miscAPI';
 import {
   createTeam,
@@ -42,6 +43,7 @@ import {
 import { updateUserDetail } from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -125,9 +127,9 @@ const TeamsPage = () => {
 
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
-      const { data } = await getTeams(undefined, {
-        parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-        include: 'all',
+      const { data } = await getTeams({
+        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        include: Include.All,
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -151,13 +153,11 @@ const TeamsPage = () => {
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
 
     try {
-      const { data } = await getTeams(
-        ['userCount', 'childrenCount', 'owns', 'parents'],
-        {
-          parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-          include: 'all',
-        }
-      );
+      const { data } = await getTeams({
+        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        include: Include.All,
+        fields: 'userCount,childrenCount,owns,parents',
+      });
 
       const modifiedTeams: Team[] = data.map((team) => ({
         ...team,
@@ -187,7 +187,10 @@ const TeamsPage = () => {
   ) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['parents'], 'all');
+      const data = await getTeamByName(name, {
+        fields: 'parents',
+        include: Include.All,
+      });
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -224,11 +227,10 @@ const TeamsPage = () => {
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(
-        name,
-        ['owner', 'parents', 'profile'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: 'users,parents,profile',
+        include: Include.All,
+      });
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -244,11 +246,10 @@ const TeamsPage = () => {
   const fetchTeamAdvancedDetails = async (name: string) => {
     setFetchingAdvancedDetails(true);
     try {
-      const data = await getTeamByName(
-        name,
-        ['users', 'defaultRoles', 'policies', 'childrenCount', 'domain'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: 'users,defaultRoles,policies,childrenCount,domain',
+        include: Include.All,
+      });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
       fetchAssets();

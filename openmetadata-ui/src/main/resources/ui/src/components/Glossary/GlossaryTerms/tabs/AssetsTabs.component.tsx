@@ -297,11 +297,11 @@ const AssetsTabs = forwardRef(
       const fqn = encodeURIComponent(entityFqn ?? '');
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          data = await getDomainByName(fqn, '');
+          data = await getDomainByName(fqn);
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
-          data = await getDataProductByName(fqn, 'domain,assets');
+          data = await getDataProductByName(fqn, { fields: 'domain,assets' });
 
           break;
         case AssetsOfEntity.GLOSSARY:

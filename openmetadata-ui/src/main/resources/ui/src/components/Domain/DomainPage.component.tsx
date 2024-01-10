@@ -29,6 +29,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
@@ -108,10 +109,9 @@ const DomainPage = () => {
   const fetchDomainByName = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(
-        encodeURIComponent(fqn),
-        'children,owner,parent,experts'
-      );
+      const data = await getDomainByName(getEncodedFqn(fqn), {
+        fields: 'children,owner,parent,experts',
+      });
       setActiveDomain(data);
     } catch (error) {
       showErrorToast(error as AxiosError);

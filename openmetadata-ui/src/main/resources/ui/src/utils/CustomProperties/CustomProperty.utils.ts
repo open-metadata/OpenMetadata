@@ -26,7 +26,7 @@ import { getMlModelByFQN } from '../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { getContainerByFQN } from '../../rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 
@@ -38,25 +38,31 @@ export const getEntityExtentionDetailsFromEntityType = <
 ): Promise<ExtentionEntities[ExtentionEntitiesKeys]> | void => {
   switch (type) {
     case EntityType.TABLE:
-      return getTableDetailsByFQN(fqn, TabSpecificField.EXTENSION);
+      return getTableDetailsByFQN(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.TOPIC:
-      return getTopicByFqn(fqn, TabSpecificField.EXTENSION);
+      return getTopicByFqn(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.DASHBOARD:
-      return getDashboardByFqn(fqn, TabSpecificField.EXTENSION);
+      return getDashboardByFqn(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.PIPELINE:
-      return getPipelineByFqn(fqn, TabSpecificField.EXTENSION);
+      return getPipelineByFqn(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.MLMODEL:
-      return getMlModelByFQN(fqn, TabSpecificField.EXTENSION);
+      return getMlModelByFQN(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.CONTAINER:
-      return getContainerByFQN(fqn, TabSpecificField.EXTENSION);
+      return getContainerByFQN(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.SEARCH_INDEX:
-      return getSearchIndexDetailsByFQN(fqn, TabSpecificField.EXTENSION);
+      return getSearchIndexDetailsByFQN(fqn, {
+        fields: TabSpecificField.EXTENSION,
+      });
     case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresDetailsByFQN(fqn, TabSpecificField.EXTENSION);
+      return getStoredProceduresByFqn(fqn, {
+        fields: TabSpecificField.EXTENSION,
+      });
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermByFQN(fqn, TabSpecificField.EXTENSION);
+      return getGlossaryTermByFQN(fqn, { fields: TabSpecificField.EXTENSION });
     case EntityType.DATABASE:
-      return getDatabaseDetailsByFQN(fqn, TabSpecificField.EXTENSION);
+      return getDatabaseDetailsByFQN(fqn, {
+        fields: TabSpecificField.EXTENSION,
+      });
     case EntityType.DATABASE_SCHEMA:
       return getDatabaseSchemaDetailsByFQN(fqn, TabSpecificField.EXTENSION);
     default:

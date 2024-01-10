@@ -43,7 +43,6 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Database } from '../../generated/entity/data/database';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
-import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import {
   getDatabaseDetailsByFQN,
@@ -137,11 +136,7 @@ function DatabaseVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseDetailsByFQN(
-        databaseFQN,
-        '',
-        Include.All
-      );
+      const { id } = await getDatabaseDetailsByFQN(databaseFQN);
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseVersions(id ?? '');

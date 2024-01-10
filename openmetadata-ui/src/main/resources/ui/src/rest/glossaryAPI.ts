@@ -24,7 +24,7 @@ import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListGlossaryTermsParams = ListParams & {
@@ -75,27 +75,18 @@ export const patchGlossaries = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const getGlossariesByName = async (
-  glossaryName: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `/glossaries/name/${glossaryName}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<Glossary>(url);
+export const getGlossariesByName = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Glossary>(`/glossaries/name/${fqn}`, {
+    params,
+  });
 
   return response.data;
 };
 
-export const getGlossariesById = async (
-  id: string,
-  arrQueryFields?: string | string[]
-) => {
-  const url = getURLWithQueryFields(`/glossaries/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<Glossary>(url);
+export const getGlossariesById = async (id: string, params?: ListParams) => {
+  const response = await APIClient.get<Glossary>(`/glossaries/${id}`, {
+    params,
+  });
 
   return response.data;
 };
@@ -111,30 +102,19 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const getGlossaryTermsById = async (
-  glossaryTermId = '',
-  arrQueryFields = ''
-) => {
-  const url = getURLWithQueryFields(
-    `/glossaryTerms/${glossaryTermId}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<GlossaryTerm>(url);
+export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
+  const response = await APIClient.get<GlossaryTerm>(`/glossaryTerms/${id}`, {
+    params,
+  });
 
   return response.data;
 };
 
-export const getGlossaryTermByFQN = async (
-  glossaryTermFQN = '',
-  arrQueryFields: string | string[] = ''
-) => {
-  const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
-    arrQueryFields
+export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
+  const response = await APIClient.get<GlossaryTerm>(
+    `/glossaryTerms/name/${getEncodedFqn(fqn)}`,
+    { params }
   );
-
-  const response = await APIClient.get<GlossaryTerm>(url);
 
   return response.data;
 };

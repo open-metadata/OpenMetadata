@@ -49,7 +49,7 @@ export interface IngestionProps {
   deployIngestion: (id: string) => Promise<void>;
   handleEnableDisableIngestion: (id: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  onIngestionWorkflowsUpdate: (paging?: string) => void;
+  onIngestionWorkflowsUpdate: (paging?: Omit<Paging, 'total'>) => void;
   handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
 }
 

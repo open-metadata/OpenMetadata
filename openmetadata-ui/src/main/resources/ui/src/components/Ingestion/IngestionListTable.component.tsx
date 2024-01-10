@@ -64,9 +64,7 @@ function IngestionListTable({
   const ingestionPagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        const pagingString = `&${cursorType}=${paging[cursorType]}`;
-
-        onIngestionWorkflowsUpdate(pagingString);
+        onIngestionWorkflowsUpdate({ [cursorType]: paging[cursorType] });
         handlePageChange(currentPage);
       }
     },

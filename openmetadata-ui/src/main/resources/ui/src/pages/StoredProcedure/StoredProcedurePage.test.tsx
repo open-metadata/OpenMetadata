@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import StoredProcedurePage from './StoredProcedurePage';
 
@@ -32,7 +32,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../rest/storedProceduresAPI', () => ({
-  getStoredProceduresDetailsByFQN: jest.fn().mockImplementation(() =>
+  getStoredProceduresByFqn: jest.fn().mockImplementation(() =>
     Promise.resolve({
       name: 'test',
       id: '123',
@@ -146,7 +146,7 @@ describe('StoredProcedure component', () => {
   it('StoredProcedurePage should not fetch details if permission is there', () => {
     render(<StoredProcedurePage />);
 
-    expect(getStoredProceduresDetailsByFQN).not.toHaveBeenCalled();
+    expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
 
   it('StoredProcedurePage should fetch details with basic fields', async () => {
@@ -160,10 +160,9 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: API_FIELDS,
+    });
   });
 
   it('StoredProcedurePage should fetch details with all the permitted fields', async () => {
@@ -179,10 +178,9 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: API_FIELDS,
+    });
   });
 
   it('StoredProcedurePage should render permission placeholder if not have required permission', async () => {
@@ -210,10 +208,9 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: API_FIELDS,
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.code')).toBeInTheDocument();
@@ -237,10 +234,9 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: API_FIELDS,
+    });
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();
   });

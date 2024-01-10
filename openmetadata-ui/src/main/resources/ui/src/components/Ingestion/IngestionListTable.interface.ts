@@ -38,6 +38,6 @@ export interface IngestionListTableProps {
   handleDeleteSelection: (row: SelectedRowDetails) => void;
   handleEnableDisableIngestion: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
-  onIngestionWorkflowsUpdate: (paging?: string) => void;
+  onIngestionWorkflowsUpdate: (paging?: Omit<Paging, 'total'>) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
 }

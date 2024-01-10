@@ -195,11 +195,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(
-      databaseFQN,
-      ['owner', 'tags', 'domain', 'votes'],
-      Include.All
-    )
+    getDatabaseDetailsByFQN(databaseFQN, {
+      fields: 'owner,tags,description,serviceType',
+    })
       .then((res) => {
         if (res) {
           const { description, id, name, serviceType } = res;
@@ -615,11 +613,10 @@ const DatabaseDetails: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseVotes(id, data);
-      const details = await getDatabaseDetailsByFQN(
-        databaseFQN,
-        ['owner', 'tags', 'votes'],
-        Include.All
-      );
+      const details = await getDatabaseDetailsByFQN(databaseFQN, {
+        fields: 'owner,tags,votes',
+        include: Include.All,
+      });
       setDatabase(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

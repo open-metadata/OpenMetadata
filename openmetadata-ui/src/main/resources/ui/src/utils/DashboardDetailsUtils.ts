@@ -33,7 +33,9 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
   let promiseArr: Array<Promise<ChartType>> = [];
   try {
     if (charts?.length) {
-      promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
+      promiseArr = charts.map((chart) =>
+        getChartById(chart.id, { fields: 'tags' })
+      );
       const res = await Promise.allSettled(promiseArr);
 
       if (res.length) {
