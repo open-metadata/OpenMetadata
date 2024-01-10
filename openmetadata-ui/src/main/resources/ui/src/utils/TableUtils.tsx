@@ -403,10 +403,12 @@ export const getEntityIcon = (indexType: string) => {
       );
 
     case EntityType.DOMAIN:
-    case EntityType.DATA_PRODUCT:
-    case SearchIndex.DATA_PRODUCT:
     case SearchIndex.DOMAIN:
       return <DomainIcon />;
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return <DataProductIcon />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
