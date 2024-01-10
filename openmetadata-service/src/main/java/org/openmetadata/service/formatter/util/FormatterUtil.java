@@ -16,7 +16,6 @@ package org.openmetadata.service.formatter.util;
 import static java.lang.String.format;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
-import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.THREAD;
@@ -272,39 +271,46 @@ public class FormatterUtil {
     }
 
     Optional<EventType> eventType = getEventTypeFromResponse(responseContext);
-    if (eventType.isEmpty()) {
+    if (eventType.isEmpty() || !responseContext.hasEntity()) {
       return null;
     }
 
-    ChangeEvent changeEvent = null;
-    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT
-    // ../tables/{id}/followera
-    if (responseContext.hasEntity()) {
-      if (eventType.get().equals(ENTITY_FIELDS_CHANGED)) {
-        changeEvent = (ChangeEvent) responseContext.getEntity();
-      } else if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
-        // Entity was created by either POST .../entities or PUT .../entities
-        changeEvent =
-            getChangeEvent(
-                    updateBy,
-                    eventType.get(),
-                    entityInterface.getEntityReference().getType(),
-                    entityInterface)
-                .withPreviousVersion(
-                    entityInterface.getChangeDescription() != null
-                        ? entityInterface.getChangeDescription().getPreviousVersion()
-                        : entityInterface.getVersion())
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(
-                    entityInterface.getEntityReference().getFullyQualifiedName());
-      } else if (responseContext.getEntity().getClass().equals(Thread.class)) {
-        Thread threadEntity = (Thread) responseContext.getEntity();
-        changeEvent =
-            getChangeEventForThread(updateBy, eventType.get(), THREAD, threadEntity)
-                .withEntity(threadEntity);
-      }
+    return extractChangeEvent(responseContext, updateBy, eventType.get());
+  }
+
+  private static ChangeEvent extractChangeEvent(
+      ContainerResponseContext responseContext, String updateBy, EventType eventType) {
+    if (responseContext.getEntity() instanceof ChangeEvent fieldChangedChangeEvent) {
+      return fieldChangedChangeEvent;
     }
-    return changeEvent;
+
+    if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
+      return createChangeEventForEntity(updateBy, eventType, entityInterface);
+    }
+
+    if (responseContext.getEntity().getClass().equals(Thread.class)) {
+      return createChangeEventForThread(updateBy, eventType, (Thread) responseContext.getEntity());
+    }
+
+    throw new IllegalArgumentException("Unknown entity type Change Event");
+  }
+
+  private static ChangeEvent createChangeEventForEntity(
+      String updateBy, EventType eventType, EntityInterface entityInterface) {
+    return getChangeEvent(
+            updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
+        .withPreviousVersion(
+            entityInterface.getChangeDescription() != null
+                ? entityInterface.getChangeDescription().getPreviousVersion()
+                : entityInterface.getVersion())
+        .withEntity(entityInterface)
+        .withEntityFullyQualifiedName(entityInterface.getEntityReference().getFullyQualifiedName());
+  }
+
+  private static ChangeEvent createChangeEventForThread(
+      String updateBy, EventType eventType, Thread threadEntity) {
+    return getChangeEventForThread(updateBy, eventType, THREAD, threadEntity)
+        .withEntity(threadEntity);
   }
 
   private static Optional<EventType> getEventTypeFromResponse(
