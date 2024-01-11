@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 export interface SummaryCardProps {
-  type?: 'success' | 'failed' | 'aborted';
+  type?: 'success' | 'failed' | 'aborted' | 'assigned' | 'acknowledged' | 'new';
   title: string;
   value: React.ReactNode;
   total: number;

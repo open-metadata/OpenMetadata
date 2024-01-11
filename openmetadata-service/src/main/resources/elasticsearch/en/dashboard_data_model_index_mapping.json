@@ -300,6 +300,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataModelType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"

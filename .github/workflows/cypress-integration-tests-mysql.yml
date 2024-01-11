@@ -17,7 +17,7 @@ name: MySQL Cypress Integration Tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 0 * * *'
+    - cron: '30 2 * * 1-5'
   pull_request_target:
     types:
       - labeled
@@ -54,9 +54,11 @@ jobs:
         id: cypress-project-id
         run: |
           if [ "${{ github.event_name }}" == "schedule" ]; then  
-            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_SCHEDULE_RECORD_KEY }}" >> $GITHUB_OUTPUT
           else  
-            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT  
+            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
           fi  
 
       - name: Free Disk Space (Ubuntu)
@@ -147,7 +149,7 @@ jobs:
           browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
-          CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
+          CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}

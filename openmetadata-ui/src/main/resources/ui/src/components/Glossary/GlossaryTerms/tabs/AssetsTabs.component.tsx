@@ -62,10 +62,6 @@ import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-} from '../../../../pages/ExplorePage/ExplorePage.interface';
-import {
   getDataProductByName,
   removeAssetsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
@@ -86,6 +82,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import {
   getAggregations,
+  getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
 } from '../../../../utils/Explore.utils';
 import {
@@ -297,7 +294,7 @@ const AssetsTabs = forwardRef(
 
     const fetchCurrentEntity = useCallback(async () => {
       let data;
-      const fqn = encodeURIComponent(entityFqn ?? '');
+      const fqn = getEncodedFqn(entityFqn ?? '');
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           data = await getDomainByName(fqn, '');
@@ -516,30 +513,7 @@ const AssetsTabs = forwardRef(
     }, []);
 
     const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-      const must: QueryFieldInterface[] = [];
-      data.forEach((filter) => {
-        if (!isEmpty(filter.value)) {
-          const should: QueryFieldValueInterface[] = [];
-          if (filter.value) {
-            filter.value.forEach((filterValue) => {
-              const term: Record<string, string> = {};
-              term[filter.key] = filterValue.key;
-              should.push({ term });
-            });
-          }
-
-          must.push({
-            bool: { should },
-          });
-        }
-      });
-
-      const quickFilterQuery = isEmpty(must)
-        ? undefined
-        : {
-            query: { bool: { must } },
-          };
-
+      const quickFilterQuery = getQuickFilterQuery(data);
       setQuickFilterQuery(quickFilterQuery);
     };
 

@@ -14,7 +14,9 @@ slug: /connectors/database/db2
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
@@ -102,6 +104,8 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **Password**: Password to connect to DB2.
 - **database**: Database of the data source.
 - **Host and Port**: Enter the fully qualified hostname and port number for your DB2 deployment in the Host and Port field.
+
+Note: In case you are using Db2 for IBM i, then from advanced config you need choose the `ibmi` scheme.
 
 {% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 
