@@ -39,8 +39,8 @@ airflow users create \
     --email spiderman@superhero.org \
     --password ${AIRFLOW_ADMIN_PASSWORD}
 
-(sleep 5; airflow db upgrade)
-(sleep 5; airflow db upgrade)
+(sleep 5; airflow db migrate)
+(sleep 5; airflow db migrate)
 
 # we need to this in case the container is restarted and the scheduler exited without tidying up its lock file
 rm -f /opt/airflow/airflow-webserver-monitor.pid

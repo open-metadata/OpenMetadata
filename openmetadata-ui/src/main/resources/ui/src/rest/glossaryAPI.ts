@@ -25,6 +25,7 @@ import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListGlossaryTermsParams = ListParams & {
@@ -130,7 +131,7 @@ export const getGlossaryTermByFQN = async (
   arrQueryFields: string | string[] = ''
 ) => {
   const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
+    `/glossaryTerms/name/${getEncodedFqn(glossaryTermFQN)}`,
     arrQueryFields
   );
 
@@ -187,9 +188,7 @@ export const importGlossaryInCSVFormat = async (
     headers: { 'Content-type': 'text/plain' },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/glossaries/name/${encodeURIComponent(
-      glossaryName
-    )}/import?dryRun=${dryRun}`,
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/import?dryRun=${dryRun}`,
     data,
     configOptions
   );

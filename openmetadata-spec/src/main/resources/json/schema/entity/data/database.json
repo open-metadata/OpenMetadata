@@ -8,13 +8,6 @@
   "javaType": "org.openmetadata.schema.entity.data.Database",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Name of a table. Expected to be unique within a database.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^((?!::).)*$"
-    }
   },
   "properties": {
     "id": {
@@ -23,7 +16,7 @@
     },
     "name": {
       "description": "Name that identifies the database.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",

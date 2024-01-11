@@ -27,6 +27,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type TableListParams = {
@@ -234,7 +235,7 @@ export const getSampleDataByTableId = async (id: string) => {
 };
 
 export const getLatestTableProfileByFqn = async (fqn: string) => {
-  const encodedFQN = encodeURIComponent(fqn);
+  const encodedFQN = getEncodedFqn(fqn);
   const response = await APIClient.get<Table>(
     `${BASE_URL}/${encodedFQN}/tableProfile/latest`
   );

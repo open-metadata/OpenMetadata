@@ -99,8 +99,8 @@
       "description": "Name that identifies an entity.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
-      "pattern": "(?U)^[\\w'\\- .&()%]+$"
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",

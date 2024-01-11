@@ -48,6 +48,7 @@ import {
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
@@ -55,7 +56,7 @@ const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryName } = useParams<{ fqn: string }>();
-  const glossaryFqn = decodeURIComponent(glossaryName);
+  const glossaryFqn = getDecodedFqn(glossaryName);
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);

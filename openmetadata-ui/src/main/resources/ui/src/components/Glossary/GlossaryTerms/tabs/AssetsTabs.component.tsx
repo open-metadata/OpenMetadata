@@ -294,7 +294,7 @@ const AssetsTabs = forwardRef(
 
     const fetchCurrentEntity = useCallback(async () => {
       let data;
-      const fqn = encodeURIComponent(entityFqn ?? '');
+      const fqn = getEncodedFqn(entityFqn ?? '');
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           data = await getDomainByName(fqn, '');

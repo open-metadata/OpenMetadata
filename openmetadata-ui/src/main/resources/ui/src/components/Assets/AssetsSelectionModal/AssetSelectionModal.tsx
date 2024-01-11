@@ -170,11 +170,11 @@ export const AssetSelectionModal = ({
 
   const fetchCurrentEntity = useCallback(async () => {
     if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(encodeURIComponent(entityFqn), '');
+      const data = await getDomainByName(getEncodedFqn(entityFqn), '');
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(
-        encodeURIComponent(entityFqn),
+        getEncodedFqn(entityFqn),
         'domain,assets'
       );
       setActiveEntity(data);

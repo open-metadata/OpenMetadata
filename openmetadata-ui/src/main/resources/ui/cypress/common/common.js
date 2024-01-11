@@ -26,6 +26,7 @@ import {
   DATA_ASSETS,
   DELETE_TERM,
   EXPLORE_PAGE_TABS,
+  INVALID_NAMES,
   NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
@@ -269,7 +270,9 @@ export const testServiceCreationAndIngestion = ({
   cy.get('#name_help').should('be.visible').contains('Name is required');
 
   // invalid name validation should work
-  cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
+  cy.get('[data-testid="service-name"]')
+    .should('exist')
+    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
   cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
 
   cy.get('[data-testid="service-name"]')

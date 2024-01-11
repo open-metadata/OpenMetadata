@@ -1,54 +1,43 @@
 grammar EntityLink;
 
 entitylink
-    : '<#E' (RESERVED entity)+ '>' EOF
+    : RESERVED_START (separator entity_type separator name_or_fqn)+
+      (separator entity_field (separator name_or_fqn)*)* '>' EOF
     ;
 
-entity
+
+entity_type
     : ENTITY_TYPE # entityType
-    | ENTITY_ATTRIBUTE # entityAttribute
-    | ENTITY_FQN # entityFqn
-    | ENTITY_FIELD # entityField
     ;
 
-ENTITY_TYPE
-    : 'table'
-    | 'database'
-    | 'databaseSchema'
-    | 'metrics'
-    | 'dashboard'
-    | 'pipeline'
-    | 'chart'
-    | 'report'
-    | 'topic'
-    | 'mlmodel'
-    | 'bot'
-    | 'THREAD'
-    | 'location'
-    | 'glossary'
-    | 'glossaryTerm'
-    | 'tag'
-    | 'classification'
-    | 'type'
-    | 'testDefinition'
-    | 'testSuite'
-    | 'testCase'
-    | 'dashboardDataModel'
+name_or_fqn
+    : NAME_OR_FQN # nameOrFQN
     ;
-ENTITY_FIELD
-    : 'columns'
-    | 'description' 
-    | 'tags' 
-    | 'tasks'
+
+entity_field
+    : ENTITY_FIELD # entityField
     ;
-RESERVED
+
+
+separator
     : '::'
     ;
 
-ENTITY_ATTRIBUTE
-    : [a-z]+
+RESERVED_START
+    : '<#E'
     ;
 
-ENTITY_FQN
-    : [\p{L}\p{N},. _\-'&()%"]+
+ENTITY_TYPE
+    : 'table' | 'database' | 'databaseSchema' | 'metrics' | 'dashboard' | 'pipeline'
+    | 'chart' | 'report' | 'topic' | 'mlmodel' | 'bot' | 'THREAD' | 'location'
+    | 'glossary' | 'glossaryTerm' | 'tag' | 'classification' | 'type'
+    | 'testDefinition' | 'testSuite' | 'testCase' | 'dashboardDataModel'
+    ;
+
+ENTITY_FIELD
+    : 'columns' | 'description' | 'tags' | 'tasks'
+    ;
+
+NAME_OR_FQN
+    : ~(':')+ ('>')*? ~(':'|'>')+
     ;

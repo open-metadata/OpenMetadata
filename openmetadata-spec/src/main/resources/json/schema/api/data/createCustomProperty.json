@@ -24,7 +24,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this Custom Property model.",
-      "$ref": "../../entity/data/container.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the Container instance.",

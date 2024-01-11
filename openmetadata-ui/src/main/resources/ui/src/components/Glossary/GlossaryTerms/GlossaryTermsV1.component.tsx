@@ -38,6 +38,7 @@ import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -96,7 +97,7 @@ const GlossaryTermsV1 = ({
     history.push({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(decodeURIComponent(glossaryFqn), tab),
+        : getGlossaryTermDetailsPath(getDecodedFqn(glossaryFqn), tab),
     });
   };
 
