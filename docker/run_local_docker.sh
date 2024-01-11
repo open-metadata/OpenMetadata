@@ -16,12 +16,12 @@ helpFunction()
 {
    echo ""
    echo "Usage: $0 -m mode -d database"
-   printf "\t-m Running mode: [ui, no-ui]. Default [ui]\n"
-   printf "\t-d Database: [mysql, postgresql]. Default [mysql]\n"
-   printf "\t-s Skip maven build: [true, false]. Default [false]\n"
-   printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
-   printf "\t-h For usage help\n"
-   printf "\t-r For Cleaning DB Volumes. [true, false]. Default [true]\n"
+   echo "\t-m Running mode: [ui, no-ui]. Default [ui]\n"
+   echo "\t-d Database: [mysql, postgresql]. Default [mysql]\n"
+   echo "\t-s Skip maven build: [true, false]. Default [false]\n"
+   echo "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
+   echo "\t-h For usage help\n"
+   echo "\t-r For Cleaning DB Volumes. [true, false]. Default [true]\n"
    exit 1 # Exit script after printing help
 }
 
@@ -108,12 +108,17 @@ if [ $RESULT -ne 0 ]; then
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
-  printf 'Checking if Elastic Search instance is up...\n'
+  echo 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
 
 until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
-  printf 'Checking if Sample Data DAG is reachable...\n'
+  echo 'Checking if Sample Data DAG is reachable...\n'
+  sleep 5
+done
+
+until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
+  echo 'Checking if OM Server is reachable...\n'
   sleep 5
 done
 
@@ -124,13 +129,20 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
         "is_paused": false
       }'
 
-printf 'Validate sample data DAG...'
+curl --location --request PATCH 'localhost:8080/api/v1/dags/extended_sample_data' \
+  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+        "is_paused": false
+      }'
+
+echo 'Validate sample data DAG...'
 sleep 5
 python -m pip install ingestion/
 python docker/validate_compose.py
 
 until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
-  printf 'Waiting on Sample Data Ingestion to complete...\n'
+  echo 'Waiting on Sample Data Ingestion to complete...\n'
   curl -v --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"
   sleep 5
 done
@@ -155,6 +167,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_lineage' \
   --data-raw '{
       "is_paused": false
       }'
+
 echo "✔running reindexing"
 # Trigger ElasticSearch ReIndexing from UI
 curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/SearchIndexingApplication' \
@@ -163,5 +176,4 @@ curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/Search
 sleep 60 # Sleep for 60 seconds to make sure the elasticsearch reindexing from UI finishes
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
-
 
