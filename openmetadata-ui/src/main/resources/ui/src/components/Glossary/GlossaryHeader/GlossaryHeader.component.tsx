@@ -70,6 +70,7 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -182,7 +183,7 @@ const GlossaryHeader = ({
   const handleGlossaryImport = () =>
     history.push(
       getGlossaryPathWithAction(
-        encodeURIComponent(selectedData.fullyQualifiedName ?? ''),
+        getEncodedFqn(selectedData.fullyQualifiedName ?? ''),
         EntityAction.IMPORT
       )
     );
