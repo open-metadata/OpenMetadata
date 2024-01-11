@@ -32,7 +32,8 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   updateService() {
-    super.updateService();
+    // Backend issue for searching with displayName
+    // super.updateService();
   }
 
   fillConnectionDetails() {

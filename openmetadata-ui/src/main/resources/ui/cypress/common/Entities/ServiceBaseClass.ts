@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NAME_VALIDATION_ERROR } from '../../constants/constants';
+import {
+  INVALID_NAMES,
+  NAME_VALIDATION_ERROR,
+} from '../../constants/constants';
 import {
   interceptURL,
   replaceAllSpacialCharWith_,
@@ -114,7 +117,9 @@ class ServiceBaseClass {
     cy.get('#name_help').should('contain', 'Name is required');
 
     // invalid name validation should work
-    cy.get('[data-testid="service-name"]').type('!@#$%^&*()');
+    cy.get('[data-testid="service-name"]').type(
+      INVALID_NAMES.WITH_SPECIAL_CHARS
+    );
     cy.get('#name_help').should('contain', NAME_VALIDATION_ERROR);
 
     cy.get('[data-testid="service-name"]').clear().type(serviceName);
