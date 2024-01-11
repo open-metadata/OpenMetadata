@@ -25,6 +25,10 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    paths:
+      - openmetadata-spec/**
+      - openmetadata-ui/**
+      - openmetadata-service/**
     paths-ignore:
       - 'openmetadata-docs/**'
 
