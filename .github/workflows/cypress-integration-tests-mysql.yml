@@ -17,7 +17,7 @@ name: MySQL Cypress Integration Tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 2 * * 1-5'
+    - cron: '30 2 * * 2,4'
   pull_request_target:
     types:
       - labeled
