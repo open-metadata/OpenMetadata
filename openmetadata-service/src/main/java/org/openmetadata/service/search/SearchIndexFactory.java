@@ -46,6 +46,7 @@ import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.EntityReportDataIndex;
+import org.openmetadata.service.search.indexes.GlossaryIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
@@ -82,6 +83,7 @@ public class SearchIndexFactory {
       case Entity.PIPELINE -> new PipelineIndex((Pipeline) entity);
       case Entity.USER -> new UserIndex((User) entity);
       case Entity.TEAM -> new TeamIndex((Team) entity);
+      case Entity.GLOSSARY -> new GlossaryIndex((GlossaryTerm) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
       case Entity.TAG -> new TagIndex((Tag) entity);
@@ -119,11 +121,11 @@ public class SearchIndexFactory {
           (ReportData) entity);
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
-      default -> buildExternalIndexes(entityType, entity);
+      default -> buildExternalIndexes(entityType);
     };
   }
 
-  protected SearchIndex buildExternalIndexes(String entityType, Object entity) {
+  protected SearchIndex buildExternalIndexes(String entityType) {
     throw new IllegalArgumentException(
         String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
