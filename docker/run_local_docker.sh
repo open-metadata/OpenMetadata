@@ -177,4 +177,3 @@ sleep 60 # Sleep for 60 seconds to make sure the elasticsearch reindexing from U
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
 
-

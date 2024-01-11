@@ -73,6 +73,7 @@ import {
   SAGEMAKER,
   SALESFORCE,
   SAP_HANA,
+  SAS,
   SCIKIT,
   SINGLESTORE,
   SNOWFLAKE,
@@ -244,6 +245,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.MongoDB:
         return MONGODB;
+
+      case DatabaseServiceType.SAS:
+        return SAS;
 
       case DatabaseServiceType.Couchbase:
         return COUCHBASE;
