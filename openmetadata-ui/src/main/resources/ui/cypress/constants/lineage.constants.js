@@ -16,12 +16,12 @@ export const PIPELINE_SUPPORTED_TYPES = ['Table', 'Topic'];
 
 export const LINEAGE_ITEMS = [
   {
-    term: 'raw_customer',
-    displayName: 'raw_customer',
+    term: 'fact_sale',
+    displayName: 'fact_sale',
     entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
-    fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
+    fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
     searchIndex: SEARCH_INDEX.tables,
   },
   {
@@ -50,5 +50,13 @@ export const LINEAGE_ITEMS = [
     entityType: 'ML Model',
     fqn: 'mlflow_svc.forecast_sales',
     searchIndex: SEARCH_INDEX.mlmodels,
+  },
+  {
+    term: 'media',
+    entity: DATA_ASSETS.containers,
+    serviceName: 's3_storage_sample',
+    entityType: 'Container',
+    fqn: 's3_storage_sample.departments.media',
+    searchIndex: SEARCH_INDEX.containers,
   },
 ];

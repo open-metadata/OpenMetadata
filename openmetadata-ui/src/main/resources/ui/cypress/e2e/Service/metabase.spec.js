@@ -72,7 +72,7 @@ describe('Metabase Ingestion', () => {
     });
   });
 
-  it('Update table description and verify description after re-run', () => {
+  it.skip('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,

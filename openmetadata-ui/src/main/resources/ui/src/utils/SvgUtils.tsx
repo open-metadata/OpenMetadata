@@ -1155,7 +1155,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
   return IconComponent ? (
     <img
-      // eslint-disable-next-line react/prop-types
       className={`svg-icon ${props.className ? props.className : ''}`}
       data-testid="image"
       height="16px"

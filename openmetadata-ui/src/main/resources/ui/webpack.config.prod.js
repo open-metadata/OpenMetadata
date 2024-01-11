@@ -164,11 +164,9 @@ module.exports = {
     // File types to be handled
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg'],
     fallback: {
-      http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: require.resolve('url/'),
       'process/browser': require.resolve('process/browser'),
     },
     alias: {
