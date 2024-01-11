@@ -68,7 +68,7 @@ class SearchClassBase {
         path: 'databases',
       },
       [SearchIndex.DATABASE_SCHEMA]: {
-        label: i18n.t('label.database-schema'),
+        label: i18n.t('label.database-schema-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'databaseSchemas',
