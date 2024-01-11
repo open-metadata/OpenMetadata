@@ -479,6 +479,9 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         for column in column_data:
             if column.type_text.lower().startswith("union"):
                 column.type_text = column.Type.replace(" ", "")
+            if column.type_text.lower() == "struct":
+                column.type_text = "struct<>"
+
             parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column.type_text.lower()
             )
