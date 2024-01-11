@@ -36,6 +36,7 @@ import javax.json.JsonValue;
 import javax.json.stream.JsonParsingException;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -52,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class FormatterUtil {
 
   public static MessageParser.EntityLink getEntityLink(String fieldName, EntityInterface entity) {
@@ -280,19 +282,24 @@ public class FormatterUtil {
 
   private static ChangeEvent extractChangeEvent(
       ContainerResponseContext responseContext, String updateBy, EventType eventType) {
+    // If the response entity is a ChangeEvent, then return it as is , example in case of
+    // ENTITY_FIELDS_CHANGED
     if (responseContext.getEntity() instanceof ChangeEvent fieldChangedChangeEvent) {
       return fieldChangedChangeEvent;
     }
 
+    // If the response entity is an EntityInterface, then create a ChangeEvent from it
     if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
       return createChangeEventForEntity(updateBy, eventType, entityInterface);
     }
 
-    if (responseContext.getEntity().getClass().equals(Thread.class)) {
-      return createChangeEventForThread(updateBy, eventType, (Thread) responseContext.getEntity());
+    // If the response entity is a Thread, then create a ChangeEvent from it
+    if (responseContext.getEntity() instanceof Thread thread) {
+      return createChangeEventForThread(updateBy, eventType, thread);
     }
 
-    throw new IllegalArgumentException("Unknown entity type Change Event");
+    LOG.debug("Unknown event type in Change Event :  {}", eventType.value());
+    return null;
   }
 
   private static ChangeEvent createChangeEventForEntity(

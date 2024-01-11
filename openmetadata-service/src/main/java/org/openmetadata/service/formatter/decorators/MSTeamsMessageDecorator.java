@@ -22,6 +22,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FeedUtils;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
@@ -63,7 +64,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public TeamsMessage buildMessage(ChangeEvent event) {
+  public TeamsMessage buildEntityMessage(ChangeEvent event) {
     TeamsMessage teamsMessage = new TeamsMessage();
     teamsMessage.setSummary("Change Event From OMD");
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();
@@ -80,12 +81,38 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
     for (Thread entry : thread) {
-      TeamsMessage.Section section = new TeamsMessage.Section();
-      section.setActivityTitle(teamsSections.getActivityTitle());
-      section.setActivityText(entry.getMessage());
-      attachmentList.add(section);
+      attachmentList.add(getTeamsSection(teamsSections.getActivityTitle(), entry.getMessage()));
     }
     teamsMessage.setSections(attachmentList);
     return teamsMessage;
+  }
+
+  @Override
+  public TeamsMessage buildThreadMessage(ChangeEvent event) {
+    OutgoingMessage outgoingMessage = createThreadMessage(event);
+
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      TeamsMessage teamsMessage = new TeamsMessage();
+      teamsMessage.setSummary("Change Event From OpenMetadata");
+
+      // Sections
+      TeamsMessage.Section teamsSections = new TeamsMessage.Section();
+      teamsSections.setActivityTitle(outgoingMessage.getHeader());
+      List<TeamsMessage.Section> attachmentList = new ArrayList<>();
+      outgoingMessage
+          .getMessages()
+          .forEach(m -> attachmentList.add(getTeamsSection(teamsSections.getActivityTitle(), m)));
+
+      teamsMessage.setSections(attachmentList);
+      return teamsMessage;
+    }
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private TeamsMessage.Section getTeamsSection(String activityTitle, String message) {
+    TeamsMessage.Section section = new TeamsMessage.Section();
+    section.setActivityTitle(activityTitle);
+    section.setActivityText(message);
+    return section;
   }
 }

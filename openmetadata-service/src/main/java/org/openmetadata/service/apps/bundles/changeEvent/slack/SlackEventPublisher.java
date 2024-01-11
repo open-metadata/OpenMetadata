@@ -64,7 +64,7 @@ public class SlackEventPublisher extends AbstractEventConsumer {
   @Override
   public void sendAlert(ChangeEvent event) throws EventPublisherException {
     try {
-      SlackMessage slackMessage = slackMessageFormatter.buildMessage(event);
+      SlackMessage slackMessage = slackMessageFormatter.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
           getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, event);
       if (target != null) {

@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -398,7 +399,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertNotNull(actualResourceDescriptors.getData());
 
     // Ensure all entities are captured in resource descriptor list
-    List<String> entities = Entity.getEntityList();
+    Set<String> entities = Entity.getEntityList();
     for (String entity : entities) {
       ResourceDescriptor resourceDescriptor =
           actualResourceDescriptors.getData().stream()

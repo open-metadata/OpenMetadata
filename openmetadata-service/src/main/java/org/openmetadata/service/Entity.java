@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
@@ -89,7 +90,7 @@ public final class Entity {
   @Getter @Setter private static SearchRepository searchRepository;
 
   // List of all the entities
-  private static final List<String> ENTITY_LIST = new ArrayList<>();
+  private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
   public static final String FIELD_OWNER = "owner";
@@ -295,7 +296,6 @@ public final class Entity {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
     LOG.debug("Registering entity {} {}", clazz, entity);
   }
@@ -307,7 +307,6 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
@@ -325,8 +324,8 @@ public final class Entity {
     ResourceRegistry.addResource(entity, null, getEntityFields(clazz));
   }
 
-  public static List<String> getEntityList() {
-    return Collections.unmodifiableList(ENTITY_LIST);
+  public static Set<String> getEntityList() {
+    return Collections.unmodifiableSet(ENTITY_LIST);
   }
 
   public static EntityReference getEntityReference(EntityReference ref, Include include) {

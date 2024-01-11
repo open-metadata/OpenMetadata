@@ -47,6 +47,7 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
@@ -121,14 +122,19 @@ public final class AlertUtil {
         case matchAnySource -> func.setParamAdditionalContext(
             paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
         case matchUpdatedBy, matchAnyOwnerName -> func.setParamAdditionalContext(
-            paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
+            paramAdditionalContext.withData(getEntitiesIndex(Set.of(USER, TEAM))));
         case matchAnyEntityFqn, matchAnyEntityId -> func.setParamAdditionalContext(
             paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
         case matchAnyEventType -> {
-          // TODO:
-          // List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
-          // func.setParamAdditionalContext(
-          //     paramAdditionalContext.withData(new HashSet<>(eventTypes)));
+          List<String> eventTypes =
+              List.of(
+                  EventType.ENTITY_CREATED.value(),
+                  EventType.ENTITY_UPDATED.value(),
+                  EventType.ENTITY_DELETED.value(),
+                  EventType.ENTITY_SOFT_DELETED.value(),
+                  EventType.ENTITY_RESTORED.value());
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(new HashSet<>(eventTypes)));
         }
         case matchIngestionPipelineState -> {
           List<String> ingestionPipelineState =
@@ -154,7 +160,7 @@ public final class AlertUtil {
           func.setParamAdditionalContext(paramAdditionalContext.withData(entityToFieldMap));
         }
         case matchAnyDomain -> func.setParamAdditionalContext(
-            paramAdditionalContext.withData(getEntitiesIndex(List.of(DOMAIN))));
+            paramAdditionalContext.withData(getEntitiesIndex(Set.of(DOMAIN))));
         default -> LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);
@@ -162,7 +168,7 @@ public final class AlertUtil {
     return alertFunctions;
   }
 
-  public static Set<String> getEntitiesIndex(List<String> entities) {
+  public static Set<String> getEntitiesIndex(Set<String> entities) {
     Set<String> indexesToSearch = new HashSet<>();
     for (String entityType : entities) {
       try {
@@ -366,7 +372,7 @@ public final class AlertUtil {
     }
   }
 
-  private static String convertInputListToString(List<String> valueList) {
+  public static String convertInputListToString(List<String> valueList) {
     if (CommonUtil.nullOrEmpty(valueList)) {
       return "";
     }

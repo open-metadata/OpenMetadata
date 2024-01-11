@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
@@ -52,6 +53,12 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntityType() == null) {
       return false;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     String changeEventEntity = changeEvent.getEntityType();
     for (String entityType : originEntities) {
       if (changeEventEntity.equals(entityType)) {
@@ -72,6 +79,12 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     EntityInterface entity = getEntity(changeEvent);
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
@@ -105,6 +118,12 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
       if (changeEvent.getEntityType().equals(TEST_CASE)
@@ -131,6 +150,12 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     EntityInterface entity = getEntity(changeEvent);
     for (String id : entityIds) {
       if (entity.getId().equals(UUID.fromString(id))) {
@@ -215,6 +240,11 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     EntityInterface entity = getEntity(changeEvent);
     for (String name : tableNameList) {
       if (entity.getFullyQualifiedName().contains(name)) {
@@ -240,6 +270,11 @@ public class AlertsRuleEvaluator {
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)) {
       // in case the entity is not test case return since the filter doesn't apply
+      return true;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
       return true;
     }
 
@@ -296,6 +331,12 @@ public class AlertsRuleEvaluator {
       // in case the entity is not ingestion pipeline return since the filter doesn't apply
       return true;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
       if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
         PipelineStatus pipelineStatus = (PipelineStatus) fieldChange.getNewValue();
@@ -339,6 +380,17 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null) {
       return false;
     }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(

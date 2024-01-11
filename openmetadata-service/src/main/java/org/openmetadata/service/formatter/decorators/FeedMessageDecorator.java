@@ -54,7 +54,12 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public FeedMessage buildMessage(ChangeEvent event) {
+  public FeedMessage buildEntityMessage(ChangeEvent event) {
+    return null;
+  }
+
+  @Override
+  public FeedMessage buildThreadMessage(ChangeEvent event) {
     return null;
   }
 }

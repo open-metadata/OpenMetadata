@@ -22,6 +22,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FeedUtils;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
@@ -67,7 +68,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildMessage(ChangeEvent event) {
+  public GChatMessage buildEntityMessage(ChangeEvent event) {
     GChatMessage gChatMessage = new GChatMessage();
     GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
     GChatMessage.Card card = new GChatMessage.Card();
@@ -104,5 +105,40 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     cardsV2.setCard(card);
     gChatMessage.setCardsV2(List.of(cardsV2));
     return gChatMessage;
+  }
+
+  @Override
+  public GChatMessage buildThreadMessage(ChangeEvent event) {
+    OutgoingMessage outgoingMessage = createThreadMessage(event);
+
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      GChatMessage gChatMessage = new GChatMessage();
+      GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
+      GChatMessage.Card card = new GChatMessage.Card();
+      GChatMessage.Section section = new GChatMessage.Section();
+
+      // Header
+      gChatMessage.setText("Change Event from OpenMetadata");
+      GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
+      cardHeader.setTitle(outgoingMessage.getHeader());
+      card.setHeader(cardHeader);
+
+      // Attachments
+      List<GChatMessage.Widget> widgets = new ArrayList<>();
+      outgoingMessage.getMessages().forEach(m -> widgets.add(getGChatWidget(m)));
+      section.setWidgets(widgets);
+      card.setSections(List.of(section));
+      cardsV2.setCard(card);
+      gChatMessage.setCardsV2(List.of(cardsV2));
+
+      return gChatMessage;
+    }
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private GChatMessage.Widget getGChatWidget(String message) {
+    GChatMessage.Widget widget = new GChatMessage.Widget();
+    widget.setTextParagraph(new GChatMessage.TextParagraph(message));
+    return widget;
   }
 }

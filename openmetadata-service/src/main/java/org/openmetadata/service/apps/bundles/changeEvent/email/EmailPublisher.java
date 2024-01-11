@@ -55,7 +55,7 @@ public class EmailPublisher extends AbstractEventConsumer {
   public void sendAlert(ChangeEvent event) throws EventPublisherException {
     try {
       Set<String> receivers = buildReceiversList(event);
-      EmailMessage emailMessage = emailDecorator.buildMessage(event);
+      EmailMessage emailMessage = emailDecorator.buildOutgoingMessage(event);
       for (String email : receivers) {
         EmailUtil.sendChangeEventMail(email, emailMessage);
       }

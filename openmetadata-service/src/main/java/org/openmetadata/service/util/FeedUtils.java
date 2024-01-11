@@ -27,7 +27,6 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
@@ -45,7 +44,9 @@ public final class FeedUtils {
 
     // Change Event is of Thread or Data Assets
     if (changeEvent.getEntityType().equals(Entity.THREAD)) {
-      return List.of(AlertsRuleEvaluator.getThread(changeEvent));
+      // TODO:
+      return Collections.emptyList();
+      // return List.of(AlertsRuleEvaluator.getThread(changeEvent));
     } else if (Entity.getEntityList().contains(changeEvent.getEntityType())) {
       return populateMessageForDataAssets(changeEvent, loggedInUserName);
     } else {

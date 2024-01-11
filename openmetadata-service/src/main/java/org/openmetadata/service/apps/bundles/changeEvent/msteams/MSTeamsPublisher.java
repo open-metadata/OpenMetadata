@@ -65,7 +65,7 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
   @Override
   public void sendAlert(ChangeEvent event) throws EventPublisherException {
     try {
-      TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
+      TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
           getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
       if (target != null) {

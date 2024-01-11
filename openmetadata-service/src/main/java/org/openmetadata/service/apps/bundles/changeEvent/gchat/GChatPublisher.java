@@ -65,7 +65,7 @@ public class GChatPublisher extends AbstractEventConsumer {
   @Override
   public void sendAlert(ChangeEvent event) throws EventPublisherException {
     try {
-      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
+      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
           getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, event);
       if (target != null) {

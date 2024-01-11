@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FeedUtils;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
@@ -69,7 +70,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildMessage(ChangeEvent event) {
+  public SlackMessage buildEntityMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     EntityInterface entityInterface = getEntity(event);
@@ -98,14 +99,33 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
     List<SlackAttachment> attachmentList = new ArrayList<>();
     for (Thread entry : thread) {
-      SlackAttachment attachment = new SlackAttachment();
-      List<String> mark = new ArrayList<>();
-      mark.add("text");
-      attachment.setMarkdownIn(mark);
-      attachment.setText(entry.getMessage());
-      attachmentList.add(attachment);
+      attachmentList.add(getSlackAttachment(entry.getMessage()));
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
+  }
+
+  @Override
+  public SlackMessage buildThreadMessage(ChangeEvent event) {
+    OutgoingMessage outgoingMessage = createThreadMessage(event);
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      SlackMessage message = new SlackMessage();
+      List<SlackAttachment> attachmentList = new ArrayList<>();
+      outgoingMessage.getMessages().forEach(m -> attachmentList.add(getSlackAttachment(m)));
+      message.setUsername(outgoingMessage.getUserName());
+      message.setText(outgoingMessage.getHeader());
+      message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+      return message;
+    }
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private SlackAttachment getSlackAttachment(String message) {
+    SlackAttachment attachment = new SlackAttachment();
+    List<String> mark = new ArrayList<>();
+    mark.add("text");
+    attachment.setMarkdownIn(mark);
+    attachment.setText(message);
+    return attachment;
   }
 }

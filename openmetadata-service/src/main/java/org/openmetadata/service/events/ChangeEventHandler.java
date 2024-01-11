@@ -37,16 +37,13 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.NotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
-  private NotificationHandler notificationHandler;
 
   public void init(OpenMetadataApplicationConfig config) {
     this.mapper = new ObjectMapper();
-    this.notificationHandler = new NotificationHandler();
   }
 
   @SneakyThrows

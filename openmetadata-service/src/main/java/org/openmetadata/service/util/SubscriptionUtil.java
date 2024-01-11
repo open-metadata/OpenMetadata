@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
@@ -34,9 +35,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
@@ -135,6 +138,26 @@ public class SubscriptionUtil {
     return data;
   }
 
+  private static Set<UUID> getTaskAssignees(Thread thread) {
+    List<EntityReference> assignees = thread.getTask().getAssignees();
+    Set<UUID> receiversList = new HashSet<>();
+    assignees.forEach(
+        e -> {
+          if (Entity.USER.equals(e.getType())) {
+            receiversList.add(e.getId());
+          } else if (Entity.TEAM.equals(e.getType())) {
+            // fetch all that are there in the team
+            List<CollectionDAO.EntityRelationshipRecord> records =
+                Entity.getCollectionDAO()
+                    .relationshipDAO()
+                    .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+            records.forEach(eRecord -> receiversList.add(eRecord.getId()));
+          }
+        });
+
+    return receiversList;
+  }
+
   private static Set<String> getWebhookUrlsFromProfile(
       Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
     Set<String> webhookUrls = new HashSet<>();
@@ -198,18 +221,29 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       ChangeEvent event) {
-    EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
-    Set<String> receiversUrls =
-        buildReceiversListFromActions(
-            action,
-            type,
-            Entity.getCollectionDAO(),
-            entityInterface.getId(),
-            event.getEntityType());
-    for (String url : receiversUrls) {
-      targets.add(client.target(url).request());
+    if (event.getEntityType().equals(THREAD)) {
+      //      Thread thread = AlertsRuleEvaluator.getThread(event);
+      //      Set<String> receiverUrls =  new HashSet<>();
+      //       switch (thread.getType()) {
+      //        case Task -> getTaskAssignees(thread);
+      //        case Conversation -> handleConversationNotification(thread);
+      //        case Announcement -> handleAnnouncementNotification(thread);
+      //      }
+    } else {
+      EntityInterface entityInterface = getEntity(event);
+      Set<String> receiversUrls =
+          buildReceiversListFromActions(
+              action,
+              type,
+              Entity.getCollectionDAO(),
+              entityInterface.getId(),
+              event.getEntityType());
+      for (String url : receiversUrls) {
+        targets.add(client.target(url).request());
+      }
     }
+
     return targets;
   }
 

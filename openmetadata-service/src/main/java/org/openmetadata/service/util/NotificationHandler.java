@@ -50,50 +50,19 @@ public class NotificationHandler {
     this.threadScheduler = Executors.newFixedThreadPool(1);
   }
 
-  public void processNotifications(ContainerResponseContext responseContext) {
-    threadScheduler.submit(
-        () -> {
-          try {
-            handleNotifications(responseContext);
-          } catch (Exception ex) {
-            LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
-          }
-        });
-  }
-
   private void handleNotifications(ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     if (responseCode == Response.Status.CREATED.getStatusCode()
         && responseContext.getEntity() != null
         && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
-      switch (thread.getType()) {
-        case Task -> handleTaskNotification(thread);
-        case Conversation -> handleConversationNotification(thread);
-        case Announcement -> handleAnnouncementNotification(thread);
-      }
     }
   }
 
   public static void handleTaskNotification(Thread thread) {
     String jsonThread = JsonUtils.pojoToJson(thread);
     if (thread.getPostsCount() == 0) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      HashSet<UUID> receiversList = new HashSet<>();
-      assignees.forEach(
-          e -> {
-            if (Entity.USER.equals(e.getType())) {
-              receiversList.add(e.getId());
-            } else if (Entity.TEAM.equals(e.getType())) {
-              // fetch all that are there in the team
-              List<CollectionDAO.EntityRelationshipRecord> records =
-                  Entity.getCollectionDAO()
-                      .relationshipDAO()
-                      .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-              records.forEach(eRecord -> receiversList.add(eRecord.getId()));
-            }
-          });
-
+      Set<UUID> receiversList = getTaskAssignees(thread);
       // Send WebSocket Notification
       WebSocketManager.getInstance()
           .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
@@ -102,6 +71,26 @@ public class NotificationHandler {
       // TODO: This needs to be handled from the Alerts
       handleEmailNotifications(receiversList, thread);
     }
+  }
+
+  public static Set<UUID> getTaskAssignees(Thread thread) {
+    List<EntityReference> assignees = thread.getTask().getAssignees();
+    Set<UUID> receiversList = new HashSet<>();
+    assignees.forEach(
+        e -> {
+          if (Entity.USER.equals(e.getType())) {
+            receiversList.add(e.getId());
+          } else if (Entity.TEAM.equals(e.getType())) {
+            // fetch all that are there in the team
+            List<CollectionDAO.EntityRelationshipRecord> records =
+                Entity.getCollectionDAO()
+                    .relationshipDAO()
+                    .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+            records.forEach(eRecord -> receiversList.add(eRecord.getId()));
+          }
+        });
+
+    return receiversList;
   }
 
   private void handleAnnouncementNotification(Thread thread) {
@@ -115,7 +104,7 @@ public class NotificationHandler {
     }
   }
 
-  private void handleConversationNotification(Thread thread) {
+  public static void handleConversationNotification(Thread thread) {
     String jsonThread = JsonUtils.pojoToJson(thread);
     WebSocketManager.getInstance()
         .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);

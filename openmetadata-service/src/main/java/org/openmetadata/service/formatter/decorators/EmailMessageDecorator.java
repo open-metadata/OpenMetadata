@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FeedUtils;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
@@ -64,7 +65,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildMessage(ChangeEvent event) {
+  public EmailMessage buildEntityMessage(ChangeEvent event) {
     EmailMessage emailMessage = new EmailMessage();
     emailMessage.setUserName(event.getUserName());
     EntityInterface entityInterface = getEntity(event);
@@ -83,5 +84,20 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
     }
     emailMessage.setChangeMessage(changeMessage);
     return emailMessage;
+  }
+
+  @Override
+  public EmailMessage buildThreadMessage(ChangeEvent event) {
+    OutgoingMessage outgoingMessage = createThreadMessage(event);
+
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      EmailMessage emailMessage = new EmailMessage();
+      emailMessage.setUserName(outgoingMessage.getUserName());
+      emailMessage.setEntityUrl(outgoingMessage.getUserName());
+      emailMessage.setUpdatedBy(event.getUserName());
+      emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
+      return emailMessage;
+    }
+    throw new UnhandledServerException("No messages found for the event");
   }
 }
