@@ -16,14 +16,12 @@ import React from 'react';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
 import StoredProcedurePage from './StoredProcedurePage';
 
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
-
-const API_FIELDS = `owner, followers, 
-tags, domain,dataProducts, votes`;
 
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -161,7 +159,7 @@ describe('StoredProcedure component', () => {
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
-      fields: API_FIELDS,
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
     });
   });
 
@@ -179,7 +177,7 @@ describe('StoredProcedure component', () => {
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
-      fields: API_FIELDS,
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
     });
   });
 
@@ -209,7 +207,7 @@ describe('StoredProcedure component', () => {
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
-      fields: API_FIELDS,
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -235,7 +233,7 @@ describe('StoredProcedure component', () => {
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
-      fields: API_FIELDS,
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
     });
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();

@@ -62,6 +62,7 @@ import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getDashboardByFqn,
@@ -418,7 +419,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.STORED_PROCEDURE: {
-          const { id } = await getStoredProceduresByFqn(entityFQN);
+          const { id } = await getStoredProceduresByFqn(entityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id ?? '');
 
