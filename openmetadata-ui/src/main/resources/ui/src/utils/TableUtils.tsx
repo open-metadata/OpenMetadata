@@ -39,9 +39,11 @@ import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
@@ -230,6 +232,14 @@ export const getServiceIcon = (source: SourceType) => {
 
 export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
+    case SearchIndex.DATABASE:
+    case EntityType.DATABASE:
+      return <DatabaseIcon />;
+
+    case SearchIndex.DATABASE_SCHEMA:
+    case EntityType.DATABASE_SCHEMA:
+      return <SchemaIcon />;
+
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
     case EntityType.MESSAGING_SERVICE:
