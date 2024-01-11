@@ -6,18 +6,15 @@
   "javaType": "org.openmetadata.schema.entity.teams.Role",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "type": "object",
-  "definitions": {
-    "roleName": {
-      "description": "A unique name for the role.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    }
+"definitions": {
+    
   },
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/definitions/roleName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
