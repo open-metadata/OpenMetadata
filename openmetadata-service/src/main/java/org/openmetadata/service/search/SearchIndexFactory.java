@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -83,7 +84,7 @@ public class SearchIndexFactory {
       case Entity.PIPELINE -> new PipelineIndex((Pipeline) entity);
       case Entity.USER -> new UserIndex((User) entity);
       case Entity.TEAM -> new TeamIndex((Team) entity);
-      case Entity.GLOSSARY -> new GlossaryIndex((GlossaryTerm) entity);
+      case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
       case Entity.TAG -> new TagIndex((Tag) entity);
