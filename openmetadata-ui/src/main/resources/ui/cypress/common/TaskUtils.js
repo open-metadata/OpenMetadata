@@ -18,8 +18,8 @@ import {
 } from './common';
 
 const owner = 'admin';
-const assignee = 'Adam Matthews';
-const secondAssignee = 'Aaron Johnson';
+const assignee = 'adam.matthews2';
+const secondAssignee = 'aaron_johnson0';
 
 export const verifyTaskDetails = (regexPattern) => {
   cy.get('#task-panel').should('be.visible');
@@ -47,7 +47,7 @@ export const editAssignee = () => {
   // select value from dropdown
   verifyResponseStatusCode('@suggestApi', 200);
 
-  cy.get(`[data-testid="assignee-option-${secondAssignee}"]`)
+  cy.get(`[data-testid="${secondAssignee}"]`)
     .should('be.visible')
     .trigger('mouseover')
     .trigger('click');
@@ -84,7 +84,7 @@ export const createDescriptionTask = (value, assigneeDisabled) => {
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
-    cy.get(`[data-testid="assignee-option-${value.assignee ?? assignee}"]`)
+    cy.get(`[data-testid="${value.assignee ?? assignee}"]`)
       .should('be.visible')
       .trigger('mouseover')
       .trigger('click');

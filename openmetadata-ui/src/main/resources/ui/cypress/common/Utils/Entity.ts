@@ -262,21 +262,18 @@ export const checkCustomPropertyEditButton = ({ deleted }) => {
 export const checkLineageTabActions = ({ deleted }) => {
   interceptURL(
     'GET',
-    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1*`,
+    `/api/v1/lineage/getLineage?fqn=*&upstreamDepth=3&downstreamDepth=3&query_filter=*&includeDeleted=false`,
     'getLineageData'
   );
 
   cy.get('[data-testid="lineage"]').click();
 
-  !deleted && verifyResponseStatusCode('@getLineageData', 200);
+  verifyResponseStatusCode('@getLineageData', 200);
 
   if (!deleted) {
     cy.get('[data-testid="edit-lineage"]').should('be.visible');
   } else {
-    cy.get('[data-testid="no-data-placeholder"]').should(
-      'contain',
-      'Lineage data is not available for deleted entities.'
-    );
+    cy.get('[data-testid="edit-lineage"]').should(`not.exist`);
   }
 };
 

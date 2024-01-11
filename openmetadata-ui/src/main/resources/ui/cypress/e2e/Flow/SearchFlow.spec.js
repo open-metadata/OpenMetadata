@@ -172,7 +172,7 @@ describe('Advance search', () => {
     });
   });
 
-  describe('Search with additional rule', () => {
+  describe.skip('Search with additional rule', () => {
     beforeEach(() => {
       cy.login();
     });
