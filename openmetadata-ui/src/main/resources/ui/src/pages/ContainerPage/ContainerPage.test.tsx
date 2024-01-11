@@ -10,122 +10,151 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { getContainerByName } from '../../rest/storageAPI';
+import {
+  act,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React, { ReactNode } from 'react';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { addContainerFollower } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: true,
-      EditCustomFields: true,
-      EditDataProfile: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditLineage: true,
-      EditOwner: true,
-      EditQueries: true,
-      EditSampleData: true,
-      EditTags: true,
-      EditTests: true,
-      EditTier: true,
-      ViewAll: true,
-      ViewDataProfile: true,
-      ViewQueries: true,
-      ViewSampleData: true,
-      ViewTests: true,
-      ViewUsage: true,
-    }),
-  })),
+const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
+  ViewBasic: true,
+});
+const mockGetContainerByName = jest.fn().mockResolvedValue(CONTAINER_DATA);
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      postFeed: jest.fn(),
+      deleteFeed: jest.fn(),
+      updateFeed: jest.fn(),
+    })),
+    __esModule: true,
+    default: (props: { children: ReactNode }) => (
+      <div data-testid="activity-feed-provider">{props.children}</div>
+    ),
+  })
+);
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest.fn().mockReturnValue(<>ActivityFeedTab</>),
+  })
+);
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  () => jest.fn().mockImplementation(() => <>ActivityThreadPanel</>)
+);
+
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn().mockReturnValue({
+    id: 'userid',
+  }),
 }));
 
 jest.mock(
   '../../components/common/CustomPropertyTable/CustomPropertyTable',
-  () => {
-    return {
-      CustomPropertyTable: jest
-        .fn()
-        .mockReturnValue(
-          <div data-testid="custom-properties-table">CustomPropertyTable</div>
-        ),
-    };
-  }
+  () => ({
+    CustomPropertyTable: jest.fn().mockReturnValue(<>CustomPropertyTable</>),
+  })
 );
 
-jest.mock('../../components/common/EntityDescription/Description', () => {
-  return jest
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+  jest
     .fn()
-    .mockReturnValue(<div data-testid="description">Description</div>);
-});
+    .mockImplementation(({ onThreadLinkSelect }) => (
+      <button onClick={onThreadLinkSelect}>DescriptionV1</button>
+    ))
+);
 
-jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="entity-page-info">TagsContainerV2</div>);
-});
-
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
-});
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-      );
-  }
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(({ type, children }) => (
+    <div>
+      ErrorPlaceHolder
+      <span>{type}</span>
+      <div>{children}</div>
+    </div>
+  ))
 );
 
 jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="containers-children">ContainerChildren</div>
-      );
-  }
+  () => jest.fn().mockReturnValue(<>ContainerChildren</>)
 );
 
 jest.mock(
   '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="container-data-model">ContainerDataModel</div>
-      );
-  }
+  () => jest.fn().mockReturnValue(<span>ContainerDataModel</span>)
 );
 
-jest.mock('../../components/Lineage/Lineage.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);
-});
+jest.mock(
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest.fn().mockImplementation(
+      ({
+        afterDeleteAction,
+        //   afterDomainUpdateAction,
+        //   handleUpdateDisplayName,
+        onFollowClick,
+        //   handleUpdateOwner,
+        //   handleRestoreContainer,
+        //   handleUpdateTier,
+        //   updateVote,
+        //   versionHandler,
+      }) => (
+        <div data-testid="data-asset-header">
+          <button onClick={() => afterDeleteAction()}>Hard Delete</button>
+          <button onClick={onFollowClick}>Follow Container</button>
+        </div>
+      )
+    ),
+  })
+);
 
-jest.mock('../../components/Loader/Loader', () => {
-  return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
-});
+jest.mock('../../components/Entity/EntityRightPanel/EntityRightPanel', () =>
+  jest.fn().mockReturnValue(<>EntityRightPanel</>)
+);
 
-jest.mock('../../rest/miscAPI', () => ({
-  deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
-  addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
+jest.mock('../../components/Lineage/Lineage.component', () =>
+  jest.fn().mockReturnValue(<>EntityLineage</>)
+);
+
+jest.mock('../../components/LineageProvider/LineageProvider', () =>
+  jest.fn().mockReturnValue(<>LineageProvider</>)
+);
+
+jest.mock('../../components/Loader/Loader', () =>
+  jest.fn().mockReturnValue(<div>Loader</div>)
+);
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <>{children}</>)
+);
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+  })),
+}));
+
+jest.mock('../../rest/feedsAPI', () => ({
+  postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../rest/storageAPI', () => ({
-  addContainerFollower: jest.fn().mockImplementation(() => Promise.resolve()),
+  addContainerFollower: jest.fn(),
   getContainerByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(CONTAINER_DATA)),
+    .mockImplementation(() => mockGetContainerByName()),
   patchContainerDetails: jest.fn().mockImplementation(() => Promise.resolve()),
   removeContainerFollower: jest
     .fn()
@@ -133,117 +162,130 @@ jest.mock('../../rest/storageAPI', () => ({
   restoreContainer: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock(
-  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
-  () => ({
-    ActivityFeedTab: jest.fn().mockImplementation(() => <>ActivityFeedTab</>),
-  })
-);
+// jest.mock('../../utils/CommonUtils', () => ({
+//   addToRecentViewed: jest.fn(),
+//   getEntityMissingError: jest.fn(),
+//   getFeedCounts: jest.fn(),
+//   sortTagsCaseInsensitive: jest.fn(),
+// }));
 
-let mockParams = {
-  entityFQN: 'entityTypeFQN',
+jest.mock('../../utils/StringsUtils', () => ({
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+}));
+
+const mockParams = {
+  fqn: 's3_storage_sample.transactions',
   tab: 'schema',
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockParams),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
-// TODO: need to re-write tests as we have changed flow completely
-describe.skip('Container Page Component', () => {
-  it('Should render the child components', async () => {
-    await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
+describe('Container Page Component', () => {
+  it('should show error-placeholder, if not have view permission', async () => {
+    mockGetEntityPermissionByFqn.mockResolvedValueOnce({
+      ViewBasic: false,
     });
 
-    const pageTopInfo = screen.getByTestId('entity-page-info');
-    const tabs = screen.getAllByRole('tab');
+    await act(() => {
+      render(<ContainerPage />);
 
-    expect(pageTopInfo).toBeInTheDocument();
-    expect(tabs).toHaveLength(4);
-  });
-
-  it('Should render the schema tab component', async () => {
-    await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const tabs = screen.getAllByRole('tab');
-
-    const schemaTab = tabs[0];
-
-    expect(schemaTab).toHaveAttribute('aria-selected', 'true');
-
-    const description = screen.getByTestId('description');
-
-    expect(description).toBeInTheDocument();
-
-    const dataModel = screen.getByTestId('container-data-model');
-
-    expect(dataModel).toBeInTheDocument();
-  });
-
-  it('Should render the children tab component', async () => {
-    mockParams = { ...mockParams, tab: 'children' };
-
-    await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
+      expect(screen.getByText('Loader')).toBeVisible();
     });
 
-    const containerChildren = screen.getByTestId('containers-children');
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
-    expect(containerChildren).toBeInTheDocument();
+    expect(mockGetContainerByName).not.toHaveBeenCalled();
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(
+      screen.getByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+    ).toBeInTheDocument();
   });
 
-  it('Should render the lineage tab component', async () => {
-    mockParams = { ...mockParams, tab: 'lineage' };
-
+  it('fetch container data, if have view permission', async () => {
     await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
     });
 
-    const lineage = screen.getByTestId('entity-lineage');
-
-    expect(lineage).toBeInTheDocument();
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(mockGetContainerByName).toHaveBeenCalled();
   });
 
-  it('Should render the custom properties tab component', async () => {
-    mockParams = { ...mockParams, tab: 'custom-properties' };
-
-    await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const customPropertyTable = screen.getByTestId('custom_properties');
-
-    expect(customPropertyTable).toBeInTheDocument();
-  });
-
-  it('Should render error placeholder on API fail', async () => {
-    mockParams = { ...mockParams, tab: 'schema' };
-    (getContainerByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
+  it('show ErrorPlaceHolder if container data fetch fail', async () => {
+    mockGetContainerByName.mockRejectedValueOnce(
+      'failed to fetch container data'
     );
 
     await act(async () => {
-      render(<ContainerPage />, {
-        wrapper: MemoryRouter,
-      });
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
     });
 
-    const errorPlaceholder = screen.getByTestId('error-placeholder');
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(mockGetContainerByName).toHaveBeenCalled();
 
-    expect(errorPlaceholder).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should render the page container data, with the schema tab selected', async () => {
+    await act(async () => {
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
+    });
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(mockGetContainerByName).toHaveBeenCalled();
+
+    expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
+
+    const tabs = screen.getAllByRole('tab');
+
+    expect(tabs).toHaveLength(5);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('DescriptionV1')).toBeVisible();
+    expect(screen.getByText('ContainerDataModel')).toBeVisible();
+    expect(screen.getByText('EntityRightPanel')).toBeVisible();
+  });
+
+  it('activity thread panel should render after selecting thread link', async () => {
+    await act(async () => {
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
+    });
+
+    const DescriptionV1 = screen.getByText('DescriptionV1');
+
+    expect(DescriptionV1).toBeVisible();
+
+    expect(screen.queryByText('ActivityThreadPanel')).not.toBeInTheDocument();
+
+    userEvent.click(DescriptionV1);
+
+    expect(screen.getByText('ActivityThreadPanel')).toBeInTheDocument();
+  });
+
+  it('onClick of follow container should call addContainerFollower', async () => {
+    await act(async () => {
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
+    });
+
+    const followButton = screen.getByRole('button', {
+      name: 'Follow Container',
+    });
+
+    userEvent.click(followButton);
+
+    expect(addContainerFollower).toHaveBeenCalled();
   });
 });
