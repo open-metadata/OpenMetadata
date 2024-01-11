@@ -29,6 +29,6 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: ['cypress/e2e/Service/ServiceIngestion.spec.ts'],
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
   },
 });

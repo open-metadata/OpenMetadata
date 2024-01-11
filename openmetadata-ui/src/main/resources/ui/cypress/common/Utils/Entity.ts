@@ -471,8 +471,8 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
       '1'
     );
 
-    cy.get('.ant-table-row > :nth-child(1)').should('contain', entityName);
-    cy.get('.ant-table-row > :nth-child(1)').contains(entityName).click();
+    cy.get(`[data-testid=${entityName}]`).should('contain', entityName);
+    cy.get(`[data-testid=${entityName}]`).click();
   }
 
   restoreEntity();
