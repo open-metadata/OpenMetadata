@@ -39,6 +39,8 @@ $$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
+
+Note: In case you are using Db2 for IBM i, then from advanced config you can choose the `ibmi` scheme.
 $$
 
 $$section
