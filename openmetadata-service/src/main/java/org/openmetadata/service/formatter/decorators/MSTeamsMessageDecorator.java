@@ -13,17 +13,13 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.util.FeedUtils;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
@@ -65,32 +61,15 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public TeamsMessage buildEntityMessage(ChangeEvent event) {
-    TeamsMessage teamsMessage = new TeamsMessage();
-    teamsMessage.setSummary("Change Event From OMD");
-    TeamsMessage.Section teamsSections = new TeamsMessage.Section();
-    EntityInterface entityInterface = getEntity(event);
-    if (event.getEntity() != null) {
-      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText =
-          String.format(
-              headerTxt,
-              event.getUserName(),
-              this.buildEntityUrl(event.getEntityType(), entityInterface));
-      teamsSections.setActivityTitle(headerText);
-    }
-    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
-    List<TeamsMessage.Section> attachmentList = new ArrayList<>();
-    for (Thread entry : thread) {
-      attachmentList.add(getTeamsSection(teamsSections.getActivityTitle(), entry.getMessage()));
-    }
-    teamsMessage.setSections(attachmentList);
-    return teamsMessage;
+    return getTeamMessage(createEntityMessage(event));
   }
 
   @Override
   public TeamsMessage buildThreadMessage(ChangeEvent event) {
-    OutgoingMessage outgoingMessage = createThreadMessage(event);
+    return getTeamMessage(createThreadMessage(event));
+  }
 
+  private TeamsMessage getTeamMessage(OutgoingMessage outgoingMessage) {
     if (!outgoingMessage.getMessages().isEmpty()) {
       TeamsMessage teamsMessage = new TeamsMessage();
       teamsMessage.setSummary("Change Event From OpenMetadata");

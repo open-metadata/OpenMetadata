@@ -15,6 +15,7 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
 
 import java.time.Instant;
@@ -29,11 +30,13 @@ import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.FeedUtils;
 
 public interface MessageDecorator<T> {
   String getBold();
@@ -125,6 +128,39 @@ public interface MessageDecorator<T> {
       index++;
     }
     return diff;
+  }
+
+  default OutgoingMessage createEntityMessage(ChangeEvent event) {
+    OutgoingMessage message = new OutgoingMessage();
+    message.setUserName(event.getUserName());
+    EntityInterface entityInterface = getEntity(event);
+    if (event.getEntity() != null) {
+      String eventType;
+      if (event.getEntity() instanceof TestCase) {
+        eventType = "testSuite";
+      } else {
+        eventType = event.getEntityType();
+      }
+      String headerTxt;
+      String headerText;
+      if (eventType.equals(Entity.QUERY)) {
+        headerTxt = "%s posted on " + eventType;
+        headerText = String.format(headerTxt, event.getUserName());
+      } else {
+        headerTxt = "%s posted on " + eventType + " %s";
+        headerText =
+            String.format(
+                headerTxt,
+                event.getUserName(),
+                this.buildEntityUrl(event.getEntityType(), entityInterface));
+      }
+      message.setHeader(headerText);
+    }
+    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
+    List<String> messages = new ArrayList<>();
+    thread.forEach(entry -> messages.add(entry.getMessage()));
+    message.setMessages(messages);
+    return message;
   }
 
   default OutgoingMessage createThreadMessage(ChangeEvent event) {
