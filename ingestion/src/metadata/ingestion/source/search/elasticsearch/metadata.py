@@ -69,7 +69,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Get List of all search index
         """
-        index_list = self.client.indices.get_alias() or {}
+        index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
         for index in index_list.keys():
             yield self.client.indices.get(index=str(index))
 
