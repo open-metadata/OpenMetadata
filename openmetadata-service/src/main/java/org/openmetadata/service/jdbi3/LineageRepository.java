@@ -139,33 +139,94 @@ public class LineageRepository {
     relationshipDetails.put("fromEntity", fromDetails);
     relationshipDetails.put("toEntity", toDetails);
     if (lineageDetails != null) {
-      relationshipDetails.put(
-          "pipeline",
-          JsonUtils.getMap(
-              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
-                  ? null
-                  : lineageDetails.getPipeline()));
-      relationshipDetails.put(
-          "description",
-          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
-              ? null
-              : lineageDetails.getDescription());
-      if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
-        List<Map<String, Object>> colummnLineageList = new ArrayList<>();
-        for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
-          colummnLineageList.add(JsonUtils.getMap(columnLineage));
-        }
-        relationshipDetails.put("columns", colummnLineageList);
+      lineageDetailsToMap(relationshipDetails, lineageDetails);
+      //      relationshipDetails.put(
+      //          "pipeline",
+      //          JsonUtils.getMap(
+      //              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
+      //                  ? null
+      //                  : lineageDetails.getPipeline()));
+      //      relationshipDetails.put(
+      //          "description",
+      //          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
+      //              ? null
+      //              : lineageDetails.getDescription());
+      //      if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
+      //        List<Map<String, Object>> colummnLineageList = new ArrayList<>();
+      //        for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
+      //          colummnLineageList.add(JsonUtils.getMap(columnLineage));
+      //        }
+      //        relationshipDetails.put("columns", colummnLineageList);
+      //      }
+      //      relationshipDetails.put(
+      //          "sqlQuery",
+      //          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
+      //              ? null
+      //              : lineageDetails.getSqlQuery());
+      //      relationshipDetails.put(
+      //          "source",
+      //          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null :
+      // lineageDetails.getSource());
+      if (!CommonUtil.nullOrEmpty(lineageDetails.getPipeline())) {
+        updateEdgeDetailsInSearch(fromDetails, lineageDetails, toDetails);
       }
-      relationshipDetails.put(
-          "sqlQuery",
-          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
-              ? null
-              : lineageDetails.getSqlQuery());
-      relationshipDetails.put(
-          "source",
-          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
     }
+  }
+
+  private void updateEdgeDetailsInSearch(
+      Map<String, Object> fromDetails,
+      LineageDetails lineageDetails,
+      Map<String, Object> toDetails) {
+    Map<String, Object> pipelineRelationshipDetails = new HashMap<>();
+    IndexMapping indexMapping =
+        Entity.getSearchRepository().getIndexMapping(lineageDetails.getPipeline().getType());
+    String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    Map<String, Object> pipelineDetails = new HashMap<>();
+    pipelineDetails.put("id", lineageDetails.getPipeline().getId().toString());
+    pipelineDetails.put("type", lineageDetails.getPipeline().getType());
+    pipelineDetails.put("fqn", lineageDetails.getPipeline().getFullyQualifiedName());
+    pipelineRelationshipDetails.put("fromEntity", fromDetails);
+    pipelineRelationshipDetails.put("toEntity", pipelineDetails);
+    lineageDetailsToMap(pipelineRelationshipDetails, lineageDetails);
+    pipelineRelationshipDetails.remove("pipeline");
+    Pair<String, String> condition =
+        new ImmutablePair<>("_id", lineageDetails.getPipeline().getId().toString());
+    pipelineRelationshipDetails.put(
+        "doc_id", fromDetails.get("id") + "-" + lineageDetails.getPipeline().getId().toString());
+    searchClient.updateLineage(indexName, condition, pipelineRelationshipDetails);
+    pipelineRelationshipDetails.put("fromEntity", pipelineDetails);
+    pipelineRelationshipDetails.put("toEntity", toDetails);
+    pipelineRelationshipDetails.put(
+        "doc_id", lineageDetails.getPipeline().getId().toString() + "-" + toDetails.get("id"));
+    searchClient.updateLineage(indexName, condition, pipelineRelationshipDetails);
+  }
+
+  private void lineageDetailsToMap(
+      Map<String, Object> lineageDetailsMap, LineageDetails lineageDetails) {
+    lineageDetailsMap.put(
+        "pipeline",
+        JsonUtils.getMap(
+            CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
+                ? null
+                : lineageDetails.getPipeline()));
+    lineageDetailsMap.put(
+        "description",
+        CommonUtil.nullOrEmpty(lineageDetails.getDescription())
+            ? null
+            : lineageDetails.getDescription());
+    if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
+      List<Map<String, Object>> colummnLineageList = new ArrayList<>();
+      for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
+        colummnLineageList.add(JsonUtils.getMap(columnLineage));
+      }
+      lineageDetailsMap.put("columns", colummnLineageList);
+    }
+    lineageDetailsMap.put(
+        "sqlQuery",
+        CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery()) ? null : lineageDetails.getSqlQuery());
+    lineageDetailsMap.put(
+        "source",
+        CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
   }
 
   private String validateLineageDetails(
