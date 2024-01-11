@@ -52,7 +52,8 @@
         "Greenplum",
         "Doris",
         "UnityCatalog",
-        "DuckDb"
+        "DuckDb",
+        "SAS"
       ],
       "javaEnums": [
         {
@@ -168,8 +169,10 @@
         },
         {
           "name": "DuckDb"
+        },
+        {
+          "name": "SAS"
         }
-        
       ]
     },
     "databaseConnection": {
@@ -289,6 +292,9 @@
             },
             {
               "$ref": "./connections/database/duckdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sasConnection.json"
             }
           ]
         }
