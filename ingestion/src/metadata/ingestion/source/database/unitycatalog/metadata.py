@@ -474,7 +474,9 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             )
 
     def get_columns(self, column_data: List[ColumnInfo]) -> Iterable[Column]:
-        # process table regular columns info
+        """
+        process table regular columns info
+        """
 
         for column in column_data:
             if column.type_text.lower().startswith("union"):
