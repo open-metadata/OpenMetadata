@@ -263,7 +263,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const getAllIngestionWorkflows = useCallback(
-    async (paging?: Omit<Paging, 'total'>) => {
+    async (paging?: Omit<Paging, 'total'>, limit?: number) => {
       try {
         setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines({
@@ -277,6 +277,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             PipelineType.Profiler,
             PipelineType.Dbt,
           ],
+          limit,
         });
 
         if (response.data) {

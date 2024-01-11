@@ -196,7 +196,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(databaseFQN, {
-      fields: 'owner,tags,description,serviceType',
+      fields: 'owner,tags,domain,votes',
     })
       .then((res) => {
         if (res) {

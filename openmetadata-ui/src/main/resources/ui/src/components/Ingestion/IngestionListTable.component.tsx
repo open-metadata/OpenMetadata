@@ -64,12 +64,20 @@ function IngestionListTable({
   const ingestionPagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        onIngestionWorkflowsUpdate({ [cursorType]: paging[cursorType] });
+        onIngestionWorkflowsUpdate(
+          { [cursorType]: paging[cursorType] },
+          pageSize
+        );
         handlePageChange(currentPage);
       }
     },
-    [paging, handlePageChange, onIngestionWorkflowsUpdate]
+    [paging, handlePageChange, onIngestionWorkflowsUpdate, pageSize]
   );
+
+  const handlePipelinePageSizeChange = useCallback((pageSize: number) => {
+    handlePageSizeChange(pageSize);
+    onIngestionWorkflowsUpdate({}, pageSize);
+  }, []);
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
     return getEntityName(record);
@@ -193,7 +201,7 @@ function IngestionListTable({
           pageSize={pageSize}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          onShowSizeChange={handlePageSizeChange}
+          onShowSizeChange={handlePipelinePageSizeChange}
         />
       )}
     </Space>
