@@ -273,7 +273,7 @@ export const CustomEdge = ({
         hasLabel &&
         getLineageEdgeIcon(
           <PipelineIcon />,
-          'pipeline-label',
+          `pipeline-label-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`,
           currentPipelineStatus
         )}
       {isColumnLineageAllowed &&
@@ -286,7 +286,10 @@ export const CustomEdge = ({
       {!isColumnLineageAllowed &&
         data.columnFunctionValue &&
         data.isExpanded &&
-        getLineageEdgeIcon(<FunctionIcon />, 'function-icon')}
+        getLineageEdgeIcon(
+          <FunctionIcon />,
+          `function-icon-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`
+        )}
     </Fragment>
   );
 };
