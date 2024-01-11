@@ -67,8 +67,9 @@ const verifyNodePresent = (node) => {
 };
 
 const deleteNode = (node) => {
+  cy.get('.react-flow__controls-fitview').click();
   interceptURL('DELETE', '/api/v1/lineage/**', 'lineageDeleteApi');
-  cy.get(`[data-testid="lineage-node-${node.fqn}"]`).click();
+  cy.get(`[data-testid="lineage-node-${node.fqn}"]`).click({ force: true });
   // Adding force true for handles because it can be hidden behind the node
   cy.get('[data-testid="lineage-node-remove-btn"]').click({ force: true });
   verifyResponseStatusCode('@lineageDeleteApi', 200);

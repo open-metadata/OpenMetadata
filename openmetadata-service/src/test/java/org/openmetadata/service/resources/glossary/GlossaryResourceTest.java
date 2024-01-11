@@ -371,7 +371,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
-      resultsHeader, getFailedRecord(record, "[name must match \"(?U)^[\\w'\\- .&()%]+$\"]")
+      resultsHeader, getFailedRecord(record, "[name must match \"^((?!::).)*$\"]")
     };
     assertRows(result, expectedRows);
 
