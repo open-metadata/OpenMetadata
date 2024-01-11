@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { checkServiceFieldSectionHighlighting } from '../common';
+import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { Services } from '../Utils/Services';
-import ServiceBaseClass from './ServiceBaseClass';
 
-class S3StorageIngestionClass extends ServiceBaseClass {
+class S3IngestionClass extends ServiceBaseClass {
   name: string;
   constructor() {
     super(Services.Storage, 'cypress-s3-storage', 'S3', 'cypress-bucket');
@@ -46,4 +46,4 @@ class S3StorageIngestionClass extends ServiceBaseClass {
   }
 }
 
-export default S3StorageIngestionClass;
+export default S3IngestionClass;

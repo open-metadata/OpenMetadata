@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { checkServiceFieldSectionHighlighting } from '../common';
+import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { Services } from '../Utils/Services';
-import ServiceBaseClass from './ServiceBaseClass';
 
-class MetabaseIngestionClass extends ServiceBaseClass {
-  name: string;
-  serviceName: string;
-  serviceType: string;
-
+class MlFlowIngestionClass extends ServiceBaseClass {
   constructor() {
-    super(Services.Pipeline, 'cypress-Airflow', 'Airflow', 'index_metadata');
+    super(
+      Services.MLModels,
+      'cypress-Ml-Model',
+      'Mlflow',
+      'ElasticnetWineModel',
+      false,
+      false
+    );
   }
 
   createService() {
@@ -27,14 +31,20 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   updateService() {
-    // Backend issue for udpating displayName
+    // Do nothing here
   }
 
   fillConnectionDetails() {
-    cy.get('#root\\/hostPort').type(Cypress.env('airflowHostPort'));
-    cy.get('#root\\/connection__oneof_select')
+    cy.get('#root\\/trackingUri').type('mlModelTrackingUri');
+    checkServiceFieldSectionHighlighting('trackingUri');
+    cy.get('#root\\/registryUri').type('mlModelRegistryUri');
+    checkServiceFieldSectionHighlighting('registryUri');
+  }
+
+  fillIngestionDetails() {
+    cy.get('#root\\/mlModelFilterPattern\\/includes')
       .scrollIntoView()
-      .select('BackendConnection');
+      .type(`${this.entityName}{enter}`);
   }
 
   deleteService() {
@@ -42,4 +52,4 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 }
 
-export default MetabaseIngestionClass;
+export default MlFlowIngestionClass;

@@ -10,21 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { checkServiceFieldSectionHighlighting } from '../common';
+import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { Services } from '../Utils/Services';
-import ServiceBaseClass from './ServiceBaseClass';
 
 class MetabaseIngestionClass extends ServiceBaseClass {
   name: string;
-  tableName = 'jaffle_shop dashboard';
+  serviceName: string;
+  serviceType: string;
+
   constructor() {
-    super(
-      Services.Dashboard,
-      'cypress-Metabase',
-      'Metabase',
-      'jaffle_shop dashboard'
-    );
-    this.tableName = 'jaffle_shop dashboard';
+    super(Services.Pipeline, 'cypress-Airflow', 'Airflow', 'index_metadata');
   }
 
   createService() {
@@ -32,28 +27,14 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   updateService() {
-    super.updateService();
+    // Backend issue for udpating displayName
   }
 
   fillConnectionDetails() {
-    cy.get('#root\\/username')
+    cy.get('#root\\/hostPort').type(Cypress.env('airflowHostPort'));
+    cy.get('#root\\/connection__oneof_select')
       .scrollIntoView()
-      .type(Cypress.env('metabaseUsername'));
-    checkServiceFieldSectionHighlighting('username');
-    cy.get('#root\\/password')
-      .scrollIntoView()
-      .type(Cypress.env('metabasePassword'));
-    checkServiceFieldSectionHighlighting('password');
-    cy.get('#root\\/hostPort')
-      .scrollIntoView()
-      .type(Cypress.env('metabaseHostPort'));
-    checkServiceFieldSectionHighlighting('hostPort');
-  }
-
-  fillIngestionDetails() {
-    cy.get('#root\\/dashboardFilterPattern\\/includes')
-      .scrollIntoView()
-      .type(`${this.tableName}{enter}`);
+      .select('BackendConnection');
   }
 
   deleteService() {

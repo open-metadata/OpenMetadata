@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { checkServiceFieldSectionHighlighting } from '../common';
+import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { Services } from '../Utils/Services';
-import ServiceBaseClass from './ServiceBaseClass';
 
-class MysqlIngestionClass extends ServiceBaseClass {
-  name: string;
-  tableFilter: string;
+class SnowflakeIngestionClass extends ServiceBaseClass {
+  schema: string;
   constructor() {
-    super(Services.Database, 'cypress-mysql', 'Mysql', 'bot_entity');
-    this.tableFilter = 'bot_entity{enter} alert_entity{enter} chart_entity';
+    super(Services.Database, 'cypress-Snowflake', 'Snowflake', 'CUSTOMER');
+    this.schema = 'TPCH_SF1000';
   }
 
   createService() {
@@ -27,26 +26,27 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   fillConnectionDetails() {
-    cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
+    cy.get('#root\\/username').type(Cypress.env('snowflakeUsername'));
     checkServiceFieldSectionHighlighting('username');
-    cy.get('#root\\/authType\\/password').type(Cypress.env('mysqlPassword'));
+    cy.get('#root\\/password').type(Cypress.env('snowflakePassword'));
     checkServiceFieldSectionHighlighting('password');
-    cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
-    checkServiceFieldSectionHighlighting('hostPort');
+    cy.get('#root\\/account').type(Cypress.env('snowflakeAccount'));
+    checkServiceFieldSectionHighlighting('account');
+    cy.get('#root\\/database').type(Cypress.env('snowflakeDatabase'));
+    checkServiceFieldSectionHighlighting('database');
+    cy.get('#root\\/warehouse').type(Cypress.env('snowflakeWarehouse'));
+    checkServiceFieldSectionHighlighting('warehouse');
   }
 
   fillIngestionDetails() {
-    cy.get('#root\\/tableFilterPattern\\/includes')
+    cy.get('#root\\/schemaFilterPattern\\/includes')
       .scrollIntoView()
-      .type(this.tableFilter);
+      .type(`${this.schema}{enter}`);
   }
 
-  validateIngestionDetails() {
-    const tables = this.tableFilter.replace(/{enter} /g, '');
-    cy.get('.ant-select-selection-item-content')
-      .then((content) => content.text())
-      .should('deep.eq', tables);
+  deleteService() {
+    super.deleteService();
   }
 }
 
-export default MysqlIngestionClass;
+export default SnowflakeIngestionClass;

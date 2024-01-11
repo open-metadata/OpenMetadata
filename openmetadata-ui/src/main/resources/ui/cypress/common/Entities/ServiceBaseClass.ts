@@ -38,17 +38,23 @@ class ServiceBaseClass {
   protected serviceName: string;
   public serviceType: string;
   protected entityName: string;
+  protected shouldTestConnection: boolean;
+  protected shouldAddIngestion: boolean;
 
   constructor(
     category: Services,
     name: string,
     serviceType: string,
-    entity: string
+    entity: string,
+    shouldTestConnection = true,
+    shouldAddIngestion = true
   ) {
     this.category = category;
     this.serviceName = name;
     this.serviceType = serviceType;
     this.entityName = entity;
+    this.shouldTestConnection = shouldTestConnection;
+    this.shouldAddIngestion = shouldAddIngestion;
   }
 
   visitService() {
@@ -87,11 +93,11 @@ class ServiceBaseClass {
 
     this.fillConnectionDetails();
 
-    testConnection();
+    this.shouldTestConnection && testConnection();
 
     this.submitService(this.serviceName);
 
-    this.addIngestionPipeline(this.serviceName);
+    this.shouldAddIngestion && this.addIngestionPipeline(this.serviceName);
   }
 
   serviceSetp1(serviceType: string) {

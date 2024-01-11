@@ -10,17 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AirflowIngestionClass from '../../common/Entities/AirflowIngestionClass';
-import MetabaseIngestionClass from '../../common/Entities/MetabaseIngestionClass';
-import MysqlIngestionClass from '../../common/Entities/MysqlIngestionClass';
-import S3StorageIngestionClass from '../../common/Entities/S3StorageClass';
+import AirflowIngestionClass from '../../common/Services/AirflowIngestionClass';
+import BigQueryIngestionClass from '../../common/Services/BigQueryIngestionClass';
+import KafkaIngestionClass from '../../common/Services/KafkaIngestionClass';
+import MetabaseIngestionClass from '../../common/Services/MetabaseIngestionClass';
+import MlFlowIngestionClass from '../../common/Services/MlFlowIngestionClass';
+import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
+import S3IngestionClass from '../../common/Services/S3IngestionClass';
+import SnowflakeIngestionClass from '../../common/Services/SnowflakeIngestionClass';
+import SupersetIngestionClass from '../../common/Services/SupersetIngestionClass';
 import { goToServiceListingPage } from '../../common/Utils/Services';
 
 const services = [
-  new S3StorageIngestionClass(),
+  new S3IngestionClass(),
   new MetabaseIngestionClass(),
   new MysqlIngestionClass(),
   new AirflowIngestionClass(),
+  new BigQueryIngestionClass(),
+  new KafkaIngestionClass(),
+  new MlFlowIngestionClass(),
+  new SnowflakeIngestionClass(),
+  new SupersetIngestionClass(),
 ];
 
 services.forEach((service) => {
