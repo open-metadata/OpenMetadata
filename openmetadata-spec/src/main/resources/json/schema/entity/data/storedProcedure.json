@@ -8,13 +8,6 @@
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Name of a Stored Procedure. Expected to be unique within a database schema.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256,
-      "pattern": "^((?!::).)*$"
-    },
     "storedProcedureCode": {
       "properties": {
         "language": {
@@ -57,7 +50,7 @@
     },
     "name": {
       "description": "Name of Stored Procedure.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a Stored Procedure.",

@@ -16,8 +16,8 @@ import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
-  ENTITY_NAME_REGEX,
   HEX_COLOR_CODE_REGEX,
+  TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
@@ -92,7 +92,7 @@ const TagsForm = ({
       type: FieldTypes.TEXT,
       rules: [
         {
-          pattern: ENTITY_NAME_REGEX,
+          pattern: TAG_NAME_REGEX,
           message: t('message.entity-name-validation'),
         },
         {

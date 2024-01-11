@@ -269,6 +269,7 @@ dev = {
     "build",
 }
 
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
@@ -306,6 +307,10 @@ e2e_test = {
     "pytest-base-url",
 }
 
+extended_testing = {
+    "Faker",  # For Sample Data Generation
+}
+
 
 def filter_requirements(filtered: Set[str]) -> List[str]:
     """Filter out requirements from base_requirements"""
@@ -327,6 +332,7 @@ setup(
         "dev": list(dev),
         "test": list(test),
         "e2e_test": list(e2e_test),
+        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
