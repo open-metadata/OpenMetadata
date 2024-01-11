@@ -25,7 +25,7 @@ import {
   getContainerByName,
 } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
-import { CONTAINER_DATA } from './ContainerPage.mock';
+import { CONTAINER_DATA, CONTAINER_DATA_1 } from './ContainerPage.mock';
 
 const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewBasic: true,
@@ -94,10 +94,15 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
   () =>
-    jest.fn().mockImplementation(({ fetchChildren }) => {
+    jest.fn().mockImplementation(({ fetchChildren, isLoading }) => {
       fetchChildren();
 
-      return <>ContainerChildren</>;
+      return (
+        <>
+          <div>ContainerChildren</div>
+          {isLoading && <span>ContainerChildrenLoader</span>}
+        </>
+      );
     })
 );
 
@@ -298,5 +303,62 @@ describe('Container Page Component', () => {
     userEvent.click(followButton);
 
     expect(addContainerFollower).toHaveBeenCalled();
+  });
+
+  it('tab switch should work', async () => {
+    await act(async () => {
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
+    });
+
+    const childrenTab = screen.getByRole('tab', {
+      name: 'label.children',
+    });
+
+    userEvent.click(childrenTab);
+
+    expect(mockPush).toHaveBeenCalled();
+  });
+
+  it.skip('should render children in first tab, when containerData.dataModel is empty', async () => {
+    mockGetContainerByName.mockResolvedValueOnce(CONTAINER_DATA_1);
+    mockUseParams.mockReturnValue({
+      fqn: CONTAINER_DATA_1.fullyQualifiedName,
+      tab: 'children',
+    });
+
+    await act(async () => {
+      render(<ContainerPage />);
+    });
+
+    expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
+
+    // const tabs = screen.getAllByRole('tab');
+
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+
+    expect(screen.getByText('DescriptionV1')).toBeVisible();
+    expect(screen.getByText('ContainerChildren')).toBeVisible();
+    expect(screen.getByText('EntityRightPanel')).toBeVisible();
+  });
+
+  it.skip('children should render on children tab', async () => {
+    // mockUseParams.mockReturnValue({
+    //   fqn: CONTAINER_DATA_1.fullyQualifiedName,
+    //   tab: 'children',
+    // });
+
+    await act(async () => {
+      render(<ContainerPage />);
+
+      expect(screen.getByText('Loader')).toBeVisible();
+    });
+
+    const childrenTab = screen.getByRole('tab', { name: 'label.children' });
+
+    expect(childrenTab).toHaveAttribute('aria-selected', 'true');
+
+    expect(screen.getByText('ContainerChildren')).toBeVisible();
   });
 });
