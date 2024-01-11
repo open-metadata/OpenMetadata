@@ -13,6 +13,7 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
+import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getDataQualityPagePath } from '../utils/RouterUtils';
 
@@ -65,4 +66,23 @@ export const INITIAL_TEST_SUMMARY = {
   failed: 0,
   success: 0,
   total: 0,
+};
+
+export const TEST_CASE_STATUS: Record<
+  TestCaseResolutionStatusTypes,
+  TestCaseResolutionStatusTypes[]
+> = {
+  [TestCaseResolutionStatusTypes.New]: [
+    TestCaseResolutionStatusTypes.ACK,
+    TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.ACK]: [
+    TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.Assigned]: [
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.Resolved]: [],
 };

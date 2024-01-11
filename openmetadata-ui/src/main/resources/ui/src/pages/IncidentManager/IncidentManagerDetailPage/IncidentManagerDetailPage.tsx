@@ -14,7 +14,7 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
@@ -32,10 +32,14 @@ import { ResourceEntity } from '../../../components/PermissionProvider/Permissio
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -55,6 +59,7 @@ const IncidentManagerDetailPage = () => {
     data: undefined,
     isLoading: true,
   });
+  const [taskCount, setTaskCount] = useState(0);
 
   const { permissions } = usePermissionProvider();
   const hasViewPermission = useMemo(() => {
@@ -84,12 +89,18 @@ const IncidentManagerDetailPage = () => {
         key: IncidentManagerTabs.TEST_CASE_RESULTS,
       },
       {
-        label: <TabsLabel id="issue" name={t('label.issue-plural')} />,
+        label: (
+          <TabsLabel
+            count={taskCount}
+            id="issue"
+            name={t('label.issue-plural')}
+          />
+        ),
         key: IncidentManagerTabs.ISSUES,
         children: <TestCaseIssueTab owner={testCaseData.data?.owner} />,
       },
     ],
-    [testCaseData]
+    [testCaseData, taskCount]
   );
 
   const fetchTestCaseData = async () => {
@@ -160,9 +171,23 @@ const IncidentManagerDetailPage = () => {
     }
   };
 
+  const getEntityFeedCount = useCallback(async () => {
+    try {
+      const response = await getFeedCount(
+        getEntityFeedLink(EntityType.TEST_CASE, testCaseFQN),
+        ThreadType.Task,
+        ThreadTaskStatus.Open
+      );
+      setTaskCount(response.totalCount);
+    } catch (err) {
+      setTaskCount(0);
+    }
+  }, [testCaseFQN]);
+
   useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
       fetchTestCaseData();
+      getEntityFeedCount();
     } else {
       setTestCaseData((prev) => ({ ...prev, isLoading: false }));
     }
@@ -199,6 +224,7 @@ const IncidentManagerDetailPage = () => {
           </Col>
           <Col className="p-x-lg">
             <IncidentManagerPageHeader
+              fetchTaskCount={getEntityFeedCount}
               testCaseData={testCaseData.data}
               onOwnerUpdate={handleOwnerChange}
             />

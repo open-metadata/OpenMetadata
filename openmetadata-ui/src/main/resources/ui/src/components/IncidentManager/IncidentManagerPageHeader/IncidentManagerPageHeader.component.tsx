@@ -25,11 +25,10 @@ import {
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
-import { TestCase } from '../../../generated/tests/testCase';
 import {
   Severities,
   TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
 } from '../../../generated/tests/testCaseResolutionStatus';
 import { updateTestCaseIncidentById } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -45,14 +44,13 @@ import { usePermissionProvider } from '../../PermissionProvider/PermissionProvid
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   testCaseData,
-}: {
-  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
-  testCaseData?: TestCase;
-}) => {
+  fetchTaskCount,
+}: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
   const [activeTask, setActiveTask] = useState<Thread>();
   const [testCaseStatusData, setTestCaseStatusData] =
@@ -66,6 +64,7 @@ const IncidentManagerPageHeader = ({
     entityThread,
     getFeedData,
     testCaseResolutionStatus,
+    updateTestCaseIncidentStatus,
   } = useActivityFeedProvider();
 
   const tableFqn = useMemo(
@@ -83,6 +82,10 @@ const IncidentManagerPageHeader = ({
     try {
       await updateTestCaseIncidentById(testCaseStatusData.id ?? '', patch);
       setTestCaseStatusData(updatedData);
+      updateTestCaseIncidentStatus([
+        ...testCaseResolutionStatus.slice(0, -1),
+        updatedData,
+      ]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -90,6 +93,7 @@ const IncidentManagerPageHeader = ({
 
   const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
     setTestCaseStatusData(data);
+    updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
   };
 
   useEffect(() => {
@@ -119,7 +123,15 @@ const IncidentManagerPageHeader = ({
     const status = last(testCaseResolutionStatus);
 
     if (status?.stateId === activeTask?.task?.testCaseResolutionStatusId) {
-      setTestCaseStatusData(status);
+      if (
+        status?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Resolved
+      ) {
+        setTestCaseStatusData(undefined);
+        fetchTaskCount();
+      } else {
+        setTestCaseStatusData(status);
+      }
     }
   }, [testCaseResolutionStatus]);
 
@@ -138,7 +150,18 @@ const IncidentManagerPageHeader = ({
     }
 
     if (isUndefined(testCaseStatusData)) {
-      return <></>;
+      return (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
+            <span className="text-grey-muted">{`${t(
+              'label.incident-status'
+            )}: `}</span>
+
+            <span>{t('label.no-entity', { entity: t('label.incident') })}</span>
+          </Typography.Text>
+        </>
+      );
     }
 
     const details = testCaseStatusData?.testCaseResolutionStatusDetails;
@@ -175,14 +198,10 @@ const IncidentManagerPageHeader = ({
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-          <span className="text-grey-muted">{`${t(
-            isUndefined(details?.resolvedBy)
-              ? 'label.assignee'
-              : 'label.resolved-by'
-          )}: `}</span>
+          <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
 
           <OwnerLabel
-            owner={details?.resolvedBy ?? details?.assignee}
+            owner={details?.assignee}
             placeHolder={t('label.no-entity', {
               entity: t('label.assignee'),
             })}
