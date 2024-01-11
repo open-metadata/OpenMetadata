@@ -129,6 +129,13 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
         "is_paused": false
       }'
 
+curl --location --request PATCH 'localhost:8080/api/v1/dags/extended_sample_data' \
+  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+        "is_paused": false
+      }'
+
 echo 'Validate sample data DAG...'
 sleep 5
 python -m pip install ingestion/
@@ -160,6 +167,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_lineage' \
   --data-raw '{
       "is_paused": false
       }'
+
 echo "✔running reindexing"
 # Trigger ElasticSearch ReIndexing from UI
 curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/SearchIndexingApplication' \
