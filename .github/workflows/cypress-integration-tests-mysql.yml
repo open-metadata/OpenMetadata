@@ -18,15 +18,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '30 2 * * 2,4'
-  pull_request_target:
-    types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-    paths-ignore:
-      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -37,12 +28,7 @@ concurrency:
 
 jobs:
   cypress-ci-mysql:
-    if: |
-        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-            || ( github.event_name == 'pull_request_target'
-                 && contains(github.event.pull_request.labels.*.name, 'e2e')
-                 && github.event.pull_request.draft == false
-               )
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -52,15 +38,9 @@ jobs:
     steps:
       - name: Set Project ID Environment variable
         id: cypress-project-id
-        run: |
-          if [ "${{ github.event_name }}" == "schedule" ]; then  
+        run: | 
             echo "PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT
             echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_SCHEDULE_RECORD_KEY }}" >> $GITHUB_OUTPUT
-          else  
-            echo "PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
-            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
-          fi  
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -71,28 +51,9 @@ jobs:
             large-packages: false
             swap-storage: true
             docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache Maven Dependencies
         id: cache-output
