@@ -36,16 +36,16 @@ export const descriptionBox =
 class ServiceBaseClass {
   public category: Services;
   protected serviceName: string;
-  protected serviceType: string;
+  public serviceType: string;
   protected entityName: string;
 
   constructor(
-    type: Services,
+    category: Services,
     name: string,
     serviceType: string,
     entity: string
   ) {
-    this.category = type;
+    this.category = category;
     this.serviceName = name;
     this.serviceType = serviceType;
     this.entityName = entity;
@@ -398,7 +398,7 @@ class ServiceBaseClass {
   }
 
   deleteService() {
-    deleteService(Services.Dashboards, this.serviceName);
+    deleteService(this.category, this.serviceName);
   }
 }
 

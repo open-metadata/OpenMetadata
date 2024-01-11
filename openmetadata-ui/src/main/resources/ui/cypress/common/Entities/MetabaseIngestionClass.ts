@@ -19,7 +19,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   tableName = 'jaffle_shop dashboard';
   constructor() {
     super(
-      Services.Storages,
+      Services.Dashboard,
       'cypress-Metabase',
       'Metabase',
       'jaffle_shop dashboard'
@@ -57,7 +57,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   deleteService() {
-    super.deleteService('cypress-Metabase');
+    super.deleteService();
   }
 }
 

@@ -17,7 +17,7 @@ import ServiceBaseClass from './ServiceBaseClass';
 class S3StorageIngestionClass extends ServiceBaseClass {
   name: string;
   constructor() {
-    super(Services.Storages, 'cypress-s3-storage', 'S3', 'cypress-bucket');
+    super(Services.Storage, 'cypress-s3-storage', 'S3', 'cypress-bucket');
   }
 
   createService() {

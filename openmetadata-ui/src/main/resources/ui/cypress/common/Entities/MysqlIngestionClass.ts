@@ -16,8 +16,10 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name: string;
+  tableFilter: string;
   constructor() {
-    super(Services.Databases, 'cypress-mysql', 'Database', 'team_entity');
+    super(Services.Database, 'cypress-mysql', 'Mysql', 'bot_entity');
+    this.tableFilter = 'bot_entity{enter} alert_entity{enter} chart_entity';
   }
 
   createService() {
@@ -31,20 +33,19 @@ class MysqlIngestionClass extends ServiceBaseClass {
     checkServiceFieldSectionHighlighting('password');
     cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
     checkServiceFieldSectionHighlighting('hostPort');
-    cy.get('#root\\/databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
-    checkServiceFieldSectionHighlighting('databaseSchema');
   }
 
   fillIngestionDetails() {
-    cy.get('#root\\/schemaFilterPattern\\/includes')
+    cy.get('#root\\/tableFilterPattern\\/includes')
       .scrollIntoView()
-      .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
+      .type(this.tableFilter);
   }
 
   validateIngestionDetails() {
+    const tables = this.tableFilter.replace(/{enter} /g, '');
     cy.get('.ant-select-selection-item-content')
-      .scrollIntoView()
-      .contains(`${Cypress.env('mysqlDatabaseSchema')}`);
+      .then((content) => content.text())
+      .should('deep.eq', tables);
   }
 }
 

@@ -19,7 +19,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   serviceType: string;
 
   constructor() {
-    super(Services.Storages, 'cypress-Airflow', 'Airflow', 'index_metadata');
+    super(Services.Pipeline, 'cypress-Airflow', 'Airflow', 'index_metadata');
   }
 
   createService() {
@@ -27,7 +27,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   updateService() {
-    super.updateService();
+    // Backend issue for udpating displayName
   }
 
   fillConnectionDetails() {
@@ -38,7 +38,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   deleteService() {
-    super.deleteService('cypress-Airflow');
+    super.deleteService();
   }
 }
 

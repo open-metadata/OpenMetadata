@@ -24,13 +24,13 @@ const services = [
 ];
 
 services.forEach((service) => {
-  describe(`${service.category} Ingestion`, () => {
+  describe(`${service.serviceType} Ingestion`, () => {
     beforeEach(() => {
       cy.login();
       goToServiceListingPage(service.category);
     });
 
-    it(`Create & Ingest ${service.category} service`, () => {
+    it(`Create & Ingest ${service.serviceType} service`, () => {
       service.createService();
     });
 
@@ -38,7 +38,7 @@ services.forEach((service) => {
       service.updateService();
     });
 
-    it(`Delete ${service.category} service`, () => {
+    it(`Delete ${service.serviceType} service`, () => {
       service.deleteService();
     });
   });

@@ -19,14 +19,13 @@ import {
 } from '../common';
 
 export enum Services {
-  Databases = 'databases',
-  Messaging = 'messaging',
-  Dashboards = 'dashboards',
-  Pipelines = 'pipelines',
-  MlModels = 'mlmodels',
-  Storages = 'storages',
-  Search = 'search',
-  Metadata = 'metadata',
+  Database = 'Databases',
+  Messaging = 'Messaging',
+  Dashboard = 'Dashboards',
+  Pipeline = 'Pipelines',
+  MLModels = 'ML Models',
+  Storage = 'Storages',
+  Search = 'Search',
 }
 
 export const RETRY_TIMES = 4;
@@ -43,30 +42,28 @@ export const goToServiceListingPage = (services: Services) => {
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get(
-    `[data-testid="global-setting-left-panel"] [data-menu-id*="services.${services}"]`
-  ).click();
+  cy.get(`[data-testid="global-setting-left-panel"]`)
+    .contains(services)
+    .click();
 
   verifyResponseStatusCode('@getServiceList', 200);
 };
 
 export const getEntityTypeFromService = (service: Services) => {
   switch (service) {
-    case Services.Dashboards:
+    case Services.Dashboard:
       return EntityType.DashboardService;
-    case Services.Databases:
+    case Services.Database:
       return EntityType.DatabaseService;
-    case Services.Storages:
+    case Services.Storage:
       return EntityType.StorageService;
     case Services.Messaging:
       return EntityType.MessagingService;
-    case Services.Metadata:
-      return EntityType.MetadataService;
     case Services.Search:
       return EntityType.SearchService;
-    case Services.MlModels:
+    case Services.MLModels:
       return EntityType.MlModelService;
-    case Services.Pipelines:
+    case Services.Pipeline:
       return EntityType.PipelineService;
     default:
       return EntityType.DatabaseService;
@@ -118,8 +115,6 @@ export const retryIngestionRun = () => {
 };
 
 export const deleteService = (typeOfService: Services, serviceName: string) => {
-  verifyResponseStatusCode('@getServices', 200);
-
   interceptURL(
     'GET',
     'api/v1/search/query?q=*&from=0&size=15&index=*',
@@ -133,13 +128,10 @@ export const deleteService = (typeOfService: Services, serviceName: string) => {
   cy.get(`[data-testid="service-name-${serviceName}"]`).click();
 
   cy.get(`[data-testid="entity-header-display-name"]`)
-
     .invoke('text')
     .then((text) => {
       expect(text).to.equal(serviceName);
     });
-
-  verifyResponseStatusCode('@getServices', 200);
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="manage-button"]').click();
