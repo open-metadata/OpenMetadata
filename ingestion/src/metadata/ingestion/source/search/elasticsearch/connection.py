@@ -190,9 +190,9 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+
     def test_get_search_indexes():
         client.indices.get_alias(expand_wildcards="open")
-
 
     test_fn = {
         "CheckAccess": client.info,
