@@ -19,14 +19,17 @@ import {
 import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { addContainerFollower } from '../../rest/storageAPI';
+import { Include } from '../../generated/type/include';
+import {
+  addContainerFollower,
+  getContainerByName,
+} from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 
 const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewBasic: true,
 });
-const mockGetContainerByName = jest.fn().mockResolvedValue(CONTAINER_DATA);
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -88,7 +91,13 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 
 jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
-  () => jest.fn().mockReturnValue(<>ContainerChildren</>)
+  () =>
+    jest.fn().mockImplementation(({ fetchChildren }) => (
+      <>
+        <span>ContainerChildren</span>
+        {fetchChildren()}
+      </>
+    ))
 );
 
 jest.mock(
@@ -152,9 +161,7 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI', () => ({
   addContainerFollower: jest.fn(),
-  getContainerByName: jest
-    .fn()
-    .mockImplementation(() => mockGetContainerByName()),
+  getContainerByName: jest.fn().mockImplementation(() => CONTAINER_DATA),
   patchContainerDetails: jest.fn().mockImplementation(() => Promise.resolve()),
   removeContainerFollower: jest
     .fn()
@@ -197,7 +204,7 @@ describe('Container Page Component', () => {
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
-    expect(mockGetContainerByName).not.toHaveBeenCalled();
+    expect(getContainerByName).not.toHaveBeenCalled();
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
@@ -214,11 +221,15 @@ describe('Container Page Component', () => {
     });
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(mockGetContainerByName).toHaveBeenCalled();
+    expect(getContainerByName).toHaveBeenCalledWith(
+      mockParams.fqn,
+      'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+      Include.All
+    );
   });
 
   it('show ErrorPlaceHolder if container data fetch fail', async () => {
-    mockGetContainerByName.mockRejectedValueOnce(
+    (getContainerByName as jest.Mock).mockRejectedValueOnce(
       'failed to fetch container data'
     );
 
@@ -229,7 +240,7 @@ describe('Container Page Component', () => {
     });
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(mockGetContainerByName).toHaveBeenCalled();
+    expect(getContainerByName).toHaveBeenCalled();
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
@@ -242,7 +253,7 @@ describe('Container Page Component', () => {
     });
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(mockGetContainerByName).toHaveBeenCalled();
+    expect(getContainerByName).toHaveBeenCalled();
 
     expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
 
