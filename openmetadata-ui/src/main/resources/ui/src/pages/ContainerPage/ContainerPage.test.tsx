@@ -31,6 +31,8 @@ const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewBasic: true,
 });
 
+const mockGetContainerByName = jest.fn().mockResolvedValue(CONTAINER_DATA);
+
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
@@ -92,12 +94,11 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
   () =>
-    jest.fn().mockImplementation(({ fetchChildren }) => (
-      <>
-        <span>ContainerChildren</span>
-        {fetchChildren()}
-      </>
-    ))
+    jest.fn().mockImplementation(({ fetchChildren }) => {
+      fetchChildren();
+
+      return <>ContainerChildren</>;
+    })
 );
 
 jest.mock(
@@ -155,13 +156,19 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
+);
+
 jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../rest/storageAPI', () => ({
   addContainerFollower: jest.fn(),
-  getContainerByName: jest.fn().mockImplementation(() => CONTAINER_DATA),
+  getContainerByName: jest
+    .fn()
+    .mockImplementation((...params) => mockGetContainerByName(params)),
   patchContainerDetails: jest.fn().mockImplementation(() => Promise.resolve()),
   removeContainerFollower: jest
     .fn()
@@ -169,25 +176,18 @@ jest.mock('../../rest/storageAPI', () => ({
   restoreContainer: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-// jest.mock('../../utils/CommonUtils', () => ({
-//   addToRecentViewed: jest.fn(),
-//   getEntityMissingError: jest.fn(),
-//   getFeedCounts: jest.fn(),
-//   sortTagsCaseInsensitive: jest.fn(),
-// }));
-
-jest.mock('../../utils/StringsUtils', () => ({
-  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-}));
-
-const mockParams = {
-  fqn: 's3_storage_sample.transactions',
+const mockUseParams = jest.fn().mockReturnValue({
+  fqn: CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
-};
+});
+
+const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => mockParams),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
+  useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
 describe('Container Page Component', () => {
@@ -222,7 +222,7 @@ describe('Container Page Component', () => {
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
     expect(getContainerByName).toHaveBeenCalledWith(
-      mockParams.fqn,
+      CONTAINER_DATA.fullyQualifiedName,
       'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
       Include.All
     );
