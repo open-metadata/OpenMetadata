@@ -106,22 +106,15 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="entity-lineage">EntityLineage</div>);
+});
 
 jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
-
-jest.mock('../../rest/lineageAPI', () => ({
-  getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
 
 jest.mock('../../rest/miscAPI', () => ({
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),

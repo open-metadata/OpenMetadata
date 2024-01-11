@@ -28,8 +28,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
@@ -81,7 +81,7 @@ function SchemaTablesTab({
               <Link
                 className="break-word"
                 data-testid="table-name-link"
-                to={getEntityLink(
+                to={entityUtilClassBase.getEntityLink(
                   EntityType.TABLE,
                   record.fullyQualifiedName as string
                 )}>

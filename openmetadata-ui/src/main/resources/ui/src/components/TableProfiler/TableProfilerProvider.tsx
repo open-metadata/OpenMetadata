@@ -213,7 +213,7 @@ export const TableProfilerProvider = ({
     try {
       const { data } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult, testDefinition',
+        fields: 'testCaseResult, testDefinition, incidentId',
         entityLink: generateEntityLink(getDecodedFqn(datasetFQN) ?? ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,

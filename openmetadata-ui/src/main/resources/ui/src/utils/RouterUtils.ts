@@ -42,6 +42,7 @@ import { EntityAction } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -537,6 +538,19 @@ export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getIncidentManagerDetailPagePath = (
+  fqn: string,
+  tab = IncidentManagerTabs.TEST_CASE_RESULTS
+) => {
+  let path = ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };

@@ -80,7 +80,7 @@ describe('Task flow should work', () => {
     );
   });
 
-  const assignee = 'adam_rodriguez9';
+  const assignee = 'adam.matthews2';
   const tag = 'Personal';
 
   const createTagTask = (value) => {
@@ -99,9 +99,7 @@ describe('Task flow should work', () => {
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
-    cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .trigger('mouseover')
-      .trigger('click');
+    cy.get(`[data-testid="${assignee}"]`).trigger('mouseover').trigger('click');
 
     cy.clickOutside();
     if (value.tagCount > 0) {

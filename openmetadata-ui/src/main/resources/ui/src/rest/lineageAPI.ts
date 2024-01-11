@@ -11,25 +11,35 @@
  *  limitations under the License.
  */
 
+import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityLineageReponse } from '../components/Lineage/Lineage.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
-import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
 
-export const getLineageByFQN = async (
-  fqn: string,
-  type: string,
-  upstreamDepth = 3,
-  downstreamDepth = 3
-) => {
-  const response = await APIClient.get<EntityLineage>(
-    `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
-  );
+export const updateLineageEdge = async (edge: AddLineage) => {
+  const response = await APIClient.put<AddLineage>(`/lineage`, edge);
 
   return response.data;
 };
 
-export const updateLineageEdge = async (edge: AddLineage) => {
-  const response = await APIClient.put<AddLineage>(`/lineage`, edge);
+export const getLineageDataByFQN = async (
+  fqn: string,
+  config?: LineageConfig,
+  queryFilter?: string
+) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<EntityLineageReponse>(
+    `lineage/getLineage`,
+    {
+      params: {
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        query_filter: queryFilter,
+        includeDeleted: false,
+      },
+    }
+  );
 
   return response.data;
 };
