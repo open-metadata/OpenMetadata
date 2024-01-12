@@ -99,6 +99,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  public EntityInterface getParentEntity(TestCase entity, String fields) {
+    return Entity.getEntity(entity.getTestSuite(), fields, Include.NON_DELETED);
+  }
+
+  @Override
   public void clearFields(TestCase test, Fields fields) {
     test.setTestSuites(fields.contains("testSuites") ? test.getTestSuites() : null);
     test.setTestSuite(fields.contains(TEST_SUITE) ? test.getTestSuite() : null);
