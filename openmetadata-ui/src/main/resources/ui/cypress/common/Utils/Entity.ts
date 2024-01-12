@@ -445,6 +445,36 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
 
+  if (endPoint === EntityType.Table) {
+    interceptURL(
+      'GET',
+      '/api/v1/tables?databaseSchema=*&include=deleted',
+      'queryDeletedTables'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/databaseSchemas/name/*?fields=*&include=all',
+      'getDatabaseSchemas'
+    );
+
+    cy.get('[data-testid="breadcrumb-link"]').last().click();
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
+
+    cy.get('[data-testid="show-deleted"]')
+      .scrollIntoView()
+      .click({ waitForAnimations: true });
+
+    verifyResponseStatusCode('@queryDeletedTables', 200);
+
+    cy.get('[data-testid="table"] [data-testid="count"]').should(
+      'contain',
+      '1'
+    );
+
+    cy.get('.ant-table-row > :nth-child(1)').should('contain', entityName);
+    cy.get('.ant-table-row > :nth-child(1)').contains(entityName).click();
+  }
+
   restoreEntity();
   cy.reload();
 
