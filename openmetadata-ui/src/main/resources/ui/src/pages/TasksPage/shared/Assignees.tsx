@@ -72,7 +72,7 @@ const Assignees: FC<Props> = ({
         options: groupByType.team.map((team) => ({
           ...team,
           label: (
-            <Space data-testid="assignee-option" key={team.value}>
+            <Space data-testid={team.name} key={team.value}>
               <TeamIcon height={16} width={16} />
               <Typography.Text>{team.label}</Typography.Text>
             </Space>
@@ -88,7 +88,7 @@ const Assignees: FC<Props> = ({
         options: groupByType.user.map((user) => ({
           ...user,
           label: (
-            <div data-testid={`assignee-option-${user.name}`}>
+            <div data-testid={user.name}>
               <UserTag
                 className="assignee-item"
                 id={user.name ?? ''}

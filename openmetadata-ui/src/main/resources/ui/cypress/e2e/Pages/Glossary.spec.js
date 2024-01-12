@@ -45,12 +45,12 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
-const name = `test_dataconsumer${uuid()}`;
+const userName = `test_dataconsumer${uuid()}`;
 
 const CREDENTIALS = {
   firstName: 'Cypress',
   lastName: 'UserDC',
-  email: `${name}@openmetadata.org`,
+  email: `${userName}@openmetadata.org`,
   password: 'User@OMD123',
   username: 'CypressUserDC',
 };
@@ -908,8 +908,8 @@ describe('Glossary page should work properly', () => {
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
     )
       .click()
-      .type(name);
-    cy.get(`[data-testid="assignee-option-${name}"]`).click();
+      .type(userName);
+    cy.get(`[data-testid="${userName}"]`).click();
     cy.clickOutside();
 
     cy.get('[data-testid="tag-selector"]')

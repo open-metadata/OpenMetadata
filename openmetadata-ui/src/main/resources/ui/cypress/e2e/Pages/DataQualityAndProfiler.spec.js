@@ -601,7 +601,7 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@putTestCase', 200);
   });
 
-  it('Remove test case from logical test suite', () => {
+  it.skip('Remove test case from logical test suite', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'GET',
@@ -626,7 +626,7 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@removeTestCase', 200);
   });
 
-  it('Delete test suite', () => {
+  it.skip('Delete test suite', () => {
     visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();

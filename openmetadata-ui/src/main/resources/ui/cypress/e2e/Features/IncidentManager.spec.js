@@ -231,7 +231,7 @@ describe.skip('Incident Manager', () => {
     );
     cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
     verifyResponseStatusCode('@searchAssignee', 200);
-    cy.get('[data-testid="assignee-option-Aaron Johnson"]').click();
+    cy.get('[data-testid="Aaron Johnson"]').click();
     interceptURL(
       'POST',
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
@@ -266,7 +266,7 @@ describe.skip('Incident Manager', () => {
     );
     cy.get('[data-testid="select-assignee"]').click().type('admin');
     verifyResponseStatusCode('@searchAssignee', 200);
-    cy.get('[data-testid="assignee-option-admin"]').click();
+    cy.get('[data-testid="admin"]').click();
     interceptURL('PUT', '/api/v1/feed/tasks/*/close', 'closeTask');
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@closeTask', 200);
