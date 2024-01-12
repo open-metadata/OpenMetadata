@@ -33,6 +33,7 @@ import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
@@ -189,6 +190,9 @@ const MyDataPage = () => {
   useEffect(() => {
     fetchAnnouncements();
   }, []);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection(isLoading);
 
   if (showWelcomeScreen) {
     return (
