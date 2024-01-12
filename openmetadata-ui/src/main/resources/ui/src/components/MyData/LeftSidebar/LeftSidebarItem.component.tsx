@@ -15,7 +15,6 @@ import { Badge, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { PRIMERY_COLOR } from '../../../constants/constants';
 
 interface LeftSidebarItemProps {
   data: {
@@ -47,8 +46,7 @@ const LeftSidebarItem = ({
 
         {isBeta && (
           <Badge
-            className="service-beta-tag m-b-xs"
-            color={PRIMERY_COLOR}
+            className="service-beta-tag"
             count={t('label.beta')}
             offset={[10, 0]}
             size="small"

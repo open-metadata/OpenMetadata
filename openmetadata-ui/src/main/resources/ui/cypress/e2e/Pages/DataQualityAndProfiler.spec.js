@@ -103,9 +103,14 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
     'testSuite'
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+
+  cy.sidebarHover();
+
   cy.get('[data-testid="data-quality"]').click();
 
   cy.sidebarClick('app-bar-item-data-contract');
+
+  cy.sidebarHoverOutside();
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
@@ -531,6 +536,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.sidebarClick('app-bar-item-data-contract');
 
+    cy.sidebarHoverOutside();
+
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="add-test-suite-btn"]').click();
@@ -792,6 +799,8 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="data-quality"]').click();
 
     cy.sidebarClick('app-bar-item-data-contract');
+
+    cy.sidebarHoverOutside();
 
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);

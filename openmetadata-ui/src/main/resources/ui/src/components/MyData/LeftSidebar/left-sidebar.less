@@ -51,7 +51,7 @@
   // Css apply when sidebar is open
 
   .sidebar-open {
-    width: 200px;
+    width: 230px;
 
     .brand-logo-container {
       justify-content: flex-start;
@@ -116,6 +116,7 @@
       height: auto;
       margin: 4px auto;
       transition: 0.3s ease-in-out;
+      overflow: visible;
 
       &:after {
         border: none;
@@ -131,15 +132,28 @@
       }
 
       .left-panel-item {
+        .service-beta-tag {
+          position: absolute;
+          top: -4px;
+          right: 20px;
+          sup {
+            font-size: 8px;
+            background: @primary-color-hover;
+            border: 1px solid @primary-color;
+            color: @primary-color;
+          }
+        }
+
         .anticon {
           svg {
             font-size: 30px;
             fill: transparent;
-            color: @text-grey-muted;
           }
         }
 
         .left-panel-label {
+          color: @text-grey-muted;
+          font-weight: 500;
           opacity: 0;
         }
       }
@@ -155,15 +169,17 @@
         height: auto;
 
         .left-panel-item {
+          position: relative;
           .anticon {
             svg {
               font-size: 30px;
               fill: transparent;
-              color: @text-grey-muted;
             }
           }
 
           .left-panel-label {
+            font-weight: 500;
+            color: @text-grey-muted;
             opacity: 0;
           }
         }
@@ -186,7 +202,6 @@
               svg {
                 font-size: 22px;
                 fill: transparent;
-                color: @text-grey-muted;
               }
             }
           }
@@ -199,6 +214,9 @@
         background-color: @left-nav-item-background;
 
         .left-panel-item {
+          .left-panel-label {
+            color: @text-color;
+          }
           .anticon {
             svg {
               color: @primary-color;
@@ -214,15 +232,21 @@
 
     &:not(.ant-menu-horizontal) .ant-menu-item-selected,
     .ant-menu-item:active,
-    .ant-menu-submenu-title:active {
+    .ant-menu-submenu-title:active,
+    .ant-menu-item:hover {
       background-color: @left-nav-item-background;
       color: @text-color;
+
+      .left-panel-item {
+        .left-panel-label {
+          color: @text-color;
+        }
+      }
 
       .anticon {
         svg {
           color: @primary-color !important;
         }
-        // }
       }
     }
 
