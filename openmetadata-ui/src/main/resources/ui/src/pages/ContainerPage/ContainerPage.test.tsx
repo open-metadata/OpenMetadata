@@ -48,6 +48,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((ui) => ui),
+}));
+
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
@@ -94,8 +98,8 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
   () =>
-    jest.fn().mockImplementation(({ fetchChildren, isLoading }) => {
-      fetchChildren();
+    jest.fn().mockImplementation(({ isLoading }) => {
+      getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, 'children');
 
       return (
         <>
@@ -165,6 +169,11 @@ jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
+jest.mock('../../constants/constants', () => ({
+  getContainerDetailPath: jest.fn().mockReturnValue('/container-detail-path'),
+  getVersionPath: jest.fn().mockReturnValue('/version-path'),
+}));
+
 jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -179,6 +188,46 @@ jest.mock('../../rest/storageAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve()),
   restoreContainer: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+  getFeedCounts: jest.fn().mockReturnValue(0),
+  sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation((entity) => entity?.name ?? 'entityName'),
+}));
+
+jest.mock('../../utils/FeedUtils', () => ({
+  getEntityFieldThreadCounts: jest.fn().mockReturnValue(0),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: {},
+}));
+
+jest.mock('../../utils/StringsUtils', () => ({
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getTagsWithoutTier: jest.fn().mockReturnValue([]),
+  getTierTags: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/TagsUtils', () => ({
+  createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),
+  updateTierTag: jest.fn().mockImplementation((tagObject) => tagObject),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 const mockUseParams = jest.fn().mockReturnValue({
@@ -321,33 +370,11 @@ describe('Container Page Component', () => {
     expect(mockPush).toHaveBeenCalled();
   });
 
-  it.skip('should render children in first tab, when containerData.dataModel is empty', async () => {
-    mockGetContainerByName.mockResolvedValueOnce(CONTAINER_DATA_1);
+  it('children should render on children tab', async () => {
     mockUseParams.mockReturnValue({
       fqn: CONTAINER_DATA_1.fullyQualifiedName,
       tab: 'children',
     });
-
-    await act(async () => {
-      render(<ContainerPage />);
-    });
-
-    expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
-
-    // const tabs = screen.getAllByRole('tab');
-
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
-
-    expect(screen.getByText('DescriptionV1')).toBeVisible();
-    expect(screen.getByText('ContainerChildren')).toBeVisible();
-    expect(screen.getByText('EntityRightPanel')).toBeVisible();
-  });
-
-  it.skip('children should render on children tab', async () => {
-    // mockUseParams.mockReturnValue({
-    //   fqn: CONTAINER_DATA_1.fullyQualifiedName,
-    //   tab: 'children',
-    // });
 
     await act(async () => {
       render(<ContainerPage />);
@@ -360,5 +387,10 @@ describe('Container Page Component', () => {
     expect(childrenTab).toHaveAttribute('aria-selected', 'true');
 
     expect(screen.getByText('ContainerChildren')).toBeVisible();
+
+    expect(getContainerByName).toHaveBeenCalledWith(
+      CONTAINER_DATA_1.fullyQualifiedName,
+      'children'
+    );
   });
 });
