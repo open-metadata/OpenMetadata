@@ -181,6 +181,8 @@ public interface MessageDecorator<T> {
           }
           case POST_CREATED -> {
             headerMessage = String.format("%s posted a message", thread.getCreatedBy());
+            attachmentList.add(
+                String.format("%s : %s", thread.getCreatedBy(), thread.getMessage()));
             thread
                 .getPosts()
                 .forEach(
