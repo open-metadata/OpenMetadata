@@ -4,9 +4,9 @@
     "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
     "steps": [
       {
-        "name": "CheckAccess",
-        "description": "Validate that the API is accessible with the given credentials",
-        "errorMessage": "Failed to connect to mode, please validate the credentials",
+        "name": "CheckDashboards",
+        "description": "Validate that the Dashboards(Reports) API is accessible with the given credentials",
+        "errorMessage": "Failed to connect to mode to get the dashboards, please validate the credentials",
         "shortCircuit": true,
         "mandatory": true
       }
