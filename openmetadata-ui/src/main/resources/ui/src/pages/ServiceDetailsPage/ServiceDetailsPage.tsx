@@ -263,7 +263,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const getAllIngestionWorkflows = useCallback(
-    async (paging?: string) => {
+    async (paging?: Omit<Paging, 'total'>, limit?: number) => {
       try {
         setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines({
@@ -277,6 +277,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             PipelineType.Profiler,
             PipelineType.Dbt,
           ],
+          limit,
         });
 
         if (response.data) {
@@ -602,12 +603,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchServiceDetails = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await getServiceByFQN(
-        serviceCategory,
-        serviceFQN,
-        `owner,tags,${isMetadataService ? '' : 'domain'}`,
-        Include.All
-      );
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: `owner,tags,${isMetadataService ? '' : 'domain'}`,
+        include: Include.All,
+      });
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
     } catch (error) {

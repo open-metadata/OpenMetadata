@@ -170,16 +170,15 @@ export const AssetSelectionModal = ({
 
   const fetchCurrentEntity = useCallback(async () => {
     if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(getEncodedFqn(entityFqn), '');
+      const data = await getDomainByName(getEncodedFqn(entityFqn));
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(
-        getEncodedFqn(entityFqn),
-        'domain,assets'
-      );
+      const data = await getDataProductByName(getEncodedFqn(entityFqn), {
+        fields: 'domain,assets',
+      });
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, 'tags');
+      const data = await getGlossaryTermByFQN(entityFqn, { fields: 'tags' });
       setActiveEntity(data);
     }
   }, [type, entityFqn]);

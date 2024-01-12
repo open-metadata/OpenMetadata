@@ -115,11 +115,11 @@ const ContainerPage = () => {
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
-      const response = await getContainerByName(
-        containerFQN,
-        'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
-        Include.All
-      );
+      const response = await getContainerByName(containerFQN, {
+        fields:
+          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        include: Include.All,
+      });
       addToRecentViewed({
         displayName: getEntityName(response),
         entityType: EntityType.CONTAINER,
@@ -143,7 +143,9 @@ const ContainerPage = () => {
   const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerFQN, 'children');
+      const { children } = await getContainerByName(containerFQN, {
+        fields: 'children',
+      });
       setContainerChildrenData(children);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -726,10 +728,11 @@ const ContainerPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateContainerVotes(id, data);
-      const details = await getContainerByName(
-        containerFQN,
-        'parent,dataModel,owner,tags,followers,extension,votes'
-      );
+
+      const details = await getContainerByName(containerFQN, {
+        fields: 'parent,dataModel,owner,tags,followers,extension,votes',
+      });
+
       setContainerData(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

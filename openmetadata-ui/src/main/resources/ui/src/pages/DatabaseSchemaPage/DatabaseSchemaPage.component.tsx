@@ -199,11 +199,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
       setIsSchemaDetailsLoading(true);
-      const response = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
-        Include.All
-      );
+      const response = await getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, {
+        fields: 'owner,usageSummary,tags,domain,votes',
+        include: Include.All,
+      });
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
       setDescription(schemaDescription);
@@ -656,11 +655,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseSchemaVotes(id, data);
-      const response = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'votes'],
-        Include.All
-      );
+      const response = await getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, {
+        fields: 'owner,usageSummary,tags,votes',
+        include: Include.All,
+      });
       setDatabaseSchema(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
