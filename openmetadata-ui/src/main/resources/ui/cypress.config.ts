@@ -20,7 +20,7 @@ export default defineConfig({
   videoUploadOnPasses: false,
   defaultCommandTimeout: 5000,
   chromeWebSecurity: false,
-  numTestsKeptInMemory: 0,
+  numTestsKeptInMemory: 4,
   experimentalMemoryManagement: true,
   e2e: {
     experimentalStudio: true,

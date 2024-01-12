@@ -92,7 +92,6 @@ describe('Recently viwed data assets', () => {
 
   beforeEach(() => {
     cy.login();
-    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('recently view section should be present', () => {

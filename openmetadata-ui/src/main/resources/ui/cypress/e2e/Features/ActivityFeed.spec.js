@@ -77,7 +77,6 @@ describe('Activity feed', () => {
 
   beforeEach(() => {
     cy.login();
-    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('Create feed', () => {

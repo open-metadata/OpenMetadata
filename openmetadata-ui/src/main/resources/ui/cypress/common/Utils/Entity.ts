@@ -555,3 +555,40 @@ export const updateDescriptioForEntity = (
     '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
   ).should('contain', description);
 };
+
+export const followEntity = (entityType: EntityType) => {
+  interceptURL('PUT', `/api/v1/${entityType}/*/followers`, 'waitAfterFollow');
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterFollow', 200);
+};
+
+export const validateFollowedEntityToWidget = (
+  entityName: string,
+  isFollowed = true
+) => {
+  interceptURL(
+    'GET',
+    '/api/v1/users/*?fields=follows,owns',
+    'getFollowedEntities'
+  );
+  cy.goToHomePage();
+
+  verifyResponseStatusCode('@getFollowedEntities', 200);
+  cy.get(`[data-testid="following-${entityName}"]`).should(
+    isFollowed ? 'be.visible' : 'not.exist'
+  );
+};
+
+export const unfollowEntity = (entityType: EntityType) => {
+  interceptURL(
+    'DELETE',
+    `/api/v1/${entityType}/*/followers/*`,
+    'waitAfterUnFollow'
+  );
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterUnFollow', 200);
+};
