@@ -17,7 +17,7 @@ import { capitalize, isEmpty, toString } from 'lodash';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { getUserById } from '../../../rest/userAPI';
+import { getUserByName } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
 import CloseIcon from '../../Modals/CloseIcon.component';
@@ -40,14 +40,14 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   const [versionType] = useState<VersionType>('all');
   const [uname, setUname] = useState<string>('');
 
-  const fetchUserName = async (id: string) => {
+  const fetchUserName = async (userName: string) => {
     try {
-      const userData = await getUserById(id, 'displayName');
+      const userData = await getUserByName(userName);
 
       const name: string = getEntityName(userData);
       setUname(name);
     } catch (err) {
-      setUname(id);
+      setUname(userName);
     }
   };
 
