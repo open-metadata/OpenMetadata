@@ -19,6 +19,7 @@ export const absoluteRect = (node: Element) => {
     top: data.top,
     left: data.left,
     width: data.width,
+    right: data.right,
   };
 };
 
