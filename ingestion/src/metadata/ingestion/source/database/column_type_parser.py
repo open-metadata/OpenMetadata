@@ -369,7 +369,9 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
-        parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",")
+        parts = ColumnTypeParser._ignore_brackets_split(
+            stuct_type, ",", skip_no_child_validation=True
+        )
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
@@ -387,9 +389,10 @@ class ColumnTypeParser:
             field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
             field_type["name"] = field_name
             columns.append(field_type)
+
         return {
             "children": columns,
-            "dataTypeDisplay": f"struct<{stuct_type}>",
+            "dataTypeDisplay": f"struct<{stuct_type or 'unknown'}>",
             "dataType": "STRUCT",
         }
 
@@ -431,7 +434,9 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(string: str, separator: str) -> List[str]:
+    def _ignore_brackets_split(
+        string: str, separator: str, skip_no_child_validation: bool = False
+    ) -> List[str]:
         parts = []
         buf = ""
         level = 0
@@ -452,9 +457,10 @@ class ColumnTypeParser:
             else:
                 buf += char
 
-        if len(buf) == 0:
+        if len(buf) == 0 and not skip_no_child_validation:
             raise ValueError(f"The {separator} cannot be the last char: {string}")
-        parts.append(buf)
+        if buf:
+            parts.append(buf)
         return parts
 
     @staticmethod

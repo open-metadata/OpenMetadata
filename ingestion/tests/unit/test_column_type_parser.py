@@ -23,6 +23,7 @@ from metadata.utils.datalake.datalake_utils import fetch_col_types
 COLUMN_TYPE_PARSE = [
     "array<string>",
     "struct<a:int,b:string>",
+    "struct<>",
     "struct<a:struct<b:array<string>,c:bigint>>",
     "struct<a:array<string>>",
     "struct<bigquerytestdatatype51:array<struct<bigquery_test_datatype_511:array<string>>>>",
