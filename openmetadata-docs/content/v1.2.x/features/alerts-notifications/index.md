@@ -60,6 +60,11 @@ email:
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 ```
 
+{% note noteType="Tip" %} 
+    When you visit application it will promt for Notification permission, you should allow it to get the notification from the OM
+    Also please check if you have provided notification permission to your browser as well
+{% /note %}
+
 ### Webhook
 To set up a webhook you can simply use the endpoint URL where you want your alert to be sent. Additionally, you can configure  the following parameter:
 - **Batch Size**: size of the batch that will be sent to the endpoint.
