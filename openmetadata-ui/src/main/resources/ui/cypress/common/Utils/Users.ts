@@ -15,10 +15,8 @@ import {
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
 import {
-  addOwner,
   descriptionBox,
   interceptURL,
-  removeOwner,
   toastNotification,
   verifyResponseStatusCode,
 } from '../common';
@@ -136,7 +134,7 @@ export const restoreUser = (username: string, editedUserName: string) => {
   toastNotification('User restored successfully');
 };
 
-export const deleteSoftDeletedUser = (username: string) => {
+export const permanentDeleteUser = (username: string) => {
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   interceptURL('GET', '/api/v1/users/name/*', 'getUser');
   verifyResponseStatusCode('@getUsers', 200);
@@ -178,39 +176,6 @@ export const visitUserListPage = () => {
     .click();
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
-};
-
-export const assignOwner = (ownerName) => {
-  cy.get('[data-testid="app-bar-item-explore"]').click();
-  interceptURL(
-    'GET',
-    `/api/v1/tables/name/*?fields=testSuite&include=all`,
-    'getTables'
-  );
-  verifyResponseStatusCode('@getTables', 200);
-
-  cy.get('[data-testid="searchBox"]').click().type('dim.shop');
-  cy.get(
-    '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
-  ).click();
-  addOwner(ownerName);
-};
-
-export const cleanUpUser = (ownerName, userName) => {
-  cy.get('[data-testid="app-bar-item-explore"]').click();
-  interceptURL(
-    'GET',
-    `/api/v1/tables/name/*?fields=testSuite&include=all`,
-    'getTables'
-  );
-  verifyResponseStatusCode('@getTables', 200);
-  cy.get('[data-testid="searchBox"]').click().type('dim.shop');
-  cy.get(
-    '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
-  ).click();
-  removeOwner(ownerName);
-  visitUserListPage();
-  deleteSoftDeletedUser(userName);
 };
 
 export const generateToken = () => {

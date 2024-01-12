@@ -18,7 +18,7 @@ import {
 } from '../../common/common';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
 import {
-  deleteSoftDeletedUser,
+  permanentDeleteUser,
   restoreUser,
   softDeleteUser,
 } from '../Utils/Users';
@@ -49,24 +49,12 @@ class UsersTestClass {
     restoreUser(name, editedName);
   }
 
-  permanentlyDeleteSoftDeletedUser(name) {
-    deleteSoftDeletedUser(name);
+  permanentDeleteUser(name) {
+    permanentDeleteUser(name);
     cy.logout();
   }
 
-  checkConsumerButtonVisibility() {
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    interceptURL(
-      'GET',
-      `/api/v1/tables/name/*?fields=testSuite&include=all`,
-      'getTables'
-    );
-    verifyResponseStatusCode('@getTables', 200);
-    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
-    cy.wait(300);
-    cy.get(
-      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
-    ).click();
+  checkConsumerPermissions() {
     // check Add domain permission
     cy.get('[data-testid="add-domain"]').should('not.be.exist');
     cy.get('[data-testid="edit-displayName-button"]').should('not.be.exist');
@@ -105,23 +93,12 @@ class UsersTestClass {
     cy.get('[data-testid="edit-tier"]').should('be.visible');
   }
 
-  checkStewardButtonVisibility() {
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    interceptURL(
-      'GET',
-      `/api/v1/tables/name/*?fields=testSuite&include=all`,
-      'getTables'
-    );
-    verifyResponseStatusCode('@getTables', 200);
-    cy.get('[data-testid="searchBox"]').click().type('dim.shop');
-    cy.get(
-      '[data-testid="global-search-suggestion-box"] > [data-testid="sample_data-dim.shop"]'
-    ).click();
+  checkStewardPermissions() {
     // check Add domain permission
     cy.get('[data-testid="add-domain"]').should('not.be.exist');
-    cy.get('[data-testid="edit-displayName-button"]').should('not.be.exist');
+    cy.get('[data-testid="edit-displayName-button"]').should('be.exist');
     // check edit owner permission
-    cy.get('[data-testid="edit-owner"]').should('not.be.exist');
+    cy.get('[data-testid="edit-owner"]').should('be.exist');
     // check edit description permission
     cy.get('[data-testid="edit-description"]').should('be.exist');
     // check edit tier permission
@@ -140,22 +117,6 @@ class UsersTestClass {
     cy.get('[data-testid="edit-lineage"]').should('be.enabled');
   }
 
-  checkStewardPermissions() {
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
-      cy.get('[data-testid="app-bar-item-settings"]').click();
-      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
-      cy.get('[data-testid="add-service-button"] > span').should('not.exist');
-    });
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    cy.get('[data-testid="tables-tab"] > .ant-space').click();
-    cy.get(
-      '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
-    ).click();
-    cy.get('[data-testid="edit-tier"]').should('be.visible');
-    cy.logout();
-    Cypress.session.clearAllSavedSessions();
-  }
   restoreAdminDetails() {
     cy.get('[data-testid="dropdown-profile"]').click({ force: true });
     cy.get('[data-testid="user-name"] > .ant-typography').click({

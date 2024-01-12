@@ -20,7 +20,7 @@ declare global {
        * Custom command to select DOM element by data-cy attribute.
        * @example cy.login()
        */
-      login(): void;
+      login(email?: string, password?: string): void;
       logout(): void;
       goToHomePage(doNotNavigate: boolean): void;
       clickOnLogo(): void;

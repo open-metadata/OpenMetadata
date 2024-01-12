@@ -12,6 +12,8 @@
  */
 // eslint-disable-next-line spaced-comment
 import UsersTestClass from '../../common/Entities/UserClass';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   addUser,
   editRole,
@@ -23,9 +25,11 @@ import {
   visitUserListPage,
 } from '../../common/Utils/Users';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { EntityType } from '../../constants/Entity.interface';
 
 import {
   BASE_URL,
+  DELETE_ENTITY,
   GLOBAL_SETTING_PERMISSIONS,
   ID,
   uuid,
@@ -42,6 +46,7 @@ const expirationTime = {
 const name = `Usercttest${uuid()}`;
 const glossary = NAVBAR_DETAILS.glossary;
 const tag = NAVBAR_DETAILS.tags;
+const ownerName = 'Aaron Warren';
 const user = {
   name: name,
   email: `${name}@gmail.com`,
@@ -70,7 +75,7 @@ describe('User with different Roles', () => {
     cy.logout();
   });
 
-  it('Reset Password', () => {
+  it('Reset Data Consumer Password', () => {
     cy.login(user.email, user.password);
 
     resetPassword(user.password, user.newPassword);
@@ -156,8 +161,21 @@ describe('User with different Roles', () => {
   });
 
   it('Data Consumer permissions for table details page', () => {
+    cy.login();
+    visitEntityDetailsPage({
+      term: DELETE_ENTITY.table.term,
+      serviceName: DELETE_ENTITY.table.serviceName,
+      entity: EntityType.Table,
+    });
+    addOwner(ownerName);
+    cy.logout();
     cy.login(user.email, user.newPassword);
-    entity.checkConsumerButtonVisibility();
+    visitEntityDetailsPage({
+      term: DELETE_ENTITY.table.term,
+      serviceName: DELETE_ENTITY.table.serviceName,
+      entity: EntityType.Table,
+    });
+    entity.checkConsumerPermissions();
   });
 
   it('Update Data Consumer details', () => {
@@ -232,7 +250,13 @@ describe('User with different Roles', () => {
   it('Check Data Steward permissions', () => {
     cy.login(user.email, user.newStewardPassword);
     entity.checkStewardServicesPermissions();
-    entity.checkStewardButtonVisibility();
+    cy.goToHomePage();
+    visitEntityDetailsPage({
+      term: DELETE_ENTITY.table.term,
+      serviceName: DELETE_ENTITY.table.serviceName,
+      entity: EntityType.Table,
+    });
+    entity.checkStewardPermissions();
     cy.logout();
   });
 
@@ -251,11 +275,18 @@ describe('User with different Roles', () => {
   it('Admin Permanent Delete User', () => {
     cy.login();
     visitUserListPage();
-    entity.permanentlyDeleteSoftDeletedUser(user.name);
+    entity.permanentDeleteUser(user.name);
   });
 
   it('Restore Admin Details', () => {
     cy.login();
     entity.restoreAdminDetails();
+    cy.goToHomePage();
+    visitEntityDetailsPage({
+      term: DELETE_ENTITY.table.term,
+      serviceName: DELETE_ENTITY.table.serviceName,
+      entity: EntityType.Table,
+    });
+    removeOwner(ownerName);
   });
 });
