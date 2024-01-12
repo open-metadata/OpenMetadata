@@ -14,6 +14,7 @@ import { Divider, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, last } from 'lodash';
+import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -42,6 +43,7 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
@@ -237,7 +239,12 @@ const IncidentManagerPageHeader = ({
             <Link
               className="font-medium"
               data-testid="table-name"
-              to={getTableTabPath(tableFqn, EntityTabs.PROFILER)}>
+              to={{
+                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                search: QueryString.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
               {getNameFromFQN(tableFqn)}
             </Link>
           </Typography.Text>

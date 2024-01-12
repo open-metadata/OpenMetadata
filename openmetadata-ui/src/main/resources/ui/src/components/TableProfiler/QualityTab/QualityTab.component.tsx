@@ -20,6 +20,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { SummaryPanel } from '../../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from '../../../components/ProfilerDashboard/component/DataQualityTab';
 import TestSuitePipelineTab from '../../../components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { getTableTabPath } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
   TEST_CASE_STATUS_OPTION,
@@ -32,10 +33,15 @@ import { Table } from '../../../generated/entity/data/table';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityType as TestType } from '../../../generated/tests/testDefinition';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import {
+  getBreadcrumbForTable,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 
@@ -58,8 +64,25 @@ export const QualityTab = () => {
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [testSuite, setTestSuite] = useState<Table['testSuite']>();
+  const [table, setTable] = useState<Table>();
   const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
+  const testSuite = useMemo(() => table?.testSuite, [table]);
+
+  const tableBreadcrumb = useMemo(() => {
+    return table
+      ? [
+          ...getBreadcrumbForTable(table),
+          {
+            name: getEntityName(table),
+            url:
+              getTableTabPath(
+                getEncodedFqn(table.fullyQualifiedName ?? ''),
+                EntityTabs.PROFILER
+              ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+          },
+        ]
+      : undefined;
+  }, [table]);
 
   const filteredTestCase = useMemo(() => {
     let tests: TestCase[] = allTestCases ?? [];
@@ -84,6 +107,7 @@ export const QualityTab = () => {
           <div className="p-t-md">
             <DataQualityTab
               afterDeleteAction={fetchAllTests}
+              breadcrumbData={tableBreadcrumb}
               isLoading={isTestsLoading}
               showTableColumn={false}
               testCases={filteredTestCase}
@@ -105,6 +129,7 @@ export const QualityTab = () => {
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
+      tableBreadcrumb,
     ]
   );
 
@@ -148,7 +173,7 @@ export const QualityTab = () => {
       const details = await getTableDetailsByFQN(datasetFQN, {
         fields: TabSpecificField.TESTSUITE,
       });
-      setTestSuite(details.testSuite);
+      setTable(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

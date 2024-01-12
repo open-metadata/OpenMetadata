@@ -21,6 +21,7 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { ListTestCaseParams } from '../../rest/testAPI';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
@@ -111,6 +112,7 @@ export interface DataQualityTabProps {
     testSuite: TestSuite;
   };
   showPagination?: boolean;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 }
 
 export interface TestSummaryProps {

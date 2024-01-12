@@ -14,6 +14,7 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -30,6 +31,7 @@ import {
   getTestCaseById,
   ListTestCaseParams,
 } from '../../../rest/testAPI';
+import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -41,6 +43,7 @@ import { DataQualitySearchParams } from '../DataQuality.interface';
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const history = useHistory();
   const location = useLocation();
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
@@ -231,6 +234,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       <Col span={24}>
         <DataQualityTab
           afterDeleteAction={fetchTestCases}
+          breadcrumbData={[
+            {
+              name: t('label.data-quality'),
+              url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+            },
+          ]}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}

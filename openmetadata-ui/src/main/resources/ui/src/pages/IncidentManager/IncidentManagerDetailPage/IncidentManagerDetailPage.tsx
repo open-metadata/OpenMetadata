@@ -16,11 +16,12 @@ import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import IncidentManagerPageHeader from '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
@@ -49,6 +50,8 @@ import { TestCaseData } from './IncidentManagerDetailPage.interface';
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const location =
+    useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
   const {
     fqn: testCaseFQN,
@@ -92,8 +95,8 @@ const IncidentManagerDetailPage = () => {
         label: (
           <TabsLabel
             count={taskCount}
-            id="issue"
-            name={t('label.issue-plural')}
+            id="incident"
+            name={t('label.incident')}
           />
         ),
         key: IncidentManagerTabs.ISSUES,
@@ -127,11 +130,18 @@ const IncidentManagerDetailPage = () => {
   };
 
   const breadcrumb = useMemo(() => {
+    const data: TitleBreadcrumbProps['titleLinks'] = location.state
+      ?.breadcrumbData
+      ? location.state.breadcrumbData
+      : [
+          {
+            name: t('label.incident-manager'),
+            url: ROUTES.INCIDENT_MANAGER,
+          },
+        ];
+
     return [
-      {
-        name: t('label.incident-manager'),
-        url: ROUTES.INCIDENT_MANAGER,
-      },
+      ...data,
       {
         name: testCaseData?.data?.name ?? '',
         url: '',
