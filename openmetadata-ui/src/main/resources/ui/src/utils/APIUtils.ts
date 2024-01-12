@@ -195,32 +195,6 @@ export const formatSearchTagsResponse = (
   }));
 };
 
-/**
- * @deprecated getURLWithQueryFields is deprecated, Please use params to pass query parameters wherever it is required
- */
-export const getURLWithQueryFields = (
-  url: string,
-  lstQueryFields?: string | string[],
-  qParams?: string
-) => {
-  let strQuery = lstQueryFields
-    ? typeof lstQueryFields === 'string'
-      ? lstQueryFields
-      : lstQueryFields.length
-      ? lstQueryFields.join()
-      : ''
-    : '';
-  strQuery = strQuery.replace(/ /g, '');
-
-  let queryParam = strQuery ? `?fields=${strQuery}` : '';
-
-  if (qParams) {
-    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
-  }
-
-  return url + queryParam;
-};
-
 export const omitDeep = <T>(
   obj: T,
   predicate: (value: string, key: string | number | symbol) => boolean

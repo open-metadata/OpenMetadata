@@ -25,7 +25,7 @@ import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Include } from '../../../generated/type/include';
 import { getApplicationByName } from '../../../rest/applicationAPI';
-import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
+import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -59,7 +59,9 @@ const MarketPlaceAppDetails = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getMarketPlaceApplicationByName(fqn, 'owner');
+      const data = await getMarketPlaceApplicationByFqn(fqn, {
+        fields: 'owner',
+      });
       setAppData(data);
 
       if (data.appScreenshots) {

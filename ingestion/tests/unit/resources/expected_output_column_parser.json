@@ -22,6 +22,11 @@
       "dataType": "STRUCT"
     },
     {
+      "dataType": "STRUCT",
+      "dataTypeDisplay": "struct<unknown>",
+      "children": []
+    },
+    {
       "children": [
         {
           "children": [

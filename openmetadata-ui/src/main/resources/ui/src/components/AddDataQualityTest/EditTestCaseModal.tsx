@@ -179,7 +179,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
   const fetchTableDetails = async (fqn: string) => {
     try {
-      const data = await getTableDetailsByFQN(fqn, '');
+      const data = await getTableDetailsByFQN(fqn);
       setTable(data);
     } catch (error) {
       showErrorToast(error as AxiosError);

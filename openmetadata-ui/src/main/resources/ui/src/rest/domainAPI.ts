@@ -18,7 +18,6 @@ import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/domains';
@@ -54,16 +53,10 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const getDomainByName = async (
-  domainName: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `/domains/name/${domainName}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<Domain>(url);
+export const getDomainByName = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Domain>(`/domains/name/${fqn}`, {
+    params,
+  });
 
   return response.data;
 };
