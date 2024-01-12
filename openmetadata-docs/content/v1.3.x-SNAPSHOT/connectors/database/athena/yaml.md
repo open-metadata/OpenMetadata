@@ -125,7 +125,7 @@ If you have external services other than glue and facing permission issues, add 
 {% /note %}
 
 
-You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
+You can find further information on the Athena connector in the [docs](/connectors/database/athena).
 
 ### Python Requirements
 
