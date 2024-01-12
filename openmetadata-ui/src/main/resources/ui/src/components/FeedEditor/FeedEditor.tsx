@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, isNil } from 'lodash';
 import Emoji from 'quill-emoji';
 import 'quill-emoji/dist/quill-emoji.css';
 import 'quill-mention';
@@ -74,7 +74,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }: FeedEditorProp,
     ref
   ) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
@@ -280,6 +280,29 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         editorRef.current?.focus();
       }
     }, [focused, editorRef]);
+
+    useEffect(() => {
+      // get the editor container
+      const container = document.getElementById('om-quill-editor');
+
+      if (container && editorRef.current) {
+        // get the editor instance
+        const editorInstance = editorRef.current.getEditor();
+        const direction = i18n.dir();
+
+        // get the current direction of the editor
+        const { align } = editorInstance.getFormat();
+
+        if (direction === 'rtl' && isNil(align)) {
+          container.setAttribute('data-dir', direction);
+          editorInstance.format('align', 'right', 'user');
+        } else if (align === 'right') {
+          editorInstance.format('align', false, 'user');
+          container.setAttribute('data-dir', 'ltr');
+        }
+        editorInstance.format('direction', direction, 'user');
+      }
+    }, [i18n, editorRef]);
 
     return (
       <div
