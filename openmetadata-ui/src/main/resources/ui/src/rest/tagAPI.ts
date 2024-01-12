@@ -14,61 +14,55 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { PAGE_SIZE } from '../constants/constants';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/classifications';
 
 interface TagsRequestParams {
-  arrQueryFields?: string | string[];
+  fields?: string | string[];
   parent?: string;
   after?: string;
   before?: string;
   limit?: number;
 }
 
-export const getTags = async ({
-  arrQueryFields,
-  limit = 10,
-  ...params
-}: TagsRequestParams) => {
-  const url = getURLWithQueryFields('/tags', arrQueryFields);
-
-  const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
+export const getTags = async ({ limit = 10, ...params }: TagsRequestParams) => {
+  const response = await APIClient.get<PagingResponse<Tag[]>>('/tags', {
     params: { ...params, limit },
   });
 
   return response.data;
 };
 
-export const getAllClassifications = async (
-  arrQueryFields?: string | string[],
-  limit = 10
-) => {
-  const url = getURLWithQueryFields(BASE_URL, arrQueryFields);
-
-  const response = await APIClient.get<PagingResponse<Classification[]>>(url, {
-    params: {
-      limit,
-    },
-  });
+export const getAllClassifications = async (params?: ListParams) => {
+  const response = await APIClient.get<PagingResponse<Classification[]>>(
+    BASE_URL,
+    {
+      params: {
+        ...params,
+        limit: params?.limit ?? PAGE_SIZE,
+      },
+    }
+  );
 
   return response.data;
 };
 
 export const getClassificationByName = async (
   name: string,
-  arrQueryFields?: string | string[]
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(`${BASE_URL}/name/${name}`, arrQueryFields);
-
-  const response = await APIClient.get<Classification>(url);
+  const response = await APIClient.get<Classification>(
+    `${BASE_URL}/name/${name}`,
+    { params }
+  );
 
   return response.data;
 };

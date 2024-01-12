@@ -194,10 +194,9 @@ export const TableProfilerProvider = ({
     setIsProfilerDataLoading(true);
     try {
       const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(
-        datasetFQN,
-        'customMetrics,columns'
-      );
+      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
+        fields: 'customMetrics,columns',
+      });
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);

@@ -98,9 +98,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 
 jest.mock('../../rest/dataModelsAPI', () => ({
-  getDataModelDetailsByFQN: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({})),
+  getDataModelByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   getDataModelVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getDataModelVersionsList: jest
     .fn()

@@ -339,12 +339,12 @@ describe('Teams flow should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/teams?limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      `/api/v1/teams?parentTeam=${TEAM_DETAILS.name}&include=all&limit=100000`,
       'getTeamParent'
     );
     interceptURL(
       'GET',
-      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      `/api/v1/teams?parentTeam=${TEAM_DETAILS.name}&include=all&fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000`,
       'getChildrenCount'
     );
 
