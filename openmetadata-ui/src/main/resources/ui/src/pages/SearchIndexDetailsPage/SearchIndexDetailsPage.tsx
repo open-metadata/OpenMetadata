@@ -114,7 +114,9 @@ function SearchIndexDetailsPage() {
     setLoading(true);
     try {
       const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, fields);
+      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, {
+        fields,
+      });
 
       setSearchIndexDetails(details);
       addToRecentViewed({
@@ -633,10 +635,9 @@ function SearchIndexDetailsPage() {
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateSearchIndexVotes(id, data);
-      const details = await getSearchIndexDetailsByFQN(
-        searchIndexFQN,
-        defaultFields
-      );
+      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, {
+        fields: defaultFields,
+      });
       setSearchIndexDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

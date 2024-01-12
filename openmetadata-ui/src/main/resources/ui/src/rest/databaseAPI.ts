@@ -24,7 +24,6 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getDatabases = async (
@@ -52,25 +51,14 @@ export const getTables = (id: number): Promise<AxiosResponse> => {
   return APIClient.get('/databases/' + id + '/tables');
 };
 
-export const getDatabase = (
-  id: string,
-  query?: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/databases/${id}`, query);
-
-  return APIClient.get(url);
-};
-
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[],
-  include: Include = Include.NonDeleted
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
-
-  const response = await APIClient.get<Database>(url, {
+  const response = await APIClient.get<Database>(`/databases/name/${fqn}`, {
     params: {
-      include,
+      ...params,
+      include: params?.include ?? Include.NonDeleted,
     },
   });
 
@@ -136,15 +124,14 @@ export const getDatabaseSchemas = async ({
 
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  fields?: string | string[],
-  include: Include = Include.NonDeleted
+  params?: ListParams
 ) => {
   const response = await APIClient.get<DatabaseSchema>(
     `/databaseSchemas/name/${databaseSchemaName}`,
     {
       params: {
-        fields,
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );

@@ -23,14 +23,6 @@ import {
   updateTag,
 } from './tagAPI';
 
-jest.mock('../utils/APIUtils', () => ({
-  getURLWithQueryFields: jest
-    .fn()
-    .mockImplementation(
-      (url, lstQueryFields) => `${url}?fields=${lstQueryFields}`
-    ),
-}));
-
 jest.mock('./index', () => ({
   get: jest
     .fn()
@@ -56,17 +48,15 @@ jest.mock('./index', () => ({
 
 describe('API functions should work properly', () => {
   it('getTags function should work properly', async () => {
-    const data = await getTags({ arrQueryFields: 'query' });
+    const data = await getTags({});
 
-    expect(data).toBe(`get_request/tags?fields=query`);
+    expect(data).toBe(`get_request/tags`);
   });
 
   it('getClassificationByName function should work properly', async () => {
-    const result = await getClassificationByName('categoryName', 'query');
+    const result = await getClassificationByName('categoryName');
 
-    expect(result).toBe(
-      `get_request/classifications/name/categoryName?fields=query`
-    );
+    expect(result).toBe(`get_request/classifications/name/categoryName`);
   });
 
   it('deleteClassification function should work properly', async () => {

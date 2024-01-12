@@ -196,7 +196,9 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: COMMON_API_FIELDS,
+    });
   });
 
   it('TableDetailsPageV1 should fetch table details with all the permitted fields', async () => {
@@ -212,10 +214,9 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      `${COMMON_API_FIELDS},usageSummary`
-    );
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: `${COMMON_API_FIELDS},usageSummary`,
+    });
   });
 
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
@@ -229,7 +230,9 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: COMMON_API_FIELDS,
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.schema')).toBeInTheDocument();
@@ -309,7 +312,9 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', COMMON_API_FIELDS);
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: COMMON_API_FIELDS,
+    });
 
     expect(await screen.findByText('testSchemaTab')).toBeInTheDocument();
   });
