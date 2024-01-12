@@ -14,7 +14,13 @@ import { Card } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import Qs from 'qs';
-import React, { DragEvent, useCallback, useMemo, useRef } from 'react';
+import React, {
+  DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
@@ -61,6 +67,7 @@ const Lineage = ({
     onConnect,
     onZoomUpdate,
     onInitReactFlow,
+    updateEntityType,
   } = useLineageProvider();
   const { fqn: entityFQN } = useParams<{ fqn: string }>();
   const queryParams = new URLSearchParams(location.search);
@@ -101,6 +108,10 @@ const Lineage = ({
         : [],
     [entity]
   );
+
+  useEffect(() => {
+    updateEntityType(entityType);
+  }, [entityType]);
 
   return (
     <Card

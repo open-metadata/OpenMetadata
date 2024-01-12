@@ -42,6 +42,7 @@ import { mockDatasetData } from '../../constants/mockTourData.constants';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
+  EntityType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { EntityReference } from '../../generated/type/entityLineage';
@@ -152,14 +153,24 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [pipelineStatus, setPipelineStatus] = useState<
     Record<string, PipelineStatus>
   >({});
+  const [entityType, setEntityType] = useState('');
 
-  const fetchLineageData = async (fqn: string, config?: LineageConfig) => {
+  const fetchLineageData = async (
+    fqn: string,
+    entityType: string,
+    config?: LineageConfig
+  ) => {
     if (isTourOpen) {
       setEntityLineage(mockDatasetData.entityLineage);
     } else {
       setLoading(true);
       try {
-        const res = await getLineageDataByFQN(fqn, config, queryFilter);
+        const res = await getLineageDataByFQN(
+          fqn,
+          entityType,
+          config,
+          queryFilter
+        );
         if (res) {
           const allNodes = uniqWith(
             [...(res.nodes ?? []), res.entity],
@@ -190,10 +201,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const loadChildNodesHandler = useCallback(
-    async (node: EntityReference, direction: EdgeTypeEnum) => {
+    async (node: SourceType, direction: EdgeTypeEnum) => {
       try {
         const res = await getLineageDataByFQN(
           node.fullyQualifiedName ?? '',
+          (node as SourceType).entityType ?? '',
           {
             upstreamDepth: direction === EdgeTypeEnum.UP_STREAM ? 1 : 0,
             downstreamDepth: direction === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
@@ -278,6 +290,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [nodes, edges]
   );
+
+  const updateEntityType = useCallback((entityType: EntityType) => {
+    setEntityType(entityType);
+  }, []);
 
   const onColumnClick = useCallback(
     (column: string) => {
@@ -850,10 +866,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   useEffect(() => {
-    if (decodedFqn) {
-      fetchLineageData(decodedFqn, lineageConfig);
+    if (decodedFqn && entityType) {
+      fetchLineageData(decodedFqn, entityType, lineageConfig);
     }
-  }, [lineageConfig, decodedFqn, queryFilter]);
+  }, [lineageConfig, decodedFqn, queryFilter, entityType]);
 
   useEffect(() => {
     if (!loading) {
@@ -923,6 +939,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onEdgesChange,
       onQueryFilterUpdate,
       onZoomUpdate,
+      updateEntityType,
       onDrawerClose,
       toggleColumnView,
       loadChildNodesHandler,
@@ -966,6 +983,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onEdgesChange,
     onZoomUpdate,
     onDrawerClose,
+    updateEntityType,
     loadChildNodesHandler,
     fetchLineageData,
     fetchPipelineStatus,

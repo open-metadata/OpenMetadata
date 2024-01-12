@@ -21,6 +21,7 @@ import {
   NodeProps,
   ReactFlowInstance,
 } from 'reactflow';
+import { EntityType } from '../../enums/entity.enum';
 import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/entity/type';
 import {
@@ -79,13 +80,18 @@ export interface LineageContextType {
   onEdgesChange: (changes: EdgeChange[]) => void;
   toggleColumnView: () => void;
   loadChildNodesHandler: (
-    node: EntityReference,
+    node: SourceType,
     direction: EdgeTypeEnum
   ) => Promise<void>;
-  fetchLineageData: (entityFqn: string, lineageConfig: LineageConfig) => void;
+  fetchLineageData: (
+    entityFqn: string,
+    entityType: string,
+    lineageConfig: LineageConfig
+  ) => void;
   fetchPipelineStatus: (pipelineFqn: string) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
+  updateEntityType: (entityType: EntityType) => void;
 }
