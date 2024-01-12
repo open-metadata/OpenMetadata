@@ -118,24 +118,14 @@ jest.mock(
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockImplementation(
-      ({
-        afterDeleteAction,
-        //   afterDomainUpdateAction,
-        //   handleUpdateDisplayName,
-        onFollowClick,
-        //   handleUpdateOwner,
-        //   handleRestoreContainer,
-        //   handleUpdateTier,
-        //   updateVote,
-        //   versionHandler,
-      }) => (
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(({ afterDeleteAction, onFollowClick }) => (
         <div data-testid="data-asset-header">
           <button onClick={() => afterDeleteAction()}>Hard Delete</button>
           <button onClick={onFollowClick}>Follow Container</button>
         </div>
-      )
-    ),
+      )),
   })
 );
 
