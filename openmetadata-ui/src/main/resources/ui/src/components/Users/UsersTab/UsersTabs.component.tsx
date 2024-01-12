@@ -59,7 +59,9 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   const fetchUsersAdditionalDetails = async () => {
     try {
       setIsDetailsLoading(true);
-      const promises = users.map((user) => getUserById(user.id, 'teams,roles'));
+      const promises = users.map((user) =>
+        getUserById(user.id, { fields: 'teams,roles' })
+      );
 
       const usersDetails = await Promise.allSettled(promises);
 

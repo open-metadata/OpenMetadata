@@ -90,9 +90,9 @@ function EditConnectionFormPage() {
   const fetchServiceDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN, [
-        'owner',
-      ]);
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: 'owner',
+      });
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
