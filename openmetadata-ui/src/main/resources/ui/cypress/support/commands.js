@@ -130,10 +130,13 @@ Cypress.Commands.add('storeSession', (username, password) => {
   });
 });
 
-Cypress.Commands.add('login', () => {
-  cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.goToHomePage();
-});
+Cypress.Commands.add(
+  'login',
+  (username = LOGIN.username, password = LOGIN.password) => {
+    cy.storeSession(username, password);
+    cy.goToHomePage();
+  }
+);
 
 Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
@@ -149,4 +152,5 @@ Cypress.Commands.add('logout', () => {
   verifyResponseStatusCode('@logoutUser', 200);
 
   cy.url().should('eq', `${BASE_URL}/signin`);
+  Cypress.session.clearAllSavedSessions();
 });
