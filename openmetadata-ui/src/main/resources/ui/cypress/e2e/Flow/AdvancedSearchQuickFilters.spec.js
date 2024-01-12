@@ -64,15 +64,12 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
         const querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
         }*query_filter=*should*${filter.key}*${encodeURI(
-          Cypress._.toLower(filter.selectOption1)
+          Cypress._.toLower(filter.selectOption1).replace(' ', '+')
         )}*`;
 
         interceptURL('GET', querySearchURL, 'querySearchAPI');
 
-        cy.get('[data-testid="update-btn"]')
-          .should('exist')
-          .and('be.visible')
-          .click();
+        cy.get('[data-testid="update-btn"]').click();
 
         verifyResponseStatusCode('@querySearchAPI', 200);
       });

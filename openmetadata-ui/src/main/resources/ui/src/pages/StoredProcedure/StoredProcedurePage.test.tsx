@@ -69,14 +69,9 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <p>testEntityLineageComponent</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockImplementation(() => <p>testEntityLineageComponent</p>);
+});
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -98,12 +93,9 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+});
 
 jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaEditor</p>);

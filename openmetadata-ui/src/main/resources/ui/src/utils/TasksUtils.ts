@@ -76,6 +76,7 @@ import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
@@ -84,7 +85,6 @@ import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -186,16 +186,22 @@ export const getDescriptionDiff = (
   return diffWordsWithSpace(oldValue, newValue);
 };
 
-export const fetchOptions = (
-  query: string,
-  setOptions: (value: React.SetStateAction<Option[]>) => void,
-  currentUserId?: string
-) => {
-  getUserSuggestions(query)
+export const fetchOptions = ({
+  query,
+  setOptions,
+  onlyUsers,
+  currentUserId,
+}: {
+  query: string;
+  setOptions: (value: React.SetStateAction<Option[]>) => void;
+  onlyUsers?: boolean;
+  currentUserId?: string;
+}) => {
+  getUserSuggestions(query, onlyUsers)
     .then((res) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       const suggestOptions = hits.map((hit) => ({
-        label: hit._source.name ?? hit._source.displayName,
+        label: getEntityName(hit._source),
         value: hit._id,
         type: hit._source.entityType,
         name: hit._source.name,
@@ -293,7 +299,10 @@ export const getBreadCrumbList = (
 ) => {
   const activeEntity = {
     name: getEntityName(entityData),
-    url: getEntityLink(entityType, entityData.fullyQualifiedName || ''),
+    url: entityUtilClassBase.getEntityLink(
+      entityType,
+      entityData.fullyQualifiedName || ''
+    ),
   };
 
   const database = {

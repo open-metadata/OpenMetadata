@@ -214,6 +214,7 @@ const PopoverTitle = React.memo(
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
+  displayName?: string;
   type?: UserTeam;
   showUserName?: boolean;
   showUserProfile?: boolean;
@@ -223,6 +224,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 
 const UserPopOverCard: FC<Props> = ({
   userName,
+  displayName,
   type = UserTeam.User,
   showUserName = false,
   showUserProfile = true,
@@ -267,7 +269,9 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span className="">{userName ?? ''}</span> : null}
+          {showUserName ? (
+            <span className="">{displayName ?? userName ?? ''}</span>
+          ) : null}
         </Link>
       )}
     </Popover>
