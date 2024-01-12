@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -216,9 +217,18 @@ public final class AlertUtil {
   }
 
   public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
+    if (config == null) {
+      return false;
+    }
     // OpenMetadataWide Setting apply to all ChangeEvents
-    if (config == null
-        || (config.getResources().size() == 1 && config.getResources().get(0).equals("all"))) {
+    if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
+      return true;
+    }
+
+    // Trigger Specific Settings
+    if (entityType.equals(THREAD)
+        && (config.getResources().get(0).equals("announcement")
+            || config.getResources().get(0).equals("task"))) {
       return true;
     }
 
@@ -258,7 +268,7 @@ public final class AlertUtil {
       boolean triggerChangeEvent =
           AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
 
-      if (filteringRules != null) {
+      if (triggerChangeEvent && filteringRules != null) {
         // Evaluate Rules
         triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
 
