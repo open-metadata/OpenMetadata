@@ -122,12 +122,13 @@ public class SearchIndexFactory {
           (ReportData) entity);
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
-      default -> buildExternalIndexes(entityType);
+      default -> buildExternalIndexes(entityType, entity);
     };
   }
 
-  protected SearchIndex buildExternalIndexes(String entityType) {
+  protected SearchIndex buildExternalIndexes(String entityType, Object entity) {
     throw new IllegalArgumentException(
-        String.format("Entity Type [%s] is not valid for Index Factory", entityType));
+        String.format(
+            "Entity Type [%s] is not valid for Index Factory, Entity: %s", entityType, entity));
   }
 }
