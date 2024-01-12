@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -23,6 +24,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -87,6 +89,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
+  }
+
+  @Override
+  public void setInheritedFields(TestCase testCase, Fields fields) {
+    EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    inheritOwner(testCase, fields, table);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(TestCase entity, String fields) {
+    return Entity.getEntity(entity.getTestSuite(), fields, Include.NON_DELETED);
   }
 
   @Override
@@ -249,8 +263,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     UUID incidentStateId = null;
     if (TestCaseStatus.Failed.equals(testCaseResult.getTestCaseStatus())) {
       incidentStateId = getOrCreateIncidentOnFailure(testCase, updatedBy);
+      // Set the incident ID to the test case result to ensure we can link result <> incident when
+      // plotting the UI
+      // even after the incident has been closed.
+      testCaseResult.setIncidentId(incidentStateId);
     }
 
+    // We add the incidentStateId in the DQ table to quickly link Test Case <> Incident
+    // When we Resolve the incident, we'll clean up this incidentId column
     daoCollection
         .dataQualityDataTimeSeriesDao()
         .insert(

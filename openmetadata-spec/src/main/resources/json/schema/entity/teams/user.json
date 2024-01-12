@@ -7,13 +7,6 @@
   "javaType": "org.openmetadata.schema.entity.teams.User",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Login name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64,
-      "pattern": "(?U)^[\\w\\-.]+$"
-    },
     "authenticationMechanism": {
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
@@ -46,7 +39,7 @@
     },
     "name": {
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",

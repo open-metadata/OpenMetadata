@@ -24,7 +24,9 @@ export const FQN_REGEX = new RegExp(
  * strings that contain a combination of letters, alphanumeric characters, hyphens,
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
-export const ENTITY_NAME_REGEX = /^[\p{L}\p{M}\w\- .'&()%]+$/u;
+export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+
+export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;

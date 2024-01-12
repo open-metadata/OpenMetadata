@@ -110,10 +110,9 @@ const RolesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'defaultRoles'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: 'defaultRoles',
+      });
       const updatedAttributeData = (team.defaultRoles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
@@ -140,7 +139,9 @@ const RolesDetailPage = () => {
 
   const handleUsersUpdate = async (data: EntityReference) => {
     try {
-      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const user = await getUserByName(data.fullyQualifiedName || '', {
+        fields: 'roles',
+      });
       const updatedAttributeData = (user.roles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
