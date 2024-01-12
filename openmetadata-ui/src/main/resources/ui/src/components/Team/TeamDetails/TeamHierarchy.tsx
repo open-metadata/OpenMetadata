@@ -26,6 +26,7 @@ import Table from '../../../components/common/Table/Table';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { TeamType } from '../../../generated/api/teams/createTeam';
 import { Team } from '../../../generated/entity/teams/team';
+import { Include } from '../../../generated/type/include';
 import { getTeamByName, updateTeam } from '../../../rest/teamsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -162,11 +163,10 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     if (movedTeam) {
       setIsTableLoading(true);
       try {
-        const data = await getTeamByName(
-          movedTeam.from.name,
-          ['users', 'defaultRoles', 'policies', 'owner', 'parents', 'children'],
-          'all'
-        );
+        const data = await getTeamByName(movedTeam.from.name, {
+          fields: 'users, defaultRoles, policies, owner, parents, children',
+          include: Include.All,
+        });
         await updateTeam(getMovedTeamData(data, [movedTeam.to.id]));
         onTeamExpand(true, currentTeam?.name);
         showSuccessToast(t('message.team-moved-success'));
