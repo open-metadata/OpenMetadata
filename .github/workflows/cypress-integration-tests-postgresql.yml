@@ -31,8 +31,6 @@ on:
       - openmetadata-service/**
       - openmetadata-clients/**
       - common/**
-    paths-ignore:
-      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
