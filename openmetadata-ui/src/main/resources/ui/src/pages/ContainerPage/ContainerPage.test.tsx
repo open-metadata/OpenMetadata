@@ -99,7 +99,9 @@ jest.mock(
   '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
   () =>
     jest.fn().mockImplementation(({ isLoading }) => {
-      getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, 'children');
+      getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, {
+        fields: 'children',
+      });
 
       return (
         <>
@@ -267,8 +269,11 @@ describe('Container Page Component', () => {
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
     expect(getContainerByName).toHaveBeenCalledWith(
       CONTAINER_DATA.fullyQualifiedName,
-      'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
-      Include.All
+      {
+        fields:
+          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        include: Include.All,
+      }
     );
   });
 
@@ -380,7 +385,9 @@ describe('Container Page Component', () => {
 
     expect(getContainerByName).toHaveBeenCalledWith(
       CONTAINER_DATA_1.fullyQualifiedName,
-      'children'
+      {
+        fields: 'children',
+      }
     );
   });
 });
