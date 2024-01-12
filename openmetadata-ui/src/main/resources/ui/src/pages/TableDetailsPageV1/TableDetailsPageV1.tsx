@@ -83,7 +83,7 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -122,9 +122,9 @@ const TableDetailsPageV1 = () => {
 
   const tableFqn = useMemo(
     () =>
-      encodeURIComponent(
+      getEncodedFqn(
         getPartialNameFromTableFQN(
-          decodeURIComponent(datasetFQN),
+          getDecodedFqn(datasetFQN),
           [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
           FQN_SEPARATOR_CHAR
         )
@@ -145,7 +145,7 @@ const TableDetailsPageV1 = () => {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
 
-      const details = await getTableDetailsByFQN(tableFqn, fields);
+      const details = await getTableDetailsByFQN(tableFqn, { fields });
 
       setTableDetails(details);
       addToRecentViewed({
@@ -923,7 +923,9 @@ const TableDetailsPageV1 = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      const details = await getTableDetailsByFQN(tableFqn, {
+        fields: defaultFields,
+      });
       setTableDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

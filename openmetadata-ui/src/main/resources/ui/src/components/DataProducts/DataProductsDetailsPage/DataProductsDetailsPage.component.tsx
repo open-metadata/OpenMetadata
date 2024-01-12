@@ -80,6 +80,7 @@ import {
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -105,7 +106,7 @@ const DataProductsDetailsPage = ({
     tab: activeTab,
     version,
   } = useParams<{ fqn: string; tab: string; version: string }>();
-  const dataProductFqn = fqn ? decodeURIComponent(fqn) : '';
+  const dataProductFqn = fqn ? getDecodedFqn(fqn) : '';
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);

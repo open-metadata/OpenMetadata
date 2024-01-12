@@ -17,7 +17,7 @@ name: PostgreSQL Cypress Integration Tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 0 * * *'
+    - cron: '30 2 * * 1,3,5'
   pull_request_target:
     types:
       - labeled
@@ -25,6 +25,12 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    paths:
+      - openmetadata-spec/**
+      - openmetadata-ui/**
+      - openmetadata-service/**
+      - openmetadata-clients/**
+      - common/**
     paths-ignore:
       - 'openmetadata-docs/**'
 

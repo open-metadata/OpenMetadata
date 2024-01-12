@@ -89,7 +89,7 @@ function TopicSummary({
     try {
       const res = await getTopicByFqn(
         getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
-        ['tags', 'owner']
+        { fields: 'tags,owner' }
       );
 
       const { partitions, messageSchema } = res;

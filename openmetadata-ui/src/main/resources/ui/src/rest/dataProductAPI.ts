@@ -24,10 +24,8 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import {
-  formatDataProductResponse,
-  getURLWithQueryFields,
-} from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { formatDataProductResponse } from '../utils/APIUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
@@ -65,15 +63,12 @@ export const patchDataProduct = async (id: string, patch: Operation[]) => {
 };
 
 export const getDataProductByName = async (
-  dataProductName: string,
-  arrQueryFields: string | string[]
+  fqn: string,
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${dataProductName}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<DataProduct>(url);
+  const response = await APIClient.get<DataProduct>(`${BASE_URL}/name/${fqn}`, {
+    params,
+  });
 
   return response.data;
 };

@@ -137,11 +137,9 @@ function DatabaseVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseDetailsByFQN(
-        databaseFQN,
-        '',
-        Include.All
-      );
+      const { id } = await getDatabaseDetailsByFQN(databaseFQN, {
+        include: Include.All,
+      });
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseVersions(id ?? '');

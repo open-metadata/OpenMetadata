@@ -18,7 +18,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';
@@ -31,46 +31,16 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
-export const getDataModelDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<DashboardDataModel>(url);
-
-  return response.data;
-};
-
-export const getDataModelsByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.NonDeleted
-) => {
+export const getDataModelByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `${URL}/name/${name}?fields=${fields}`,
+    `${URL}/name/${fqn}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );
-
-  return response.data;
-};
-
-export const getDataModelDetailsByFQN = async (
-  databaseSchemaName: string,
-  arrQueryFields?: string | string[],
-  include = Include.All
-) => {
-  const url = `${getURLWithQueryFields(
-    `${URL}/name/${databaseSchemaName}`,
-    arrQueryFields,
-    `include=${include}`
-  )}`;
-
-  const response = await APIClient.get<DashboardDataModel>(url);
 
   return response.data;
 };

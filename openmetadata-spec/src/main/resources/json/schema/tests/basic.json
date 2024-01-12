@@ -108,6 +108,10 @@
         "failedRowsPercentage": {
           "description": "Percentage of rows that failed.",
           "type": "number"
+        },
+        "incidentId": {
+          "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
+          "$ref": "../type/basic.json#/definitions/uuid"
         }
       }
     },
