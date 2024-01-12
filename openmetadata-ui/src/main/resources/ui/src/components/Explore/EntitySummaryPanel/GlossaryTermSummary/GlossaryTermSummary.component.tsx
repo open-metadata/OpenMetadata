@@ -58,7 +58,7 @@ function GlossaryTermSummary({
     try {
       const response = await getGlossaryTermByFQN(
         entityDetails.fullyQualifiedName,
-        'relatedTerms,reviewers,tags,owner,children'
+        { fields: 'relatedTerms,reviewers,tags,owner,children' }
       );
       setSelectedData(response);
     } catch (error) {

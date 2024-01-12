@@ -15,14 +15,13 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
-import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/topics';
@@ -63,26 +62,13 @@ export const getTopics = async (
   return response.data;
 };
 
-export const getTopicDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getTopicByFqn = async (
-  fqn: string,
-  arrQueryFields: string[] | string | TabSpecificField[]
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
-  );
-
-  const response = await APIClient.get<Topic>(url);
+export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Topic>(`${BASE_URL}/name/${fqn}`, {
+    params: {
+      ...params,
+      include: params?.include ?? Include.All,
+    },
+  });
 
   return response.data;
 };

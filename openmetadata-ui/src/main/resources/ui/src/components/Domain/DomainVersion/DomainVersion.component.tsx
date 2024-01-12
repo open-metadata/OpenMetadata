@@ -72,7 +72,7 @@ const DomainVersion = () => {
 
   const fetchDomainData = useCallback(async () => {
     try {
-      const res = await getDomainByName(fqn, '');
+      const res = await getDomainByName(fqn);
       setDomain(res);
     } catch (error) {
       showErrorToast(error as AxiosError);

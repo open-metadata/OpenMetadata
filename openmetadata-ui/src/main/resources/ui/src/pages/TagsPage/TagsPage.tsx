@@ -143,7 +143,10 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications(['termCount'], 1000);
+      const response = await getAllClassifications({
+        fields: 'termCount',
+        limit: 1000,
+      });
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -168,10 +171,9 @@ const TagsPage = () => {
     if (currentClassification?.fullyQualifiedName !== fqn || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassificationByName(fqn, [
-          'usageCount',
-          'termCount',
-        ]);
+        const currentClassification = await getClassificationByName(fqn, {
+          fields: 'usageCount,termCount',
+        });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
             prevClassifications.map((data) => {

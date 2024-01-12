@@ -145,7 +145,7 @@ const TableDetailsPageV1 = () => {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
 
-      const details = await getTableDetailsByFQN(tableFqn, fields);
+      const details = await getTableDetailsByFQN(tableFqn, { fields });
 
       setTableDetails(details);
       addToRecentViewed({
@@ -923,7 +923,9 @@ const TableDetailsPageV1 = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      const details = await getTableDetailsByFQN(tableFqn, {
+        fields: defaultFields,
+      });
       setTableDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

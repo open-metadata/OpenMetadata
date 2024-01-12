@@ -123,7 +123,7 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        const user = await getUserByName(userName, 'teams, roles');
+        const user = await getUserByName(userName, { fields: 'teams, roles' });
 
         updateUserProfilePics({
           id: userName,

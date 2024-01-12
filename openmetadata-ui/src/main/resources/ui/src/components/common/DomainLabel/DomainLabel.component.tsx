@@ -50,7 +50,7 @@ export const DomainLabel = ({
     async (selectedDomain: EntityReference) => {
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        'domain'
+        { fields: 'domain' }
       );
 
       try {

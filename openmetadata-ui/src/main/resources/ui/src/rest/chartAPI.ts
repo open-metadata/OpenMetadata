@@ -13,17 +13,14 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ListParams } from '../interface/API.interface';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getChartById = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`/charts/${id}`, arrQueryFields);
+export const getChartById = async (id: string, params?: ListParams) => {
+  const url = `/charts/${id}`;
 
-  const response = await APIClient.get<ChartType>(url);
+  const response = await APIClient.get<ChartType>(url, { params });
 
   return response.data;
 };

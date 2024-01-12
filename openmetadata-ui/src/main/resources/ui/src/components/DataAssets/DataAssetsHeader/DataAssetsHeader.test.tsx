@@ -98,10 +98,9 @@ describe('DataAssetsHeader component', () => {
     const mockGetContainerByName = getContainerByName as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(mockGetContainerByName).toHaveBeenCalledWith(
-      'fullyQualifiedName',
-      'parent'
-    );
+    expect(mockGetContainerByName).toHaveBeenCalledWith('fullyQualifiedName', {
+      fields: 'parent',
+    });
   });
 
   it('should not call getContainerByName API if parent is undefined', () => {

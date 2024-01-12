@@ -92,7 +92,7 @@ function TableSummary({
     try {
       const res = await getTableDetailsByFQN(
         getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
-        'testSuite'
+        { fields: 'testSuite' }
       );
 
       if (res?.testSuite?.summary) {

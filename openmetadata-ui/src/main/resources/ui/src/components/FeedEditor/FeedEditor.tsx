@@ -93,17 +93,19 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // Fetch profile images in case of user listing
         const promises = matches.map(async (item) => {
           if (item.type === 'user') {
-            return getUserByName(item.name, 'profile').then((res) => {
-              updateUserProfilePics({ id: item.name, user: res });
+            return getUserByName(item.name, { fields: 'profile' }).then(
+              (res) => {
+                updateUserProfilePics({ id: item.name, user: res });
 
-              newMatches.push({
-                ...item,
-                avatarEle: userMentionItemWithAvatar(
-                  item,
-                  userProfilePics[item.name] ?? res
-                ),
-              });
-            });
+                newMatches.push({
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(
+                    item,
+                    userProfilePics[item.name] ?? res
+                  ),
+                });
+              }
+            );
           } else if (item.type === 'team') {
             newMatches.push({
               ...item,

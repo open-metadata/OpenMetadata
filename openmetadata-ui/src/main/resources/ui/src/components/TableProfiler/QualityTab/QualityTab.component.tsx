@@ -145,10 +145,9 @@ export const QualityTab = () => {
   const fetchTestSuiteDetails = async () => {
     setIsTestSuiteLoading(true);
     try {
-      const details = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.TESTSUITE
-      );
+      const details = await getTableDetailsByFQN(datasetFQN, {
+        fields: TabSpecificField.TESTSUITE,
+      });
       setTestSuite(details.testSuite);
     } catch (error) {
       showErrorToast(error as AxiosError);

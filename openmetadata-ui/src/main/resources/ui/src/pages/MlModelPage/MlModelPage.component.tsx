@@ -93,7 +93,7 @@ const MlModelPage = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      const res = await getMlModelByFQN(name, fields);
+      const res = await getMlModelByFQN(name, { fields });
       setMlModelDetail(res);
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -296,7 +296,9 @@ const MlModelPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMlModelVotes(id, data);
-      const details = await getMlModelByFQN(mlModelFqn, defaultFields);
+      const details = await getMlModelByFQN(mlModelFqn, {
+        fields: defaultFields,
+      });
       setMlModelDetail(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

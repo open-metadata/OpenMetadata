@@ -65,7 +65,7 @@ export const useUserProfile = ({
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
     try {
-      const user = await getUserByName(name, 'profile');
+      const user = await getUserByName(name, { fields: 'profile' });
       const profile =
         getImageWithResolutionAndFallback(
           ImageQuality['6x'],

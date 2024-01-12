@@ -39,7 +39,7 @@ import {
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { installApplication } from '../../rest/applicationAPI';
-import { getMarketPlaceApplicationByName } from '../../rest/applicationMarketPlaceAPI';
+import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import {
   getEntityMissingError,
   getIngestionFrequency,
@@ -78,7 +78,9 @@ const AppInstall = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getMarketPlaceApplicationByName(fqn, 'owner');
+      const data = await getMarketPlaceApplicationByFqn(fqn, {
+        fields: 'owner',
+      });
       setAppData(data);
 
       const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);

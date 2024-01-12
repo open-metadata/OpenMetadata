@@ -76,7 +76,7 @@ const createCustomMetric = ({
   interceptURL('PUT', '/api/v1/tables/*/customMetric', 'createCustomMetric');
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   visitEntityDetailsPage({
@@ -149,7 +149,7 @@ const editCustomMetric = ({
 }) => {
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   interceptURL('PUT', '/api/v1/tables/*/customMetric', 'editCustomMetric');
@@ -196,7 +196,7 @@ const deleteCustomMetric = ({
 }) => {
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   interceptURL(

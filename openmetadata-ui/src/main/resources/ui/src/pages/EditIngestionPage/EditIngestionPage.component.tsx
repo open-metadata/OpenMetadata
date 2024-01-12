@@ -129,7 +129,7 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getIngestionPipelineByFqn(ingestionFQN, ['pipelineStatuses'])
+      getIngestionPipelineByFqn(ingestionFQN, { fields: 'pipelineStatuses' })
         .then((res) => {
           if (res) {
             setIngestionData(res);

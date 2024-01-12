@@ -12,5 +12,5 @@
  */
 import { TabSpecificField } from '../enums/entity.enum';
 
-export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, 
-${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}, ${TabSpecificField.VOTES}`;
+// eslint-disable-next-line max-len
+export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}, ${TabSpecificField.VOTES}`;

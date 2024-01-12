@@ -30,7 +30,7 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from '../../../rest/databaseAPI';
-import { getDataModelDetailsByFQN } from '../../../rest/dataModelsAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import {
@@ -40,7 +40,7 @@ import {
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
+import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
@@ -94,75 +94,81 @@ export const PopoverContent: React.FC<{
 
     switch (entityType) {
       case EntityType.TABLE:
-        promise = getTableDetailsByFQN(entityFQN, fields);
+        promise = getTableDetailsByFQN(entityFQN, { fields });
 
         break;
       case EntityType.TEST_CASE:
         promise = getTableDetailsByFQN(
           getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
-          fields
+          { fields }
         );
 
         break;
       case EntityType.TOPIC:
-        promise = getTopicByFqn(entityFQN, fields);
+        promise = getTopicByFqn(entityFQN, { fields });
 
         break;
       case EntityType.DASHBOARD:
       case EntityType.CHART:
-        promise = getDashboardByFqn(entityFQN, fields);
+        promise = getDashboardByFqn(entityFQN, { fields });
 
         break;
       case EntityType.PIPELINE:
-        promise = getPipelineByFqn(entityFQN, fields);
+        promise = getPipelineByFqn(entityFQN, { fields });
 
         break;
       case EntityType.MLMODEL:
-        promise = getMlModelByFQN(entityFQN, fields);
+        promise = getMlModelByFQN(entityFQN, { fields });
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
+        promise = getDatabaseDetailsByFQN(entityFQN, {
+          fields: 'owner',
+        });
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(
-          entityFQN,
-          'owner',
-          Include.All
-        );
+        promise = getDatabaseSchemaDetailsByFQN(entityFQN, {
+          fields: 'owner',
+          include: Include.All,
+        });
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+          fields: 'owner',
+        });
 
         break;
       case EntityType.GLOSSARY:
-        promise = getGlossariesByName(entityFQN, 'owner');
+        promise = getGlossariesByName(entityFQN, { fields: 'owner' });
 
         break;
 
       case EntityType.CONTAINER:
-        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+        promise = getContainerByFQN(entityFQN, {
+          fields: 'owner',
+          include: Include.All,
+        });
 
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
-        promise = getDataModelDetailsByFQN(entityFQN, fields);
+        promise = getDataModelByFqn(entityFQN, { fields });
 
         break;
 
       case EntityType.STORED_PROCEDURE:
-        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+        promise = getStoredProceduresByFqn(entityFQN, { fields });
 
         break;
       case EntityType.DOMAIN:
-        promise = getDomainByName(entityFQN, 'owner');
+        promise = getDomainByName(entityFQN, { fields: 'owner' });
 
         break;
 
       case EntityType.DATA_PRODUCT:
-        promise = getDataProductByName(entityFQN, 'owner,domain');
+        promise = getDataProductByName(entityFQN, { fields: 'owner,domain' });
 
         break;
 

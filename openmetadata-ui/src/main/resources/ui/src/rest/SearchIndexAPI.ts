@@ -21,8 +21,8 @@ import {
 } from '../generated/entity/data/searchIndex';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getSearchIndexes = async (args: {
@@ -49,16 +49,12 @@ export const getSearchIndexes = async (args: {
 
 export const getSearchIndexDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[],
-  include = Include.All
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
+  const response = await APIClient.get<SearchIndex>(
     `/searchIndexes/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+    { params: { ...params, include: params?.include ?? Include.All } }
   );
-
-  const response = await APIClient.get<SearchIndex>(url);
 
   return response.data;
 };

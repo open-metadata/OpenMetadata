@@ -61,7 +61,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
-  getStoredProceduresDetailsByFQN,
+  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
@@ -170,10 +170,9 @@ const StoredProcedurePage = () => {
   const fetchStoredProcedureDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await getStoredProceduresDetailsByFQN(
-        storedProcedureFQN,
-        STORED_PROCEDURE_DEFAULT_FIELDS
-      );
+      const response = await getStoredProceduresByFqn(storedProcedureFQN, {
+        fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      });
 
       setStoredProcedure(response);
 
@@ -647,10 +646,9 @@ const StoredProcedurePage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
-      const details = await getStoredProceduresDetailsByFQN(
-        storedProcedureFQN,
-        STORED_PROCEDURE_DEFAULT_FIELDS
-      );
+      const details = await getStoredProceduresByFqn(storedProcedureFQN, {
+        fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      });
       setStoredProcedure(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

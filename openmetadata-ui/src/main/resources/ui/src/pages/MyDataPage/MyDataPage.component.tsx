@@ -115,7 +115,9 @@ const MyDataPage = () => {
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, 'follows, owns');
+      const userData = await getUserById(currentUser?.id, {
+        fields: 'follows, owns',
+      });
 
       if (userData) {
         const includeData = Object.values(AssetsType);

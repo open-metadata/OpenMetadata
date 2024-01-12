@@ -147,10 +147,9 @@ describe('SearchIndexDetailsPage component', () => {
       render(<SearchIndexDetailsPage />);
     });
 
-    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
-    );
+    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+    });
   });
 
   it('SearchIndexDetailsPage should render page for ViewBasic permissions', async () => {
@@ -164,10 +163,9 @@ describe('SearchIndexDetailsPage component', () => {
       render(<SearchIndexDetailsPage />);
     });
 
-    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
-    );
+    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.field-plural')).toBeInTheDocument();
@@ -195,10 +193,9 @@ describe('SearchIndexDetailsPage component', () => {
       render(<SearchIndexDetailsPage />);
     });
 
-    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
-    );
+    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+    });
 
     expect(
       await screen.findByText('testSearchIndexFieldsTab')
