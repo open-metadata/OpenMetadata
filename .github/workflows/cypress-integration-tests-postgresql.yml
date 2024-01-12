@@ -29,6 +29,8 @@ on:
       - openmetadata-spec/**
       - openmetadata-ui/**
       - openmetadata-service/**
+      - openmetadata-clients/**
+      - common/**
     paths-ignore:
       - 'openmetadata-docs/**'
 
