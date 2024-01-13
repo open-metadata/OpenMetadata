@@ -29,7 +29,7 @@ const TitleBreadcrumbSkeleton = ({
               active
               className="m-r-xs m-b-xss"
               paragraph={{ rows: 1, width: 150 }}
-              title={null}
+              title={false}
             />
           </Col>
         ))}
