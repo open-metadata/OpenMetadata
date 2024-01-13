@@ -190,7 +190,7 @@ const EdgeInfoDrawer = ({
       <Drawer
         destroyOnClose
         bodyStyle={{ padding: 16 }}
-        className="entity-panel-container"
+        className="entity-panel-container edge-info-drawer"
         closable={false}
         extra={<CloseOutlined onClick={onClose} />}
         getContainer={false}
@@ -207,7 +207,7 @@ const EdgeInfoDrawer = ({
               Object.values(edgeData).map(
                 (data) =>
                   data.value && (
-                    <Col key={data.key} span={24}>
+                    <Col data-testid={data.key} key={data.key} span={24}>
                       <Typography.Text className="m-r-sm summary-panel-section-title">
                         {`${data.key}:`}
                       </Typography.Text>
