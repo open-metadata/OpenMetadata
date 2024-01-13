@@ -203,9 +203,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
+            POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
         if result:
             partition_details = TablePartition(
