@@ -20,18 +20,16 @@ const TitleBreadcrumbSkeleton = ({
   children,
 }: TitleBreadcrumbSkeletonProps) =>
   loading ? (
-    <Row gutter={16}>
+    <Row>
       {Array(3)
         .fill(null)
         .map(() => (
           <Col key={uniqueId()}>
             <Skeleton
               active
-              className="m-l-xs"
-              paragraph={{ rows: 0 }}
-              title={{
-                width: 150,
-              }}
+              className="m-r-xs m-b-xss"
+              paragraph={{ rows: 1, width: 150 }}
+              title={null}
             />
           </Col>
         ))}
