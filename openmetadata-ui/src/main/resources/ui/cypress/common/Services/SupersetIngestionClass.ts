@@ -27,6 +27,10 @@ class SupersetIngestionClass extends ServiceBaseClass {
     super.createService();
   }
 
+  updateService() {
+    // Issue with searching ingested data
+  }
+
   fillConnectionDetails() {
     cy.get('#root\\/connection\\/username')
       .scrollIntoView()

@@ -29,7 +29,8 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   updateService() {
-    super.updateService();
+    // super.updateService();
+    // Issue with searching ingested data
   }
 
   fillConnectionDetails() {

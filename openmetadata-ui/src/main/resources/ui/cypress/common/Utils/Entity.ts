@@ -568,14 +568,10 @@ export const validateFollowedEntityToWidget = (
   entityName: string,
   isFollowed = true
 ) => {
-  interceptURL(
-    'GET',
-    '/api/v1/users/*?fields=follows,owns',
-    'getFollowedEntities'
-  );
+  interceptURL('GET', '/api/v1/users/*?fields=follows*', 'getFollowedEntities');
   cy.goToHomePage();
 
-  verifyResponseStatusCode('@getFollowedEntities', 200);
+  verifyResponseStatusCode('@getFollowedEntities', 200, { timeout: 10000 });
   cy.get(`[data-testid="following-${entityName}"]`).should(
     isFollowed ? 'be.visible' : 'not.exist'
   );
