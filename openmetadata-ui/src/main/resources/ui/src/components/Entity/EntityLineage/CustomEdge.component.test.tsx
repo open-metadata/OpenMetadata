@@ -45,10 +45,12 @@ const mockCustomEdgeProp = {
     edge: {
       fromEntity: {
         id: '1',
+        fqn: 'table1',
         type: 'table',
       },
       toEntity: {
         id: '2',
+        fqn: 'table2',
         type: 'table',
       },
       pipeline: {
@@ -107,7 +109,9 @@ describe('Test CustomEdge Component', () => {
       }
     );
 
-    const pipelineLabelAsEdge = await screen.findByTestId('pipeline-label');
+    const pipelineLabelAsEdge = await screen.findByTestId(
+      'pipeline-label-table1-table2'
+    );
 
     expect(pipelineLabelAsEdge).toBeInTheDocument();
   });
