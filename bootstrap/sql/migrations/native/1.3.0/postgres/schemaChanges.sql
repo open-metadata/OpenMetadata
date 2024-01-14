@@ -172,3 +172,4 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     UNIQUE(id, extension)
 );
 
+DELETE FROM event_subscription_entity;

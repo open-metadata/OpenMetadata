@@ -159,3 +159,5 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
     UNIQUE(id, extension)
 );
+
+DELETE FROM event_subscription_entity;
