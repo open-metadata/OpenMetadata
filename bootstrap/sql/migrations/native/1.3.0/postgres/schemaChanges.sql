@@ -173,3 +173,5 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
 );
 
 DELETE FROM event_subscription_entity;
+DELETE FROM change_event_consumers
+DELETE FROM consumers_dlq;
