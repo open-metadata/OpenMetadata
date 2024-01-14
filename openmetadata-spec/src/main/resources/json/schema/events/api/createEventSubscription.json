@@ -34,16 +34,6 @@
       "type": "integer",
       "default": 10
     },
-    "timeout": {
-      "description": "Connection timeout in seconds. (Default 10s).",
-      "type": "integer",
-      "default": 10
-    },
-    "readTimeout": {
-      "description": "Read timeout in seconds. (Default 12s).",
-      "type": "integer",
-      "default": 12
-    },
     "alertType": {
       "description": "Type of Alert",
       "$ref": "../eventSubscription.json#/definitions/alertType"
@@ -55,11 +45,12 @@
       "description": "Set of rules that the Alert Contains to allow conditional control for alerting.",
       "$ref": "../eventSubscription.json#/definitions/filteringRules"
     },
-    "subscriptionType": {
-      "$ref": "../eventSubscription.json#/definitions/subscriptionType"
-    },
-    "subscriptionConfig": {
-      "$ref": "../eventSubscription.json#/definitions/subscriptionConfig"
+    "destinations": {
+      "description": "Subscription Config.",
+      "type": "array",
+      "items": {
+        "$ref": "../../events/eventSubscription.json#/definitions/destination"
+      }
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"

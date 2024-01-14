@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -55,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
@@ -97,6 +98,7 @@ public class EventSubscriptionResource
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    this.allowedFields.add("statusDetails");
     addViewOperation("filteringRules", MetadataOperation.VIEW_BASIC);
     return null;
   }
@@ -134,7 +136,7 @@ public class EventSubscriptionResource
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {
-        if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
+        if (subscription.getAlertType() != ACTIVITY_FEED) {
           EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
         }
       }
@@ -505,7 +507,7 @@ public class EventSubscriptionResource
   }
 
   @GET
-  @Path("/name/{eventSubscriptionName}/status")
+  @Path("/name/{eventSubscriptionName}/status/{destinationId}")
   @Valid
   @Operation(
       operationId = "getEventSubscriptionStatus",
@@ -526,14 +528,18 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("eventSubscriptionName")
-          String name) {
+          String name,
+      @Parameter(description = "Destination Id", schema = @Schema(type = "UUID"))
+          @PathParam("destinationId")
+          UUID destinationId) {
     authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
-    return EventSubscriptionScheduler.getInstance().getStatusForEventSubscription(sub.getId());
+    return EventSubscriptionScheduler.getInstance()
+        .getStatusForEventSubscription(sub.getId(), destinationId);
   }
 
   @GET
-  @Path("/{eventSubscriptionId}/status")
+  @Path("/{eventSubscriptionId}/status/{destinationId}")
   @Valid
   @Operation(
       operationId = "getEventSubscriptionStatusById",
@@ -554,8 +560,12 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
-          UUID id) {
-    return EventSubscriptionScheduler.getInstance().getStatusForEventSubscription(id);
+          UUID id,
+      @Parameter(description = "Destination Id", schema = @Schema(type = "UUID"))
+          @PathParam("destinationId")
+          UUID destinationId) {
+    return EventSubscriptionScheduler.getInstance()
+        .getStatusForEventSubscription(id, destinationId);
   }
 
   @GET
@@ -617,23 +627,21 @@ public class EventSubscriptionResource
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
-  public EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
+  private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
     return repository
         .copy(new EventSubscription(), create, user)
         .withAlertType(create.getAlertType())
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withTimeout(create.getTimeout())
         .withFilteringRules(create.getFilteringRules())
-        .withSubscriptionType(create.getSubscriptionType())
-        .withSubscriptionConfig(create.getSubscriptionConfig())
+        .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval());
   }
 
-  public EventSubscription getObservabilitySubscription(
+  private EventSubscription getObservabilitySubscription(
       CreateEventSubscription create, String user) {
     return repository
         .copy(new EventSubscription(), create, user)
@@ -641,14 +649,25 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withTimeout(create.getTimeout())
         .withFilteringRules(validateAndBuildFilteringConditions(create))
-        .withSubscriptionType(create.getSubscriptionType())
-        .withSubscriptionConfig(create.getSubscriptionConfig())
+        .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
         .withObservability(create.getObservability());
+  }
+
+  private List<SubscriptionDestination> getSubscriptions(
+      List<SubscriptionDestination> subscriptions) {
+    List<SubscriptionDestination> result = new ArrayList<>();
+    subscriptions.forEach(
+        subscription -> {
+          if (subscription.getId() == null) {
+            subscription.withId(UUID.randomUUID());
+          }
+          result.add(subscription);
+        });
+    return result;
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {

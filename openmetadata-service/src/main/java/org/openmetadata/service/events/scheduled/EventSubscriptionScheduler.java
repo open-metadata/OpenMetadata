@@ -13,12 +13,11 @@
 
 package org.openmetadata.service.events.scheduled;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
-import java.util.Objects;
+import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +26,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -77,43 +76,54 @@ public class EventSubscriptionScheduler {
   @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription)
       throws SchedulerException {
-    if (Objects.requireNonNull(eventSubscription.getAlertType())
-        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      AbstractEventConsumer publisher = AlertUtil.getNotificationsPublisher(eventSubscription);
-      if (Boolean.FALSE.equals(
-          eventSubscription
-              .getEnabled())) { // Only add webhook that is enabled for publishing events
-        eventSubscription.setStatusDetails(
-            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
-      } else {
-        eventSubscription.setStatusDetails(
-            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
-        JobDetail jobDetail =
-            jobBuilder(
-                publisher,
-                eventSubscription,
-                String.format("%s", eventSubscription.getId().toString()));
-        Trigger trigger = trigger(eventSubscription);
+    if (eventSubscription.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+      throw new IllegalArgumentException("Activity Feed is not a valid Alert Type");
+    }
 
-        // Schedule the Job
-        alertsScheduler.scheduleJob(jobDetail, trigger);
-      }
+    AlertPublisher alertPublisher = new AlertPublisher();
+    if (Boolean.FALSE.equals(
+        eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
+      eventSubscription
+          .getDestinations()
+          .forEach(
+              sub ->
+                  sub.setStatusDetails(
+                      getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED)));
       LOG.info(
-          "Webhook publisher subscription started as {} : status {}",
+          "Event Subscription started as {} : status {} for all Destinations",
           eventSubscription.getName(),
-          eventSubscription.getStatusDetails().getStatus());
+          SubscriptionStatus.Status.ACTIVE);
     } else {
-      throw new IllegalArgumentException(INVALID_ALERT);
+      eventSubscription
+          .getDestinations()
+          .forEach(
+              sub ->
+                  sub.setStatusDetails(
+                      getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
+      JobDetail jobDetail =
+          jobBuilder(
+              alertPublisher,
+              eventSubscription,
+              String.format("%s", eventSubscription.getId().toString()));
+      Trigger trigger = trigger(eventSubscription);
+
+      // Schedule the Job
+      alertsScheduler.scheduleJob(jobDetail, trigger);
+
+      LOG.info(
+          "Event Subscription started as {} : status {} for all Destinations",
+          eventSubscription.getName(),
+          SubscriptionStatus.Status.ACTIVE);
     }
   }
 
   private JobDetail jobBuilder(
-      AbstractEventConsumer consumer, EventSubscription eventSubscription, String jobIdentity) {
+      AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
     JobBuilder jobBuilder =
-        JobBuilder.newJob(consumer.getClass())
+        JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
             .usingJobData(dataMap);
     return jobBuilder.build();
@@ -134,46 +144,47 @@ public class EventSubscriptionScheduler {
   @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    if (Objects.requireNonNull(eventSubscription.getAlertType())
-        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      // Remove Existing Subscription Publisher
-      deleteEventSubscriptionPublisher(eventSubscription);
-      if (Boolean.TRUE.equals(eventSubscription.getEnabled())
-          && (!eventSubscription.getSubscriptionType().equals(ACTIVITY_FEED))) {
-        addSubscriptionPublisher(eventSubscription);
-      }
-    } else {
-      throw new IllegalArgumentException(INVALID_ALERT);
+    // Remove Existing Subscription Publisher
+    deleteEventSubscriptionPublisher(eventSubscription);
+    // TODO: fix this make AlertActivityFeedPublisher
+    if (Boolean.TRUE.equals(eventSubscription.getEnabled())
+        && (!eventSubscription
+            .getAlertType()
+            .equals(CreateEventSubscription.AlertType.ACTIVITY_FEED))) {
+      addSubscriptionPublisher(eventSubscription);
     }
   }
 
   @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
-    if (Objects.requireNonNull(deletedEntity.getAlertType())
-        == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
-      alertsScheduler.unscheduleJob(
-          new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
-      LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
-    } else {
-      throw new IllegalArgumentException(INVALID_ALERT);
-    }
+    alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
+    alertsScheduler.unscheduleJob(
+        new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+    LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
-  public SubscriptionStatus getStatusForEventSubscription(UUID id) {
-    EventSubscription eventSubscription = getEventSubscriptionFromScheduledJob(id);
+  public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
+    EventSubscription eventSubscription = getEventSubscriptionFromScheduledJob(subscriptionId);
     if (eventSubscription == null) {
       EntityRepository<? extends EntityInterface> subscriptionRepository =
           Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
       EventSubscription subscription =
           (EventSubscription)
-              subscriptionRepository.get(null, id, subscriptionRepository.getFields("id"));
+              subscriptionRepository.get(
+                  null, subscriptionId, subscriptionRepository.getFields("id"));
       if (subscription != null && (Boolean.FALSE.equals(subscription.getEnabled()))) {
         return new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
       }
     } else {
-      return eventSubscription.getStatusDetails();
+      List<SubscriptionDestination> subscriptions =
+          eventSubscription.getDestinations().stream()
+              .filter(sub -> sub.getId().equals(destinationId))
+              .toList();
+      if (subscriptions.size() == 1) {
+        // We have unique Ids per destination
+        return subscriptions.get(0).getStatusDetails();
+      }
     }
     return null;
   }

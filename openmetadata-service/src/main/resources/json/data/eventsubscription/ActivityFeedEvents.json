@@ -3,7 +3,7 @@
   "fullyQualifiedName": "ActivityFeedAlert",
   "displayName": "Activity Feed Alerts",
   "description": "Alerts received on the Activity Feed are controlled with this.",
-  "alertType": "ChangeEvent",
+  "alertType": "ActivityFeed",
   "filteringRules":{
     "resources": ["all"],
     "rules": [
@@ -19,10 +19,12 @@
       }
     ]
   },
-  "subscriptionType": "ActivityFeed",
-  "subscriptionConfig": {
-    "description": "Feed Subscription Endpoint"
-  },
+  "destinations": [
+    {
+      "category": "External",
+      "type": "ActivityFeed"
+    }
+  ],
   "provider" : "system",
   "enabled" : true
 }

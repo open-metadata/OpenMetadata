@@ -18,6 +18,10 @@
     }
   },
   "properties": {
+    "references": {
+      "description": "List of References for internal System Users or Teams",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "string",

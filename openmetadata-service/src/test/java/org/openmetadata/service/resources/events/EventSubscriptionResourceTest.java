@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -50,6 +51,7 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EventSubscriptionResourceTest
     extends EntityResourceTest<EventSubscription, CreateEventSubscription> {
+  private static UUID DESTINATION_ID = UUID.randomUUID();
   public static final FilteringRules PASS_ALL_FILTERING =
       new FilteringRules().withResources(List.of("all"));
 
@@ -70,9 +72,8 @@ public class EventSubscriptionResourceTest
     LOG.info("creating webhook in disabled state");
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
     // Create a Disabled Generic Webhook
-    Webhook genericWebhook = getWebhook(uri);
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(webhookName).withEnabled(false).withSubscriptionConfig(genericWebhook);
+        createRequest(webhookName).withEnabled(false).withDestinations(getWebhook(uri));
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
@@ -140,12 +141,11 @@ public class EventSubscriptionResourceTest
   void put_updateEndpointURL(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     String uri = "http://invalidUnknowHost";
-    Webhook genericWebhook = getWebhook(uri);
+    List<SubscriptionDestination> genericWebhook = getWebhook(uri);
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
             .withEnabled(true)
-            .withSubscriptionType(CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK)
-            .withSubscriptionConfig(genericWebhook)
+            .withDestinations(genericWebhook)
             .withRetries(0);
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
@@ -161,11 +161,10 @@ public class EventSubscriptionResourceTest
     // Now change the webhook URL to a valid URL and ensure callbacks resume
     String baseUri =
         "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + test.getDisplayName();
-    Webhook genericWebhook2 = getWebhook(baseUri);
-    genericWebhookActionRequest =
-        genericWebhookActionRequest.withSubscriptionConfig(genericWebhook2);
+    List<SubscriptionDestination> genericWebhook2 = getWebhook(baseUri);
+    genericWebhookActionRequest = genericWebhookActionRequest.withDestinations(genericWebhook2);
     ChangeDescription change = getChangeDescription(alert, MINOR_UPDATE);
-    fieldUpdated(change, "subscriptionConfig", genericWebhook, genericWebhook2);
+    fieldUpdated(change, "destinations", genericWebhook, genericWebhook2);
 
     alert =
         updateAndCheckEntity(
@@ -212,9 +211,8 @@ public class EventSubscriptionResourceTest
             + APP.getLocalPort()
             + "/api/v1/test/webhook/counter/"
             + test.getDisplayName();
-    Webhook genericWebhook = getWebhook(endpoint);
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(alertName).withSubscriptionConfig(genericWebhook);
+        createRequest(alertName).withDestinations(getWebhook(endpoint));
 
     FilteringRules rule1 =
         new FilteringRules()
@@ -314,38 +312,40 @@ public class EventSubscriptionResourceTest
     // SlowServer
     String alertName = "slowServer";
     // Alert Action
-    Webhook w1 = getWebhook(baseUri + "/simulate/slowServer"); // Callback response 1 second slower
-    CreateEventSubscription w1ActionRequest = createRequest(alertName).withSubscriptionConfig(w1);
+    List<SubscriptionDestination> w1 =
+        getWebhook(baseUri + "/simulate/slowServer"); // Callback response 1 second slower
+    CreateEventSubscription w1ActionRequest = createRequest(alertName).withDestinations(w1);
     EventSubscription w1Alert = createAndCheckEntity(w1ActionRequest, ADMIN_AUTH_HEADERS);
 
     // CallbackTimeout
     alertName = "callbackTimeout";
-    Webhook w2 = getWebhook(baseUri + "/simulate/timeout"); // Callback response 12 seconds slower
-    CreateEventSubscription w2ActionRequest = createRequest(alertName).withSubscriptionConfig(w2);
+    List<SubscriptionDestination> w2 =
+        getWebhook(baseUri + "/simulate/timeout"); // Callback response 12 seconds slower
+    CreateEventSubscription w2ActionRequest = createRequest(alertName).withDestinations(w2);
     EventSubscription w2Alert = createAndCheckEntity(w2ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse300
     alertName = "callbackResponse300";
-    Webhook w3 = getWebhook(baseUri + "/simulate/300"); // 3xx response
-    CreateEventSubscription w3ActionRequest = createRequest(alertName).withSubscriptionConfig(w3);
+    List<SubscriptionDestination> w3 = getWebhook(baseUri + "/simulate/300"); // 3xx response
+    CreateEventSubscription w3ActionRequest = createRequest(alertName).withDestinations(w3);
     EventSubscription w3Alert = createAndCheckEntity(w3ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse400
     alertName = "callbackResponse400";
-    Webhook w4 = getWebhook(baseUri + "/simulate/400"); // 3xx response
-    CreateEventSubscription w4ActionRequest = createRequest(alertName).withSubscriptionConfig(w4);
+    List<SubscriptionDestination> w4 = getWebhook(baseUri + "/simulate/400"); // 3xx response
+    CreateEventSubscription w4ActionRequest = createRequest(alertName).withDestinations(w4);
     EventSubscription w4Alert = createAndCheckEntity(w4ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse500
     alertName = "callbackResponse500";
-    Webhook w5 = getWebhook(baseUri + "/simulate/500"); // 3xx response
-    CreateEventSubscription w5ActionRequest = createRequest(alertName).withSubscriptionConfig(w5);
+    List<SubscriptionDestination> w5 = getWebhook(baseUri + "/simulate/500"); // 3xx response
+    CreateEventSubscription w5ActionRequest = createRequest(alertName).withDestinations(w5);
     EventSubscription w5Alert = createAndCheckEntity(w5ActionRequest, ADMIN_AUTH_HEADERS);
 
     // invalidEndpoint
     alertName = "invalidEndpoint";
-    Webhook w6 = getWebhook("http://invalidUnknownHost"); // 3xx response
-    CreateEventSubscription w6ActionRequest = createRequest(alertName).withSubscriptionConfig(w6);
+    List<SubscriptionDestination> w6 = getWebhook("http://invalidUnknownHost"); // 3xx response
+    CreateEventSubscription w6ActionRequest = createRequest(alertName).withDestinations(w6);
     EventSubscription w6Alert = createAndCheckEntity(w6ActionRequest, ADMIN_AUTH_HEADERS);
 
     // Now check state of webhooks created
@@ -394,9 +394,8 @@ public class EventSubscriptionResourceTest
    */
   public void startWebhookSubscription() throws IOException {
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/healthy";
-    Webhook webhook = getWebhook(baseUri);
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest("healthy").withSubscriptionConfig(webhook);
+        createRequest("healthy").withDestinations(getWebhook(baseUri));
     createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
   }
 
@@ -521,7 +520,8 @@ public class EventSubscriptionResourceTest
   }
 
   private SubscriptionStatus getStatus(UUID alertId, int statusCode) throws HttpResponseException {
-    WebTarget target = getResource(String.format("%s/%s/status", collectionName, alertId));
+    WebTarget target =
+        getResource(String.format("%s/%s/status/%s", collectionName, alertId, DESTINATION_ID));
     return TestUtils.getWithResponse(
         target, SubscriptionStatus.class, ADMIN_AUTH_HEADERS, statusCode);
   }
@@ -554,9 +554,9 @@ public class EventSubscriptionResourceTest
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
 
     // Alert Action
-    Webhook genericWebhook = getWebhook(uri); // Callback response 1 second slower
+    // Callback response 1 second slower
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(alertName).withSubscriptionConfig(genericWebhook);
+        createRequest(alertName).withDestinations(getWebhook(uri));
     genericWebhookActionRequest.setFilteringRules(
         new FilteringRules()
             .withResources(List.of(entity))
@@ -573,9 +573,9 @@ public class EventSubscriptionResourceTest
     alertName = EventType.ENTITY_UPDATED + "_" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
 
-    Webhook genericWebhook2 = getWebhook(uri); // Callback response 1 second slower
+    // Callback response 1 second slower
     CreateEventSubscription genericWebhookActionRequest2 =
-        createRequest(alertName).withSubscriptionConfig(genericWebhook2);
+        createRequest(alertName).withDestinations(getWebhook(uri));
     genericWebhookActionRequest2.setFilteringRules(
         new FilteringRules()
             .withResources(List.of(entity))
@@ -596,13 +596,12 @@ public class EventSubscriptionResourceTest
     return new CreateEventSubscription()
         .withName(name)
         .withFilteringRules(PASS_ALL_FILTERING)
-        .withSubscriptionType(CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK)
-        .withSubscriptionConfig(getWebhook(uri))
+        .withDestinations(getWebhook(uri))
         .withEnabled(true)
         .withBatchSize(10)
         .withRetries(0)
         .withPollInterval(0)
-        .withAlertType(CreateEventSubscription.AlertType.CHANGE_EVENT);
+        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION);
   }
 
   @Override
@@ -612,7 +611,7 @@ public class EventSubscriptionResourceTest
       Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), createdEntity.getName());
     assertEquals(createRequest.getFilteringRules(), createdEntity.getFilteringRules());
-    assertEquals(createRequest.getSubscriptionType(), createdEntity.getSubscriptionType());
+    assertEquals(createRequest.getAlertType(), createdEntity.getAlertType());
   }
 
   @Override
@@ -630,15 +629,20 @@ public class EventSubscriptionResourceTest
     if (expected == actual) {
       return;
     }
-    if (fieldName.equals("subscriptionConfig") || fieldName.equals("filteringRules")) {
+    if (fieldName.equals("destinations") || fieldName.equals("filteringRules")) {
       assertEquals(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
-  public Webhook getWebhook(String uri) {
-    return new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest");
+  public List<SubscriptionDestination> getWebhook(String uri) {
+    return List.of(
+        new SubscriptionDestination()
+            .withId(DESTINATION_ID)
+            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+            .withType(SubscriptionDestination.SubscriptionType.GENERIC)
+            .withConfig(new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest")));
   }
 
   public WebhookCallbackResource.EventDetails waitForFirstEvent(

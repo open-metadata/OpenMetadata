@@ -21,9 +21,11 @@ import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.g
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
@@ -33,8 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -44,12 +45,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.quartz.CronScheduleBuilder;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -61,7 +62,7 @@ public class SubscriptionUtil {
       This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
       DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
   */
-  public static Set<String> getAdminsData(CreateEventSubscription.SubscriptionType type) {
+  public static Set<String> getAdminsData(SubscriptionDestination.SubscriptionType type) {
     Set<String> data = new HashSet<>();
     UserRepository userEntityRepository = (UserRepository) Entity.getEntityRepository(USER);
     ResultList<User> result;
@@ -73,24 +74,39 @@ public class SubscriptionUtil {
         result =
             userEntityRepository.listAfter(
                 null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
-        result
-            .getData()
-            .forEach(
-                user -> {
-                  if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                      || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-                    data.add(user.getEmail());
-                  } else {
-                    Profile userProfile = user.getProfile();
-                    data.addAll(getWebhookUrlsFromProfile(userProfile, user.getId(), USER, type));
-                  }
-                });
+        data.addAll(getEmailOrWebhookEndpointForUsers(result.getData(), type));
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
       LOG.error("Failed in listing all Users , Reason", ex);
     }
     return data;
+  }
+
+  private static Set<String> getEmailOrWebhookEndpointForUsers(
+      List<User> users, SubscriptionDestination.SubscriptionType type) {
+    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
+      return users.stream().map(User::getEmail).collect(Collectors.toSet());
+    } else {
+      return users.stream()
+          .map(user -> getWebhookUrlFromProfile(user.getProfile(), user.getId(), USER, type))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
+  }
+
+  private static Set<String> getEmailOrWebhookEndpointForTeams(
+      List<Team> users, SubscriptionDestination.SubscriptionType type) {
+    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
+      return users.stream().map(Team::getEmail).collect(Collectors.toSet());
+    } else {
+      return users.stream()
+          .map(team -> getWebhookUrlFromProfile(team.getProfile(), team.getId(), TEAM, type))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
   }
 
   /*
@@ -100,7 +116,7 @@ public class SubscriptionUtil {
   */
 
   public static Set<String> getOwnerOrFollowers(
-      CreateEventSubscription.SubscriptionType type,
+      SubscriptionDestination.SubscriptionType type,
       CollectionDAO daoCollection,
       UUID entityId,
       String entityType,
@@ -109,29 +125,21 @@ public class SubscriptionUtil {
     try {
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
           daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
-      ownerOrFollowers.forEach(
-          owner -> {
-            if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                data.add(user.getEmail());
-              } else {
-                Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
-                data.add(team.getEmail());
-              }
-            } else {
-              Profile profile = null;
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                profile = user.getProfile();
-              } else if (TEAM.equals(owner.getType())) {
-                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-                profile = team.getProfile();
-              }
-              data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
-            }
-          });
+      // Users
+      List<User> users =
+          ownerOrFollowers.stream()
+              .filter(e -> USER.equals(e.getType()))
+              .map(user -> (User) Entity.getEntity(USER, user.getId(), "", Include.NON_DELETED))
+              .toList();
+      data.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+
+      // Teams
+      List<Team> teams =
+          ownerOrFollowers.stream()
+              .filter(e -> TEAM.equals(e.getType()))
+              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+              .toList();
+      data.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } catch (Exception ex) {
       LOG.error("Failed in listing all Owners/Followers, Reason : ", ex);
     }
@@ -158,44 +166,62 @@ public class SubscriptionUtil {
     return receiversList;
   }
 
-  private static Set<String> getWebhookUrlsFromProfile(
-      Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
-    Set<String> webhookUrls = new HashSet<>();
+  private static Optional<String> getWebhookUrlFromProfile(
+      Profile profile, UUID id, String entityType, SubscriptionDestination.SubscriptionType type) {
     if (profile != null) {
-      Webhook webhookConfig =
-          switch (type) {
-            case SLACK_WEBHOOK -> profile.getSubscription().getSlack();
-            case MS_TEAMS_WEBHOOK -> profile.getSubscription().getMsTeams();
-            case G_CHAT_WEBHOOK -> profile.getSubscription().getgChat();
-            case GENERIC_WEBHOOK -> profile.getSubscription().getGeneric();
-            default -> null;
-          };
-      if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
-        webhookUrls.add(webhookConfig.getEndpoint().toString());
-      } else {
-        LOG.debug(
-            "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is invalid for type {}, webhookConfig {} ",
-            id,
-            entityType,
-            type.value(),
-            webhookConfig);
+      SubscriptionConfig subscriptionConfig = profile.getSubscription();
+      if (subscriptionConfig != null) {
+        Webhook webhookConfig =
+            switch (type) {
+              case SLACK -> profile.getSubscription().getSlack();
+              case MS_TEAMS -> profile.getSubscription().getMsTeams();
+              case G_CHAT -> profile.getSubscription().getgChat();
+              case GENERIC -> profile.getSubscription().getGeneric();
+              default -> null;
+            };
+        if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
+          return Optional.of(webhookConfig.getEndpoint().toString());
+        } else {
+          LOG.debug(
+              "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is missing for type {}, webhookConfig {} ",
+              id,
+              entityType,
+              type.value(),
+              webhookConfig);
+        }
       }
-    } else {
-      LOG.debug(
-          "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
-          id,
-          type);
     }
-    return webhookUrls;
+    LOG.debug(
+        "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
+        id,
+        type);
+    return Optional.empty();
   }
 
   public static Set<String> buildReceiversListFromActions(
       SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
+      SubscriptionDestination.SubscriptionType type,
       CollectionDAO daoCollection,
       UUID entityId,
       String entityType) {
     Set<String> receiverList = new HashSet<>();
+
+    // Send to Receivers
+    if (action.getReferences() != null) {
+      List<User> users =
+          action.getReferences().stream()
+              .filter(e -> USER.equals(e.getType()))
+              .map(user -> (User) Entity.getEntity(USER, user.getId(), "", Include.NON_DELETED))
+              .toList();
+      receiverList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+      List<Team> teams =
+          action.getReferences().stream()
+              .filter(e -> TEAM.equals(e.getType()))
+              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+              .toList();
+      receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
+    }
+
     // Send to Admins
     if (Boolean.TRUE.equals(action.getSendToAdmins())) {
       receiverList.addAll(getAdminsData(type));
@@ -218,7 +244,7 @@ public class SubscriptionUtil {
 
   public static List<Invocation.Builder> getTargetsForWebhook(
       SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
+      SubscriptionDestination.SubscriptionType type,
       Client client,
       ChangeEvent event) {
     List<Invocation.Builder> targets = new ArrayList<>();
@@ -248,25 +274,25 @@ public class SubscriptionUtil {
   }
 
   public static void postWebhookMessage(
-      AbstractEventConsumer publisher, Invocation.Builder target, Object message) {
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
     long attemptTime = System.currentTimeMillis();
     Response response =
         target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     LOG.debug(
-        "Subscription Publisher Posted Message {}:{} received response {}",
-        publisher.getEventSubscription().getName(),
-        publisher.getEventSubscription().getBatchSize(),
+        "Subscription Destination Posted Message {}:{} received response {}",
+        destination.getSubscriptionDestination().getId(),
+        message,
         response.getStatusInfo());
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      publisher.setErrorStatus(
+      destination.setErrorStatus(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
-      publisher.setAwaitingRetry(
+      destination.setAwaitingRetry(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() == 200) {
-      publisher.setSuccessStatus(System.currentTimeMillis());
+      destination.setSuccessStatus(System.currentTimeMillis());
     }
   }
 
@@ -275,26 +301,5 @@ public class SubscriptionUtil {
     clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
-  }
-
-  public static CronScheduleBuilder getCronSchedule(TriggerConfig trigger) {
-    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
-      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
-      switch (scheduleInfo) {
-        case DAILY:
-          return CronScheduleBuilder.dailyAtHourAndMinute(0, 0);
-        case WEEKLY:
-          return CronScheduleBuilder.weeklyOnDayAndHourAndMinute(7, 0, 0);
-        case MONTHLY:
-          return CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 0, 0);
-        case CUSTOM:
-          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
-            return CronScheduleBuilder.cronSchedule(trigger.getCronExpression());
-          } else {
-            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
-          }
-      }
-    }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
   }
 }

@@ -71,52 +71,82 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["ChangeEvent", "Task/Conversation/Announcement"],
-      "default": "ChangeEvent"
+      "enum": ["Notification", "Observability", "ActivityFeed"],
+      "default": "Notification"
+    },
+    "subscriptionCategory": {
+      "description": "Subscription Endpoint Type.",
+      "type": "string",
+      "enum": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners",
+        "Followers",
+        "External"
+      ]
     },
     "subscriptionType": {
       "description": "Subscription Endpoint Type.",
       "type": "string",
       "enum": [
-        "GenericWebhook",
-        "SlackWebhook",
-        "MsTeamsWebhook",
-        "GChatWebhook",
+        "Generic",
+        "Slack",
+        "MsTeams",
+        "GChat",
         "Email",
-        "ActivityFeed",
-        "DataInsight"
+        "ActivityFeed"
       ]
     },
-    "subscription": {
+    "destination": {
       "description": "Subscription which has a type and the config.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.Subscription",
+      "javaType": "org.openmetadata.schema.entity.events.SubscriptionDestination",
       "properties": {
-        "subscriptionType": {
+        "id": {
+          "description": "Unique identifier that identifies this Event Subscription.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "category": {
+          "$ref": "#/definitions/subscriptionCategory"
+        },
+        "type": {
           "$ref": "#/definitions/subscriptionType"
         },
-        "subscriptionName": {
-          "description": "Name for the subscription",
-          "type": "string"
+        "statusDetails": {
+          "$ref": "#/definitions/subscriptionStatus"
         },
-        "subscriptionConfig": {
-          "$ref": "#/definitions/subscriptionConfig"
+        "timeout": {
+          "description": "Connection timeout in seconds. (Default 10s).",
+          "type": "integer",
+          "default": 10
+        },
+        "readTimeout": {
+          "description": "Read timeout in seconds. (Default 12s).",
+          "type": "integer",
+          "default": 12
+        },
+        "enabled": {
+          "description": "Is the subscription enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "../entity/events/webhook.json"
+            },
+            {
+              "$ref": "./emailAlertConfig.json"
+            },
+            {
+              "$ref": "./userAlertConfig.json"
+            }
+          ]
         }
       },
+      "required": ["category", "type"],
       "additionalProperties": false
-    },
-    "subscriptionConfig": {
-      "oneOf": [
-        {
-          "$ref": "../entity/events/webhook.json"
-        },
-        {
-          "$ref": "./emailAlertConfig.json"
-        },
-        {
-          "$ref": "./dataInsightAlertConfig.json"
-        }
-      ]
     },
     "status": {
       "description": "Status is `disabled`, when eventSubscription was created with `enabled` set to false and it never started publishing events. Status is `active` when eventSubscription is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
@@ -274,11 +304,12 @@
       "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
       "$ref": "#/definitions/filteringRules"
     },
-    "subscriptionType": {
-      "$ref": "#/definitions/subscriptionType"
-    },
-    "subscriptionConfig": {
-      "$ref": "#/definitions/subscriptionConfig"
+    "destinations": {
+      "description": "Destination Config.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/destination"
+      }
     },
     "enabled": {
       "description": "Is the event Subscription enabled.",
@@ -288,20 +319,7 @@
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer",
-      "default": 10
-    },
-    "timeout": {
-      "description": "Connection timeout in seconds. (Default 10s).",
-      "type": "integer",
-      "default": 10
-    },
-    "readTimeout": {
-      "description": "Read timeout in seconds. (Default 12s).",
-      "type": "integer",
-      "default": 12
-    },
-    "statusDetails": {
-      "$ref": "#/definitions/subscriptionStatus"
+      "default": 100
     },
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"

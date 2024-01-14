@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.msteams;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.MS_TEAMS_WEBHOOK;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.MS_TEAMS;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -21,34 +21,37 @@ import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.util.JsonUtils;
-import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class MSTeamsPublisher extends AbstractEventConsumer {
+public class MSTeamsPublisher implements Destination<ChangeEvent> {
   private final MessageDecorator<TeamsMessage> teamsMessageFormatter =
       new MSTeamsMessageDecorator();
-  private Webhook webhook;
+  private final Webhook webhook;
   private Invocation.Builder target;
-  private Client client;
+  private final Client client;
 
-  @Override
-  protected void doInit(JobExecutionContext context) {
-    if (eventSubscription.getSubscriptionType() == MS_TEAMS_WEBHOOK) {
-      this.webhook =
-          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+  @Getter private final SubscriptionDestination subscriptionDestination;
+
+  public MSTeamsPublisher(SubscriptionDestination subscription) {
+    if (subscription.getType() == MS_TEAMS) {
+      this.subscriptionDestination = subscription;
+      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
 
       // Build Client
-      client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
+      client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
       if (webhook.getEndpoint() != null) {
@@ -63,11 +66,10 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
       TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingMessage(event);
-      List<Invocation.Builder> targets =
-          getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, event);
+      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, MS_TEAMS, client, event);
       if (target != null) {
         targets.add(target);
       }
@@ -76,14 +78,17 @@ public class MSTeamsPublisher extends AbstractEventConsumer {
       }
     } catch (Exception e) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(
-              MS_TEAMS_WEBHOOK, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, event);
+      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
   @Override
+  public boolean getEnabled() {
+    return subscriptionDestination.getEnabled();
+  }
+
   public void stop() {
     if (null != client) {
       client.close();

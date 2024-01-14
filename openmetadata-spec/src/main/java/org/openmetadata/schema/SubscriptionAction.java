@@ -13,9 +13,15 @@
 
 package org.openmetadata.schema;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Collections;
+import java.util.List;
+import org.openmetadata.schema.type.EntityReference;
 
 public interface SubscriptionAction {
+  default List<EntityReference> getReferences() {
+    return Collections.emptyList();
+  }
+
   default Boolean getSendToAdmins() {
     return false;
   }
@@ -25,11 +31,6 @@ public interface SubscriptionAction {
   }
 
   default Boolean getSendToFollowers() {
-    return false;
-  }
-
-  @JsonIgnore
-  default Boolean getSendToTeams() {
     return false;
   }
 }

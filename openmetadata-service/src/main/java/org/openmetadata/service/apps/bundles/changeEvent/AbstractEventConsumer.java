@@ -13,17 +13,20 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.ACTIVE;
-import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
-import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
-import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvent;
+import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvents;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -31,11 +34,10 @@ import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -49,6 +51,7 @@ import org.quartz.PersistJobDataAfterExecution;
 @PersistJobDataAfterExecution
 public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
+  public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
@@ -59,6 +62,7 @@ public abstract class AbstractEventConsumer
 
   @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
+  protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
   protected AbstractEventConsumer() {}
 
@@ -69,6 +73,7 @@ public abstract class AbstractEventConsumer
     this.eventSubscription = sub;
     this.offset = loadInitialOffset(context);
     this.alertMetrics = loadInitialMetrics();
+    this.destinationMap = loadDestinationsMap(context);
     this.doInit(context);
   }
 
@@ -78,17 +83,19 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void handleFailedEvent(EventPublisherException ex) {
+    UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
+    ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(
-        "Failed in for Publisher : {} , Change Event : {} ",
+        "Change Event Failed for Event Subscription: {} ,  for Subscription : {} , Change Event : {} ",
         eventSubscription.getName(),
-        ex.getChangeEvent());
-
-    ChangeEvent event = ex.getChangeEvent();
+        failingSubscriptionId,
+        changeEvent);
 
     // Update Failed Event with details
     FailedEvent failedEvent =
         new FailedEvent()
-            .withChangeEvent(ex.getChangeEvent())
+            .withFailingSubscriptionId(failingSubscriptionId)
+            .withChangeEvent(changeEvent)
             .withRetriesLeft(eventSubscription.getRetries())
             .withTimestamp(System.currentTimeMillis());
 
@@ -97,7 +104,7 @@ public abstract class AbstractEventConsumer
           .eventSubscriptionDAO()
           .upsertFailedEvent(
               eventSubscription.getId().toString(),
-              String.format("%s-%s", FAILED_EVENT_EXTENSION, event.getId()),
+              String.format("%s-%s", FAILED_EVENT_EXTENSION, changeEvent.getId()),
               JsonUtils.pojoToJson(failedEvent));
     } else {
       // Check in Qtz Map
@@ -112,9 +119,10 @@ public abstract class AbstractEventConsumer
             failedEventsList.removeIf(
                 failedEvent1 -> {
                   if (failedEvent1
-                      .getChangeEvent()
-                      .getId()
-                      .equals(failedEvent.getChangeEvent().getId())) {
+                          .getChangeEvent()
+                          .getId()
+                          .equals(failedEvent.getChangeEvent().getId())
+                      && failedEvent1.getFailingSubscriptionId().equals(failingSubscriptionId)) {
                     failedEvent.withRetriesLeft(failedEvent1.getRetriesLeft());
                     return true;
                   }
@@ -136,7 +144,7 @@ public abstract class AbstractEventConsumer
           .eventSubscriptionDAO()
           .upsertFailedEvent(
               eventSubscription.getId().toString(),
-              String.format("%s-%s", FAILED_EVENT_EXTENSION, event.getId()),
+              String.format("%s-%s", FAILED_EVENT_EXTENSION, changeEvent.getId()),
               JsonUtils.pojoToJson(failedEvent));
     }
   }
@@ -154,6 +162,20 @@ public abstract class AbstractEventConsumer
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
       return eventSubscriptionOffset.getOffset();
     }
+  }
+
+  private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
+    Map<UUID, Destination<ChangeEvent>> dMap =
+        (Map<UUID, Destination<ChangeEvent>>)
+            context.getJobDetail().getJobDataMap().get(DESTINATION_MAP_KEY);
+    if (dMap == null) {
+      dMap = new HashMap<>();
+      for (SubscriptionDestination subscription : eventSubscription.getDestinations()) {
+        dMap.put(subscription.getId(), AlertFactory.getAlert(subscription));
+      }
+      context.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, dMap);
+    }
+    return dMap;
   }
 
   private AlertMetrics loadInitialMetrics() {
@@ -174,23 +196,24 @@ public abstract class AbstractEventConsumer
   }
 
   @Override
-  public void publishEvents(List<ChangeEvent> events) {
+  public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
     // If no events return
     if (events.isEmpty()) {
       return;
     }
 
     // Filter the Change Events based on Alert Trigger Config
-    List<ChangeEvent> filteredEvents =
-        getFilteredEvent(events, eventSubscription.getFilteringRules());
+    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
 
-    for (ChangeEvent event : filteredEvents) {
-      try {
-        sendAlert(event);
-        alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
-      } catch (EventPublisherException e) {
-        alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-        handleFailedEvent(e);
+    for (var eventWithReceivers : filteredEvents.entrySet()) {
+      for (UUID receiverId : eventWithReceivers.getValue()) {
+        try {
+          sendAlert(receiverId, eventWithReceivers.getKey());
+          alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
+        } catch (EventPublisherException e) {
+          alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
+          handleFailedEvent(e);
+        }
       }
     }
   }
@@ -228,33 +251,9 @@ public abstract class AbstractEventConsumer
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
     jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
-  }
 
-  public synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason) {
-    setStatus(FAILED, attemptTime, statusCode, reason, null);
-  }
-
-  public synchronized void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {
-    setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + 10);
-  }
-
-  public synchronized void setSuccessStatus(Long updateTime) {
-    SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(
-            ACTIVE, updateTime, null, null, null, updateTime, updateTime);
-    eventSubscription.setStatusDetails(subStatus);
-  }
-
-  protected synchronized void setStatus(
-      SubscriptionStatus.Status status,
-      Long attemptTime,
-      Integer statusCode,
-      String reason,
-      Long timestamp) {
-    SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(
-            status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
-    eventSubscription.setStatusDetails(subStatus);
+    // Populate the Destination map
+    jobExecutionContext.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, destinationMap);
   }
 
   @Override
@@ -276,26 +275,30 @@ public abstract class AbstractEventConsumer
     this.init(jobExecutionContext);
 
     // Poll Events from Change Event Table
-    List<ChangeEvent> batch = pollEvents(offset, 100);
+    List<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
     int batchSize = batch.size();
+
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = createEventsWithReceivers(batch);
 
     // Retry Failed Events
     Set<FailedEvent> failedEventsList =
         JsonUtils.convertValue(
             jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION), new TypeReference<>() {});
     if (failedEventsList != null) {
-      List<ChangeEvent> failedChangeEvents =
+      Map<ChangeEvent, Set<UUID>> failedChangeEvents =
           failedEventsList.stream()
               .filter(failedEvent -> failedEvent.getRetriesLeft() > 0)
-              .map(FailedEvent::getChangeEvent)
-              .toList();
-      batch.addAll(failedChangeEvents);
+              .collect(
+                  Collectors.toMap(
+                      FailedEvent::getChangeEvent,
+                      failedEvent -> Set.of(failedEvent.getFailingSubscriptionId())));
+      eventsWithReceivers.putAll(failedChangeEvents);
     }
 
-    if (!batch.isEmpty()) {
+    if (!eventsWithReceivers.isEmpty()) {
       // Publish Events
-      alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
-      publishEvents(batch);
+      alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
+      publishEvents(eventsWithReceivers);
 
       // Commit the Offset
       offset += batchSize;
@@ -305,5 +308,15 @@ public abstract class AbstractEventConsumer
 
   public EventSubscription getEventSubscription() {
     return (EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+  }
+
+  private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers =
+        new TreeMap<>(Comparator.comparing(ChangeEvent::getId));
+    for (ChangeEvent changeEvent : events) {
+      Set<UUID> receivers = Set.of(destinationMap.keySet().toArray(UUID[]::new));
+      eventsWithReceivers.put(changeEvent, receivers);
+    }
+    return eventsWithReceivers;
   }
 }

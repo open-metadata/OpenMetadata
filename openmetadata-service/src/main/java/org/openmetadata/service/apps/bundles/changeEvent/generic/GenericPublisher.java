@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GENERIC;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -23,31 +23,34 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class GenericPublisher extends AbstractEventConsumer {
-  private Client client;
-  private Webhook webhook;
+public class GenericPublisher implements Destination<ChangeEvent> {
+  private final Client client;
+  private final Webhook webhook;
 
-  @Override
-  protected void doInit(JobExecutionContext context) {
-    if (eventSubscription.getSubscriptionType() == GENERIC_WEBHOOK) {
-      this.webhook =
-          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+  @Getter private final SubscriptionDestination subscriptionDestination;
+
+  public GenericPublisher(SubscriptionDestination subscription) {
+    if (subscription.getType() == GENERIC) {
+      this.subscriptionDestination = subscription;
+      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
 
       // Build Client
-      this.client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
+      this.client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
     } else {
       throw new IllegalArgumentException(
           "GenericWebhook Alert Invoked with Illegal Type and Settings.");
@@ -55,7 +58,7 @@ public class GenericPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
       // Post Message to default
@@ -71,8 +74,7 @@ public class GenericPublisher extends AbstractEventConsumer {
 
       // Post to Generic Webhook with Actions
       String eventJson = JsonUtils.pojoToJson(event);
-      List<Invocation.Builder> targets =
-          getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, event);
+      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC, client, event);
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, eventJson);
       }
@@ -82,17 +84,16 @@ public class GenericPublisher extends AbstractEventConsumer {
       if (cause != null && cause.getClass() == UnknownHostException.class) {
         message =
             String.format(
-                "Unknown Host Exception for EventSubscription : %s , WebhookEndpoint : %s",
-                eventSubscription.getName(), webhook.getEndpoint());
+                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+                subscriptionDestination.getId(), webhook.getEndpoint());
         LOG.warn(message);
         setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(
-                GENERIC_WEBHOOK, event, ex.getMessage());
+            CatalogExceptionMessage.eventPublisherFailedToPublish(GENERIC, event, ex.getMessage());
         LOG.error(message);
       }
-      throw new EventPublisherException(message, event);
+      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
@@ -102,6 +103,10 @@ public class GenericPublisher extends AbstractEventConsumer {
   }
 
   @Override
+  public boolean getEnabled() {
+    return subscriptionDestination.getEnabled();
+  }
+
   public void stop() {
     if (null != client) {
       client.close();

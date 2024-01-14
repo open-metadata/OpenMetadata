@@ -15,7 +15,6 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.THREAD;
@@ -53,12 +52,6 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.email.EmailPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.MSTeamsPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -69,34 +62,35 @@ import org.springframework.expression.Expression;
 public final class AlertUtil {
   private AlertUtil() {}
 
-  public static AbstractEventConsumer getNotificationsPublisher(EventSubscription subscription) {
-    validateSubscriptionConfig(subscription);
-    return switch (subscription.getSubscriptionType()) {
-      case SLACK_WEBHOOK -> new SlackEventPublisher();
-      case MS_TEAMS_WEBHOOK -> new MSTeamsPublisher();
-      case G_CHAT_WEBHOOK -> new GChatPublisher();
-      case GENERIC_WEBHOOK -> new GenericPublisher();
-      case EMAIL -> new EmailPublisher();
-      case ACTIVITY_FEED -> throw new IllegalArgumentException(
-          "Cannot create Activity Feed as Publisher.");
-      default -> throw new IllegalArgumentException("Invalid Alert Action Specified.");
-    };
-  }
+  //  public static AbstractEventConsumer getNotificationsPublisher(EventSubscription subscription)
+  // {
+  //    validateSubscriptionConfig(subscription);
+  //    return switch (subscription.getSubscriptionConfig()) {
+  //      case SLACK_WEBHOOK -> new SlackEventPublisher();
+  //      case MS_TEAMS_WEBHOOK -> new MSTeamsPublisher();
+  //      case G_CHAT_WEBHOOK -> new GChatPublisher();
+  //      case GENERIC_WEBHOOK -> new GenericPublisher();
+  //      case EMAIL -> new EmailPublisher();
+  //      case ACTIVITY_FEED -> throw new IllegalArgumentException(
+  //          "Cannot create Activity Feed as Publisher.");
+  //      default -> throw new IllegalArgumentException("Invalid Alert Action Specified.");
+  //    };
+  //  }
 
-  public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
-    // Alert Type Validation
-    if (eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      throw new IllegalArgumentException("Invalid Alert Type");
-    }
-
-    // Subscription Config Validation
-    if (ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
-      return;
-    }
-    if (eventSubscription.getSubscriptionConfig() == null) {
-      throw new BadRequestException("subscriptionConfig cannot be null.");
-    }
-  }
+  //  public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
+  //    // Alert Type Validation
+  //    if (eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CHANGE_EVENT) {
+  //      throw new IllegalArgumentException("Invalid Alert Type");
+  //    }
+  //
+  //    // Subscription Config Validation
+  //    if (ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
+  //      return;
+  //    }
+  //    if (eventSubscription.getSubscriptionConfig() == null) {
+  //      throw new BadRequestException("subscriptionConfig cannot be null.");
+  //    }
+  //  }
 
   public static <T> void validateExpression(String condition, Class<T> clz) {
     if (condition == null) {
@@ -261,29 +255,31 @@ public final class AlertUtil {
         .withTimestamp(timeStamp);
   }
 
-  public static List<ChangeEvent> getFilteredEvent(
-      List<ChangeEvent> events, FilteringRules filteringRules) {
-    List<ChangeEvent> filteredEvents = new ArrayList<>();
-    for (ChangeEvent event : events) {
-      boolean triggerChangeEvent =
-          AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      EventSubscription eventSubscription, Map<ChangeEvent, Set<UUID>> events) {
+    return events.entrySet().stream()
+        .filter(
+            entry ->
+                checkIfChangeEventIsAllowed(entry.getKey(), eventSubscription.getFilteringRules()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
 
-      if (triggerChangeEvent && filteringRules != null) {
-        // Evaluate Rules
-        triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
+  private static boolean checkIfChangeEventIsAllowed(
+      ChangeEvent event, FilteringRules filteringRules) {
+    boolean triggerChangeEvent =
+        AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
 
-        if (triggerChangeEvent) {
-          // Evaluate Actions
-          triggerChangeEvent =
-              AlertUtil.evaluateAlertConditions(event, filteringRules.getActions());
-        }
-      }
+    if (triggerChangeEvent) {
+      // Evaluate Rules
+      triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
 
       if (triggerChangeEvent) {
-        filteredEvents.add(event);
+        // Evaluate Actions
+        triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getActions());
       }
     }
-    return filteredEvents;
+
+    return triggerChangeEvent;
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {

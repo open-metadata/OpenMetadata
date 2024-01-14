@@ -13,11 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -26,8 +29,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
-  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
-  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize";
+  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,filteringRules";
 
   public EventSubscriptionRepository() {
     super(
@@ -41,19 +44,25 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void setFields(EventSubscription entity, Fields fields) {
-    if (entity.getStatusDetails() == null) {
-      entity.withStatusDetails(
-          fields.contains("statusDetails")
-              ? EventSubscriptionScheduler.getInstance()
-                  .getStatusForEventSubscription(entity.getId())
-              : null);
+    if (fields.contains("statusDetails")
+        && !entity.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)
+        && !entity.getDestinations().isEmpty()) {
+      List<SubscriptionDestination> destinations = new ArrayList<>();
+      entity
+          .getDestinations()
+          .forEach(
+              destination ->
+                  destinations.add(
+                      destination.withStatusDetails(
+                          EventSubscriptionScheduler.getInstance()
+                              .getStatusForEventSubscription(
+                                  entity.getId(), destination.getId()))));
+      entity.withDestinations(destinations);
     }
   }
 
   @Override
-  public void clearFields(EventSubscription entity, Fields fields) {
-    entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
-  }
+  public void clearFields(EventSubscription entity, Fields fields) {}
 
   @Override
   public void prepare(EventSubscription entity, boolean update) {
@@ -98,16 +107,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public void entitySpecificUpdate() {
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
-      recordChange("timeout", original.getTimeout(), updated.getTimeout());
       recordChange(
           "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
-      recordChange(
-          "subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
-      recordChange(
-          "subscriptionConfig",
-          original.getSubscriptionConfig(),
-          updated.getSubscriptionConfig(),
-          true);
+      recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
       recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
     }
   }

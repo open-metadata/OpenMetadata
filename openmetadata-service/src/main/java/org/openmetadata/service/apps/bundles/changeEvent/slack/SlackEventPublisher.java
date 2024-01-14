@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.SLACK_WEBHOOK;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -21,33 +21,35 @@ import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.util.JsonUtils;
-import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class SlackEventPublisher extends AbstractEventConsumer {
+public class SlackEventPublisher implements Destination<ChangeEvent> {
   private final MessageDecorator<SlackMessage> slackMessageFormatter = new SlackMessageDecorator();
-  private Webhook webhook;
+  private final Webhook webhook;
   private Invocation.Builder target;
-  private Client client;
+  private final Client client;
+  @Getter private final SubscriptionDestination subscriptionDestination;
 
-  @Override
-  protected void doInit(JobExecutionContext context) {
-    if (eventSubscription.getSubscriptionType() == SLACK_WEBHOOK) {
-      this.webhook =
-          JsonUtils.convertValue(eventSubscription.getSubscriptionConfig(), Webhook.class);
+  public SlackEventPublisher(SubscriptionDestination subscription) {
+    if (subscription.getType() == SLACK) {
+      this.subscriptionDestination = subscription;
+      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
 
       // Build Client
-      client = getClient(eventSubscription.getTimeout(), eventSubscription.getReadTimeout());
+      client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
       if (webhook.getEndpoint() != null) {
@@ -62,11 +64,10 @@ public class SlackEventPublisher extends AbstractEventConsumer {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
       SlackMessage slackMessage = slackMessageFormatter.buildOutgoingMessage(event);
-      List<Invocation.Builder> targets =
-          getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, event);
+      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK, client, event);
       if (target != null) {
         targets.add(target);
       }
@@ -75,14 +76,17 @@ public class SlackEventPublisher extends AbstractEventConsumer {
       }
     } catch (Exception e) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(
-              SLACK_WEBHOOK, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, event);
+      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
   @Override
+  public boolean getEnabled() {
+    return subscriptionDestination.getEnabled();
+  }
+
   public void stop() {
     if (null != client) {
       client.close();
