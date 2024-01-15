@@ -69,4 +69,8 @@ export const VISIT_SERVICE_PAGE_DETAILS = {
     settingsMenuId: 'services.search',
     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
   },
+  [SERVICE_TYPE.Metadata]: {
+    settingsMenuId: 'services.metadata',
+    serviceCategory: SERVICE_CATEGORIES.METADATA_SERVICES,
+  },
 };
