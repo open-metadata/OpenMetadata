@@ -1,0 +1,98 @@
+[
+  {
+    "name": "filterBySource",
+    "fullyQualifiedName": "eventSubscription.filterBySource",
+    "displayName": "Filter By Source of Change Event",
+    "description" : "Filter By Source of Change Event",
+    "effect" : "include",
+    "condition": "matchAnySource(${sourceList})",
+    "arguments": [
+      "sourceList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByOwnerName",
+    "fullyQualifiedName": "eventSubscription.filterByOwnerName",
+    "displayName": "Filter By Owner",
+    "description" : "Filter By Owner of the Asset",
+    "effect" : "include",
+    "condition": "matchAnyOwnerName(${ownerNameList})",
+    "arguments": [
+      "ownerNameList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByFqn",
+    "fullyQualifiedName": "eventSubscription.filterByFqn",
+    "displayName": "Filter By ENtity FQN",
+    "description" : "Filter A Change Event By Entity FQN",
+    "effect" : "include",
+    "condition": "matchAnyEntityFqn(${fqnList})",
+    "arguments": [
+      "fqnList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByEntityId",
+    "fullyQualifiedName": "eventSubscription.filterByEntityId",
+    "displayName": "Filter By Entity Id",
+    "description" : "Filter A Change Event By Entity Id",
+    "effect" : "include",
+    "condition": "matchAnyEntityId(${entityIdList})",
+    "arguments": [
+      "entityIdList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByEventType",
+    "fullyQualifiedName": "eventSubscription.filterByEventType",
+    "displayName": "Filter By Event Type",
+    "description" : "Filter By Type of Event like entityCreated, entityUpdated, etc.",
+    "effect" : "include",
+    "condition": "matchAnyEventType(${eventTypeList})",
+    "arguments": [
+      "eventTypeList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByUpdaterName",
+    "fullyQualifiedName": "eventSubscription.filterByUpdaterName",
+    "displayName": "Filter By Update Name",
+    "description" : "Filter An Change Event if the Entity is Updated By Any of the Users",
+    "effect" : "include",
+    "condition": "matchUpdatedBy(${updateByUserList})",
+    "arguments": [
+      "updateByUserList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByFieldChange",
+    "fullyQualifiedName": "eventSubscription.filterByFieldChange",
+    "displayName": "Filter By Field Change",
+    "description" : "Filter By a specific field change",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange(${fieldChangeList})",
+    "arguments": [
+      "fieldChangeList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByDomain",
+    "fullyQualifiedName": "eventSubscription.filterByDomain",
+    "displayName": "Filter By Domain",
+    "description" : "Filter An Change Event By Domain a Entity Belongs To",
+    "effect" : "include",
+    "condition": "matchAnyDomain(${domainList})",
+    "arguments": [
+      "domainList"
+    ],
+    "inputType": "runtime"
+  }
+]

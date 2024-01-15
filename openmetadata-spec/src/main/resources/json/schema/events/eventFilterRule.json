@@ -5,6 +5,15 @@
   "description": "Describes an Event Filter Rule",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventFilterRule",
+  "definitions": {
+    "effect" : {
+      "type" : "string",
+      "enum" : [
+        "include",
+        "exclude"
+      ]
+    }
+  },
   "properties": {
     "name": {
       "description": "Name of this Event Filter.",
@@ -23,11 +32,7 @@
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "effect" : {
-      "type" : "string",
-      "enum" : [
-        "include",
-        "exclude"
-      ]
+      "$ref": "#/definitions/effect"
     },
     "condition" : {
       "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",

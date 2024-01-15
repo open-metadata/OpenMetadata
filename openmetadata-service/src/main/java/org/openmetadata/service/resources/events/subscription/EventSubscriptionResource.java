@@ -54,14 +54,14 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
-import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
+import org.openmetadata.schema.type.NotificationResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -108,7 +108,7 @@ public class EventSubscriptionResource
   }
 
   public static class EventSubResourceDescriptorList
-      extends ResultList<SubscriptionResourceDescriptor> {
+      extends ResultList<NotificationResourceDescriptor> {
     /* Required for serde */
   }
 
@@ -117,7 +117,8 @@ public class EventSubscriptionResource
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getDescriptors()),
+          listOrEmpty(EventSubscriptionResource.getEntityNotificationDescriptors()),
+          listOrEmpty(EventSubscriptionResource.getNotificationFunctionsDescriptors()),
           listOrEmpty(EventSubscriptionResource.getFilterDescriptors()));
       initializeEventSubscriptions();
     } catch (Exception ex) {
@@ -279,34 +280,6 @@ public class EventSubscriptionResource
     EventSubscription eventSub =
         getEventSubscription(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
-    Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
-    return response;
-  }
-
-  @POST
-  @Path("/observability")
-  @Operation(
-      operationId = "createObservabilitySubscription",
-      summary = "Create a new Observability Subscription",
-      description = "Create a new Observability Subscription",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Observability Subscription Created",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateEventSubscription.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createObservabilitySubscription(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateEventSubscription request)
-      throws SchedulerException {
-    EventSubscription eventSub =
-        getObservabilitySubscription(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
@@ -575,10 +548,10 @@ public class EventSubscriptionResource
       summary = "Get list of Event Subscription functions used in filtering EventSubscription",
       description =
           "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
-  public List<Function> listEventSubscriptionFunctions(
+  public ResultList<EventFilterRule> listEventSubscriptionFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
+    return new ResultList<>(EventsSubscriptionRegistry.listNotificationsFunctionsDescriptors());
   }
 
   @GET
@@ -588,10 +561,10 @@ public class EventSubscriptionResource
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
       description =
           "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
-  public ResultList<SubscriptionResourceDescriptor> listEventSubResources(
+  public ResultList<NotificationResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return new ResultList<>(EventsSubscriptionRegistry.listResourceDescriptors());
+    return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
   }
 
   @GET
@@ -634,27 +607,12 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(create.getFilteringRules())
-        .withDestinations(getSubscriptions(create.getDestinations()))
-        .withProvider(create.getProvider())
-        .withRetries(create.getRetries())
-        .withPollInterval(create.getPollInterval());
-  }
-
-  private EventSubscription getObservabilitySubscription(
-      CreateEventSubscription create, String user) {
-    return repository
-        .copy(new EventSubscription(), create, user)
-        .withAlertType(create.getAlertType())
-        .withTrigger(create.getTrigger())
-        .withEnabled(create.getEnabled())
-        .withBatchSize(create.getBatchSize())
         .withFilteringRules(validateAndBuildFilteringConditions(create))
         .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
-        .withObservability(create.getObservability());
+        .withFilteringInput(create.getFilteringInput());
   }
 
   private List<SubscriptionDestination> getSubscriptions(
@@ -670,9 +628,14 @@ public class EventSubscriptionResource
     return result;
   }
 
-  public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
+  public static List<NotificationResourceDescriptor> getEntityNotificationDescriptors()
+      throws IOException {
     return getDescriptorsFromFile(
-        "EventSubResourceDescriptor.json", SubscriptionResourceDescriptor.class);
+        "EventSubResourceDescriptor.json", NotificationResourceDescriptor.class);
+  }
+
+  public static List<EventFilterRule> getNotificationFunctionsDescriptors() throws IOException {
+    return getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class);
   }
 
   public static List<FilterResourceDescriptor> getFilterDescriptors() throws IOException {

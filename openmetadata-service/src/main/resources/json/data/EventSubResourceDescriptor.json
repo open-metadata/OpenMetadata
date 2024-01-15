@@ -2,15 +2,256 @@
   {
     "name" : "all",
     "supportedFilters" : [
-      "matchAnySource",
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType",
-      "matchTestResult",
-      "matchUpdatedBy",
-      "matchIngestionPipelineState",
-      "matchAnyFieldChange"
+      "filterBySource",
+      "filterByEntityId",
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name": "chart",
+    "supportedFilters": [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "dashboard",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "dashboardService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "database",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "databaseSchema",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "databaseService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "glossary",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "glossaryTerm",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "location",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "messagingService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "mlmodel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "mlmodelService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "pipelineService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "storageService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "table",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "tag",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "tagCategory",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "topic",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "metadataService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
+    ]
+  },
+  {
+    "name" : "dashboardDataModel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByFieldChange",
+      "filterByDomain"
     ]
   },
   {
@@ -21,387 +262,6 @@
   {
     "name" : "task",
     "supportedFilters" : [
-    ]
-  },
-  {
-    "name" : "bot",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name": "chart",
-    "supportedFilters": [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "dashboard",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "dashboardService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "database",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "databaseSchema",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "databaseService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "glossary",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "glossaryTerm",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "ingestionPipeline",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchIngestionPipelineState",
-      "matchUpdatedBy"
-    ]
-  },
-  {
-    "name" : "location",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "messagingService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "metrics",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "mlmodel",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "mlmodelService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "pipeline",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "pipelineService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "policy",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "report",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "role",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "storageService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "table",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "tag",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "tagCategory",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "team",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "topic",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "user",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "events",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "feed",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "testSuite",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchTestResult",
-      "matchUpdatedBy"
-    ]
-  },
-  {
-    "name" : "testDefinition",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchTestResult",
-      "matchUpdatedBy"
-    ]
-  },
-  {
-    "name" : "testCase",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchTestResult",
-      "matchUpdatedBy"
-    ]
-  },
-  {
-    "name" : "type",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "webAnalyticEvent",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "dataInsightChart",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "kpi",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "metadataService",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
-    ]
-  },
-  {
-    "name" : "dashboardDataModel",
-    "supportedFilters" : [
-      "matchAnyOwnerName",
-      "matchAnyEntityFqn",
-      "matchAnyEventType",
-      "matchUpdatedBy",
-      "matchAnyFieldChange"
     ]
   }
 ]

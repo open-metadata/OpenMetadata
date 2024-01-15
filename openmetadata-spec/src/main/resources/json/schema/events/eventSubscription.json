@@ -7,10 +7,10 @@
   "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "observabilityFilters": {
+    "argumentsInput": {
       "description": "Observability Filters for Event Subscription.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.ObservabilityFilters",
+      "javaType": "org.openmetadata.schema.entity.events.ArgumentsInput",
       "properties": {
         "name": {
           "description": "Name of the filter",
@@ -27,6 +27,9 @@
                 "description": "Name of the Argument",
                 "type": "string"
               },
+              "effect" : {
+                "$ref": "./eventFilterRule.json#/definitions/effect"
+              },
               "input": {
                 "description": "Value of the Argument",
                 "type": "array",
@@ -41,22 +44,22 @@
       },
       "additionalProperties": false
     },
-    "observability": {
+    "alertFilteringInput": {
       "description": "Observability of the event subscription.",
       "type": "object",
       "properties": {
-        "filters": {
+        "filtersInput": {
             "description": "List of filters for the event subscription.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/observabilityFilters"
+                "$ref": "#/definitions/argumentsInput"
             }
         },
-        "actions": {
+        "actionsInput": {
           "description": "List of filters for the event subscription.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/observabilityFilters"
+            "$ref": "#/definitions/argumentsInput"
           }
         }
       },
@@ -334,10 +337,12 @@
       "type": "integer",
       "default": 10
     },
-    "observability": {
-      "$ref": "#/definitions/observability"
+    "filteringInput": {
+      "description": "Input for the Filters.",
+      "$ref": "#/definitions/alertFilteringInput"
+
     }
   },
-  "required": ["id", "name", "alertType", "subscriptionType"],
+  "required": ["id", "name", "alertType"],
   "additionalProperties": false
 }

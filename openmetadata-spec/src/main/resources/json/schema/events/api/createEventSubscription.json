@@ -41,9 +41,12 @@
     "trigger": {
       "$ref": "../eventSubscription.json#/definitions/trigger"
     },
-    "filteringRules": {
-      "description": "Set of rules that the Alert Contains to allow conditional control for alerting.",
-      "$ref": "../eventSubscription.json#/definitions/filteringRules"
+    "resources": {
+      "description": "Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "destinations": {
       "description": "Subscription Config.",
@@ -65,10 +68,12 @@
       "type": "integer",
       "default": 10
     },
-    "observability": {
-      "$ref": "../eventSubscription.json#/definitions/observability"
+    "filteringInput": {
+      "description": "Input for the Filters.",
+      "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
+
     }
   },
-  "required": ["name", "alertType", "subscriptionType"],
+  "required": ["name", "alertType"],
   "additionalProperties": false
 }

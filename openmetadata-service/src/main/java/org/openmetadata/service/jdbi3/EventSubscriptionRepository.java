@@ -108,6 +108,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange(
+          "filteringInput", original.getFilteringInput(), updated.getFilteringInput(), true);
+      recordChange(
           "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
       recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
       recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);

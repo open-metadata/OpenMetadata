@@ -4,7 +4,6 @@ import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.schema.entity.events.EventFilterRule.Effect.INCLUDE;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.ACTIVE;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.DISABLED;
@@ -31,8 +30,10 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.entity.events.EventFilterRule;
+import org.openmetadata.schema.entity.events.Argument;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.JsonUtils;
@@ -51,7 +53,7 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EventSubscriptionResourceTest
     extends EntityResourceTest<EventSubscription, CreateEventSubscription> {
-  private static UUID DESTINATION_ID = UUID.randomUUID();
+  private static final UUID DESTINATION_ID = UUID.randomUUID();
   public static final FilteringRules PASS_ALL_FILTERING =
       new FilteringRules().withResources(List.of("all"));
 
@@ -212,58 +214,74 @@ public class EventSubscriptionResourceTest
             + "/api/v1/test/webhook/counter/"
             + test.getDisplayName();
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(alertName).withDestinations(getWebhook(endpoint));
+        createRequest(alertName)
+            .withDestinations(getWebhook(endpoint))
+            .withResources(List.of("all"));
 
-    FilteringRules rule1 =
-        new FilteringRules()
-            .withResources(List.of("all"))
-            .withRules(
+    AlertFilteringInput rule1 =
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType({'entityCreated'})")
-                        .withEffect(INCLUDE)));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(List.of("entityCreated"))))));
 
-    FilteringRules rule2 =
-        new FilteringRules()
-            .withResources(List.of("all"))
-            .withRules(
+    AlertFilteringInput rule2 =
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeCreated")
-                        .withCondition(
-                            "matchAnyEventType({'entityCreated', 'entityUpdated', 'entityDeleted'})")
-                        .withEffect(INCLUDE)));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(
+                                        List.of(
+                                            "entityCreated", "entityUpdated", "entityDeleted"))))));
 
-    FilteringRules rule3 =
-        new FilteringRules()
-            .withResources(List.of("all"))
-            .withRules(
+    AlertFilteringInput rule3 =
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType({'entityUpdated', 'entityDeleted'})")
-                        .withEffect(INCLUDE)));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(List.of("entityUpdated", "entityDeleted"))))));
 
-    FilteringRules rule4 =
-        new FilteringRules()
-            .withResources(List.of("all"))
-            .withRules(
+    AlertFilteringInput rule4 =
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType({'entityUpdated'})")
-                        .withEffect(INCLUDE)));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(List.of("entityUpdated"))))));
 
     // Set Filter Rules
-    genericWebhookActionRequest.withFilteringRules(rule1);
+    genericWebhookActionRequest.withFilteringInput(rule1);
     EventSubscription createdAlert =
         createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // Rule 2
     ChangeDescription change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringRules", rule1, rule2);
-    genericWebhookActionRequest.withFilteringRules(rule2);
+    fieldUpdated(change, "filteringInput", rule1, rule2);
+    genericWebhookActionRequest.withFilteringInput(rule2);
+    fieldUpdated(
+        change,
+        "filteringRules",
+        createdAlert.getFilteringRules(),
+        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
 
     createdAlert =
         updateAndCheckEntity(
@@ -275,8 +293,13 @@ public class EventSubscriptionResourceTest
 
     // Rule 3
     change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringRules", rule2, rule3);
-    genericWebhookActionRequest.withFilteringRules(rule3);
+    fieldUpdated(change, "filteringInput", rule2, rule3);
+    genericWebhookActionRequest.withFilteringInput(rule3);
+    fieldUpdated(
+        change,
+        "filteringRules",
+        createdAlert.getFilteringRules(),
+        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
 
     createdAlert =
         updateAndCheckEntity(
@@ -288,8 +311,13 @@ public class EventSubscriptionResourceTest
 
     // Rule 4
     change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringRules", rule3, rule4);
-    genericWebhookActionRequest.withFilteringRules(rule4);
+    fieldUpdated(change, "filteringInput", rule3, rule4);
+    genericWebhookActionRequest.withFilteringInput(rule4);
+    fieldUpdated(
+        change,
+        "filteringRules",
+        createdAlert.getFilteringRules(),
+        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
 
     createdAlert =
         updateAndCheckEntity(
@@ -557,15 +585,18 @@ public class EventSubscriptionResourceTest
     // Callback response 1 second slower
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(alertName).withDestinations(getWebhook(uri));
-    genericWebhookActionRequest.setFilteringRules(
-        new FilteringRules()
-            .withResources(List.of(entity))
-            .withRules(
+
+    genericWebhookActionRequest.setFilteringInput(
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeCreated")
-                        .withCondition("matchAnyEventType('entityCreated')")
-                        .withEffect(INCLUDE))));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(List.of("entityCreated")))))));
     createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive
@@ -576,15 +607,17 @@ public class EventSubscriptionResourceTest
     // Callback response 1 second slower
     CreateEventSubscription genericWebhookActionRequest2 =
         createRequest(alertName).withDestinations(getWebhook(uri));
-    genericWebhookActionRequest2.setFilteringRules(
-        new FilteringRules()
-            .withResources(List.of(entity))
-            .withRules(
+    genericWebhookActionRequest2.setFilteringInput(
+        new AlertFilteringInput()
+            .withFiltersInput(
                 List.of(
-                    new EventFilterRule()
-                        .withName("EventTypeUpdated")
-                        .withCondition("matchAnyEventType('entityUpdated')")
-                        .withEffect(INCLUDE))));
+                    new ArgumentsInput()
+                        .withName("filterByEventType")
+                        .withArguments(
+                            List.of(
+                                new Argument()
+                                    .withName("eventTypeList")
+                                    .withInput(List.of("entityCreated")))))));
     createAndCheckEntity(genericWebhookActionRequest2, ADMIN_AUTH_HEADERS);
 
     // TODO entity deleted events
@@ -595,7 +628,7 @@ public class EventSubscriptionResourceTest
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/ignore";
     return new CreateEventSubscription()
         .withName(name)
-        .withFilteringRules(PASS_ALL_FILTERING)
+        .withResources(List.of("all"))
         .withDestinations(getWebhook(uri))
         .withEnabled(true)
         .withBatchSize(10)
@@ -610,7 +643,7 @@ public class EventSubscriptionResourceTest
       CreateEventSubscription createRequest,
       Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), createdEntity.getName());
-    assertEquals(createRequest.getFilteringRules(), createdEntity.getFilteringRules());
+    assertEquals(createRequest.getFilteringInput(), createdEntity.getFilteringInput());
     assertEquals(createRequest.getAlertType(), createdEntity.getAlertType());
   }
 
@@ -629,7 +662,9 @@ public class EventSubscriptionResourceTest
     if (expected == actual) {
       return;
     }
-    if (fieldName.equals("destinations") || fieldName.equals("filteringRules")) {
+    if (fieldName.equals("destinations")
+        || fieldName.equals("filteringRules")
+        || fieldName.equals("filteringInput")) {
       assertEquals(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
