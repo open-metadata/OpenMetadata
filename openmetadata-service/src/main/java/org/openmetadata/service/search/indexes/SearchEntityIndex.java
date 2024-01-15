@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -27,7 +26,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
         "fqnParts",
         getFQNParts(
             searchIndex.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());

@@ -4,8 +4,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
@@ -135,9 +133,7 @@ public interface SearchIndex {
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
     fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 15.0f);
-    fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);

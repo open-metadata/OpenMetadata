@@ -112,7 +112,6 @@ public record TableIndex(Table table) implements ColumnIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
-    fields.put("columns.name.ngram", 1.0f);
     fields.put("columns.displayName", 1.0f);
     fields.put("columns.description", 1.0f);
     fields.put("columns.children.name", 2.0f);
