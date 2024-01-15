@@ -40,7 +40,7 @@
     "storageConnection": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.StorageConnection",
-      "description": "storage Connection.",
+      "description": "Storage Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
       ],
