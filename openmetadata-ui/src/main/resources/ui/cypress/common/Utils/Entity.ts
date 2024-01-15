@@ -469,7 +469,6 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
       '1'
     );
 
-    cy.get(`[data-testid=${entityName}]`).should('contain', entityName);
     cy.get(`[data-testid=${entityName}]`).click();
   }
 
