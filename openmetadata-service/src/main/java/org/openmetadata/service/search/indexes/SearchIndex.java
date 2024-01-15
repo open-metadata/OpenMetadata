@@ -132,13 +132,13 @@ public interface SearchIndex {
 
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
+    fields.put(FIELD_DISPLAY_NAME, 10.0f);
+    fields.put(FIELD_NAME, 10.0f);
+    fields.put(DISPLAY_NAME_KEYWORD, 8.0f);
+    fields.put(NAME_KEYWORD, 8.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);
-    fields.put(FULLY_QUALIFIED_NAME, 10.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
+    fields.put(FULLY_QUALIFIED_NAME, 5.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);
     return fields;
   }
 

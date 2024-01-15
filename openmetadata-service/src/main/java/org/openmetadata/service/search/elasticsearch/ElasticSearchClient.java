@@ -721,8 +721,9 @@ public class ElasticSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
             .fields(TableIndex.getFields())
-            .type(MultiMatchQueryBuilder.Type.BEST_FIELDS)
-            .fuzziness(Fuzziness.AUTO);
+            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+            .tieBreaker(0.9f);
+
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
             .missing(0)

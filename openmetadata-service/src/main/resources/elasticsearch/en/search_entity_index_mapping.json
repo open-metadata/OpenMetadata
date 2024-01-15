@@ -106,8 +106,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"

@@ -61,7 +61,7 @@ public class PipelineIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("tasks.name", 2.0f);
+    fields.put("tasks.name", 8.0f);
     fields.put("tasks.description", 1.0f);
     return fields;
   }

@@ -75,7 +75,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "freqs",
+        "index_options": "docs",
         "analyzer": "om_analyzer"
       },
       "version": {

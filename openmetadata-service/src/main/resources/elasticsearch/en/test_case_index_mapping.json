@@ -71,7 +71,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
       "entityLink": {
         "type": "text"
@@ -140,7 +140,8 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "index_options": "docs"
           },
           "entityType": {
             "type": "keyword"

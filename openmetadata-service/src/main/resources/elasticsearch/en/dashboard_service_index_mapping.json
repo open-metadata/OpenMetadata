@@ -63,7 +63,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "index_options": "docs"
       },
       "pipelines": {
         "properties": {

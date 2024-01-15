@@ -34,7 +34,7 @@ public record TagIndex(Tag tag) implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("classification.name", 1.0f);
+    fields.put("classification.name", 7.0f);
     return fields;
   }
 }

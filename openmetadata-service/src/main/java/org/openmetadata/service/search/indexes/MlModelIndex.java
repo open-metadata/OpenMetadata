@@ -49,7 +49,7 @@ public class MlModelIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("mlFeatures.name", 2.0f);
+    fields.put("mlFeatures.name", 8.0f);
     fields.put("mlFeatures.description", 1.0f);
     return fields;
   }

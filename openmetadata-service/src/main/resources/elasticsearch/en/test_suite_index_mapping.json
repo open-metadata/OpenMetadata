@@ -53,7 +53,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
       "displayName": {
         "type": "text",
