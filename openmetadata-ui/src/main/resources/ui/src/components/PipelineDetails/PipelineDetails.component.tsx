@@ -70,6 +70,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../AppRouter/withActivityFeed';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../Lineage/Lineage.component';
 import LineageProvider from '../LineageProvider/LineageProvider';
