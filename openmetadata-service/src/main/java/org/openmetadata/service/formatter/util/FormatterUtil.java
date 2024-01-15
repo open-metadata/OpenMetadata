@@ -264,20 +264,20 @@ public class FormatterUtil {
     return messages;
   }
 
-  public static ChangeEvent getChangeEventFromResponseContext(
+  public static Optional<ChangeEvent> getChangeEventFromResponseContext(
       ContainerResponseContext responseContext, String updateBy, String method) {
     // GET operations don't produce change events , Response has no entity to produce change event
     // from
     if (method.equals("GET") || responseContext.getEntity() == null) {
-      return null;
+      return Optional.empty();
     }
 
     Optional<EventType> eventType = getEventTypeFromResponse(responseContext);
     if (eventType.isEmpty() || !responseContext.hasEntity()) {
-      return null;
+      return Optional.empty();
     }
 
-    return extractChangeEvent(responseContext, updateBy, eventType.get());
+    return Optional.ofNullable(extractChangeEvent(responseContext, updateBy, eventType.get()));
   }
 
   private static ChangeEvent extractChangeEvent(

@@ -20,6 +20,7 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEve
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
@@ -56,9 +57,10 @@ public class ChangeEventHandler implements EventHandler {
       CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
       FeedRepository feedRepository = new FeedRepository();
-      ChangeEvent changeEvent =
+      Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
-      if (changeEvent != null) {
+      if (optionalChangeEvent.isPresent()) {
+        ChangeEvent changeEvent = optionalChangeEvent.get();
         // Always set the Change Event Username as context Principal, the one creating the CE
         changeEvent.setUserName(loggedInUserName);
         LOG.info(
