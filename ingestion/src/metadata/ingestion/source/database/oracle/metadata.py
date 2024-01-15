@@ -20,7 +20,7 @@ from sqlalchemy.engine import Inspector
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.entity.data.database import EntityName
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
