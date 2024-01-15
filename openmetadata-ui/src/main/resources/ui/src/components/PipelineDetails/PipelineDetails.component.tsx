@@ -424,6 +424,15 @@ const PipelineDetails = ({
         ),
       },
       {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        width: 120,
+        accessor: 'owner',
+        filterIcon: getFilterIcon('tag-filter'),
+        render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
+      },
+      {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
