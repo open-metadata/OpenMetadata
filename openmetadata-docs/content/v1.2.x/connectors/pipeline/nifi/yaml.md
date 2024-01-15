@@ -5,6 +5,15 @@ slug: /connectors/pipeline/nifi/yaml
 
 # Run the Nifi Connector Externally
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="cross" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="cross" /%} |
+
+
 In this section, we provide guides and references to use the Nifi connector.
 
 Configure and schedule Nifi metadata and profiler workflows from the OpenMetadata UI:

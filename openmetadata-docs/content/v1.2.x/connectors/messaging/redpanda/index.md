@@ -5,6 +5,11 @@ slug: /connectors/messaging/redpanda
 
 # Redpanda
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Topics     | {% icon iconName="check" /%} |
+| Sample Data| {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Redpanda connector.
 
 Configure and schedule Redpanda metadata and profiler workflows from the OpenMetadata UI:
