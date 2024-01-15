@@ -17,11 +17,14 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityFieldDisplay,
@@ -31,6 +34,7 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
+import './feed-card-header-v1.style.less';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -43,6 +47,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   feedType,
   task,
 }) => {
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: createdBy ?? '',
+  });
+
   const { t } = useTranslation();
 
   const { task: taskDetails } = task;
@@ -119,8 +128,12 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   return (
-    <div className={classNames('d-inline-block', className)}>
-      <UserPopOverCard userName={createdBy}>{createdBy}</UserPopOverCard>
+    <div className={classNames('d-inline-block feed-header', className)}>
+      <UserPopOverCard userName={createdBy}>
+        <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
+          {getEntityName(user)}
+        </Link>
+      </UserPopOverCard>
 
       {feedType === ThreadType.Conversation && getFeedLinkElement}
       {feedType === ThreadType.Task && getTaskLinkElement}

@@ -47,7 +47,7 @@ import {
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
 import {
-  getIngestionPipelineByName,
+  getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
@@ -154,10 +154,9 @@ const LogsViewer = () => {
   const fetchIngestionDetailsByName = async () => {
     try {
       setIsLoading(true);
-      const res = await getIngestionPipelineByName(ingestionName, [
-        'owner',
-        'pipelineStatuses',
-      ]);
+      const res = await getIngestionPipelineByFqn(ingestionName, {
+        fields: 'owner,pipelineStatuses',
+      });
       if (res) {
         setIngestionDetails(res);
 
