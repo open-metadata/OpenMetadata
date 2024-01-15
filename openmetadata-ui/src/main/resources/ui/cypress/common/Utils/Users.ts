@@ -252,9 +252,12 @@ export const editTeams = (teamName: string) => {
   cy.get('.ant-select-selection-item-remove > .anticon').click();
   cy.get('[data-testid="team-select"]').click();
   cy.get('[data-testid="team-select"]').type(teamName);
+  interceptURL('PATCH', '/api/v1/users/*', 'updateTeams');
   cy.get('.filter-node > .ant-select-tree-node-content-wrapper').click();
   cy.get('[data-testid="inline-save-btn"]').click({ timeout: 10000 });
+  verifyResponseStatusCode('@updateTeams', 200);
   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   cy.get(`[data-testid="${teamName}"]`).should('exist').and('be.visible');
 };
 
