@@ -161,6 +161,7 @@ Cypress.Commands.add('logout', () => {
 
 Cypress.Commands.add('sidebarClick', (id) => {
   cy.get(`[data-testid="${id}"]`).click({
+    animationDistanceThreshold: 20,
     waitForAnimations: true,
   });
   cy.sidebarHoverOutside();

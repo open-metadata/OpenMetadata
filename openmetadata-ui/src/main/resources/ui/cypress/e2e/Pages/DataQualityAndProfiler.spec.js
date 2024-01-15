@@ -532,6 +532,9 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'getTestCase'
     );
+
+    cy.sidebarHover();
+
     cy.get('[data-testid="data-quality"]').click();
 
     cy.sidebarClick('app-bar-item-data-contract');
@@ -796,6 +799,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
+
+    cy.sidebarHover();
+
     cy.get('[data-testid="data-quality"]').click();
 
     cy.sidebarClick('app-bar-item-data-contract');
