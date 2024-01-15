@@ -220,7 +220,7 @@ public class EventSubscriptionResourceTest
 
     AlertFilteringInput rule1 =
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -232,7 +232,7 @@ public class EventSubscriptionResourceTest
 
     AlertFilteringInput rule2 =
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -246,7 +246,7 @@ public class EventSubscriptionResourceTest
 
     AlertFilteringInput rule3 =
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -258,7 +258,7 @@ public class EventSubscriptionResourceTest
 
     AlertFilteringInput rule4 =
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -269,14 +269,14 @@ public class EventSubscriptionResourceTest
                                     .withInput(List.of("entityUpdated"))))));
 
     // Set Filter Rules
-    genericWebhookActionRequest.withFilteringInput(rule1);
+    genericWebhookActionRequest.withInput(rule1);
     EventSubscription createdAlert =
         createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // Rule 2
     ChangeDescription change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringInput", rule1, rule2);
-    genericWebhookActionRequest.withFilteringInput(rule2);
+    fieldUpdated(change, "input", rule1, rule2);
+    genericWebhookActionRequest.withInput(rule2);
     fieldUpdated(
         change,
         "filteringRules",
@@ -293,8 +293,8 @@ public class EventSubscriptionResourceTest
 
     // Rule 3
     change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringInput", rule2, rule3);
-    genericWebhookActionRequest.withFilteringInput(rule3);
+    fieldUpdated(change, "input", rule2, rule3);
+    genericWebhookActionRequest.withInput(rule3);
     fieldUpdated(
         change,
         "filteringRules",
@@ -311,8 +311,8 @@ public class EventSubscriptionResourceTest
 
     // Rule 4
     change = getChangeDescription(createdAlert, MINOR_UPDATE);
-    fieldUpdated(change, "filteringInput", rule3, rule4);
-    genericWebhookActionRequest.withFilteringInput(rule4);
+    fieldUpdated(change, "input", rule3, rule4);
+    genericWebhookActionRequest.withInput(rule4);
     fieldUpdated(
         change,
         "filteringRules",
@@ -586,9 +586,9 @@ public class EventSubscriptionResourceTest
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(alertName).withDestinations(getWebhook(uri));
 
-    genericWebhookActionRequest.setFilteringInput(
+    genericWebhookActionRequest.setInput(
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -607,9 +607,9 @@ public class EventSubscriptionResourceTest
     // Callback response 1 second slower
     CreateEventSubscription genericWebhookActionRequest2 =
         createRequest(alertName).withDestinations(getWebhook(uri));
-    genericWebhookActionRequest2.setFilteringInput(
+    genericWebhookActionRequest2.setInput(
         new AlertFilteringInput()
-            .withFiltersInput(
+            .withFilters(
                 List.of(
                     new ArgumentsInput()
                         .withName("filterByEventType")
@@ -643,7 +643,7 @@ public class EventSubscriptionResourceTest
       CreateEventSubscription createRequest,
       Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), createdEntity.getName());
-    assertEquals(createRequest.getFilteringInput(), createdEntity.getFilteringInput());
+    assertEquals(createRequest.getInput(), createdEntity.getInput());
     assertEquals(createRequest.getAlertType(), createdEntity.getAlertType());
   }
 

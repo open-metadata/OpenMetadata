@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
+import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -30,7 +31,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -117,9 +121,8 @@ public class EventSubscriptionResource
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getEntityNotificationDescriptors()),
-          listOrEmpty(EventSubscriptionResource.getNotificationFunctionsDescriptors()),
-          listOrEmpty(EventSubscriptionResource.getFilterDescriptors()));
+          listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
+          listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -542,42 +545,24 @@ public class EventSubscriptionResource
   }
 
   @GET
-  @Path("/functions")
-  @Operation(
-      operationId = "listEventSubscriptionFunctions",
-      summary = "Get list of Event Subscription functions used in filtering EventSubscription",
-      description =
-          "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
-  public ResultList<EventFilterRule> listEventSubscriptionFunctions(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return new ResultList<>(EventsSubscriptionRegistry.listNotificationsFunctionsDescriptors());
-  }
-
-  @GET
-  @Path("/resources")
+  @Path("/{alertType}/resources")
   @Operation(
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
       description =
           "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
-  public ResultList<NotificationResourceDescriptor> listEventSubResources(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public ResultList<FilterResourceDescriptor> listEventSubResources(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "AlertType", schema = @Schema(type = "string"))
+          @PathParam("alertType")
+          CreateEventSubscription.AlertType alertType) {
     authorizer.authorizeAdmin(securityContext);
-    return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
-  }
-
-  @GET
-  @Path("/observability/resources")
-  @Operation(
-      operationId = "listDataObservabilityResources",
-      summary = "Get list of Data Observability Resources used in filtering Event Subscription",
-      description =
-          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
-  public ResultList<FilterResourceDescriptor> listObservabilityResources(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
+    if (alertType.equals(NOTIFICATION)) {
+      return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
+    } else {
+      return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
+    }
   }
 
   @GET
@@ -612,7 +597,7 @@ public class EventSubscriptionResource
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
-        .withFilteringInput(create.getFilteringInput());
+        .withInput(create.getInput());
   }
 
   private List<SubscriptionDestination> getSubscriptions(
@@ -628,17 +613,32 @@ public class EventSubscriptionResource
     return result;
   }
 
-  public static List<NotificationResourceDescriptor> getEntityNotificationDescriptors()
+  public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()
       throws IOException {
-    return getDescriptorsFromFile(
-        "EventSubResourceDescriptor.json", NotificationResourceDescriptor.class);
+    List<NotificationResourceDescriptor> entityNotificationDescriptors =
+        getDescriptorsFromFile(
+            "EventSubResourceDescriptor.json", NotificationResourceDescriptor.class);
+    Map<String, EventFilterRule> functions =
+        getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class).stream()
+            .collect(
+                Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
+    return entityNotificationDescriptors.stream()
+        .map(
+            descriptor -> {
+              List<EventFilterRule> rules =
+                  descriptor.getSupportedFilters().stream()
+                      .map(operation -> functions.get(operation.value()))
+                      .filter(Objects::nonNull)
+                      .toList();
+              return new FilterResourceDescriptor()
+                  .withName(descriptor.getName())
+                  .withSupportedFilters(rules);
+            })
+        .toList();
   }
 
-  public static List<EventFilterRule> getNotificationFunctionsDescriptors() throws IOException {
-    return getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class);
-  }
-
-  public static List<FilterResourceDescriptor> getFilterDescriptors() throws IOException {
+  public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors()
+      throws IOException {
     return getDescriptorsFromFile(
         "EntityObservabilityFilterDescriptor.json", FilterResourceDescriptor.class);
   }

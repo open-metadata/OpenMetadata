@@ -30,7 +30,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
   static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize";
-  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,filteringRules";
+  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,input,filteringRules";
 
   public EventSubscriptionRepository() {
     super(
@@ -107,8 +107,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public void entitySpecificUpdate() {
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
-      recordChange(
-          "filteringInput", original.getFilteringInput(), updated.getFilteringInput(), true);
+      recordChange("input", original.getInput(), updated.getInput(), true);
       recordChange(
           "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
       recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);

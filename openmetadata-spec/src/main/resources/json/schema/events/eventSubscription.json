@@ -16,6 +16,9 @@
           "description": "Name of the filter",
           "type": "string"
         },
+        "effect" : {
+          "$ref": "./eventFilterRule.json#/definitions/effect"
+        },
         "arguments": {
           "description": "Arguments List",
           "type": "array",
@@ -26,9 +29,6 @@
               "name": {
                 "description": "Name of the Argument",
                 "type": "string"
-              },
-              "effect" : {
-                "$ref": "./eventFilterRule.json#/definitions/effect"
               },
               "input": {
                 "description": "Value of the Argument",
@@ -48,14 +48,14 @@
       "description": "Observability of the event subscription.",
       "type": "object",
       "properties": {
-        "filtersInput": {
+        "filters": {
             "description": "List of filters for the event subscription.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/argumentsInput"
             }
         },
-        "actionsInput": {
+        "actions": {
           "description": "List of filters for the event subscription.",
           "type": "array",
           "items": {
@@ -337,7 +337,7 @@
       "type": "integer",
       "default": 10
     },
-    "filteringInput": {
+    "input": {
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
 

@@ -21,10 +21,39 @@
   },
   "destinations": [
     {
+      "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
       "category": "External",
       "type": "ActivityFeed"
     }
   ],
+  "input": {
+    "filters": [
+      {
+        "name": "filterByUpdaterName",
+        "effect" : "exclude",
+        "arguments": [
+          {
+            "name": "updateByUserList",
+            "input": [
+              "ingestion-bot"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByFieldChange",
+        "effect" : "exclude",
+        "arguments": [
+          {
+            "name": "fieldChangeList",
+            "input": [
+              "usageSummary"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "provider" : "system",
   "enabled" : true
 }

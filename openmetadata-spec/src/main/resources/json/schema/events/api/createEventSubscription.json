@@ -68,7 +68,7 @@
       "type": "integer",
       "default": 10
     },
-    "filteringInput": {
+    "input": {
       "description": "Input for the Filters.",
       "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
 

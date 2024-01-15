@@ -21,7 +21,6 @@ import static org.openmetadata.service.security.policyevaluator.CompiledRule.par
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +38,6 @@ import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.JsonUtils;
@@ -85,7 +83,7 @@ public final class AlertUtil {
     for (int i = 0; i < alertFilterRules.size(); i++) {
       EventFilterRule rule = alertFilterRules.get(i);
       builder.append("(");
-      if (rule.getEffect() == Argument.Effect.INCLUDE) {
+      if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
         builder.append(rule.getCondition());
       } else {
         builder.append("!");
@@ -200,30 +198,24 @@ public final class AlertUtil {
     if (createEventSubscription
         .getAlertType()
         .equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
-      Set<NotificationFilterOperation> operations =
-          new HashSet<>(
-              EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
-                  .getSupportedFilters());
       Map<String, EventFilterRule> supportedFilters =
-          EventsSubscriptionRegistry.listNotificationsFunctionsDescriptors().stream()
-              .filter(
-                  eventFilterRule ->
-                      operations.contains(
-                          NotificationFilterOperation.fromValue(eventFilterRule.getName())))
+          EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
+              .getSupportedFilters()
+              .stream()
               .collect(
                   Collectors.toMap(
                       EventFilterRule::getName,
                       eventFilterRule ->
                           JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
       // Input validation
-      if (createEventSubscription.getFilteringInput() != null) {
-        listOrEmpty(createEventSubscription.getFilteringInput().getFiltersInput())
+      if (createEventSubscription.getInput() != null) {
+        listOrEmpty(createEventSubscription.getInput().getFilters())
             .forEach(
                 argumentsInput ->
                     finalRules.add(
                         getFilterRule(
                             supportedFilters,
-                            argumentsInput.getName(),
+                            argumentsInput,
                             buildInputArgumentsMap(argumentsInput))));
       }
       return new FilteringRules()
@@ -255,22 +247,22 @@ public final class AlertUtil {
                           JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
 
       // Input validation
-      if (createEventSubscription.getFilteringInput() != null) {
-        listOrEmpty(createEventSubscription.getFilteringInput().getFiltersInput())
+      if (createEventSubscription.getInput() != null) {
+        listOrEmpty(createEventSubscription.getInput().getFilters())
             .forEach(
                 argumentsInput ->
                     finalRules.add(
                         getFilterRule(
                             supportedFilters,
-                            argumentsInput.getName(),
+                            argumentsInput,
                             buildInputArgumentsMap(argumentsInput))));
-        listOrEmpty(createEventSubscription.getFilteringInput().getActionsInput())
+        listOrEmpty(createEventSubscription.getInput().getActions())
             .forEach(
                 argumentsInput ->
                     actions.add(
                         getFilterRule(
                             supportedActions,
-                            argumentsInput.getName(),
+                            argumentsInput,
                             buildInputArgumentsMap(argumentsInput))));
       }
       return new FilteringRules()
@@ -288,12 +280,14 @@ public final class AlertUtil {
 
   private static EventFilterRule getFilterRule(
       Map<String, EventFilterRule> supportedFilters,
-      String name,
+      ArgumentsInput filterDetails,
       Map<String, List<String>> inputArgMap) {
-    if (!supportedFilters.containsKey(name)) {
-      throw new BadRequestException("Give Resource doesn't support the filter " + name);
+    if (!supportedFilters.containsKey(filterDetails.getName())) {
+      throw new BadRequestException(
+          "Give Resource doesn't support the filter " + filterDetails.getName());
     }
-    EventFilterRule rule = supportedFilters.get(name);
+    EventFilterRule rule =
+        supportedFilters.get(filterDetails.getName()).withEffect(filterDetails.getEffect());
     if (rule.getInputType().equals(EventFilterRule.InputType.NONE)) {
       return rule;
     } else {
