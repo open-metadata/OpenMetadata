@@ -5,12 +5,12 @@ slug: /connectors/search/elasticsearch
 
 # Elasticsearch
 
-| Feature            | Status               |
-|------------|------------------------------|
-| Search Indexes | {% icon iconName="check" /%} |
-| Sample Data | {% icon iconName="check" /%} |
-| Supported Versions | Elasticsearch 7.0 and above |
-| Stage              | BETA                      |
+| Feature            | Status                       |
+|--------------------|------------------------------|
+| Search Indexes     | {% icon iconName="check" /%} |
+| Sample Data        | {% icon iconName="check" /%} |
+| Supported Versions | Elasticsearch 7.0 and above  |
+| Stage              | BETA                         |
 
 In this section, we provide guides and references to use the Elasticsearch connector.
 
