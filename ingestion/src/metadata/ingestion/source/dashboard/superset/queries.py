@@ -85,5 +85,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	table_name= '{table_name}'
+	table_name= %(table_name)s
 """
