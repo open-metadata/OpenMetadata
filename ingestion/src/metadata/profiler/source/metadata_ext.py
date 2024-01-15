@@ -26,6 +26,7 @@ from typing import Iterable, cast
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -197,8 +198,17 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 else:
                     database_names = self.source.get_database_names_raw()
                     for database in database_names:
+                        database_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Database,
+                            service_name=self.config.source.serviceName,
+                            database_name=database,
+                        )
                         if filter_by_database(
-                            self.source_config.databaseFilterPattern, database
+                            self.source_config.databaseFilterPattern,
+                            database_fqn
+                            if self.source_config.useFqnForFiltering
+                            else database,
                         ):
                             self.status.filter(database, "Database pattern not allowed")
                             continue
@@ -225,18 +235,38 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         """
         for table in tables:
             try:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                )
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern,
-                    table.databaseSchema.name,  # type: ignore
+                    schema_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.databaseSchema.name,  # type: ignore
                 ):
                     self.status.filter(
                         f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
                         "Schema pattern not allowed",
                     )
                     continue
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                    table_name=table.name.__root__,
+                )
+
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table.name.__root__,
+                    table_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.name.__root__,
                 ):
                     self.status.filter(
                         f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",

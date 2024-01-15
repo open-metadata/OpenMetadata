@@ -79,12 +79,17 @@
       "default": 5,
       "title": "Thread Count"
     },
-
     "timeoutSeconds": {
       "description": "Profiler Timeout in Seconds",
       "type": "integer",
       "default": 43200,
       "title": "Timeout (in sec.)"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
     }
   },
   "additionalProperties": false
