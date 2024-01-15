@@ -11,130 +11,108 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Thread, ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
 
-const FQN = 'service.database.schema.table';
-const type = 'table';
-const expectedDisplayName = 'database.schema.table';
-
-jest.mock('../../../../rest/userAPI', () => ({
-  getUserByName: jest.fn().mockReturnValue({}),
-}));
-
-jest.mock('../../../../utils/CommonUtils', () => ({
-  getPartialNameFromFQN: jest.fn().mockReturnValue('feedcard'),
-  getNonDeletedTeams: jest.fn().mockReturnValue([]),
-  getEntityName: jest.fn().mockReturnValue('entityname'),
-  getPartialNameFromTableFQN: jest.fn().mockImplementation(() => {
-    return expectedDisplayName;
-  }),
-  getEntityDetailLink: jest.fn().mockImplementation(() => expectedDisplayName),
-}));
-
-jest.mock('../../../../utils/TableUtils', () => ({
-  getTierTags: jest.fn(),
-  getTagsWithoutTier: jest.fn(),
-}));
-
-jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
-});
-
-const mockFeedHeaderProps = {
-  createdBy: 'xyz',
-  entityFQN: 'x.y.v.z',
-  entityField: 'z',
-  entityType: 'y',
+const mockProps1 = {
+  createdBy: 'username',
+  entityFQN: 'service.database.schema.table',
+  entityField: 'entityField',
+  entityType: 'table',
   isEntityFeed: true,
   timeStamp: 1647322547179,
   feedType: ThreadType.Conversation,
   task: {} as Thread,
 };
 
+const mockProps2 = {
+  ...mockProps1,
+  isEntityFeed: false,
+};
+
+jest.mock('../../../../constants/constants', () => ({
+  getUserPath: jest.fn().mockReturnValue('user-profile-path'),
+}));
+
+jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
+  useUserProfile: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockImplementation((date) => date),
+  getRelativeTime: jest.fn().mockImplementation((date) => date),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('username'),
+}));
+
+jest.mock('../../../../utils/FeedUtils', () => ({
+  entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
+  getEntityFieldDisplay: jest
+    .fn()
+    .mockImplementation((entityField) => entityField),
+  prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
+}));
+
+jest.mock('../../../../utils/TasksUtils', () => ({
+  getTaskDetailPath: jest.fn().mockReturnValue('task detail path'),
+}));
+
+jest.mock('../../../common/PopOverCard/EntityPopOverCard', () =>
+  jest.fn().mockImplementation(({ children }) => (
+    <>
+      EntityPopOverCard
+      <div>{children}</div>
+    </>
+  ))
+);
+
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn().mockImplementation(({ children }) => (
+    <>
+      UserPopOverCard
+      <div>{children}</div>
+    </>
+  ))
+);
+
 describe('Test FeedHeader Component', () => {
-  it('Checks if the FeedHeader component has isEntityFeed as true', async () => {
-    const { container } = render(<FeedCardHeader {...mockFeedHeaderProps} />, {
+  it('should contain all necessary elements, when isEntityFeed true', () => {
+    render(<FeedCardHeader {...mockProps1} />, {
       wrapper: MemoryRouter,
     });
-    const createdBy = await findByText(container, /xyz/i);
 
-    const headerElement = await findByTestId(container, 'headerText');
-    const entityFieldElement = await findByTestId(
-      container,
-      'headerText-entityField'
-    );
-    const entityTypeElement = queryByTestId(container, 'entityType');
-    const entityLinkElement = queryByTestId(container, 'entitylink');
-    const timeStampElement = await findByTestId(container, 'timestamp');
+    expect(screen.getByText('UserPopOverCard')).toBeInTheDocument();
+    expect(screen.getByText('username')).toBeInTheDocument();
 
-    expect(createdBy).toBeInTheDocument();
+    expect(screen.getByTestId('headerText-entityField')).toBeInTheDocument();
 
-    expect(headerElement).toBeInTheDocument();
-    expect(entityFieldElement).toBeInTheDocument();
-    expect(entityTypeElement).not.toBeInTheDocument();
-    expect(entityLinkElement).not.toBeInTheDocument();
-    expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('1 year ago');
+    expect(screen.getByTestId('timestamp')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('entitylink')).not.toBeInTheDocument();
   });
 
-  it('Checks if the FeedHeader component has isEntityFeed as false', async () => {
-    const { container } = render(
-      <FeedCardHeader {...mockFeedHeaderProps} isEntityFeed={false} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const createdBy = await findByText(container, /xyz/i);
+  it('should contain all necessary elements, when isEntityFeed false', () => {
+    render(<FeedCardHeader {...mockProps2} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const headerElement = await findByTestId(container, 'headerText');
-    const entityFieldElement = queryByTestId(
-      container,
-      'headerText-entityField'
-    );
-    const entityTypeElement = await findByTestId(container, 'entityType');
-    const entityLinkElement = await findByTestId(container, 'entitylink');
-    const timeStampElement = await findByTestId(container, 'timestamp');
+    expect(screen.getByText('UserPopOverCard')).toBeInTheDocument();
+    expect(screen.getByText('username')).toBeInTheDocument();
 
-    expect(createdBy).toBeInTheDocument();
+    expect(screen.getByText('table')).toBeInTheDocument();
+    expect(screen.getByText('database.schema.table')).toBeInTheDocument();
+    expect(screen.getByTestId('entitylink')).toBeInTheDocument();
 
-    expect(headerElement).toBeInTheDocument();
-    expect(entityFieldElement).not.toBeInTheDocument();
-    expect(entityTypeElement).toBeInTheDocument();
-    expect(entityLinkElement).toBeInTheDocument();
-    expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('1 year ago');
-  });
+    expect(screen.getByTestId('timestamp')).toBeInTheDocument();
 
-  it('Should show link text as `database.schema.table` if entity type is table', async () => {
-    const { container } = render(
-      <FeedCardHeader
-        {...mockFeedHeaderProps}
-        entityFQN={FQN}
-        entityType={type}
-        isEntityFeed={false}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const entityTypeElement = await findByTestId(container, 'entityType');
-    const entityLinkElement = await findByTestId(container, 'entitylink');
-
-    expect(entityTypeElement).toBeInTheDocument();
-    expect(entityLinkElement).toBeInTheDocument();
-
-    expect(entityTypeElement).toHaveTextContent(type);
-
-    expect(entityLinkElement).toHaveTextContent(expectedDisplayName);
+    expect(
+      screen.queryByTestId('headerText-entityField')
+    ).not.toBeInTheDocument();
   });
 });

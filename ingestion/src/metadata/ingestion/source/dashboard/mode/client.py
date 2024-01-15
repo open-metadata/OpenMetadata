@@ -74,23 +74,18 @@ class ModeApiClient:
         Returns:
             dict
         """
-        try:
-            all_reports = []
-            response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}")
-            collections = response_collections[EMBEDDED]["spaces"]
-            for collection in collections:
-                response_reports = self.get_all_reports_for_collection(
-                    workspace_name=workspace_name,
-                    collection_token=collection.get(TOKEN),
-                )
+        all_reports = []
+        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}")
+        collections = response_collections[EMBEDDED]["spaces"]
+        for collection in collections:
+            response_reports = self.get_all_reports_for_collection(
+                workspace_name=workspace_name,
+                collection_token=collection.get(TOKEN),
+            )
+            if response_reports:
                 reports = response_reports[EMBEDDED][REPORTS]
                 all_reports.extend(reports)
-            return all_reports
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all reports: {exc}")
-
-        return None
+        return all_reports
 
     def get_all_reports_for_collection(
         self, workspace_name: str, collection_token: str
@@ -180,11 +175,3 @@ class ModeApiClient:
             logger.warning(f"Error fetching all data sources: {exc}")
 
         return None
-
-    def get_user_account(self) -> dict:
-        """Method to fetch account details
-        Returns:
-            dict
-        """
-        response = self.client.get("/account")
-        return response
