@@ -25,6 +25,7 @@ from sqlalchemy.types import FLOAT
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
+    SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -74,6 +75,20 @@ def get_table_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_view_names_reflection(self, schema=None, **kw):
+    """Return all view names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_view_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
 def get_table_names(self, connection, schema, **kw):
     query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
     if kw.get("include_transient_tables"):
@@ -86,8 +101,12 @@ def get_table_names(self, connection, schema, **kw):
     return result
 
 
-def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
-    cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
+def get_view_names(self, connection, schema, **kw):
+    if kw.get("materialized_views"):
+        query = SNOWFLAKE_GET_MVIEW_NAMES
+    else:
+        query = SNOWFLAKE_GET_VIEW_NAMES
+    cursor = connection.execute(query.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 

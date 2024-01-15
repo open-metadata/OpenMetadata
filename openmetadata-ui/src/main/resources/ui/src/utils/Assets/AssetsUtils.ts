@@ -18,6 +18,7 @@ import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/Ass
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Domain } from '../../generated/entity/domains/domain';
+import { ListParams } from '../../interface/API.interface';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -29,7 +30,7 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../rest/databaseAPI';
 import {
-  getDataModelsByName,
+  getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
 import {
@@ -53,7 +54,7 @@ import {
   patchContainerDetails,
 } from '../../rest/storageAPI';
 import {
-  getStoredProceduresByName,
+  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
 } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
@@ -115,8 +116,8 @@ export const getAPIfromSource = (
 export const getEntityAPIfromSource = (
   source: keyof MapPatchAPIResponse
 ): ((
-  id: string,
-  queryFields: string | string[]
+  fqn: string,
+  params?: ListParams
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
   switch (source) {
     case EntityType.TABLE:
@@ -132,9 +133,9 @@ export const getEntityAPIfromSource = (
     case EntityType.CONTAINER:
       return getContainerByName;
     case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresByName;
+      return getStoredProceduresByFqn;
     case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelsByName;
+      return getDataModelByFqn;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
     case EntityType.GLOSSARY:
@@ -202,10 +203,9 @@ export const updateDomainAssets = async (
 ) => {
   try {
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(
-        item.fullyQualifiedName,
-        getAssetsFields(type)
-      )
+      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
+        fields: getAssetsFields(type),
+      })
     );
     const entityDetailsResponse = await Promise.allSettled(entityDetails);
     const map = new Map();
@@ -242,10 +242,9 @@ export const removeGlossaryTermAssets = async (
   selectedItems: Map<string, EntityDetailUnion>
 ) => {
   const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-    getEntityAPIfromSource(item.entityType)(
-      item.fullyQualifiedName,
-      getAssetsFields(type)
-    )
+    getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
+      fields: getAssetsFields(type),
+    })
   );
 
   try {

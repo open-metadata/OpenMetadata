@@ -17,10 +17,13 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
+import { getUserPath } from '../../../../constants/constants';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityField,
@@ -49,6 +52,11 @@ const FeedCardHeaderV1 = ({
   className = '',
   isEntityFeed = false,
 }: FeedCardHeaderV1Props) => {
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: createdBy ?? '',
+  });
+
   const { t } = useTranslation();
 
   const entityType = getEntityType(entityLink) ?? '';
@@ -59,7 +67,7 @@ const FeedCardHeaderV1 = ({
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
-      <span className="m-x-xss">{t('label.posted-on-lowercase')}</span>
+      <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -96,20 +104,25 @@ const FeedCardHeaderV1 = ({
 
   return (
     <div className={classNames('feed-header', className)}>
-      <UserPopOverCard
-        showUserName
-        className="thread-author"
-        userName={createdBy}
-      />
-      {getFeedLinkElement}
+      <UserPopOverCard userName={createdBy} />
 
-      {timeStamp && (
-        <Tooltip title={formatDateTime(timeStamp)}>
-          <span className="feed-header-timestamp" data-testid="timestamp">
-            {getRelativeTime(timeStamp)}
-          </span>
-        </Tooltip>
-      )}
+      <p className="feed-header-content break-word">
+        <UserPopOverCard userName={createdBy}>
+          <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
+            {getEntityName(user)}
+          </Link>
+        </UserPopOverCard>
+
+        {getFeedLinkElement}
+
+        {timeStamp && (
+          <Tooltip title={formatDateTime(timeStamp)}>
+            <span className="feed-header-timestamp" data-testid="timestamp">
+              {getRelativeTime(timeStamp)}
+            </span>
+          </Tooltip>
+        )}
+      </p>
     </div>
   );
 };

@@ -422,7 +422,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                               ? 'custom-node-header-tracing'
                               : 'custom-node-column-lineage-normal bg-white'
                           )}
-                          data-testid="column"
+                          data-testid={`column-${column.fullyQualifiedName}`}
                           key={column.fullyQualifiedName}
                           onClick={(e) => {
                             e.stopPropagation();

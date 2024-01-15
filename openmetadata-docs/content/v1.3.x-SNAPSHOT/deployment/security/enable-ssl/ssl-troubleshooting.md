@@ -148,7 +148,7 @@ please visit our demo repository [here](https://github.com/open-metadata/openmet
 ## Providing a single keystore that has all the cacerts required
 
 This can be achieved using the `OPENMETADATA_OPTS` environment variable configuration across all the deployments.
-However, for Production, we recommend you to bundle your cacerts separately for each components (like ElasticSearch/Opensearch and Airflow) and provide that to each individual configs for [openmetadata.yaml](/conf/openmetadata.yaml).
+However, for Production, we recommend you to bundle your cacerts separately for each components (like ElasticSearch/Opensearch and Airflow) and provide that to each individual configs for [openmetadata.yaml](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml). 
 You can use this environment variable to also provide extra JVM parameters to tune the application as per your infrastructure needs.
 
 Below is an example values to be set for the `OPENMETADATA_OPTS` environment variable to use cacerts truststore which is bundled for an organization issued certificates -

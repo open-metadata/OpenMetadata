@@ -50,6 +50,7 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { FilterIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -282,7 +283,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             className="max-two-lines"
             data-testid={`service-name-${name}`}
             to={getServiceDetailsPath(
-              encodeURIComponent(record.fullyQualifiedName ?? record.name),
+              getEncodedFqn(record.fullyQualifiedName ?? record.name),
               serviceName
             )}>
             {getEntityName(record)}
@@ -341,9 +342,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 <Link
                   className="no-underline"
                   to={getServiceDetailsPath(
-                    encodeURIComponent(
-                      service.fullyQualifiedName ?? service.name
-                    ),
+                    getEncodedFqn(service.fullyQualifiedName ?? service.name),
                     serviceName
                   )}>
                   <Typography.Text

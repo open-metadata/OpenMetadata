@@ -78,9 +78,9 @@ def test_connection(
     test_fn = {}
 
     if isinstance(client, SupersetAPIClient):
-        test_fn["CheckAccess"] = client.fetch_total_dashboards
-        test_fn["GetDashboards"] = client.fetch_total_dashboards
-        test_fn["GetCharts"] = client.fetch_total_charts
+        test_fn["CheckAccess"] = client.get_dashboard_count
+        test_fn["GetDashboards"] = client.get_dashboard_count
+        test_fn["GetCharts"] = client.get_chart_count
     else:
         test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
         test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)

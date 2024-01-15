@@ -215,7 +215,6 @@ const UserListPageV1 = () => {
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
-      pathname: location.pathname,
       search: value && params.toString(),
     });
     if (value) {

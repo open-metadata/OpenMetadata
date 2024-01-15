@@ -145,11 +145,9 @@ function DatabaseSchemaVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        '',
-        Include.All
-      );
+      const { id } = await getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, {
+        include: Include.All,
+      });
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseSchemaVersions(id ?? '');

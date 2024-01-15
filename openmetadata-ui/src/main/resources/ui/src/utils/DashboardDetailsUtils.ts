@@ -18,8 +18,8 @@ import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.co
 import { getChartById } from '../rest/chartAPI';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},
-${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
+// eslint-disable-next-line max-len
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const sortTagsForCharts = (charts: ChartType[]) => {
   return charts.map((chart) => ({
@@ -33,7 +33,9 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
   let promiseArr: Array<Promise<ChartType>> = [];
   try {
     if (charts?.length) {
-      promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
+      promiseArr = charts.map((chart) =>
+        getChartById(chart.id, { fields: 'tags' })
+      );
       const res = await Promise.allSettled(promiseArr);
 
       if (res.length) {

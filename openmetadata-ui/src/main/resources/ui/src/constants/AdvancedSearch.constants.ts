@@ -55,10 +55,6 @@ export const COMMON_DROPDOWN_ITEMS = [
     label: t('label.service-type'),
     key: 'serviceType',
   },
-  {
-    label: t('label.column'),
-    key: 'columns.name.keyword',
-  },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
