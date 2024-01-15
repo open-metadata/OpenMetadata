@@ -12,6 +12,8 @@
 SQL Queries used during ingestion
 """
 
+import textwrap
+
 ORACLE_ALL_TABLE_COMMENTS = """
 SELECT 
 	comments table_comment,
@@ -62,6 +64,72 @@ col.default_on_null,
 	AND col.owner = id.owner
 ) AS identity_options
 """
+
+ORACLE_GET_STORED_PROCEDURES = """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT
+FROM
+    ALL_SOURCE
+WHERE
+    type = 'PROCEDURE' and owner = '{schema}'
+"""
+
+ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (SELECT
+	SQL_ID,    
+	sql_text AS query_text,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
+    TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+    PARSING_SCHEMA_NAME as user_name
+  FROM gv$sql
+  WHERE sql_text LIKE 'CALL%%'
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+ ),
+ Q_HISTORY AS (SELECT
+      sql_id,
+      sql_text AS query_text,
+      CASE 
+      	WHEN UPPER(SQL_TEXT) LIKE 'INSERT%' THEN 'INSERT'
+      	WHEN UPPER(SQL_TEXT) LIKE 'SELECT%' THEN 'SELECT'
+      	ELSE 'OTHER'
+    	END AS QUERY_TYPE,
+      TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
+      TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
+      + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+      PARSING_SCHEMA_NAME AS user_name,
+      PARSING_SCHEMA_NAME AS SCHEMA_NAME,
+      NULL AS DATABASE_NAME
+    FROM gv$sql
+    WHERE sql_text NOT LIKE '%CALL%'
+      AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
+      >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+)
+SELECT
+  SP.sql_id AS PROCEDURE_ID,
+  Q.sql_id AS QUERY_ID,
+  Q.QUERY_TYPE AS QUERY_TYPE,
+  Q.DATABASE_NAME AS QUERY_DATABASE_NAME,
+  Q.SCHEMA_NAME AS QUERY_SCHEMA_NAME,
+  SP.QUERY_TEXT AS PROCEDURE_TEXT,
+  SP.START_TIME AS PROCEDURE_START_TIME,
+  SP.END_TIME AS PROCEDURE_END_TIME,
+  Q.START_TIME AS QUERY_START_TIME,
+  Q.QUERY_TEXT AS QUERY_TEXT,
+  Q.USER_NAME AS QUERY_USER_NAME
+FROM SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON Q.start_time between SP.start_time and SP.end_time
+  AND Q.end_time between SP.start_time and SP.end_time
+  AND Q.user_name = SP.user_name
+ORDER BY PROCEDURE_START_TIME DESC
+"""
+)
 
 ORACLE_GET_COLUMNS = """
         SELECT
