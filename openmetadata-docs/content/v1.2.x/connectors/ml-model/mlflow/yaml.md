@@ -5,6 +5,10 @@ slug: /connectors/ml-model/mlflow/yaml
 
 # Run the MLflow Connector Externally
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| ML Models  | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the MLflow connector.
 
 Configure and schedule MLflow metadata and profiler workflows from the OpenMetadata UI:

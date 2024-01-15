@@ -5,6 +5,15 @@ slug: /connectors/pipeline/spline/yaml
 
 # Run the Spline Connector Externally
 
+
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Spline connector.
 
 Configure and schedule Spline metadata and profiler workflows from the OpenMetadata UI:
