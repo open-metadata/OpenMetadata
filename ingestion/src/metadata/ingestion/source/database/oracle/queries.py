@@ -126,6 +126,7 @@ FROM SP_HISTORY SP
 JOIN Q_HISTORY Q
   ON Q.start_time between SP.start_time and SP.end_time
   AND Q.end_time between SP.start_time and SP.end_time
+  AND Q.user_name = SP.user_name
 ORDER BY PROCEDURE_START_TIME DESC
 """
 )

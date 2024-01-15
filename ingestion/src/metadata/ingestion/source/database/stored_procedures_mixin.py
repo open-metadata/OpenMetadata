@@ -53,8 +53,8 @@ class QueryByProcedure(BaseModel):
 
     procedure_id: str = Field(..., alias="PROCEDURE_ID")
     query_id: str = Field(..., alias="QUERY_ID")
-    query_type: Optional[str] = Field(..., alias="QUERY_TYPE")
-    query_database_name: Optional[str] = Field(None, alias="QUERY_DATABASE_NAME")
+    query_type: str = Field(..., alias="QUERY_TYPE")
+    query_database_name: str = Field(None, alias="QUERY_DATABASE_NAME")
     query_schema_name: str = Field(None, alias="QUERY_SCHEMA_NAME")
     procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
