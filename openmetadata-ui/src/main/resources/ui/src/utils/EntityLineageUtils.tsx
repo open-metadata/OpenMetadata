@@ -750,11 +750,15 @@ export const getLineageEdge = (
   return {
     edge: {
       fromEntity: {
-        id: sourceId,
+        id: sourceId ?? '',
         type: sourceType ?? '',
         fqn: sourceFqn ?? '',
       },
-      toEntity: { id: targetId, type: targetType ?? '', fqn: targetFqn ?? '' },
+      toEntity: {
+        id: targetId ?? '',
+        type: targetType ?? '',
+        fqn: targetFqn ?? '',
+      },
       sqlQuery: '',
     },
   };
@@ -769,8 +773,8 @@ export const getLineageEdgeForAPI = (
 
   return {
     edge: {
-      fromEntity: { id: sourceId, type: sourceType ?? '' },
-      toEntity: { id: targetId, type: targetType ?? '' },
+      fromEntity: { id: sourceId ?? '', type: sourceType ?? '' },
+      toEntity: { id: targetId ?? '', type: targetType ?? '' },
       lineageDetails: {
         sqlQuery: '',
         columnsLineage: [],

@@ -281,6 +281,7 @@
     "database-name": "Nombre de la base de datos",
     "database-plural": "Bases de datos",
     "database-schema": "Esquema de la base de datos",
+    "database-schema-plural": "Database Schemas",
     "database-service-name": "Nombre del servicio de la base de datos",
     "date": "Fecha",
     "date-and-time": "Fecha y hora",

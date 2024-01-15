@@ -73,12 +73,11 @@ export type SourceType = (
         | TestCaseSearchSource
         | SearchIndexSearchSource
         | StoredProcedureSearchSource
-        | DashboardDataModelSearchSource
       >,
       Fields
     >
 ) & {
-  id: string;
+  id?: string;
   tier?: string | TagLabel;
   tags?: TagLabel[];
   entityType?: string;

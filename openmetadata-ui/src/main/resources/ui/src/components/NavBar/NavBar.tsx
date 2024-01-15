@@ -383,7 +383,9 @@ const NavBar = ({
               className="rounded-4  appbar-search"
               data-testid="searchBox"
               id="searchBox"
-              placeholder={t('message.search-for-entity-types')}
+              placeholder={t('label.search-for-type', {
+                type: t('label.data-asset-plural'),
+              })}
               ref={searchRef}
               style={{
                 height: '37px',

@@ -682,7 +682,7 @@ const AssetsTabs = forwardRef(
         try {
           const entities = [...(assetsData?.values() ?? [])].map((item) => {
             return getEntityReferenceFromEntity(
-              item,
+              item as EntityDetailUnion,
               (item as EntityDetailUnion).entityType
             );
           });
