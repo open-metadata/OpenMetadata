@@ -72,7 +72,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
     if (!outgoingMessage.getMessages().isEmpty()) {
       EmailMessage emailMessage = new EmailMessage();
       emailMessage.setUserName(outgoingMessage.getUserName());
-      emailMessage.setEntityUrl(outgoingMessage.getUserName());
+      emailMessage.setEntityUrl(outgoingMessage.getEntityUrl());
       emailMessage.setUpdatedBy(outgoingMessage.getUserName());
       emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
       return emailMessage;

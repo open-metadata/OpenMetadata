@@ -147,12 +147,10 @@ public interface MessageDecorator<T> {
         headerTxt = "%s posted on " + eventType;
         headerText = String.format(headerTxt, event.getUserName());
       } else {
+        String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
+        message.setEntityUrl(entityUrl);
         headerTxt = "%s posted on " + eventType + " %s";
-        headerText =
-            String.format(
-                headerTxt,
-                event.getUserName(),
-                this.buildEntityUrl(event.getEntityType(), entityInterface));
+        headerText = String.format(headerTxt, event.getUserName(), entityUrl);
       }
       message.setHeader(headerText);
     }

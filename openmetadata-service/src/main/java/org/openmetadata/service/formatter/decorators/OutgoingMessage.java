@@ -9,5 +9,6 @@ import lombok.Setter;
 public class OutgoingMessage {
   private String userName;
   private String header;
+  private String entityUrl;
   private List<String> messages;
 }
