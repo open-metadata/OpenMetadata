@@ -5,6 +5,14 @@ slug: /connectors/pipeline/airbyte
 
 # Airbyte
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Airbyte connector.
 
 Configure and schedule Airbyte metadata and profiler workflows from the OpenMetadata UI:

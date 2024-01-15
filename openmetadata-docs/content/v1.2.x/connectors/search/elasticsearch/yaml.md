@@ -5,6 +5,13 @@ slug: /connectors/search/elasticsearch/yaml
 
 # Run the Elasticsearch Connector Externally
 
+| Feature            | Status                       |
+|--------------------|------------------------------|
+| Search Indexes     | {% icon iconName="check" /%} |
+| Sample Data        | {% icon iconName="check" /%} |
+| Supported Versions | Elasticsearch 7.0 and above  |
+| Stage              | BETA                         |
+
 In this section, we provide guides and references to use the Elasticsearch connector.
 
 Configure and schedule Elasticsearch metadata and profiler workflows from the OpenMetadata UI:

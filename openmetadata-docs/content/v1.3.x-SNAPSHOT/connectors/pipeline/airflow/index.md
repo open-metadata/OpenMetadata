@@ -5,6 +5,14 @@ slug: /connectors/pipeline/airflow
 
 # Airflow
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="check" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:

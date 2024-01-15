@@ -5,6 +5,11 @@ slug: /connectors/messaging/kinesis/yaml
 
 # Run the Kinesis Connector Externally
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Topics     | {% icon iconName="check" /%} |
+| Sample Data| {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Kinesis connector.
 
 Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:

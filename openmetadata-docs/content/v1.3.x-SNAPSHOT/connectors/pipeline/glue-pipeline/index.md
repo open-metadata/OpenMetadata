@@ -5,6 +5,14 @@ slug: /connectors/pipeline/glue-pipeline
 
 # Glue Pipeline
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="cross" /%} |
+
 In this section, we provide guides and references to use the Glue connector.
 
 Configure and schedule Glue metadata and profiler workflows from the OpenMetadata UI:

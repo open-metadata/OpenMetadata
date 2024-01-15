@@ -5,6 +5,10 @@ slug: /connectors/ml-model/sagemaker
 
 # Sagemaker
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| ML Models  | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Sagemaker connector.
 
 Configure and schedule Sagemaker metadata and profiler workflows from the OpenMetadata UI:
