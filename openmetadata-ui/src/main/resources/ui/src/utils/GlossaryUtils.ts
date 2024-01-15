@@ -12,9 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isUndefined, omit } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
-import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -24,17 +22,10 @@ import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
-import { ListGlossaryTermsParams } from '../rest/glossaryAPI';
 import { searchData } from '../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
-
-export interface GlossaryTermTreeNode {
-  children?: GlossaryTermTreeNode[];
-  fullyQualifiedName: string;
-  name: string;
-}
 
 /**
  * To get all glossary terms
@@ -79,41 +70,6 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
-export const getEntityReferenceFromGlossaryTerm = (
-  glossaryTerm: GlossaryTerm
-): EntityReference => {
-  return {
-    deleted: glossaryTerm.deleted,
-    href: glossaryTerm.href,
-    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
-    id: glossaryTerm.id,
-    type: 'glossaryTerm',
-    description: glossaryTerm.description,
-    displayName: glossaryTerm.displayName,
-    name: glossaryTerm.name,
-  };
-};
-
-// calculate root level glossary term
-export const getRootLevelGlossaryTerm = (
-  data: GlossaryTerm[],
-  params?: ListGlossaryTermsParams
-) => {
-  return data.reduce((glossaryTerms, curr) => {
-    const currentTerm =
-      curr.children?.length === 0 ? omit(curr, 'children') : curr;
-    if (params?.glossary) {
-      return isUndefined(curr.parent)
-        ? [...glossaryTerms, currentTerm]
-        : glossaryTerms;
-    }
-
-    return curr?.parent?.id === params?.parent
-      ? [...glossaryTerms, currentTerm]
-      : glossaryTerms;
-  }, [] as GlossaryTerm[]);
-};
-
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
 
@@ -142,53 +98,6 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   return tree;
 };
 
-// update glossaryTerm tree with newly fetch child term
-export const createGlossaryTermTree = (
-  glossaryTerms: ModifiedGlossaryTerm[],
-  updatedData: GlossaryTerm[],
-  glossaryTermId?: string
-) => {
-  return glossaryTerms.map((term) => {
-    if (term.id === glossaryTermId) {
-      term.children = updatedData;
-    } else if (term?.children?.length) {
-      createGlossaryTermTree(
-        term.children as ModifiedGlossaryTerm[],
-        updatedData,
-        glossaryTermId
-      );
-    }
-
-    return term;
-  });
-};
-
-// Calculate searched data based on search value
-export const getSearchedDataFromGlossaryTree = (
-  glossaryTerms: ModifiedGlossaryTerm[],
-  value: string
-): ModifiedGlossaryTerm[] => {
-  return glossaryTerms.reduce((acc, term) => {
-    const isMatching =
-      term.name.toLowerCase().includes(value.toLowerCase()) ||
-      term?.displayName?.toLowerCase().includes(value.toLowerCase());
-
-    if (isMatching) {
-      return [...acc, term];
-    } else if (term.children?.length) {
-      const children = getSearchedDataFromGlossaryTree(
-        term.children as ModifiedGlossaryTerm[],
-        value
-      );
-      if (children.length) {
-        return [...acc, { ...term, children: children as GlossaryTerm[] }];
-      }
-    }
-
-    return acc;
-  }, [] as ModifiedGlossaryTerm[]);
-};
-
 export const getQueryFilterToExcludeTerm = (fqn: string) => ({
   query: {
     bool: {
@@ -208,19 +117,6 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
-
-export const formatRelatedTermOptions = (
-  data: EntityReference[] | undefined
-) => {
-  return data
-    ? data.map((value) => ({
-        ...value,
-        value: value.id,
-        label: value.displayName || value.name,
-        key: value.id,
-      }))
-    : [];
-};
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,
