@@ -664,7 +664,7 @@ public class EventSubscriptionResourceTest
     }
     if (fieldName.equals("destinations")
         || fieldName.equals("filteringRules")
-        || fieldName.equals("filteringInput")) {
+        || fieldName.equals("input")) {
       assertEquals(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

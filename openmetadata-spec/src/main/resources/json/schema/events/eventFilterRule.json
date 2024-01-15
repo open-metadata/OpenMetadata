@@ -11,7 +11,8 @@
       "enum" : [
         "include",
         "exclude"
-      ]
+      ],
+      "default": "include"
     }
   },
   "properties": {

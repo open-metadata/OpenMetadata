@@ -343,6 +343,6 @@
 
     }
   },
-  "required": ["id", "name", "alertType"],
+  "required": ["id", "name", "alertType", "destinations"],
   "additionalProperties": false
 }
