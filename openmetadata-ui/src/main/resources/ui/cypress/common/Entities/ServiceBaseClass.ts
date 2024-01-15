@@ -347,7 +347,7 @@ class ServiceBaseClass {
     });
 
     // update description
-    cy.get('[data-testid="edit-description"]').click({ force: true });
+    cy.get('[data-testid="edit-description"]').click();
     cy.get(descriptionBox).click().clear().type(description);
     interceptURL('PATCH', '/api/v1/*/*', 'updateEntity');
     cy.get('[data-testid="save"]').click();

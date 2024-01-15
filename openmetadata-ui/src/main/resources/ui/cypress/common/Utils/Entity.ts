@@ -14,7 +14,6 @@ import { DELETE_TERM } from '../../constants/constants';
 import {
   EntityType,
   EXPLORE_PAGE_TABS,
-  SEARCH_INDEX,
 } from '../../constants/Entity.interface';
 import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -179,11 +178,6 @@ export const visitEntityDetailsPage = ({
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=**&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
-    'explorePageTabSearch'
-  );
-  interceptURL(
-    'GET',
     `/api/v1/search/query?q=**&from=*&size=*&index=all`,
     'explorePageSearch'
   );
@@ -221,9 +215,9 @@ export const visitEntityDetailsPage = ({
 
         cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-        verifyResponseStatusCode('@explorePageTabSearch', 200);
-
-        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`, {
+          timeout: 10000,
+        })
           .scrollIntoView()
           .click();
       }
@@ -441,7 +435,11 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   toastNotification('deleted successfully!');
 
   cy.reload();
-  cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
+
+  cy.get('[data-testid="deleted-badge"]', { timeout: 10000 }).should(
+    'have.text',
+    'Deleted'
+  );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
 

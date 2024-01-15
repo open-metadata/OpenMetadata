@@ -137,7 +137,7 @@ export const deleteService = (typeOfService: Services, serviceName: string) => {
   cy.get('[data-testid="manage-button"]').click();
 
   cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-  cy.get('[data-testid="delete-button-title"]').click().as('deleteBtn');
+  cy.get('[data-testid="delete-button-title"]').click();
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]').contains(serviceName).click();
