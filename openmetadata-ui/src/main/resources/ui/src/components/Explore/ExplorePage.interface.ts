@@ -50,6 +50,8 @@ export type ExploreSearchIndex =
   | SearchIndex.TABLE
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
+  | SearchIndex.DATABASE
+  | SearchIndex.DATABASE_SCHEMA
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
@@ -58,14 +60,6 @@ export type ExploreSearchIndex =
   | SearchIndex.SEARCH_INDEX
   | SearchIndex.STORED_PROCEDURE
   | SearchIndex.DASHBOARD_DATA_MODEL;
-
-export type ExploreSearchIndexKey =
-  | 'TABLE'
-  | 'PIPELINE'
-  | 'DASHBOARD'
-  | 'MLMODEL'
-  | 'TOPIC'
-  | 'CONTAINER';
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 

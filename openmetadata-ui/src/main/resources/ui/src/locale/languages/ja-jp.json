@@ -281,6 +281,7 @@
     "database-name": "データベース名",
     "database-plural": "データベース",
     "database-schema": "データベースのスキーマ",
+    "database-schema-plural": "Database Schemas",
     "database-service-name": "データベースサービス名",
     "date": "日付",
     "date-and-time": "日付と時間",
