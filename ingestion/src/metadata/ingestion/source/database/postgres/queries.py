@@ -71,7 +71,7 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
         col.table_schema = par.relnamespace::regnamespace::text
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
-     where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+     where par.relname=%(table_name)s and  par.relnamespace::regnamespace::text=%(schema_name)s
     """
 )
 
