@@ -94,6 +94,13 @@ public final class FeedUtils {
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
       }
+      case LOGICAL_TEST_CASE_ADDED -> {
+        message =
+            String.format(
+                "Added Logical Test Cases to **%s**: `%s`",
+                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+      }
       default -> {
         if (entityInterface.getChangeDescription() == null) {
           yield Collections.emptyList();

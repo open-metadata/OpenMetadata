@@ -252,7 +252,6 @@ public final class Entity {
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
           WORKFLOW,
-          TEST_SUITE,
           DOCUMENT);
 
   private Entity() {}
