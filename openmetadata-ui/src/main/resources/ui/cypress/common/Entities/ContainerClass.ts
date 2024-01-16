@@ -35,6 +35,10 @@ class ContainerClass extends EntityClass {
     });
   }
 
+  followUnfollowEntity() {
+    // Skiping this since not working from backend
+  }
+
   // Creation
 
   createEntity() {

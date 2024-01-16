@@ -80,7 +80,7 @@ class SearchClassBase {
         path: 'dashboards',
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
-        label: i18n.t('label.data-model-plural'),
+        label: i18n.t('label.dashboard-data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dashboardDataModel',
