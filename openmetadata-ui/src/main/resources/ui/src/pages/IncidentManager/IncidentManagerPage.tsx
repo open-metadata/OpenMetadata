@@ -66,7 +66,6 @@ import {
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from '../TasksPage/shared/Assignees';
 import { Option } from '../TasksPage/TasksPage.interface';
@@ -336,10 +335,7 @@ const IncidentManagerPage = () => {
             <Link
               data-testid="table-link"
               to={{
-                pathname: getTableTabPath(
-                  getEncodedFqn(tableFqn),
-                  EntityTabs.PROFILER
-                ),
+                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),

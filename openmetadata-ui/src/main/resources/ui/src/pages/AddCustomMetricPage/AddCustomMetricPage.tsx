@@ -34,7 +34,6 @@ import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
@@ -50,10 +49,7 @@ const AddCustomMetricPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const columnName = Form.useWatch('columnName', form);
-  const encodedFqn = useMemo(
-    () => getEncodedFqn(table?.fullyQualifiedName ?? ''),
-    [table]
-  );
+  const entityFqn = useMemo(() => table?.fullyQualifiedName ?? '', [table]);
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = table
@@ -61,7 +57,7 @@ const AddCustomMetricPage = () => {
           ...getEntityBreadcrumbs(table, EntityType.TABLE),
           {
             name: getEntityName(table),
-            url: getTableTabPath(encodedFqn, EntityTabs.PROFILER),
+            url: getTableTabPath(entityFqn, EntityTabs.PROFILER),
           },
           {
             name: t('label.add-entity-metric', {
@@ -96,14 +92,14 @@ const AddCustomMetricPage = () => {
   const handleBackClick = () => {
     if (isColumnMetric) {
       history.push({
-        pathname: getTableTabPath(encodedFqn, EntityTabs.PROFILER),
+        pathname: getTableTabPath(entityFqn, EntityTabs.PROFILER),
         search: QueryString.stringify({
           activeTab: TableProfilerTab.COLUMN_PROFILE,
           activeColumnFqn,
         }),
       });
     } else {
-      history.push(getTableTabPath(encodedFqn, EntityTabs.PROFILER));
+      history.push(getTableTabPath(entityFqn, EntityTabs.PROFILER));
     }
   };
 

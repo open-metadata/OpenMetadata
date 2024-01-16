@@ -39,7 +39,6 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedPipelineTasks } from '../../utils/PipelineVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { PipelineVersionProp } from './PipelineVersion.interface';
@@ -92,7 +91,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.PIPELINE,
-        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+        currentVersionData.fullyQualifiedName ?? '',
         String(version),
         activeKey
       )

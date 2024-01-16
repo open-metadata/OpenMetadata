@@ -46,7 +46,7 @@ import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -99,7 +99,7 @@ export const PopoverContent: React.FC<{
         break;
       case EntityType.TEST_CASE:
         promise = getTableDetailsByFQN(
-          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
+          getTableFQNFromColumnFQN(getDecodedFqn(entityFQN)),
           { fields }
         );
 
@@ -226,12 +226,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={
-        <PopoverContent
-          entityFQN={getEncodedFqn(entityFQN)}
-          entityType={entityType}
-        />
-      }
+      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

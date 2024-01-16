@@ -44,7 +44,6 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
@@ -78,7 +77,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       {
         name: getEntityName(table),
         url: getTableTabPath(
-          getEncodedFqn(table.fullyQualifiedName ?? ''),
+          table.fullyQualifiedName ?? '',
           EntityTabs.PROFILER
         ),
       },
@@ -105,7 +104,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const handleRedirection = () => {
     history.push({
       pathname: getTableTabPath(
-        getEncodedFqn(table.fullyQualifiedName ?? ''),
+        table.fullyQualifiedName ?? '',
         EntityTabs.PROFILER
       ),
       search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),

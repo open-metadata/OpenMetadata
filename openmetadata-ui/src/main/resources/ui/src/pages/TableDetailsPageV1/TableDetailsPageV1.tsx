@@ -83,7 +83,7 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../utils/StringsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -122,12 +122,10 @@ const TableDetailsPageV1 = () => {
 
   const tableFqn = useMemo(
     () =>
-      getEncodedFqn(
-        getPartialNameFromTableFQN(
-          getDecodedFqn(datasetFQN),
-          [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-          FQN_SEPARATOR_CHAR
-        )
+      getPartialNameFromTableFQN(
+        getDecodedFqn(datasetFQN),
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
       ),
     [datasetFQN]
   );

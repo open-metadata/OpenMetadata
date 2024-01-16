@@ -87,7 +87,6 @@ import {
 } from '../../../../utils/Explore.utils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -294,7 +293,7 @@ const AssetsTabs = forwardRef(
 
     const fetchCurrentEntity = useCallback(async () => {
       let data;
-      const fqn = getEncodedFqn(entityFqn ?? '');
+      const fqn = entityFqn ?? '';
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           data = await getDomainByName(fqn);
@@ -305,7 +304,7 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          data = await getGlossaryTermByFQN(getDecodedFqn(fqn));
+          data = await getGlossaryTermByFQN(fqn);
 
           break;
         default:
@@ -690,7 +689,7 @@ const AssetsTabs = forwardRef(
           switch (type) {
             case AssetsOfEntity.DATA_PRODUCT:
               await removeAssetsFromDataProduct(
-                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                activeEntity.fullyQualifiedName ?? '',
                 entities
               );
 
@@ -706,7 +705,7 @@ const AssetsTabs = forwardRef(
 
             case AssetsOfEntity.DOMAIN:
               await removeAssetsFromDomain(
-                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                activeEntity.fullyQualifiedName ?? '',
                 entities
               );
 

@@ -64,7 +64,6 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
@@ -195,7 +194,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     setIsGraphLoading(true);
     try {
       const { data: chartData } = await getListTestCaseResults(
-        getEncodedFqn(data.fullyQualifiedName || ''),
+        data.fullyQualifiedName || '',
         dateRangeObj
       );
       setResults(chartData);

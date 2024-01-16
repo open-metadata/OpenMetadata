@@ -89,14 +89,14 @@ import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
   entityType: string,
-  entityFQN: string,
+  entityFqn: string,
   field?: string,
   value?: string
 ) => {
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -109,14 +109,14 @@ export const getRequestDescriptionPath = (
 
 export const getRequestTagsPath = (
   entityType: string,
-  entityFQN: string,
+  entityFqn: string,
   field?: string,
   value?: string
 ) => {
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -129,14 +129,14 @@ export const getRequestTagsPath = (
 
 export const getUpdateDescriptionPath = (
   entityType: string,
-  entityFQN: string,
+  entityFqn: string,
   field?: string,
   value?: string
 ) => {
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -149,14 +149,14 @@ export const getUpdateDescriptionPath = (
 
 export const getUpdateTagsPath = (
   entityType: string,
-  entityFQN: string,
+  entityFqn: string,
   field?: string,
   value?: string
 ) => {
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -168,12 +168,12 @@ export const getUpdateTagsPath = (
 };
 
 export const getTaskDetailPath = (task: Thread) => {
-  const entityFQN = getEntityFQN(task.about) ?? '';
+  const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
 
   return getEntityDetailLink(
     entityType as EntityType,
-    entityFQN,
+    entityFqn,
     EntityTabs.ACTIVITY_FEED,
     ActivityFeedTabs.TASKS
   );

@@ -200,11 +200,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
-          getDataProductsDetailsPath(
-            getEncodedFqn(res.fullyQualifiedName ?? '')
-          )
-        );
+        history.push(getDataProductsDetailsPath(res.fullyQualifiedName ?? ''));
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -228,10 +224,7 @@ const DomainDetailsPage = ({
   const handleVersionClick = async () => {
     const path = isVersionsView
       ? getDomainPath(domainFqn)
-      : getDomainVersionsPath(
-          getEncodedFqn(domainFqn),
-          toString(domain.version)
-        );
+      : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     history.push(path);
   };
@@ -300,7 +293,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(getEncodedFqn(domainFqn), activeKey));
+      history.push(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 

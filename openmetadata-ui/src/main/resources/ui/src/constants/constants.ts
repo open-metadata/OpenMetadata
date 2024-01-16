@@ -18,7 +18,6 @@ import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -346,12 +345,12 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
 
-export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-  const classification = getPartialNameFromFQN(entityFQN, ['service']);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
-  return `${path}${columnName ? `.${columnName}` : ''}`;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+
+  return path;
 };
 
 export const getVersionPath = (
@@ -362,7 +361,7 @@ export const getVersionPath = (
   let path = ROUTES.ENTITY_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -377,7 +376,7 @@ export const getVersionPathWithTab = (
   let path = ROUTES.ENTITY_VERSION_WITH_TAB;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
@@ -396,7 +395,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -410,7 +409,7 @@ export const getServiceDetailsPath = (
   let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -690,7 +689,7 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
       GlobalSettingOptions.TEAMS,
       true
     );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, name);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
   }
 
   return path;
@@ -698,7 +697,7 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
 
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
-  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
+  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
 
   return path;
 };
@@ -714,14 +713,14 @@ export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, username);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
 
   return path;
 };
 
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, botsName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
 
   return path;
 };
@@ -729,7 +728,7 @@ export const getBotsPath = (botsName: string) => {
 export const getMlModelPath = (mlModelFqn: string, tab = '') => {
   let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(mlModelFqn))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -737,7 +736,10 @@ export const getMlModelPath = (mlModelFqn: string, tab = '') => {
 
 export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+  path = path.replace(
+    PLACEHOLDER_ENTITY_TYPE_FQN,
+    getEncodedFqn(entityTypeFQN)
+  );
 
   return path;
 };
@@ -763,7 +765,7 @@ export const getBotsPagePath = () => {
 export const getKpiPath = (kpiName: string) => {
   let path = ROUTES.EDIT_KPI;
 
-  path = path.replace(KPI_NAME, kpiName);
+  path = path.replace(KPI_NAME, getEncodedFqn(kpiName));
 
   return path;
 };

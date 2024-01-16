@@ -29,7 +29,6 @@ import { EntityReference } from '../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getDataProductsDetailsPath } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -75,7 +74,7 @@ const DataProductsContainer = ({
   );
 
   const redirectLink = useCallback((fqn) => {
-    history.push(getDataProductsDetailsPath(getEncodedFqn(fqn)));
+    history.push(getDataProductsDetailsPath(fqn));
   }, []);
 
   const handleSave = async (dataProducts: DataProduct[]) => {
