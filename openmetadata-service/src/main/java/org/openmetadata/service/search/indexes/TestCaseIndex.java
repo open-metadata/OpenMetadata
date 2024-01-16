@@ -73,7 +73,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("testSuite.fullyQualifiedName", 10.0f);
     fields.put("testSuite.name", 10.0f);
-    fields.put("testSuite.description", 3.0f);
+    fields.put("testSuite.description", 1.0f);
     fields.put("entityLink", 3.0f);
     fields.put("entityFQN", 10.0f);
     return fields;

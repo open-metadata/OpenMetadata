@@ -34,9 +34,7 @@ describe('Domain page should work properly', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="app-bar-item-domain"]').click({
-      waitForAnimations: true,
-    });
+    cy.sidebarClick('app-bar-item-domain');
   });
 
   it('Create new domain flow should work properly', () => {
@@ -61,18 +59,14 @@ describe('Domain page should work properly', () => {
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
-      cy.get('[data-testid="app-bar-item-domain"]').click({
-        waitForAnimations: true,
-      });
+      cy.sidebarClick('app-bar-item-domain');
     });
   });
 
   it('Add data product assets using asset selection modal should work properly', () => {
     DOMAIN_2.dataProducts.forEach((dp) => {
       createDataProducts(dp, DOMAIN_2);
-      cy.get('[data-testid="app-bar-item-domain"]').click({
-        waitForAnimations: true,
-      });
+      cy.sidebarClick('app-bar-item-domain');
     });
 
     addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
@@ -81,9 +75,7 @@ describe('Domain page should work properly', () => {
   it('Add data product assets using asset selection modal with separate domain and dp having space', () => {
     DOMAIN_3.dataProducts.forEach((dp) => {
       createDataProducts(dp, DOMAIN_3);
-      cy.get('[data-testid="app-bar-item-domain"]').click({
-        waitForAnimations: true,
-      });
+      cy.sidebarClick('app-bar-item-domain');
     });
 
     addAssetsToDataProduct(DOMAIN_3.dataProducts[0], DOMAIN_3);
@@ -104,7 +96,7 @@ describe('Domain page should work properly', () => {
       'tableSearchQuery'
     );
 
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
 
     verifyResponseStatusCode('@tableSearchQuery', 200);
   });

@@ -102,6 +102,10 @@ entities.forEach((entity) => {
       entity.downVote();
     });
 
+    it(`follow unfollow entity`, () => {
+      entity.followUnfollowEntity();
+    });
+
     Object.values(CustomPropertyType).forEach((type) => {
       it(`Set ${type} Custom Property `, () => {
         entity.setCustomProperty(
