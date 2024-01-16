@@ -161,6 +161,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void patch_entityComputePassedFailedRowCount(TestInfo test) throws IOException {
+    TestCase entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setComputePassedFailedRowCount(true);
+
+    patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+
+    entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+
+    assertTrue(entity.getComputePassedFailedRowCount());
+  }
+
+  @Test
   void post_testWithoutRequiredFields_4xx(TestInfo test) {
     // name is required field
     assertResponse(
