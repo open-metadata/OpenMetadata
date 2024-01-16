@@ -52,7 +52,7 @@ import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SummaryCard } from '../../common/SummaryCard/SummaryCard.component';
@@ -275,7 +275,7 @@ const ColumnProfileTable = () => {
         history.push({
           pathname: getAddDataQualityTableTestPath(
             ProfilerDashboardType.COLUMN,
-            getDecodedFqn(fqn)
+            fqn
           ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
@@ -286,10 +286,7 @@ const ColumnProfileTable = () => {
       key: 'custom-metric',
       onClick: () => {
         history.push({
-          pathname: getAddCustomMetricPath(
-            ProfilerDashboardType.COLUMN,
-            getDecodedFqn(fqn)
-          ),
+          pathname: getAddCustomMetricPath(ProfilerDashboardType.COLUMN, fqn),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
       },

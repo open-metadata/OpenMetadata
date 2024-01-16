@@ -42,7 +42,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -64,7 +63,7 @@ const RequestDescription = () => {
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
-  const { fqn: entityFQN } = useFqn();
+  const { fqn: decodedEntityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -85,11 +84,6 @@ const RequestDescription = () => {
         startMessage: 'Request description',
       }),
     [value, entityType, field, entityData]
-  );
-
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(entityFQN),
-    [entityType]
   );
 
   const back = () => history.goBack();
@@ -154,8 +148,8 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, entityFQN, setEntityData);
-  }, [entityFQN, entityType]);
+    fetchEntityDetail(entityType, decodedEntityFQN, setEntityData);
+  }, [decodedEntityFQN, entityType]);
 
   useEffect(() => {
     const owner = entityData.owner;

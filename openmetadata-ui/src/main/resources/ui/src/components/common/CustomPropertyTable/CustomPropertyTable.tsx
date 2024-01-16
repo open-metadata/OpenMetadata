@@ -34,7 +34,6 @@ import {
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
@@ -67,13 +66,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
-  const { fqn } = useFqn();
-  const decodedeFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn } = useFqn();
 
   const fetchExtentiondetails = async () => {
     const response = await getEntityExtentionDetailsFromEntityType<T>(
       entityType,
-      decodedeFqn
+      decodedFqn
     );
 
     setExtentionDetails(response as ExtentionEntities[T]);
@@ -81,7 +79,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   useEffect(() => {
     fetchExtentiondetails();
-  }, [decodedeFqn]);
+  }, [decodedFqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
   const versionDetails = entityDetails ?? extentionDetails;

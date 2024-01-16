@@ -34,7 +34,6 @@ import { EntityType as TestType } from '../../../generated/tests/testDefinition'
 import { useFqn } from '../../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
@@ -122,9 +121,7 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(
-      getAddDataQualityTableTestPath(type, getDecodedFqn(datasetFQN))
-    );
+    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
   const addButtonContent = useMemo(

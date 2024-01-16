@@ -47,7 +47,6 @@ import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -113,7 +112,7 @@ const TableProfilerChart = ({
         history.push(
           getAddDataQualityTableTestPath(
             ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
+            datasetFQN
           )
         );
       },
@@ -123,10 +122,7 @@ const TableProfilerChart = ({
       key: 'custom-metric',
       onClick: () => {
         history.push(
-          getAddCustomMetricPath(
-            ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
-          )
+          getAddCustomMetricPath(ProfilerDashboardType.TABLE, datasetFQN)
         );
       },
     },

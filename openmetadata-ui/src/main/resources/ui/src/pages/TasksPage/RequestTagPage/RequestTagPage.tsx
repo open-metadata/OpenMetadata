@@ -41,7 +41,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -84,11 +83,6 @@ const RequestTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(entityFQN),
-    [entityType]
-  );
-
   const back = () => history.goBack();
 
   const onSearch = (query: string) => {
@@ -111,7 +105,7 @@ const RequestTag = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -133,7 +127,7 @@ const RequestTag = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

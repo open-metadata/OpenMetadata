@@ -14,7 +14,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -40,12 +40,11 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export const CustomizablePage = () => {
   const { pageFqn } = useParams<{ pageFqn: PageType }>();
-  const { fqn: personaFQN } = useFqn();
+  const { fqn: decodedPageFQN } = useFqn();
   const { t } = useTranslation();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);
@@ -53,8 +52,6 @@ export const CustomizablePage = () => {
   const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [saveCurrentPageLayout, setSaveCurrentPageLayout] = useState(false);
-
-  const decodedPageFQN = useMemo(() => getDecodedFqn(pageFqn), [pageFqn]);
 
   const handlePageDataChange = useCallback((newPageData: Document) => {
     setEditedPage(newPageData);
@@ -67,7 +64,7 @@ export const CustomizablePage = () => {
   const fetchPersonaDetails = useCallback(async () => {
     try {
       setIsPersonaLoading(true);
-      const response = await getPersonaByName(personaFQN);
+      const response = await getPersonaByName(decodedPageFQN);
 
       setPersonaDetails(response);
     } catch {
@@ -76,14 +73,14 @@ export const CustomizablePage = () => {
     } finally {
       setIsPersonaLoading(false);
     }
-  }, [personaFQN]);
+  }, [decodedPageFQN]);
 
   const fetchDocument = async () => {
     if (!isUndefined(personaDetails)) {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}.${EntityType.PAGE}.${pageFqn}`;
+      const pageLayoutFQN = `${EntityType.PERSONA}.${decodedPageFQN}.${EntityType.PAGE}.${pageFqn}`;
       try {
         setIsLoading(true);
-        const pageData = await getDocumentByFQN(getDecodedFqn(pageLayoutFQN));
+        const pageData = await getDocumentByFQN(pageLayoutFQN);
 
         setPage(pageData);
         setEditedPage(pageData);
@@ -91,7 +88,7 @@ export const CustomizablePage = () => {
         if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
           setPage({
             name: `${personaDetails.name}-${decodedPageFQN}`,
-            fullyQualifiedName: getDecodedFqn(pageLayoutFQN),
+            fullyQualifiedName: pageLayoutFQN,
             entityType: EntityType.PAGE,
             data: {
               page: { layout: customizePageClassBase.defaultLayout },
@@ -147,7 +144,7 @@ export const CustomizablePage = () => {
 
   useEffect(() => {
     fetchPersonaDetails();
-  }, [personaFQN, pageFqn]);
+  }, [decodedPageFQN, pageFqn]);
 
   useEffect(() => {
     fetchDocument();

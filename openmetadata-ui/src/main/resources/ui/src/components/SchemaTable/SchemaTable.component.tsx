@@ -49,7 +49,6 @@ import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -91,8 +90,7 @@ const SchemaTable = ({
     useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
 
-  const { fqn: entityFqn } = useFqn();
-  const decodedEntityFqn = getDecodedFqn(entityFqn);
+  const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -124,8 +122,8 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    fetchResourcePermission(entityFqn);
-  }, [entityFqn]);
+    fetchResourcePermission(decodedEntityFqn);
+  }, [decodedEntityFqn]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);

@@ -29,14 +29,12 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { fqn: glossaryName } = useFqn();
-  const glossaryFqn = glossaryName ? getDecodedFqn(glossaryName) : null;
+  const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
 
   const createGlossaryPermission = useMemo(

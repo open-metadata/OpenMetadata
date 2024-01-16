@@ -84,7 +84,7 @@ import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -524,7 +524,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY_TERM:
-      getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+      getGlossaryTermByFQN(entityFQN, {
         fields: TabSpecificField.TAGS,
       })
         .then((res) => {

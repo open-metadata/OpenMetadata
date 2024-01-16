@@ -47,7 +47,6 @@ import {
   getPersonaDetailsPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -68,7 +67,7 @@ function CustomizeMyData({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: personaFQN } = useFqn();
+  const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
       initialPageData.data?.page?.layout ??
@@ -86,11 +85,6 @@ function CustomizeMyData({
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-
-  const decodedPersonaFQN = useMemo(
-    () => getDecodedFqn(personaFQN),
-    [personaFQN]
-  );
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);

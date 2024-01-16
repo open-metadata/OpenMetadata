@@ -63,6 +63,7 @@ export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
+  const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const { cachedEntityData, updateCachedEntityData } =
@@ -79,7 +80,7 @@ export const PopoverContent: React.FC<{
             displayName: getEntityName(data),
             id: data.id ?? '',
             description: data.description ?? '',
-            fullyQualifiedName: getDecodedFqn(entityFQN),
+            fullyQualifiedName: decodedFqn,
             tags: (data as Table)?.tags,
             entityType: entityType,
             serviceType: (data as Table)?.serviceType,
@@ -98,10 +99,9 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTableDetailsByFQN(
-          getTableFQNFromColumnFQN(getDecodedFqn(entityFQN)),
-          { fields }
-        );
+        promise = getTableDetailsByFQN(getTableFQNFromColumnFQN(decodedFqn), {
+          fields,
+        });
 
         break;
       case EntityType.TOPIC:
@@ -135,7 +135,7 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+        promise = getGlossaryTermByFQN(entityFQN, {
           fields: 'owner',
         });
 

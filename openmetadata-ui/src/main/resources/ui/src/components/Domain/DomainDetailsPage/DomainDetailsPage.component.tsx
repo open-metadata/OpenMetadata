@@ -84,7 +84,6 @@ import {
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -110,8 +109,7 @@ const DomainDetailsPage = ({
   const history = useHistory();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
-  const { fqn } = useFqn();
-  const domainFqn = fqn ? getDecodedFqn(fqn) : '';
+  const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -252,7 +250,7 @@ const DomainDetailsPage = ({
   };
 
   const fetchDomainAssets = async () => {
-    if (fqn && !isVersionsView) {
+    if (domainFqn && !isVersionsView) {
       try {
         const encodedFqn = getEncodedFqn(
           escapeESReservedCharacters(domain.fullyQualifiedName)

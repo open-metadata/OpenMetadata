@@ -31,7 +31,6 @@ import { searchData } from '../../../../rest/miscAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -59,10 +58,7 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
-        const decodedFqn = getDecodedFqn(domainFqn);
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(decodedFqn)
-        );
+        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
         const res = await searchData(
           '',
           1,

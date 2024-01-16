@@ -30,7 +30,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
@@ -39,14 +38,13 @@ import { useDomainProvider } from './DomainProvider/DomainProvider';
 
 const DomainPage = () => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
+  const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, refreshDomains, updateDomains, domainLoading } =
     useDomainProvider();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
-  const domainFqn = fqn ? getDecodedFqn(fqn) : null;
 
   const createDomainPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),

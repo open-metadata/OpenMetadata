@@ -84,7 +84,6 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -125,15 +124,10 @@ const TableDetailsPageV1 = () => {
   const tableFqn = useMemo(
     () =>
       getPartialNameFromTableFQN(
-        getDecodedFqn(datasetFQN),
+        datasetFQN,
         [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
         FQN_SEPARATOR_CHAR
       ),
-    [datasetFQN]
-  );
-
-  const decodedTableFQN = useMemo(
-    () => getDecodedFqn(datasetFQN),
     [datasetFQN]
   );
 
@@ -286,7 +280,7 @@ const TableDetailsPageV1 = () => {
   }, [tableFqn]);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, decodedTableFQN, setFeedCount);
+    getFeedCounts(EntityType.TABLE, datasetFQN, setFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -495,7 +489,7 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              entityFqn={decodedTableFQN}
+              entityFqn={datasetFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={editDescriptionPermission}
@@ -514,7 +508,7 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFqn={decodedTableFQN}
+              entityFqn={datasetFQN}
               hasDescriptionEditAccess={editDescriptionPermission}
               hasTagEditAccess={editTagsPermission}
               isReadOnly={deleted}
@@ -554,7 +548,7 @@ const TableDetailsPageV1 = () => {
             dataProducts={tableDetails?.dataProducts ?? []}
             domain={tableDetails?.domain}
             editTagPermission={editTagsPermission}
-            entityFQN={decodedTableFQN}
+            entityFQN={datasetFQN}
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}

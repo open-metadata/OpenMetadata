@@ -35,7 +35,7 @@ import {
   getTableDetailsByFQN,
 } from '../../rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
-import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
+import { bytesToSize } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -191,10 +191,9 @@ export const TableProfilerProvider = ({
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
-    const decodedDatasetFQN = getDecodedFqn(datasetFQN);
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
+      const profiler = await getLatestTableProfileByFqn(datasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
         fields: 'customMetrics,columns',
       });
@@ -214,7 +213,7 @@ export const TableProfilerProvider = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult, testDefinition, incidentId',
-        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) ?? ''),
+        entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });

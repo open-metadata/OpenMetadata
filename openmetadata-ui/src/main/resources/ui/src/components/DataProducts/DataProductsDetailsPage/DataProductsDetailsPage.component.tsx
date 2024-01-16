@@ -81,7 +81,6 @@ import {
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -104,8 +103,8 @@ const DataProductsDetailsPage = ({
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
-  const { fqn } = useFqn();
-  const dataProductFqn = fqn ? getDecodedFqn(fqn) : '';
+  const { fqn: dataProductFqn } = useFqn();
+
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -354,14 +353,17 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDataProductsDetailsPath(fqn, activeKey));
+      history.push(getDataProductsDetailsPath(dataProductFqn, activeKey));
     }
   };
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDataProductsDetailsPath(fqn)
-      : getDataProductVersionsPath(fqn, toString(dataProduct.version));
+      ? getDataProductsDetailsPath(dataProductFqn)
+      : getDataProductVersionsPath(
+          dataProductFqn,
+          toString(dataProduct.version)
+        );
 
     history.push(path);
   };

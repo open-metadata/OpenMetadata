@@ -75,7 +75,6 @@ import {
   defaultFields,
   getSearchIndexTabPath,
 } from '../../utils/SearchIndexUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -85,7 +84,7 @@ function SearchIndexDetailsPage() {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useParams<{ tab: string }>();
-  const { fqn: searchIndexFQN } = useFqn();
+  const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
   const { currentUser } = useAuthContext();
@@ -106,16 +105,11 @@ function SearchIndexDetailsPage() {
     [searchIndexPermissions]
   );
 
-  const decodedSearchIndexFQN = useMemo(
-    () => getDecodedFqn(searchIndexFQN),
-    [searchIndexFQN]
-  );
-
   const fetchSearchIndexDetails = async () => {
     setLoading(true);
     try {
       const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, {
+      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
         fields,
       });
 
@@ -223,7 +217,7 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(searchIndexFQN, activeKey));
+      history.push(getSearchIndexTabPath(decodedSearchIndexFQN, activeKey));
     }
   };
 
@@ -636,7 +630,7 @@ function SearchIndexDetailsPage() {
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateSearchIndexVotes(id, data);
-      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, {
+      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
         fields: defaultFields,
       });
       setSearchIndexDetails(details);
@@ -658,7 +652,11 @@ function SearchIndexDetailsPage() {
   const versionHandler = useCallback(() => {
     version &&
       history.push(
-        getVersionPath(EntityType.SEARCH_INDEX, searchIndexFQN, version + '')
+        getVersionPath(
+          EntityType.SEARCH_INDEX,
+          decodedSearchIndexFQN,
+          version + ''
+        )
       );
   }, [version]);
 
@@ -678,17 +676,17 @@ function SearchIndexDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (searchIndexFQN) {
-      fetchResourcePermission(searchIndexFQN);
+    if (decodedSearchIndexFQN) {
+      fetchResourcePermission(decodedSearchIndexFQN);
     }
-  }, [searchIndexFQN]);
+  }, [decodedSearchIndexFQN]);
 
   useEffect(() => {
     if (viewPermission) {
       fetchSearchIndexDetails();
       getEntityFeedCount();
     }
-  }, [searchIndexFQN, viewPermission]);
+  }, [decodedSearchIndexFQN, viewPermission]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');

@@ -30,7 +30,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
@@ -54,14 +53,12 @@ import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.c
 const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
-  const { fqn: username } = useFqn();
+  const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
   const { currentUser } = useAuthContext();
-
-  const decodedUsername = useMemo(() => getDecodedFqn(username), [username]);
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -71,8 +68,8 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { t } = useTranslation();
 
   const isLoggedInUser = useMemo(
-    () => username === currentUser?.name,
-    [username]
+    () => decodedUsername === currentUser?.name,
+    [decodedUsername]
   );
 
   const hasEditPermission = useMemo(
@@ -94,7 +91,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     location.search = '';
     if (activeKey !== activeTab) {
       history.push({
-        pathname: getUserPath(username, activeKey),
+        pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
     }

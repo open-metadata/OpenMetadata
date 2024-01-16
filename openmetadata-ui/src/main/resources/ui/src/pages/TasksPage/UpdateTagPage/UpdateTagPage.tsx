@@ -44,7 +44,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -99,8 +98,6 @@ const UpdateTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
-
   const back = () => history.goBack();
 
   const columnObject = useMemo(() => {
@@ -142,7 +139,7 @@ const UpdateTag = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -164,7 +161,7 @@ const UpdateTag = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

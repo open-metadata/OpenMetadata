@@ -53,7 +53,6 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './logs-viewer.style.less';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
@@ -316,7 +315,7 @@ const LogsViewer = () => {
           <TitleBreadcrumb
             titleLinks={getLogBreadCrumbs(
               logEntityType,
-              getDecodedFqn(ingestionName),
+              ingestionName,
               ingestionDetails
             )}
           />

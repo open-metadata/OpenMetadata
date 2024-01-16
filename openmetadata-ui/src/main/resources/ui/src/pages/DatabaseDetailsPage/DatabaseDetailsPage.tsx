@@ -77,7 +77,6 @@ import {
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -91,14 +90,14 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
-  const { fqn: databaseFQN } = useFqn();
+  const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
 
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
 
   const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
+    decodedDatabaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
   );
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
@@ -132,17 +131,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const decodedDatabaseFQN = useMemo(
-    () => getDecodedFqn(databaseFQN),
-    [databaseFQN]
-  );
-
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        databaseFQN
+        decodedDatabaseFQN
       );
       setDatabasePermission(response);
     } catch (error) {
@@ -176,7 +170,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
-    if (isEmpty(databaseFQN)) {
+    if (isEmpty(decodedDatabaseFQN)) {
       return;
     }
 
@@ -193,11 +187,11 @@ const DatabaseDetails: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [databaseFQN]);
+  }, [decodedDatabaseFQN]);
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(databaseFQN, {
+    getDatabaseDetailsByFQN(decodedDatabaseFQN, {
       fields: 'owner,tags,domain,votes',
       include: Include.All,
     })
@@ -349,11 +343,11 @@ const DatabaseDetails: FunctionComponent = () => {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
     }
-  }, [databasePermission, databaseFQN]);
+  }, [databasePermission, decodedDatabaseFQN]);
 
   useEffect(() => {
     fetchDatabasePermission();
-  }, [databaseFQN]);
+  }, [decodedDatabaseFQN]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -456,12 +450,12 @@ const DatabaseDetails: FunctionComponent = () => {
       history.push(
         getVersionPathWithTab(
           EntityType.DATABASE,
-          databaseFQN,
+          decodedDatabaseFQN,
           toString(currentVersion),
           EntityTabs.SCHEMA
         )
       );
-  }, [currentVersion, databaseFQN]);
+  }, [currentVersion, decodedDatabaseFQN]);
 
   const {
     editTagsPermission,
@@ -616,7 +610,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseVotes(id, data);
-      const details = await getDatabaseDetailsByFQN(databaseFQN, {
+      const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
         fields: 'owner,tags,votes',
         include: Include.All,
       });

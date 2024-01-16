@@ -40,7 +40,6 @@ import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -78,7 +77,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
 
-  const { fqn: mlModelFqn } = useFqn();
+  const { fqn: decodedMlModelFqn } = useFqn();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -93,11 +92,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
-
-  const decodedMlModelFqn = useMemo(
-    () => getDecodedFqn(mlModelFqn),
-    [mlModelFqn]
-  );
 
   const mlModelName = useMemo(
     () => getEntityName(mlModelDetail),

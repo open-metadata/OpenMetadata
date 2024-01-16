@@ -58,7 +58,6 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
@@ -69,7 +68,7 @@ function DatabaseVersionPage() {
     tab: EntityTabs;
   }>();
 
-  const { fqn: databaseFQN } = useFqn();
+  const { fqn: decodedEntityFQN } = useFqn();
 
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -100,11 +99,6 @@ function DatabaseVersionPage() {
     [servicePermissions]
   );
 
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(databaseFQN),
-    [databaseFQN]
-  );
-
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -122,20 +116,20 @@ function DatabaseVersionPage() {
       setIsLoading(true);
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        databaseFQN
+        decodedEntityFQN
       );
 
       setServicePermissions(permission);
     } finally {
       setIsLoading(false);
     }
-  }, [databaseFQN, getEntityPermissionByFqn, setServicePermissions]);
+  }, [decodedEntityFQN, getEntityPermissionByFqn, setServicePermissions]);
 
   const fetchVersionsList = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseDetailsByFQN(databaseFQN, {
+      const { id } = await getDatabaseDetailsByFQN(decodedEntityFQN, {
         include: Include.All,
       });
       setDatabaseId(id ?? '');
@@ -146,7 +140,7 @@ function DatabaseVersionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [viewVersionPermission, databaseFQN]);
+  }, [viewVersionPermission, decodedEntityFQN]);
 
   const fetchCurrentVersionData = useCallback(
     async (id: string) => {
@@ -170,7 +164,7 @@ function DatabaseVersionPage() {
         history.push(
           getVersionPathWithTab(
             EntityType.DATABASE,
-            databaseFQN,
+            decodedEntityFQN,
             newVersion,
             tab
           )
@@ -180,14 +174,14 @@ function DatabaseVersionPage() {
         history.push(getDatabaseDetailsPath(decodedEntityFQN));
       },
     }),
-    [databaseFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
       getVersionPathWithTab(
         EntityType.DATABASE,
-        databaseFQN,
+        decodedEntityFQN,
         String(version),
         activeKey
       )
@@ -343,16 +337,16 @@ function DatabaseVersionPage() {
   ]);
 
   useEffect(() => {
-    if (!isEmpty(databaseFQN)) {
+    if (!isEmpty(decodedEntityFQN)) {
       fetchResourcePermission();
     }
-  }, [databaseFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
-  }, [databaseFQN, viewVersionPermission]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (databaseId) {

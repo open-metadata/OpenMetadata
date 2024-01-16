@@ -31,7 +31,6 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -48,13 +47,8 @@ const StoredProcedureTab = () => {
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { fqn: databaseSchemaFQN } = useFqn();
+  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const [showDeleted, setShowDeleted] = useState(false);
-
-  const decodedDatabaseSchemaFQN = useMemo(
-    () => getDecodedFqn(databaseSchemaFQN),
-    [databaseSchemaFQN]
-  );
 
   const fetchStoreProcedureDetails = useCallback(
     async (params?: Partial<Paging>) => {

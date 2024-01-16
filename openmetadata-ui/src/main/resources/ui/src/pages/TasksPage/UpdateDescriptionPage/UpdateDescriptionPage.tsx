@@ -42,7 +42,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -80,8 +79,6 @@ const UpdateDescription = () => {
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
     [value]
   );
-
-  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const taskMessage = useMemo(
     () =>
@@ -135,7 +132,7 @@ const UpdateDescription = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -157,7 +154,7 @@ const UpdateDescription = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

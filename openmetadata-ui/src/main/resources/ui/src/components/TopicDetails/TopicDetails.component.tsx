@@ -43,7 +43,6 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -75,7 +74,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
-  const { fqn: topicFQN } = useFqn();
+  const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -84,8 +83,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  const decodedTopicFQN = useMemo(() => getDecodedFqn(topicFQN), [topicFQN]);
 
   const {
     owner,

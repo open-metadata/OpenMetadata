@@ -74,7 +74,6 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -87,7 +86,7 @@ const ContainerPage = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
 
-  const { fqn: containerFQN } = useFqn();
+  const { fqn: decodedContainerName } = useFqn();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -107,11 +106,6 @@ const ContainerPage = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
-  );
-
-  const decodedContainerName = useMemo(
-    () => getDecodedFqn(containerFQN),
-    [containerFQN]
   );
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -145,7 +139,7 @@ const ContainerPage = () => {
   const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerFQN, {
+      const { children } = await getContainerByName(decodedContainerName, {
         fields: 'children',
       });
       setContainerChildrenData(children);
@@ -516,7 +510,11 @@ const ContainerPage = () => {
 
   const versionHandler = () =>
     history.push(
-      getVersionPath(EntityType.CONTAINER, containerFQN, toString(version))
+      getVersionPath(
+        EntityType.CONTAINER,
+        decodedContainerName,
+        toString(version)
+      )
     );
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -663,7 +661,9 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={() => fetchContainerDetail(containerFQN)}
+            onUpdateEntityDetails={() =>
+              fetchContainerDetail(decodedContainerName)
+            }
           />
         ),
       },
@@ -703,7 +703,7 @@ const ContainerPage = () => {
       isDataModelEmpty,
       containerData,
       description,
-      containerFQN,
+      decodedContainerName,
       decodedContainerName,
       entityName,
       editDescriptionPermission,
@@ -731,7 +731,7 @@ const ContainerPage = () => {
     try {
       await updateContainerVotes(id, data);
 
-      const details = await getContainerByName(containerFQN, {
+      const details = await getContainerByName(decodedContainerName, {
         fields: 'parent,dataModel,owner,tags,followers,extension,votes',
       });
 
@@ -743,8 +743,8 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    fetchResourcePermission(containerFQN);
-  }, [containerFQN]);
+    fetchResourcePermission(decodedContainerName);
+  }, [decodedContainerName]);
 
   // Rendering
   if (isLoading) {
@@ -754,7 +754,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), containerFQN)}
+        {getEntityMissingError(t('label.container'), decodedContainerName)}
       </ErrorPlaceHolder>
     );
   }

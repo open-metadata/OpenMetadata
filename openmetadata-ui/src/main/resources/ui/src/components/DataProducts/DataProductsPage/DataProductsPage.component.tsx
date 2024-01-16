@@ -34,7 +34,6 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -46,15 +45,13 @@ const DataProductsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { version } = useParams<{ version: string }>();
-  const { fqn } = useFqn();
+  const { fqn: dataProductFqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
   const [selectedVersionData, setSelectedVersionData] = useState<DataProduct>();
-
-  const dataProductFqn = fqn ? getDecodedFqn(fqn) : '';
 
   const handleDataProductUpdate = async (updatedData: DataProduct) => {
     if (dataProduct) {
@@ -147,12 +144,12 @@ const DataProductsPage = () => {
   };
 
   const onVersionChange = (selectedVersion: string) => {
-    const path = getDataProductVersionsPath(fqn, selectedVersion);
+    const path = getDataProductVersionsPath(dataProductFqn, selectedVersion);
     history.push(path);
   };
 
   const onBackHandler = () => {
-    const path = getDataProductsDetailsPath(fqn);
+    const path = getDataProductsDetailsPath(dataProductFqn);
     history.push(path);
   };
 
@@ -173,7 +170,7 @@ const DataProductsPage = () => {
           <p>
             {t('message.no-entity-found-for-name', {
               entity: t('label.data-product'),
-              name: fqn,
+              name: dataProductFqn,
             })}
           </p>
           <Button

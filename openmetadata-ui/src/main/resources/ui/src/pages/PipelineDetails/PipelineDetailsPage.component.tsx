@@ -48,7 +48,6 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -57,14 +56,9 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
-  const { fqn: pipelineFQN } = useFqn();
+  const { fqn: decodedPipelineFQN } = useFqn();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
-  );
-
-  const decodedPipelineFQN = useMemo(
-    () => getDecodedFqn(pipelineFQN),
-    [pipelineFQN]
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
@@ -241,7 +235,11 @@ const PipelineDetailsPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.PIPELINE, pipelineFQN, currentVersion as string)
+      getVersionPath(
+        EntityType.PIPELINE,
+        decodedPipelineFQN,
+        currentVersion as string
+      )
     );
   };
 
@@ -279,7 +277,7 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
-      const details = await getPipelineByFqn(pipelineFQN, {
+      const details = await getPipelineByFqn(decodedPipelineFQN, {
         fields: defaultFields,
       });
       setPipelineDetails(details);
@@ -299,13 +297,13 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
-      fetchPipelineDetail(pipelineFQN);
+      fetchPipelineDetail(decodedPipelineFQN);
     }
-  }, [pipelinePermissions, pipelineFQN]);
+  }, [pipelinePermissions, decodedPipelineFQN]);
 
   useEffect(() => {
-    fetchResourcePermission(pipelineFQN);
-  }, [pipelineFQN]);
+    fetchResourcePermission(decodedPipelineFQN);
+  }, [decodedPipelineFQN]);
 
   if (isLoading) {
     return <Loader />;
@@ -326,7 +324,7 @@ const PipelineDetailsPage = () => {
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
-      fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
+      fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
       followPipelineHandler={followPipeline}
       handleToggleDelete={handleToggleDelete}
       paging={paging}

@@ -46,7 +46,6 @@ import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -95,7 +94,7 @@ const DashboardDetails = ({
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
 
-  const { fqn: dashboardFQN } = useFqn();
+  const { fqn: decodedDashboardFQN } = useFqn();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
@@ -115,11 +114,6 @@ const DashboardDetails = ({
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
   >([]);
-
-  const decodedDashboardFQN = useMemo(
-    () => getDecodedFqn(dashboardFQN),
-    [dashboardFQN]
-  );
 
   const {
     owner,
@@ -188,7 +182,7 @@ const DashboardDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [dashboardFQN]);
+  }, [decodedDashboardFQN]);
 
   const getAllChartsPermissions = useCallback(
     async (charts: ChartType[]) => {

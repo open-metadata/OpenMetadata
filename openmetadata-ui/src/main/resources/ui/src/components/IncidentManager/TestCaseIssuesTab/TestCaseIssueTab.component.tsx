@@ -35,7 +35,6 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { useIncidentManagerProvider } from '../../../pages/IncidentManager/IncidentManagerProvider/IncidentManagerProvider';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import {
@@ -48,8 +47,8 @@ import './test-case-issue-tab.style.less';
 
 const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
-  const decodedFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn } = useFqn();
+
   const {
     selectedThread,
     setActiveThread,
@@ -94,10 +93,10 @@ const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
   }, [decodedFqn]);
 
   useEffect(() => {
-    if (fqn && isInView && entityPaging.after && !loading) {
+    if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, fqn]);
+  }, [entityPaging, loading, isInView, decodedFqn]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {

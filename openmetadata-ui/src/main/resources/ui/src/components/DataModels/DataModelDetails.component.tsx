@@ -39,7 +39,6 @@ import { restoreDataModel } from '../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -72,16 +71,11 @@ const DataModelDetails = ({
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
 
-  const { fqn: dashboardDataModelFQN } = useFqn();
+  const { fqn: decodedDataModelFQN } = useFqn();
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
-
-  const decodedDataModelFQN = useMemo(
-    () => getDecodedFqn(dashboardDataModelFQN),
-    [dashboardDataModelFQN]
-  );
 
   const { deleted, owner, description, version, entityName, tags } =
     useMemo(() => {
@@ -104,8 +98,8 @@ const DataModelDetails = ({
   };
 
   useEffect(() => {
-    dashboardDataModelFQN && getEntityFeedCount();
-  }, [dashboardDataModelFQN]);
+    decodedDataModelFQN && getEntityFeedCount();
+  }, [decodedDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {
@@ -124,7 +118,7 @@ const DataModelDetails = ({
     history.push(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
-        dashboardDataModelFQN,
+        decodedDataModelFQN,
         toString(version)
       )
     );
@@ -141,10 +135,7 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(
-          getDecodedFqn(dashboardDataModelFQN),
-          tabValue
-        ),
+        pathname: getDataModelDetailsPath(decodedDataModelFQN, tabValue),
       });
     }
   };
@@ -253,7 +244,7 @@ const DataModelDetails = ({
     decodedDataModelFQN,
     dataModelData,
     description,
-    dashboardDataModelFQN,
+    decodedDataModelFQN,
     editTagsPermission,
     deleted,
     editDescriptionPermission,

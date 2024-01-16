@@ -28,14 +28,12 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { DomainLeftPanelProps } from './DomainLeftPanel.interface';
 
 const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { fqn } = useFqn();
-  const domainFqn = fqn ? getDecodedFqn(fqn) : null;
+  const { fqn: domainFqn } = useFqn();
   const history = useHistory();
 
   const createDomainsPermission = useMemo(

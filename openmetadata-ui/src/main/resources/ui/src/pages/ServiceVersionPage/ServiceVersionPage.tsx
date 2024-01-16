@@ -67,7 +67,6 @@ import {
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
@@ -79,7 +78,7 @@ function ServiceVersionPage() {
     version: string;
   }>();
 
-  const { fqn: serviceFQN } = useFqn();
+  const { fqn: decodedServiceFQN } = useFqn();
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [data, setData] = useState<Array<ServicePageData>>([]);
@@ -95,11 +94,6 @@ function ServiceVersionPage() {
   );
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
-  );
-
-  const decodedServiceFQN = useMemo(
-    () => getDecodedFqn(serviceFQN),
-    [serviceFQN]
   );
 
   const [entityType, resourceEntity] = useMemo(
@@ -138,7 +132,7 @@ function ServiceVersionPage() {
       setIsLoading(true);
       const permission = await getEntityPermissionByFqn(
         resourceEntity,
-        serviceFQN
+        decodedServiceFQN
       );
 
       setServicePermissions(permission);
@@ -146,7 +140,7 @@ function ServiceVersionPage() {
       setIsLoading(false);
     }
   }, [
-    serviceFQN,
+    decodedServiceFQN,
     getEntityPermissionByFqn,
     resourceEntity,
     setServicePermissions,
@@ -156,7 +150,7 @@ function ServiceVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getServiceByFQN(serviceCategory, serviceFQN, {
+      const { id } = await getServiceByFQN(serviceCategory, decodedServiceFQN, {
         include: Include.All,
       });
       setServiceId(id);
@@ -167,7 +161,7 @@ function ServiceVersionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [viewVersionPermission, serviceCategory, serviceFQN]);
+  }, [viewVersionPermission, serviceCategory, decodedServiceFQN]);
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
@@ -357,15 +351,19 @@ function ServiceVersionPage() {
   const versionHandler = useCallback(
     (newVersion = version) => {
       history.push(
-        getServiceVersionPath(serviceCategory, serviceFQN, toString(newVersion))
+        getServiceVersionPath(
+          serviceCategory,
+          decodedServiceFQN,
+          toString(newVersion)
+        )
       );
     },
-    [serviceCategory, serviceFQN]
+    [serviceCategory, decodedServiceFQN]
   );
 
   const backHandler = useCallback(() => {
-    history.push(getServiceDetailsPath(serviceFQN, serviceCategory));
-  }, [serviceFQN, serviceCategory]);
+    history.push(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+  }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -479,16 +477,16 @@ function ServiceVersionPage() {
   };
 
   useEffect(() => {
-    if (!isEmpty(serviceFQN)) {
+    if (!isEmpty(decodedServiceFQN)) {
       fetchResourcePermission();
     }
-  }, [serviceFQN]);
+  }, [decodedServiceFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
-  }, [serviceFQN, viewVersionPermission]);
+  }, [decodedServiceFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (serviceId) {
