@@ -11,36 +11,49 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
-import { Badge } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import classNames from 'classnames';
 import i18next from 'i18next';
-import React, { ReactNode } from 'react';
-import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
+import { ReactNode } from 'react';
+import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
-import { ReactComponent as AppIcon } from '../assets/svg/application.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
+import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
+import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
-import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
-import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as RolesIcon } from '../assets/svg/icon-role-grey.svg';
-import { ReactComponent as OMLogo } from '../assets/svg/metadata.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as PoliciesIcon } from '../assets/svg/policies.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TeamsIcon } from '../assets/svg/teams-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { ReactComponent as UsersIcon } from '../assets/svg/user.svg';
+import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
+
+import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
+
+import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
+import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedure-colored.svg';
+
+import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-colored.svg';
+import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
+import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
+
+import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
+import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
+import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
+import { ReactComponent as IntegrationIcon } from '../assets/svg/setting-integration.svg';
+import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
+import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
+
+import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
+
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
+import { ReactComponent as MetadataIcon } from '../assets/svg/logo-monogram.svg';
+import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored.svg';
+
 import {
   ResourceEntity,
   UIPermission,
@@ -56,355 +69,372 @@ export interface MenuListItem {
   isProtected: boolean;
   icon: ReactNode;
   key: string;
+  description: string;
 }
 export interface MenuList {
   category: string;
   items: MenuListItem[];
   isBeta?: boolean;
   key: string;
+  description: string;
+}
+
+export interface SettingMenuItem {
+  key: string;
+  icon: SvgComponent;
+  description: string;
+  category?: string;
+  label?: string;
+  isBeta?: boolean;
+  isProtected?: boolean;
+  items?: SettingMenuItem[];
 }
 
 export const getGlobalSettingsMenuWithPermission = (
   permissions: UIPermission,
   isAdminUser: boolean | undefined
-) => {
+): SettingMenuItem[] => {
   return [
-    {
-      category: i18next.t('label.member-plural'),
-      key: 'members',
-      items: [
-        {
-          label: i18next.t('label.team-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TEAM,
-            permissions
-          ),
-          key: 'members.teams',
-          icon: <TeamsIcon className="side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.user-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.USER,
-            permissions
-          ),
-          key: 'members.users',
-          icon: <UsersIcon className="side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.admin-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.USER,
-            permissions
-          ),
-          key: 'members.admins',
-          icon: <AdminIcon className="side-panel-icons" />,
-        },
-
-        {
-          label: i18next.t('label.persona-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'members.persona',
-          icon: <PersonasIcon className="side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.access'),
-      key: 'access',
-      items: [
-        {
-          label: i18next.t('label.role-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'access.roles',
-          icon: <RolesIcon className="side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.policy-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'access.policies',
-          icon: <PoliciesIcon className="side-panel-icons" />,
-        },
-      ],
-    },
     {
       category: i18next.t('label.service-plural'),
       key: 'services',
+      icon: ServiceIcon,
+      description: i18next.t('label.service-description'),
       items: [
         {
           label: i18next.t('label.database-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DATABASE_SERVICE,
             permissions
           ),
           key: 'services.databases',
-          icon: <TableIcon className="side-panel-icons" />,
+          icon: DatabaseIcon,
         },
         {
           label: i18next.t('label.messaging'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions
           ),
           key: 'services.messaging',
-          icon: <TopicIcon className="side-panel-icons" />,
+          icon: MessagingIcon,
         },
         {
           label: i18next.t('label.dashboard-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DASHBOARD_SERVICE,
             permissions
           ),
           key: 'services.dashboards',
-          icon: <DashboardIcon className="side-panel-icons" />,
+          icon: DashboardIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.PIPELINE_SERVICE,
             permissions
           ),
           key: 'services.pipelines',
-          icon: <PipelineIcon className="side-panel-icons" />,
+          icon: PipelineIcon,
         },
         {
           label: i18next.t('label.ml-model-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.ML_MODEL_SERVICE,
             permissions
           ),
           key: 'services.mlmodels',
-          icon: <MlModelIcon className="side-panel-icons" />,
+          icon: MlModelIcon,
         },
         {
           label: i18next.t('label.storage-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
             permissions
           ),
           key: 'services.storages',
-          icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
+          icon: StorageIcon,
         },
         {
           label: i18next.t('label.search'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.SEARCH_SERVICE,
             permissions
           ),
           key: 'services.search',
-          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+          icon: SearchIcon,
         },
         {
           label: i18next.t('label.metadata'),
+          description: i18next.t('label.service-description'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.METADATA_SERVICE,
             permissions
           ),
           key: 'services.metadata',
-          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
+          icon: MetadataIcon,
         },
       ],
     },
     {
       category: i18next.t('label.integration-plural'),
       key: 'integrations',
+      icon: IntegrationIcon,
+      description: i18next.t('label.service-description'),
       items: [
         {
           label: i18next.t('label.application-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'integrations.apps',
-          icon: <AppIcon className="side-panel-icons" />,
+          icon: ApplicationIcon,
         },
         {
           label: i18next.t('label.bot-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'integrations.bots',
-          icon: <BotIcon className="w-4 side-panel-icons" />,
+          icon: BotIcon,
         },
       ],
+    },
+    {
+      category: i18next.t('label.data-observability'),
+      key: 'data-observability',
+      icon: DataObservability,
+      description: i18next.t('label.service-description'),
+      isProtected: Boolean(isAdminUser),
     },
     {
       category: i18next.t('label.notification-plural'),
       key: 'notifications',
+      icon: NotificationIcon,
+      description: i18next.t('label.service-description'),
       items: [
         {
           label: i18next.t('label.activity-feed-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'notifications.activityFeeds',
-          icon: <AllActivityIcon className="side-panel-icons" />,
+          icon: AllActivityIcon,
         },
         {
           label: i18next.t('label.alert-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'notifications.alerts',
-          icon: <BellIcon className="side-panel-icons" />,
+          icon: BellIcon,
         },
       ],
     },
     {
-      category: i18next.t('label.open-metadata'),
+      category: i18next.t('label.team-user-management'),
+      key: 'members',
+      icon: ManagementIcon,
+      description: i18next.t('label.service-description'),
+      items: [
+        {
+          label: i18next.t('label.team-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.TEAM,
+            permissions
+          ),
+          key: 'members.teams',
+          icon: TeamsIcon,
+        },
+        {
+          label: i18next.t('label.user-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.users',
+          icon: UsersIcon,
+        },
+        {
+          label: i18next.t('label.admin-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.admins',
+          icon: AdminIcon,
+        },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: Boolean(isAdminUser),
+          key: 'members.persona',
+          icon: PersonasIcon,
+        },
+      ],
+    },
+    {
+      category: i18next.t('label.access-control'),
+      key: 'access',
+      icon: AccessControlIcon,
+      description: i18next.t('label.service-description'),
+      items: [
+        {
+          label: i18next.t('label.role-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: Boolean(isAdminUser),
+          key: 'access.roles',
+          icon: RolesIcon,
+        },
+        {
+          label: i18next.t('label.policy-plural'),
+          description: i18next.t('label.service-description'),
+          isProtected: Boolean(isAdminUser),
+          key: 'access.policies',
+          icon: PoliciesIcon,
+        },
+      ],
+    },
+
+    {
+      category: i18next.t('label.customize-open-metadata'),
       key: 'openMetadata',
+      icon: OpenMetadataIcon,
+      description: i18next.t('label.service-description'),
       items: [
         {
           label: i18next.t('label.customize-entity', {
             entity: i18next.t('label.landing-page'),
           }),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customizeLandingPage',
-          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+          icon: CustomDashboardLogoIcon,
         },
         {
           label: i18next.t('label.email'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
+          icon: EmailIcon,
         },
         {
           label: i18next.t('label.custom-logo'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+          icon: CustomLogoIcon,
         },
         {
           label: i18next.t('label.login-configuration'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.loginConfiguration',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+          icon: LoginIcon,
         },
       ],
     },
     {
       category: i18next.t('label.custom-property-plural'),
       key: 'customAttributes',
+      icon: CustomProperties,
+      description: i18next.t('label.service-description'),
       items: [
         {
           label: i18next.t('label.database'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.databases',
-          icon: <DatabaseIcon className="side-panel-icons" />,
+          icon: DatabaseIcon,
         },
         {
           label: i18next.t('label.database-schema'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.databaseSchemas',
-          icon: <SchemaIcon className="side-panel-icons" />,
+          icon: SchemaIcon,
         },
         {
           label: i18next.t('label.table-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.tables',
-          icon: <TableIcon className="side-panel-icons" />,
+          icon: TableIcon,
         },
         {
           label: i18next.t('label.stored-procedure-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.storedProcedures',
-          icon: <StoredProcedureIcon className="side-panel-icons" />,
+          icon: StoredProcedureIcon,
         },
         {
           label: i18next.t('label.dashboard-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.dashboards',
-          icon: <DashboardIcon className="side-panel-icons" />,
+          icon: DashboardIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.pipelines',
-          icon: <PipelineIcon className="side-panel-icons" />,
+          icon: PipelineIcon,
         },
         {
           label: i18next.t('label.topic-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.topics',
-          icon: <TopicIcon className="side-panel-icons" />,
+          icon: MessagingIcon,
         },
         {
           label: i18next.t('label.container-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.containers',
-          icon: <StorageIcon className="side-panel-icons" />,
+          icon: StorageIcon,
         },
         {
           label: i18next.t('label.ml-model-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.mlmodels',
-          icon: <MlModelIcon className="side-panel-icons" />,
+          icon: MlModelIcon,
         },
         {
           label: i18next.t('label.search-index-plural'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.searchIndexes',
-          icon: <SearchOutlined className="side-panel-icons" />,
+          icon: SearchIcon,
         },
         {
           label: i18next.t('label.glossary-term'),
+          description: i18next.t('label.service-description'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.glossaryTerm',
-          icon: <GlossaryIcon className="side-panel-icons" />,
+          icon: GlossaryIcon,
         },
       ],
     },
   ];
 };
 
-export const getGlobalSettingMenuItem = (args: {
-  label: string;
-  key: string;
-  category?: string;
-  icon?: React.ReactNode;
-  children?: {
-    label: string;
-    isProtected: boolean;
-    icon: React.ReactNode;
-    isBeta?: boolean;
-    key: string;
-  }[];
-  type?: string;
-  isBeta?: boolean;
-  isChildren?: boolean;
-}): {
-  key: string;
-  icon: React.ReactNode;
-  children: ItemType[] | undefined;
-  label: ReactNode;
-  type: string | undefined;
-} => {
-  const { children, label, key, icon, category, isBeta, type, isChildren } =
-    args;
-
-  const subItems = children
-    ? children
-        .filter((menu) => menu.isProtected)
-        .map(({ label, icon, isBeta: isChildBeta, key: subKey }) => {
-          return getGlobalSettingMenuItem({
-            label,
-            key: subKey,
-            category: category,
-            icon,
-            isBeta: isChildBeta,
-            isChildren: true,
-          });
-        })
-    : undefined;
-
+export const getGlobalSettingMenuItem = (
+  args: SettingMenuItem
+): SettingMenuItem => {
   return {
-    key: key,
-    icon,
-    children: subItems,
-    label: isBeta ? (
-      <Badge
-        className={classNames({ 'text-xs text-grey-muted': !isChildren })}
-        color="#0968da"
-        count="beta"
-        offset={[30, 8]}
-        size="small">
-        {label}
-      </Badge>
-    ) : (
-      label
-    ),
-    type,
+    ...args,
+    items: args.items?.filter((item) => item.isProtected),
   };
 };
 

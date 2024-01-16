@@ -213,6 +213,9 @@ export const getSettingPath = (
 
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  } else if (category) {
+    path = ROUTES.SETTINGS_WITH_CATEGORY;
+    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
   return path;

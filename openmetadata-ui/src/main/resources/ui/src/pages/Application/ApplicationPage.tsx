@@ -12,15 +12,18 @@
  */
 import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -30,11 +33,17 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getApplicationDetailsPath } from '../../utils/RouterUtils';
+import {
+  getApplicationDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ApplicationPage = () => {
   const { t } = useTranslation();
+  const { settingCategory, tab: settingService } =
+    useParams<{ settingCategory: string; tab: string }>();
+
   const {
     currentPage,
     paging,
@@ -48,6 +57,25 @@ const ApplicationPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
   const [showDisabled, setShowDisabled] = useState(false);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () => [
+      {
+        name: t('label.setting-plural'),
+        url: ROUTES.SETTINGS,
+      },
+      {
+        name: capitalize(settingCategory),
+        url: getSettingPath(settingCategory),
+      },
+      {
+        name: capitalize(settingService),
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [settingCategory, settingService]
+  );
 
   const fetchApplicationList = useCallback(
     async (showDisabled = false, pagingOffset?: Paging) => {
@@ -121,8 +149,11 @@ const ApplicationPage = () => {
   }, [pageSize]);
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1 pageTitle={t('label.domain')}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
         <Col span={16}>
           <PageHeader data={PAGE_HEADERS.APPLICATION} />
         </Col>
@@ -192,7 +223,7 @@ const ApplicationPage = () => {
           </>
         )}
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 
