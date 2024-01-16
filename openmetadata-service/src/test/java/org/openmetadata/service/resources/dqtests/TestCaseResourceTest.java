@@ -1099,7 +1099,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // We can get it via API with a list of ongoing incidents
     TestCase result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-
+    UUID incidentId = result.getIncidentId();
     assertNotNull(result.getIncidentId());
 
     // Resolving the status triggers resolving the task, which triggers removing the ongoing
@@ -1115,10 +1115,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withResolvedBy(USER1_REF));
     createTestCaseFailureStatus(createResolvedStatus);
 
-    // If we read again, the incident list will be empty
     result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNotNull(result.getIncidentId());
+    assertEquals(incidentId, result.getIncidentId());
 
-    assertNull(result.getIncidentId());
+    // Add a new failed result, which will create a NEW incident and start a new stateId
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-02")),
+        ADMIN_AUTH_HEADERS);
+
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNotNull(result.getIncidentId());
+    assertNotEquals(incidentId, result.getIncidentId());
   }
 
   @Test
