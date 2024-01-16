@@ -432,7 +432,12 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchLineage(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();

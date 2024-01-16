@@ -423,11 +423,20 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response searchLineage(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
+    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
+        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -437,6 +446,10 @@ public class ElasticSearchClient implements SearchClient {
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
       responseMap.put("entity", hit.getSourceAsMap());
+    }
+    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
+        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     }
     getLineage(
         fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
@@ -508,6 +521,72 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+  }
+
+  private Response searchPipelineLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    List<Map<String, Object>> edges = new ArrayList<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    responseMap.put("entity", null);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    //    if (CommonUtil.nullOrEmpty(deleted)) {
+    //      searchSourceBuilder.query(
+    //          QueryBuilders.boolQuery()
+    //              .must(QueryBuilders.termQuery(direction, fqn))
+    //              .must(QueryBuilders.termQuery("deleted", deleted)));
+    //    }
+    //    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+    //      try {
+    //        XContentParser filterParser =
+    //            XContentType.JSON
+    //                .xContent()
+    //                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE,
+    // queryFilter);
+    //        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+    //        BoolQueryBuilder newQuery =
+    //            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+    //        searchSourceBuilder.query(newQuery);
+    //      } catch (Exception ex) {
+    //        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+    //      }
+    //    }
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> lineage =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+      nodes.add(hit.getSourceAsMap());
+      for (Map<String, Object> lin : lineage) {
+        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+        getLineage(
+            fromEntity.get("fqn"),
+            upstreamDepth,
+            edges,
+            nodes,
+            queryFilter,
+            "lineage.toEntity.fqn.keyword",
+            deleted);
+        getLineage(
+            toEntity.get("fqn"),
+            downstreamDepth,
+            edges,
+            nodes,
+            queryFilter,
+            "lineage.fromEntity.fqn.keyword",
+            deleted);
+      }
+    }
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
   }
 
   @Override

@@ -167,9 +167,9 @@ public class LineageRepository {
       //          "source",
       //          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null :
       // lineageDetails.getSource());
-      if (!CommonUtil.nullOrEmpty(lineageDetails.getPipeline())) {
-        updateEdgeDetailsInSearch(fromDetails, lineageDetails, toDetails);
-      }
+      //      if (!CommonUtil.nullOrEmpty(lineageDetails.getPipeline())) {
+      //        updateEdgeDetailsInSearch(fromDetails, lineageDetails, toDetails);
+      //      }
     }
   }
 
