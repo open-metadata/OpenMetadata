@@ -18,6 +18,7 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    environment: security-scan
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       SNYK_ORGANIZATION: ${{ secrets.SNYK_ORGANIZATION_ID }}
@@ -84,25 +85,25 @@ jobs:
         if: steps.security-report.outcome != 'success'
         uses: slackapi/slack-github-action@v1.23.0
         with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
               "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_REPORT_SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack on Success
         if: steps.security-report.outcome == 'success'
         uses: slackapi/slack-github-action@v1.23.0
         with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
-              "text": "🟢 Security report generated, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+              "text": "🟢 Security report generated for OpenMetadata Repo , please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_REPORT_SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Upload Snyk Report HTML files
         if: steps.security-report.outcome == 'success'
