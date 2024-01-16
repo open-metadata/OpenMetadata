@@ -108,8 +108,11 @@ class StoredProcedureMixin(ABC):
         for row in results:
             try:
                 query_by_procedure = QueryByProcedure.parse_obj(dict(row))
-                procedure_name = query_by_procedure.procedure_name or get_procedure_name_from_call(
-                    query_text=query_by_procedure.procedure_text,
+                procedure_name = (
+                    query_by_procedure.procedure_name
+                    or get_procedure_name_from_call(
+                        query_text=query_by_procedure.procedure_text,
+                    )
                 )
                 queries_dict[procedure_name].append(query_by_procedure)
             except Exception as exc:
