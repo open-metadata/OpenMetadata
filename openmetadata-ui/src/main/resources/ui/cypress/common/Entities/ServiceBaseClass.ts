@@ -390,9 +390,6 @@ class ServiceBaseClass {
 
     toastNotification(`Pipeline triggered successfully!`);
 
-    // Close the toast message
-    cy.get('.Toastify__close-button').click();
-
     // Wait for success
     retryIngestionRun();
 
