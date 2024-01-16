@@ -30,6 +30,14 @@ class PatchRequest(BaseModel):
     new_entity: Entity
 
 
+class PatchedEntity(BaseModel):
+    """
+    Store the new entity after patch request
+    """
+
+    new_entity: Optional[Entity]
+
+
 ALLOWED_COLUMN_FIELDS = {
     "name": True,
     "dataType": True,
