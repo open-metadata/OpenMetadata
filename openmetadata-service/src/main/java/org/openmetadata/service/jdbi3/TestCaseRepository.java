@@ -63,7 +63,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
+  private static final String PATCH_FIELDS =
+      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository() {
@@ -894,7 +895,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
-      recordChange("computePassedFailedRowCount", original.getComputePassedFailedRowCount(), updated.getComputePassedFailedRowCount());
+      recordChange(
+          "computePassedFailedRowCount",
+          original.getComputePassedFailedRowCount(),
+          updated.getComputePassedFailedRowCount());
     }
   }
 }
