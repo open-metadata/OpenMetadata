@@ -87,30 +87,30 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       const newMatches: MentionSuggestionsItem[] = [];
       try {
         // Fetch profile images in case of user listing
-        const promises = matches.map(async (item) => {
+        const promises = matches.map(async (item, index) => {
           if (item.type === 'user') {
             return getUserByName(item.name, { fields: 'profile' }).then(
               (res) => {
                 updateUserProfilePics({ id: item.name, user: res });
 
-                newMatches.push({
+                newMatches[index] = {
                   ...item,
                   avatarEle: userMentionItemWithAvatar(
                     item,
                     userProfilePics[item.name] ?? res
                   ),
-                });
+                };
               }
             );
           } else if (item.type === 'team') {
-            newMatches.push({
+            newMatches[index] = {
               ...item,
               avatarEle: userMentionItemWithAvatar(item),
-            });
+            };
           } else {
-            newMatches.push({
+            newMatches[index] = {
               ...item,
-            });
+            };
           }
 
           return Promise.resolve();
