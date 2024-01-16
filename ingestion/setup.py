@@ -234,6 +234,7 @@ plugins: Dict[str, Set[str]] = {
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
+    "openlineage": {"confluent-kafka"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
