@@ -28,6 +28,7 @@ import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
 import { getUserById } from '../../../rest/userAPI';
@@ -248,6 +249,9 @@ function CustomizeMyData({
   useEffect(() => {
     fetchMyData();
   }, []);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
 
   return (
     <ActivityFeedProvider>

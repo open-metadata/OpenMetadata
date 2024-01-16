@@ -45,7 +45,6 @@ export const TOOLBAR_ITEMS = [
   [{ list: 'ordered' }, { list: 'bullet' }],
   ['link'],
   ['insertMention', 'insertRef', 'emoji'],
-  [{ direction: 'rtl' }],
 ];
 
 export enum TaskOperation {

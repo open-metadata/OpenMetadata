@@ -15,6 +15,7 @@ import { NodeSelection, Plugin } from '@tiptap/pm/state';
 // @ts-ignore
 import { EditorView, __serializeForClipboard } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
 
@@ -128,7 +129,11 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    dragHandleElement.style.left = `${rect.left - rect.width}px`;
+    if (i18n.dir() === 'rtl') {
+      dragHandleElement.style.right = `${rect.right - rect.width}px`;
+    } else {
+      dragHandleElement.style.left = `${rect.left - rect.width}px`;
+    }
     dragHandleElement.style.top = `${rect.top}px`;
     showDragHandle();
   };
@@ -177,9 +182,15 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    blockHandleElement.style.left = `${
-      rect.left - rect.width - options.blockHandleWidth
-    }px`;
+    if (i18n.dir() === 'rtl') {
+      blockHandleElement.style.right = `${
+        rect.right - rect.width - options.blockHandleWidth
+      }px`;
+    } else {
+      blockHandleElement.style.left = `${
+        rect.left - rect.width - options.blockHandleWidth
+      }px`;
+    }
     blockHandleElement.style.top = `${rect.top}px`;
     showBlockHandle();
   };
