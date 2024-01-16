@@ -402,11 +402,13 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
+            # Airflow uses /dags/dag_id/grid to show pipeline / dag
+            source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
 
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=pipeline_details.description,
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
+                sourceUrl=source_url,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
