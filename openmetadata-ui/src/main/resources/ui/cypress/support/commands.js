@@ -126,6 +126,7 @@ Cypress.Commands.add('storeSession', (username, password) => {
         .replaceAll('.', '_')}`;
 
       cy.setCookie(versionCookie, 'true');
+      window.localStorage.setItem('loggedInUsers', 'admin');
     });
   });
 });

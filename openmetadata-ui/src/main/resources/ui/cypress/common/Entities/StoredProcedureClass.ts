@@ -65,6 +65,10 @@ class StoreProcedureClass extends EntityClass {
     });
   }
 
+  followUnfollowEntity() {
+    // Skiping this since not supported for store procedure
+  }
+
   // Cleanup
   override cleanup() {
     super.cleanup();

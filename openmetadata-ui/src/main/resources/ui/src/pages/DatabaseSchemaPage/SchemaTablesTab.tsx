@@ -80,7 +80,7 @@ function SchemaTablesTab({
             <div className="d-inline-flex w-max-90">
               <Link
                 className="break-word"
-                data-testid="table-name-link"
+                data-testid={record.name}
                 to={entityUtilClassBase.getEntityLink(
                   EntityType.TABLE,
                   record.fullyQualifiedName as string

@@ -32,10 +32,13 @@ import {
   createEntityViaREST,
   deleteEntity,
   deleteEntityViaREST,
+  followEntity,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
+  unfollowEntity,
   updateDescriptioForEntity,
   updateDisplayNameForEntity,
+  validateFollowedEntityToWidget,
 } from '../Utils/Entity';
 import {
   assignGlossaryTerm,
@@ -466,6 +469,14 @@ class EntityClass {
 
   removeInactiveAnnouncement() {
     deleteAnnoucement();
+  }
+
+  followUnfollowEntity() {
+    followEntity(this.endPoint);
+    validateFollowedEntityToWidget(this.entityName, true);
+    this.visitEntity();
+    unfollowEntity(this.endPoint);
+    validateFollowedEntityToWidget(this.entityName, false);
   }
 
   // Custom property

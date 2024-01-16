@@ -160,6 +160,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
       fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
     });
   });
 
@@ -178,6 +179,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
       fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
     });
   });
 
@@ -208,6 +210,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
       fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -234,6 +237,7 @@ describe('StoredProcedure component', () => {
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
       fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
     });
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();

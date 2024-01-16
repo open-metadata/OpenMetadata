@@ -24,16 +24,9 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  // Click on settings page
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
 
   cy.sidebarClick('app-bar-item-settings');
 
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
 
