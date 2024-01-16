@@ -221,7 +221,6 @@ class SalesforceSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-
         try:
             table_constraints = None
             salesforce_objects = self.client.restful(
