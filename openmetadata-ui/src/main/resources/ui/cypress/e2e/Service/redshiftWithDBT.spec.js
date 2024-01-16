@@ -106,9 +106,7 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click({ force: true });
+    cy.sidebarClick('app-bar-item-settings');
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -225,11 +223,10 @@ describe('RedShift Ingestion', () => {
       `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
+    cy.sidebarHover();
     cy.get('[data-testid="governance"]').click();
 
-    cy.get('[data-testid="app-bar-item-tags"]').click({
-      waitForAnimations: true,
-    });
+    cy.sidebarClick('app-bar-item-tags');
 
     verifyResponseStatusCode('@fetchClassifications', 200);
 
