@@ -79,6 +79,8 @@ class SalesforceSource(DatabaseServiceSource):
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state = set()
+        self.table_desc_map = {}
+        self.set_table_desc_map()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -191,6 +193,26 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
+    def set_table_desc_map(self) -> None:
+        """
+        Method to set table description obtained gotten Tooling API to map
+        """
+        try:
+            results = self.client.toolingexecute(
+                "query/?q=SELECT+QualifiedApiName,Description+FROM+EntityDefinition"
+            )["records"]
+            for row in results:
+                self.table_desc_map[row["QualifiedApiName"]] = row["Description"]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get table description: {exc}")
+
+    def get_table_description(self, table_name: str) -> Optional[str]:
+        """
+        return table description
+        """
+        return self.table_desc_map.get(table_name)
+
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -199,6 +221,7 @@ class SalesforceSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
+
         try:
             table_constraints = None
             salesforce_objects = self.client.restful(
@@ -209,6 +232,7 @@ class SalesforceSource(DatabaseServiceSource):
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
+                description=self.get_table_description(table_name),
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=fqn.build(
