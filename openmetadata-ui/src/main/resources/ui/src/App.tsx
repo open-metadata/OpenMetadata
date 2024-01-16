@@ -20,6 +20,7 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
+import DirectionProvider from './components/DirectionProvider/DirectionProvider';
 import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
@@ -43,27 +44,29 @@ const App: FC<AppProps> = ({ routeElements }) => {
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <ApplicationConfigProvider routeElements={routeElements}>
-                <AuthProvider childComponentType={AppRouter}>
-                  <TourProvider>
-                    <HelmetProvider>
-                      <WebAnalyticsProvider>
-                        <PermissionProvider>
-                          <WebSocketProvider>
-                            <GlobalSearchProvider>
-                              <DomainProvider>
-                                <EntityExportModalProvider>
-                                  <AppRouter />
-                                </EntityExportModalProvider>
-                              </DomainProvider>
-                            </GlobalSearchProvider>
-                          </WebSocketProvider>
-                        </PermissionProvider>
-                      </WebAnalyticsProvider>
-                    </HelmetProvider>
-                  </TourProvider>
-                </AuthProvider>
-              </ApplicationConfigProvider>
+              <DirectionProvider>
+                <ApplicationConfigProvider routeElements={routeElements}>
+                  <AuthProvider childComponentType={AppRouter}>
+                    <TourProvider>
+                      <HelmetProvider>
+                        <WebAnalyticsProvider>
+                          <PermissionProvider>
+                            <WebSocketProvider>
+                              <GlobalSearchProvider>
+                                <DomainProvider>
+                                  <EntityExportModalProvider>
+                                    <AppRouter />
+                                  </EntityExportModalProvider>
+                                </DomainProvider>
+                              </GlobalSearchProvider>
+                            </WebSocketProvider>
+                          </PermissionProvider>
+                        </WebAnalyticsProvider>
+                      </HelmetProvider>
+                    </TourProvider>
+                  </AuthProvider>
+                </ApplicationConfigProvider>
+              </DirectionProvider>
             </ErrorBoundary>
           </I18nextProvider>
         </Router>
