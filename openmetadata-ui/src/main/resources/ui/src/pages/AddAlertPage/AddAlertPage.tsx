@@ -323,7 +323,7 @@ const AddAlertPage = () => {
                 data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
-                  func.paramAdditionalContext?.data?.map((d) => ({
+                  func.paramAdditionalContext?.data?.map((d: string) => ({
                     label: startCase(d),
                     value: d,
                   })) ?? []

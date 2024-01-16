@@ -130,13 +130,24 @@ Cypress.Commands.add('storeSession', (username, password) => {
   });
 });
 
-Cypress.Commands.add('login', () => {
-  cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.goToHomePage();
-});
+Cypress.Commands.add(
+  'login',
+  (username = LOGIN.username, password = LOGIN.password) => {
+    cy.storeSession(username, password);
+    cy.goToHomePage();
+  }
+);
 
 Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
+});
+
+Cypress.Commands.add('sidebarHover', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseover'); // trigger mouseover event inside the sidebar
+});
+
+Cypress.Commands.add('sidebarHoverOutside', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseout'); // trigger mouseout event outside the sidebar
 });
 
 Cypress.Commands.add('logout', () => {
@@ -149,4 +160,13 @@ Cypress.Commands.add('logout', () => {
   verifyResponseStatusCode('@logoutUser', 200);
 
   cy.url().should('eq', `${BASE_URL}/signin`);
+  Cypress.session.clearAllSavedSessions();
+});
+
+Cypress.Commands.add('sidebarClick', (id) => {
+  cy.get(`[data-testid="${id}"]`).click({
+    animationDistanceThreshold: 20,
+    waitForAnimations: true,
+  });
+  cy.sidebarHoverOutside();
 });
