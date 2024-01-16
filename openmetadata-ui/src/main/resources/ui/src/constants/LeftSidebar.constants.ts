@@ -16,12 +16,14 @@ import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/globalsearch.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-bulb.svg';
 import { ReactComponent as DataContractIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as QualityIcon } from '../assets/svg/ic-quality-v1.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lampcharge.svg';
+import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
+
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
 
@@ -40,14 +42,14 @@ export const SIDEBAR_LIST = [
     dataTestId: 'data-quality',
     children: [
       {
-        key: 'data-contract',
+        key: ROUTES.DATA_QUALITY,
         label: i18next.t('label.data-contract-plural'),
         redirect_url: ROUTES.DATA_QUALITY,
         icon: DataContractIcon,
         dataTestId: 'app-bar-item-data-contract',
       },
       {
-        key: 'incident-manager',
+        key: ROUTES.INCIDENT_MANAGER,
         label: i18next.t('label.incident-manager'),
         redirect_url: ROUTES.INCIDENT_MANAGER,
         icon: IncidentMangerIcon,
@@ -77,14 +79,14 @@ export const SIDEBAR_LIST = [
     dataTestId: 'governance',
     children: [
       {
-        key: 'glossary',
+        key: ROUTES.GLOSSARY,
         label: i18next.t('label.glossary'),
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
         dataTestId: 'app-bar-item-glossary',
       },
       {
-        key: 'tags',
+        key: ROUTES.TAGS,
         label: i18next.t('label.classification'),
         redirect_url: ROUTES.TAGS,
         icon: ClassificationIcon,
@@ -100,4 +102,11 @@ export const SETTING_ITEM = {
   redirect_url: ROUTES.SETTINGS,
   icon: SettingsIcon,
   dataTestId: 'app-bar-item-settings',
+};
+
+export const LOGOUT_ITEM = {
+  key: 'logout',
+  label: i18next.t('label.logout'),
+  icon: LogoutIcon,
+  dataTestId: 'app-bar-item-logout',
 };

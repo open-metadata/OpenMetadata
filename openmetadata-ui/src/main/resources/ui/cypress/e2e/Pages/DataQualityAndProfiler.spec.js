@@ -103,8 +103,15 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
     'testSuite'
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+
+  cy.sidebarHover();
+
   cy.get('[data-testid="data-quality"]').click();
-  cy.get('[data-testid="app-bar-item-data-contract"]').click();
+
+  cy.sidebarClick('app-bar-item-data-contract');
+
+  cy.sidebarHoverOutside();
+
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
   clickOnTestSuite(testSuiteName);
@@ -194,9 +201,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
+
     cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
@@ -526,8 +532,15 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'getTestCase'
     );
+
+    cy.sidebarHover();
+
     cy.get('[data-testid="data-quality"]').click();
-    cy.get('[data-testid="app-bar-item-data-contract"]').click();
+
+    cy.sidebarClick('app-bar-item-data-contract');
+
+    cy.sidebarHoverOutside();
+
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
     cy.get('[data-testid="add-test-suite-btn"]').click();
@@ -786,8 +799,15 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
+
+    cy.sidebarHover();
+
     cy.get('[data-testid="data-quality"]').click();
-    cy.get('[data-testid="app-bar-item-data-contract"]').click();
+
+    cy.sidebarClick('app-bar-item-data-contract');
+
+    cy.sidebarHoverOutside();
+
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);
     interceptURL(

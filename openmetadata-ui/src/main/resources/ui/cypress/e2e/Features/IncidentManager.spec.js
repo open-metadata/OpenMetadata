@@ -88,9 +88,7 @@ describe.skip('Incident Manager', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
     cy.get('[data-menu-id*="databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
@@ -214,8 +212,9 @@ describe.skip('Incident Manager', () => {
   });
 
   it('Assign incident to user', () => {
+    cy.sidebarHover();
     cy.get("[data-testid='data-quality'").click();
-    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.sidebarClick('app-bar-item-incident-manager');
     cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
       'be.visible'
     );
@@ -252,8 +251,9 @@ describe.skip('Incident Manager', () => {
       'getTestCase'
     );
     interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+    cy.sidebarHover();
     cy.get("[data-testid='data-quality'").click();
-    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.sidebarClick('app-bar-item-incident-manager');
     cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
     verifyResponseStatusCode('@getTestCase', 200);
     cy.get('[data-testid="issue"]').click();
@@ -285,8 +285,9 @@ describe.skip('Incident Manager', () => {
       'getTestCase'
     );
     interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+    cy.sidebarHover();
     cy.get("[data-testid='data-quality'").click();
-    cy.get("[data-testid='app-bar-item-incident-manager'").click();
+    cy.sidebarClick('app-bar-item-incident-manager');
     cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
     verifyResponseStatusCode('@getTestCase', 200);
     cy.get('[data-testid="issue"]').click();

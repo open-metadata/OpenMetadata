@@ -31,10 +31,7 @@ class UsersTestClass {
   }
 
   visitUserListPage() {
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   }
@@ -79,14 +76,15 @@ class UsersTestClass {
   }
 
   checkStewardServicesPermissions() {
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
     Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
-      cy.get('[data-testid="app-bar-item-settings"]').click();
+      cy.sidebarClick('app-bar-item-settings');
+
       cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
-    cy.get('[data-testid="app-bar-item-explore"]').click();
-    cy.get('[data-testid="tables-tab"] > .ant-space').click();
+    cy.sidebarClick('app-bar-item-explore');
+    cy.get('[data-testid="tables-tab"]').click();
     cy.get(
       '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
     ).click();

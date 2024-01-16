@@ -30,11 +30,7 @@ const dataInsightReport = {
 describe.skip('Data Insight Alert', () => {
   beforeEach(() => {
     cy.login();
-
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
 
     interceptURL(
       'GET',

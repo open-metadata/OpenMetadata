@@ -170,10 +170,8 @@ export const permanentDeleteUser = (username: string) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
 export const visitUserListPage = () => {
-  cy.get('[data-testid="app-bar-item-settings"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.sidebarClick('app-bar-item-settings');
+
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
 };

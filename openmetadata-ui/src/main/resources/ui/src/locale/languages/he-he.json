@@ -281,6 +281,7 @@
     "database-name": "שם בסיס הנתונים",
     "database-plural": "בסיסי נתונים",
     "database-schema": "סכימת בסיס הנתונים",
+    "database-schema-plural": "Database Schemas",
     "database-service-name": "שירות בסיס הנתונים",
     "date": "תאריך",
     "date-and-time": "תאריך ושעה",
