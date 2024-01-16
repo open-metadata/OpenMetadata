@@ -80,8 +80,37 @@ ENTITY_TYPE
     ;
 
 ENTITY_FIELD
-    : 'columns' | 'description' | 'tags' | 'tasks'
+    : 'description'
+    | 'columns'
+    | 'schemaFields'
+    | 'tags'
+    | 'tasks'
+    | 'mlFeatures'
+    | 'schemaText'
+    | 'owner'
+    | 'reviewers'
+    | 'synonyms'
+    | 'relatedTerms'
+    | 'references'
+    | 'extension'
+    | 'displayName'
+    | 'name'
+    | 'messageSchema'
+    | 'charts'
+    | 'dataModel'
+    | 'constraint'
+    | 'tableConstraints'
+    | 'partitions'
+    | 'replicationFactor'
+    | 'sourceUrl'
+    | 'mutuallyExclusive'
+    | 'experts'
+    | 'fields'
+    | 'followers'
+    | 'appConfiguration'
     ;
+
+    
 
 NAME_OR_FQN
     : ~(':')+ ('>')*? ~(':'|'>')+
