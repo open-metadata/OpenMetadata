@@ -324,9 +324,7 @@ const UserListPageV1 = () => {
                 disabled={!isAdminUser}
                 icon={
                   <IconDelete
-                    data-testid={`delete-user-btn-${
-                      record.displayName || record.name
-                    }`}
+                    data-testid={`delete-user-btn-${record.name}`}
                     name={t('label.delete')}
                     width="16px"
                   />

@@ -13,7 +13,8 @@
 describe('template spec', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]').click();
+
+    cy.sidebarClick('app-bar-item-settings');
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Login Configuration')

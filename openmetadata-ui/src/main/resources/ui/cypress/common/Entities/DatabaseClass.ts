@@ -50,6 +50,10 @@ class DatabaseClass extends EntityClass {
     verifyResponseStatusCode('@fetchDatabase', 200);
   }
 
+  followUnfollowEntity() {
+    // Skiping this since not supported for database
+  }
+
   // Creation
 
   createEntity() {

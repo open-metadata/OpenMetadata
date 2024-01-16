@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 
 mock_mssql_config = {
@@ -347,7 +348,9 @@ class MssqlUnitTest(TestCase):
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
             either.right
-            for either in self.mssql.yield_database_schema(MOCK_DATABASE_SCHEMA.name)
+            for either in self.mssql.yield_database_schema(
+                model_str(MOCK_DATABASE_SCHEMA.name)
+            )
         ]
 
         self.mssql.context.__dict__[

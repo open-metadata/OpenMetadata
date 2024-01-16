@@ -424,9 +424,9 @@ export const deleteCreatedService = (
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="app-bar-item-settings"]')
-    .should('be.visible')
-    .click({ force: true });
+
+  cy.sidebarClick('app-bar-item-settings');
+
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -511,7 +511,8 @@ export const goToAddNewServicePage = (service_type) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
+  cy.sidebarClick('app-bar-item-settings');
+
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
@@ -655,140 +656,6 @@ export const addNewTagToEntity = (entityObj, term) => {
       '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
     ).should('be.visible');
   }
-};
-
-export const addUser = (username, email) => {
-  cy.get('[data-testid="email"]')
-    .scrollIntoView()
-    .should('exist')
-    .should('be.visible')
-    .type(email);
-  cy.get('[data-testid="displayName"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
-  cy.get(descriptionBox)
-    .should('exist')
-    .should('be.visible')
-    .type('Adding user');
-  interceptURL('GET', ' /api/v1/users/generateRandomPwd', 'generatePassword');
-  cy.get('[data-testid="password-generator"]').should('be.visible').click();
-  interceptURL('POST', ' /api/v1/users', 'add-user');
-  verifyResponseStatusCode('@generatePassword', 200);
-  cy.get('[data-testid="save-user"]').scrollIntoView().click();
-  verifyResponseStatusCode('@add-user', 201);
-};
-
-export const softDeleteUser = (username, isAdmin) => {
-  // Search the created user
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=**&from=0&size=*&index=*',
-    'searchUser'
-  );
-  cy.get('[data-testid="searchbar"]').type(username);
-
-  verifyResponseStatusCode('@searchUser', 200);
-
-  // Click on delete button
-  cy.get(`[data-testid="delete-user-btn-${username}"]`).click();
-
-  // Soft deleting the user
-  cy.get('[data-testid="soft-delete"]').click();
-  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
-
-  interceptURL(
-    'DELETE',
-    '/api/v1/users/*?hardDelete=false&recursive=false',
-    'softdeleteUser'
-  );
-  interceptURL('GET', '/api/v1/users*', 'userDeleted');
-  cy.get('[data-testid="confirm-button"]').click();
-  verifyResponseStatusCode('@softdeleteUser', 200);
-  verifyResponseStatusCode('@userDeleted', 200);
-
-  toastNotification('User deleted successfully!');
-
-  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
-
-  // Verifying the deleted user
-  cy.get('[data-testid="searchbar"]').scrollIntoView().clear().type(username);
-
-  verifyResponseStatusCode('@searchUser', 200);
-  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
-};
-
-export const restoreUser = (username) => {
-  // Click on deleted user toggle
-  interceptURL('GET', '/api/v1/users*', 'deletedUser');
-  cy.get('[data-testid="show-deleted"]').click();
-  verifyResponseStatusCode('@deletedUser', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=**&from=0&size=*&index=*',
-    'searchUser'
-  );
-  cy.get('[data-testid="searchbar"]').type(username);
-
-  verifyResponseStatusCode('@searchUser', 200);
-
-  cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
-  cy.get('.ant-modal-body > p').should(
-    'contain',
-    `Are you sure you want to restore ${username}?`
-  );
-  interceptURL('PUT', '/api/v1/users', 'restoreUser');
-  cy.get('.ant-modal-footer > .ant-btn-primary').click();
-  verifyResponseStatusCode('@restoreUser', 200);
-  toastNotification('User restored successfully');
-
-  // Verifying the restored user
-  cy.get('[data-testid="show-deleted"]').click();
-
-  interceptURL('GET', '/api/v1/search/query*', 'searchUser');
-  cy.get('[data-testid="searchbar"]').type(username);
-  verifyResponseStatusCode('@searchUser', 200);
-  cy.get(`[data-testid=${username}]`).should('exist');
-};
-
-export const deleteSoftDeletedUser = (username) => {
-  interceptURL('GET', '/api/v1/users?*', 'getUsers');
-
-  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
-
-  verifyResponseStatusCode('@getUsers', 200);
-
-  cy.get(`[data-testid="delete-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
-  interceptURL(
-    'DELETE',
-    'api/v1/users/*?hardDelete=true&recursive=false',
-    'hardDeleteUser'
-  );
-  cy.get('[data-testid="confirm-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
-  verifyResponseStatusCode('@hardDeleteUser', 200);
-
-  toastNotification('User deleted successfully!');
-
-  interceptURL(
-    'GET',
-    'api/v1/search/query?q=**&from=0&size=15&index=user_search_index',
-    'searchUser'
-  );
-
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
-  verifyResponseStatusCode('@searchUser', 200);
-
-  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const toastNotification = (msg, closeToast = true) => {
@@ -1100,7 +967,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
+  cy.sidebarClick('app-bar-item-settings');
 
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
@@ -1274,7 +1141,7 @@ export const visitServiceDetailsPage = (
   );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getOrganization', 200);
 
@@ -1306,7 +1173,7 @@ export const visitServiceDetailsPage = (
 export const visitDataModelPage = (dataModelFQN, dataModelName) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
 
   verifyResponseStatusCode('@getOrganization', 200);
 
