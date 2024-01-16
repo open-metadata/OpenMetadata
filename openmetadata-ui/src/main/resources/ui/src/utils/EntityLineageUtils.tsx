@@ -562,7 +562,10 @@ export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
 const removeDuplicateNodes = (nodesData: EntityReference[]) => {
   const uniqueNodesMap = new Map<string, EntityReference>();
   nodesData.forEach((node) => {
-    uniqueNodesMap.set(node.fullyQualifiedName ?? '', node);
+    // Check if the node is not null before adding it to the map
+    if (node && node.fullyQualifiedName) {
+      uniqueNodesMap.set(node.fullyQualifiedName, node);
+    }
   });
 
   const uniqueNodesArray = Array.from(uniqueNodesMap.values());

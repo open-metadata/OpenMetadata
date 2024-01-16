@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Popover, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
@@ -21,6 +22,7 @@ import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
@@ -64,6 +66,7 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
+  const { t } = useTranslation();
   const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
   const offset = 4;
 
@@ -173,21 +176,63 @@ export const CustomEdge = ({
 
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
+      const pipelineData =
+        pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-          <Button
-            className={classNames(
-              'flex-center custom-edge-pipeline-button',
-              pipelineClass
-            )}
-            data-testid={dataTestId}
-            icon={icon}
-            onClick={() => isEditMode && onAddPipelineClick()}
-          />
+          {pipelineData ? (
+            <Popover
+              content={
+                <>
+                  <div className="d-flex items-center gap-1 text-xs">
+                    <Typography.Text className="font-medium">
+                      {t('label.status') + ':'}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs">
+                      {pipelineData.executionStatus}
+                    </Typography.Text>
+                  </div>
+                  <div className="d-flex items-center gap-1 text-xs">
+                    <Typography.Text className="font-medium">
+                      {t('label.execution-time') + ':'}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs">
+                      {formatDateTime(pipelineData.timestamp)}
+                    </Typography.Text>
+                  </div>
+                </>
+              }
+              placement="top"
+              title={t('label.pipeline-detail-plural')}
+              trigger="hover">
+              <span>
+                <Button
+                  className={classNames(
+                    'flex-center custom-edge-pipeline-button',
+                    pipelineClass
+                  )}
+                  data-testid={dataTestId}
+                  icon={icon}
+                  onClick={() => isEditMode && onAddPipelineClick()}
+                />
+              </span>
+            </Popover>
+          ) : (
+            <Button
+              className={classNames(
+                'flex-center custom-edge-pipeline-button',
+                pipelineClass
+              )}
+              data-testid={dataTestId}
+              icon={icon}
+              onClick={() => isEditMode && onAddPipelineClick()}
+            />
+          )}
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, data]
+    [edgeCenterX, edgeCenterY, rest, data, pipelineStatus]
   );
 
   const getEditLineageIcon = useCallback(
