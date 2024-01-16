@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
 
 # pylint: disable=line-too-long
@@ -290,7 +291,7 @@ class DatabricksUnitTest(TestCase):
     def test_yield_schema(self):
         schema_list = []
         yield_schemas = self.databricks_source.yield_database_schema(
-            schema_name=MOCK_DATABASE_SCHEMA.name
+            schema_name=model_str(MOCK_DATABASE_SCHEMA.name)
         )
 
         for schema in yield_schemas:

@@ -90,7 +90,8 @@ And is defined as:
             "Action": [
                 "glue:GetTables",
                 "glue:GetTable",
-                "glue:GetDatabases"
+                "glue:GetDatabases",
+                "glue:GetPartitions"
             ],
             "Effect": "Allow",
             "Resource": [

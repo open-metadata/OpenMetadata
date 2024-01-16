@@ -11,6 +11,7 @@
 
 """Athena source module"""
 
+import traceback
 from typing import Iterable, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
@@ -18,29 +19,43 @@ from sqlalchemy import types
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
+    Column,
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
+from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
+
+ATHENA_TAG = "ATHENA TAG"
+ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 
 def _get_column_type(self, type_):
@@ -186,6 +201,16 @@ class AthenaSource(CommonDbSourceService):
             )
         return cls(config, metadata)
 
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
+        super().__init__(config, metadata)
+        self.athena_lake_formation_client = AthenaLakeFormationClient(
+            connection=self.service_connection
+        )
+
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -209,3 +234,96 @@ class AthenaSource(CommonDbSourceService):
             )
             return True, partition_details
         return False, None
+
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to yield schema tags
+        """
+        if self.source_config.includeTags:
+            try:
+                tags = self.athena_lake_formation_client.get_database_tags(
+                    name=schema_name
+                )
+                for tag in tags or []:
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=fqn.build(
+                            self.metadata,
+                            DatabaseSchema,
+                            service_name=self.context.database_service,
+                            database_name=self.context.database,
+                            schema_name=schema_name,
+                        ),
+                        tags=tag.TagValues,
+                        classification_name=tag.TagKey,
+                        tag_description=ATHENA_TAG,
+                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                    )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Tags and Classifications",
+                        error=f"Failed to fetch database tags due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def yield_table_tags(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to yield table and column tags
+        """
+        if self.source_config.includeTags:
+            try:
+                table_name, _ = table_name_and_type
+                table_tags = (
+                    self.athena_lake_formation_client.get_table_and_column_tags(
+                        schema_name=self.context.database_schema, table_name=table_name
+                    )
+                )
+
+                # yield the table tags
+                for tag in table_tags.LFTagsOnTable or []:
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=fqn.build(
+                            self.metadata,
+                            Table,
+                            service_name=self.context.database_service,
+                            database_name=self.context.database,
+                            schema_name=self.context.database_schema,
+                            table_name=table_name,
+                        ),
+                        tags=tag.TagValues,
+                        classification_name=tag.TagKey,
+                        tag_description=ATHENA_TAG,
+                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                    )
+
+                # yield the column tags
+                for column in table_tags.LFTagsOnColumns or []:
+                    for tag in column.LFTags or []:
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=fqn.build(
+                                self.metadata,
+                                Column,
+                                service_name=self.context.database_service,
+                                database_name=self.context.database,
+                                schema_name=self.context.database_schema,
+                                table_name=table_name,
+                                column_name=column.Name,
+                            ),
+                            tags=tag.TagValues,
+                            classification_name=tag.TagKey,
+                            tag_description=ATHENA_TAG,
+                            classification_description=ATHENA_TAG_CLASSIFICATION,
+                        )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Tags and Classifications",
+                        error=f"Failed to fetch table/column tags due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )

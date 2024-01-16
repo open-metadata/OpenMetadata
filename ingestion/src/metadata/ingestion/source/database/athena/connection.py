@@ -75,6 +75,13 @@ def get_connection(connection: AthenaConnection) -> Engine:
     )
 
 
+def get_lake_formation_client(connection: AthenaConnection):
+    """
+    Get the lake formation client
+    """
+    return AWSClient(connection.awsConfig).get_lake_formation_client()
+
+
 def test_connection(
     metadata: OpenMetadata,
     engine: Engine,

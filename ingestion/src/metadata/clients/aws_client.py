@@ -35,6 +35,7 @@ class AWSServices(Enum):
     QUICKSIGHT = "quicksight"
     ATHENA = "athena"
     RDS = "rds"
+    LAKE_FORMATION = "lakeformation"
 
 
 class AWSAssumeRoleException(Exception):
@@ -189,3 +190,6 @@ class AWSClient:
 
     def get_athena_client(self):
         return self.get_client(AWSServices.ATHENA.value)
+
+    def get_lake_formation_client(self):
+        return self.get_client(AWSServices.LAKE_FORMATION.value)
