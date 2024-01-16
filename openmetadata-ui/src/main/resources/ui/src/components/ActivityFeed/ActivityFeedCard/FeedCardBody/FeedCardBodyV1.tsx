@@ -52,7 +52,7 @@ const FeedCardBodyV1 = ({
           className="mb-8"
           defaultValue={getDefaultValue(message)}
           editAction={
-            <div className="d-flex justify-end gap-2 m-r-xss">
+            <div className="d-flex justify-end gap-2 m-r-xs">
               <Button
                 className="border border-primary text-primary rounded-4"
                 data-testid="cancel-button"

@@ -112,7 +112,7 @@ const AnnouncementDrawer: FC<Props> = ({
           title={title}
           width={576}
           onClose={onClose}>
-          <div className="d-flex justify-end">
+          <div className="d-flex justify-end m-b-md">
             <Tooltip
               title={!createPermission && t('message.no-permission-to-view')}>
               <Button

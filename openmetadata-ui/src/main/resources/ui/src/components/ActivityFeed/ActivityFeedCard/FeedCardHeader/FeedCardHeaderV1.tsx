@@ -67,13 +67,13 @@ const FeedCardHeaderV1 = ({
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
-      <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
         </span>
       ) : (
         <>
+          <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
           <span data-testid="entityType">{entityType} </span>
           {isUserOrTeam ? (
             <UserPopOverCard

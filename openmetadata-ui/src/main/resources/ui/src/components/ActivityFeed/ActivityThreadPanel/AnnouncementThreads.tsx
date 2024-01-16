@@ -11,41 +11,24 @@
  *  limitations under the License.
  */
 
-import { Card, Divider, Typography } from 'antd';
-import React, { FC, Fragment } from 'react';
+import { Alert, Divider, Typography } from 'antd';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
-import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import AnnouncementBadge from '../Shared/AnnouncementBadge';
+import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 import './announcement.less';
 
 const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   threads,
   className,
-  selectedThreadId,
-  onThreadIdSelect,
-  onThreadSelect,
-  onConfirmation,
-  postFeed,
-  updateThreadHandler,
-  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
-
-  const toggleReplyEditor = (id: string) => {
-    onThreadIdSelect(selectedThreadId === id ? '' : id);
-  };
 
   const activeAnnouncements = updatedThreads.filter(
     (thread) =>
@@ -77,78 +60,28 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
         reactions: thread.reactions,
       } as Post;
 
-      const postLength = thread?.posts?.length || 0;
-      const replies = thread.postsCount ? thread.postsCount - 1 : 0;
-      const repliedUsers = [
-        ...new Set((thread?.posts || []).map((f) => f.from)),
-      ];
-      const repliedUniqueUsersList = repliedUsers.slice(
-        0,
-        postLength >= 3 ? 2 : 1
-      );
-      const lastPost = thread?.posts?.[postLength - 1];
-
       return (
-        <Fragment key={index}>
-          <Card
-            className="ant-card-feed announcement-thread-card"
-            data-testid="announcement-card"
-            key={`${index} - card`}>
-            <AnnouncementBadge />
-            <div data-testid="main-message">
-              <ActivityFeedCard
-                isEntityFeed
-                isThread
-                announcementDetails={thread.announcement}
-                editAnnouncementPermission={editAnnouncementPermission}
-                entityLink={thread.about}
-                feed={mainFeed}
-                feedType={thread.type || ThreadType.Conversation}
-                task={thread}
-                threadId={thread.id}
-                updateThreadHandler={updateThreadHandler}
-                onConfirmation={onConfirmation}
-                onReply={() => onThreadSelect(thread.id)}
-              />
+        <Alert
+          description={
+            <ActivityFeedCardV1
+              className="p-b-0"
+              data-testid="announcement-card"
+              feed={thread}
+              hidePopover={false}
+              isPost={false}
+              post={mainFeed}
+              showThread={false}
+            />
+          }
+          key={`${index} - card`}
+          message={
+            <div className="d-flex announcement-alert-heading">
+              <AnnouncementIcon width={20} />
+              <span className="text-sm p-l-xss">{t('label.announcement')}</span>
             </div>
-            {postLength > 0 ? (
-              <div data-testid="replies-container">
-                {postLength > 1 ? (
-                  <div>
-                    {Boolean(lastPost) && <div />}
-                    <div className="d-flex ">
-                      <FeedCardFooter
-                        isFooterVisible
-                        lastReplyTimeStamp={lastPost?.postTs}
-                        repliedUsers={repliedUniqueUsersList}
-                        replies={replies}
-                        threadId={thread.id}
-                        onThreadSelect={() => onThreadSelect(thread.id)}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                <div data-testid="latest-reply">
-                  <ActivityFeedCard
-                    isEntityFeed
-                    feed={lastPost as Post}
-                    feedType={thread.type || ThreadType.Conversation}
-                    task={thread}
-                    threadId={thread.id}
-                    updateThreadHandler={updateThreadHandler}
-                    onConfirmation={onConfirmation}
-                    onReply={() => toggleReplyEditor(thread.id)}
-                  />
-                </div>
-              </div>
-            ) : null}
-            {selectedThreadId === thread.id ? (
-              <div data-testid="quick-reply-editor">
-                <ActivityFeedEditor onSave={postFeed} />
-              </div>
-            ) : null}
-          </Card>
-        </Fragment>
+          }
+          type="info"
+        />
       );
     });
   };
@@ -158,10 +91,12 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       {getAnnouncements(activeAnnouncements)}
       {Boolean(inActiveAnnouncements.length) && (
         <>
-          <Typography.Text data-testid="inActive-announcements">
+          <Divider />
+          <Typography.Text
+            className="font-medium"
+            data-testid="inActive-announcements">
             {t('label.inactive-announcement-plural')}
           </Typography.Text>
-          <Divider />
         </>
       )}
 
