@@ -64,7 +64,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
         <Alert
           description={
             <ActivityFeedCardV1
-              className="p-b-0"
+              className="p-y-xss"
               data-testid="announcement-card"
               feed={thread}
               hidePopover={false}

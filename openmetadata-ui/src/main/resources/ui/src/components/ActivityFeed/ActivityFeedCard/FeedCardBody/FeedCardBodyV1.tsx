@@ -89,7 +89,7 @@ const FeedCardBodyV1 = ({
       <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>
-            <Row>
+            <Row className="m-b-xs">
               <Col span={24}>
                 {showSchedule && (
                   <Typography.Text className="feed-body-schedule text-xs text-grey-muted">

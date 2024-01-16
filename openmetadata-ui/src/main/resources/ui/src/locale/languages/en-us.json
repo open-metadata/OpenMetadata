@@ -786,7 +786,7 @@
     "policy-lowercase-plural": "policies",
     "policy-name": "Policy Name",
     "policy-plural": "Policies",
-    "posted-on-lowercase": "posted on",
+    "posted-on-lowercase": "posted on {{entity}}",
     "precision": "Precision",
     "press": "Press",
     "preview": "Preview",

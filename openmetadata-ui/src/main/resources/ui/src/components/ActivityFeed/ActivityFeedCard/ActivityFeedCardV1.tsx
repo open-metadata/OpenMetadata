@@ -101,7 +101,11 @@ const ActivityFeedCardV1 = ({
           </Col>
         </Row>
         <Row>
-          <Col className="p-t-xs" span={24}>
+          <Col
+            className={classNames({
+              'p-t-xs': feed.type !== ThreadType.Announcement,
+            })}
+            span={24}>
             <FeedCardBodyV1
               announcement={!isPost ? feed.announcement : undefined}
               isEditPost={isEditPost}
