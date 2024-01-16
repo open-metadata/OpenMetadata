@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConfigProvider } from 'antd';
+import React, { FC, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
-// TODO: Later convert this method to support typescript.
-export function insertMention() {
-  const mention = this.quill.getModule('mention');
-  mention.openMenu('@');
-}
+const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  const { i18n } = useTranslation();
 
-export function insertRef() {
-  const ref = this.quill.getModule('mention');
-  ref.openMenu('#');
-}
+  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
+};
+
+export default DirectionProvider;
