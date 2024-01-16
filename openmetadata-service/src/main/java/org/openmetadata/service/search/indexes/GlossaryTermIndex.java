@@ -43,7 +43,6 @@ public class GlossaryTermIndex implements SearchIndex {
     fields.put("synonyms.ngram", 1.0f);
     fields.put("glossary.name", 5.0f);
     fields.put("glossary.displayName", 5.0f);
-    fields.put("glossary.displayName.ngram", 1.0f);
     return fields;
   }
 }

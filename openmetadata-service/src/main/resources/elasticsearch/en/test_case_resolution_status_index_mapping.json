@@ -136,10 +136,6 @@
                     "keyword": {
                       "type": "keyword",
                       "normalizer": "lowercase_normalizer"
-                    },
-                    "ngram": {
-                      "type": "text",
-                      "analyzer": "om_ngram"
                     }
                   }
                 },
@@ -243,10 +239,6 @@
               "keyword": {
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer"
-              },
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
               }
             }
           },

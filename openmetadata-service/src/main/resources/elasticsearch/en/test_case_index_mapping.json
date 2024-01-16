@@ -48,10 +48,6 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
@@ -69,17 +65,13 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
       "entityLink": {
         "type": "text"
@@ -148,7 +140,8 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "index_options": "docs"
           },
           "entityType": {
             "type": "keyword"

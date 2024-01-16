@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
@@ -29,8 +28,7 @@ public class UserIndex implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            user.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     doc.put(

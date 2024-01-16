@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -22,8 +21,7 @@ public record TagIndex(Tag tag) implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            tag.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            tag.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {
@@ -36,7 +34,7 @@ public record TagIndex(Tag tag) implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("classification.name", 1.0f);
+    fields.put("classification.name", 7.0f);
     return fields;
   }
 }
