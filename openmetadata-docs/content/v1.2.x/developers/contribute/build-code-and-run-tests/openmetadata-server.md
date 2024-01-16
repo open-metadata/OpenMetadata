@@ -28,7 +28,7 @@ cd open-metadata-<version>
 sh bootstrap/bootstrap_storage.sh drop-create-all
 ```
 
-- Bootstrap ES with indexes and load sample data into MySQL
+- Load sample data into MySQL
   1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#run-instance-through-intellij-idea)
   2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
 
@@ -39,8 +39,7 @@ make install_dev generate
 cd ingestion
 pip install -e '.[sample-data, elasticsearch]'
 metadata ingest -c ./pipelines/sample_data.json
-metadata ingest -c ./pipelines/sample_usage.json
-metadata ingest -c ./pipelines/metadata_to_es.json
+metadata usage -c ./pipelines/sample_usage.json
 ```
 
 - You are now ready to explore the app by going to [http://localhost:8585](http://localhost:8585) *If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#troubleshooting)
