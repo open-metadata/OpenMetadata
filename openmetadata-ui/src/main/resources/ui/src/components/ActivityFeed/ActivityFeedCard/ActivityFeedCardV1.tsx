@@ -23,6 +23,7 @@ import {
   Post,
   ReactionType,
   Thread,
+  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -84,7 +85,10 @@ const ActivityFeedCardV1 = ({
         className={classNames(
           className,
           'activity-feed-card activity-feed-card-v1',
-          { active: isActive }
+          {
+            active: isActive,
+            'announcement-feed-card': feed.type === ThreadType.Announcement,
+          }
         )}>
         <Row>
           <Col span={24}>
