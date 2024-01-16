@@ -692,9 +692,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             {isSchemaDetailsLoading ? (
               <Skeleton
                 active
+                className="m-b-md"
                 paragraph={{
-                  rows: 3,
-                  width: ['20%', '80%', '60%'],
+                  rows: 2,
+                  width: ['20%', '80%'],
                 }}
               />
             ) : (

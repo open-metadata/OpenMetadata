@@ -16,15 +16,32 @@ import React from 'react';
 
 const LogViewerSkeleton = () => {
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={18}>
-        <div className="flex justify-between m-md">
-          <Skeleton active paragraph={{ rows: 1 }} />
+    <Row className="border-top justify-between" gutter={[16, 16]}>
+      <Col className="p-md border-right" span={18}>
+        <div className="flex items-center gap-2 justify-end">
+          <Skeleton.Button active />
+          <Skeleton.Button active shape="circle" />
         </div>
-        <Skeleton active className="m-md" paragraph={{ rows: 12 }} />
+        <Skeleton
+          active
+          className="p-l-md p-t-md"
+          paragraph={{ rows: 16 }}
+          title={false}
+        />
       </Col>
-      <Col span={6}>
-        <Skeleton active paragraph={{ rows: 6 }} />
+      <Col className="p-md" span={6}>
+        <Skeleton active paragraph={{ rows: 1, width: '60%' }} />
+        <Row className="m-t-lg" gutter={[16, 48]}>
+          <Col span={11}>
+            <Skeleton
+              paragraph={{ rows: 3, width: ['70%', '80%', '90%'] }}
+              title={false}
+            />
+          </Col>
+          <Col span={12}>
+            <Skeleton paragraph={{ rows: 3, width: '90%' }} title={false} />
+          </Col>
+        </Row>
       </Col>
     </Row>
   );
