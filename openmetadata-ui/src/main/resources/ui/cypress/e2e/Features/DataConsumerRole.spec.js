@@ -259,11 +259,16 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
+
+    cy.sidebarHover();
+
     cy.get(glossary.testid)
       .should('be.visible')
       .click({ animationDistanceThreshold: 10 });
     if (glossary.subMenu) {
       cy.get(glossary.subMenu).should('be.visible').click({ force: true });
+
+      cy.sidebarHoverOutside();
     }
     cy.get('body').click();
 

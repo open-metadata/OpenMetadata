@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
@@ -24,7 +25,6 @@ import {
   updateExpiration,
   visitUserListPage,
 } from '../../common/Utils/Users';
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { EntityType } from '../../constants/Entity.interface';
 
 import {
@@ -110,9 +110,11 @@ describe('User with different Roles', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
+    cy.sidebarHover();
+
     cy.get(glossary.testid)
       .should('be.visible')
-      .click({ animationDistanceThreshold: 10 });
+      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
     if (glossary.subMenu) {
       cy.get(glossary.subMenu).should('be.visible').click({ force: true });
     }
@@ -123,7 +125,7 @@ describe('User with different Roles', () => {
     // Check CRUD for Tags
     cy.get(tag.testid)
       .should('be.visible')
-      .click({ animationDistanceThreshold: 10 });
+      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
     if (tag.subMenu) {
       cy.get(tag.subMenu).should('be.visible').click({ force: true });
     }

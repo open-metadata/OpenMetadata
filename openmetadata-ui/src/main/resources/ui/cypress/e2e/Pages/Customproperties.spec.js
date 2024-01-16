@@ -24,10 +24,7 @@ describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
@@ -60,7 +57,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]').click();
+        cy.sidebarClick('app-bar-item-settings');
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .click();
@@ -131,9 +128,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]')
-          .should('be.visible')
-          .click();
+        cy.sidebarClick('app-bar-item-settings');
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
@@ -207,9 +202,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]')
-          .should('be.visible')
-          .click();
+        cy.sidebarClick('app-bar-item-settings');
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -280,7 +273,7 @@ describe('Custom Properties should work properly', () => {
       );
 
       // Navigating to explore page
-      cy.get('[data-testid="app-bar-item-explore"]').click();
+      cy.sidebarClick('app-bar-item-explore');
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/glossaryTerm*`,

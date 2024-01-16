@@ -59,12 +59,13 @@ export const validateForm = () => {
 export const visitClassificationPage = () => {
   interceptURL('GET', '/api/v1/tags*', 'getTags');
 
+  cy.sidebarHover();
   cy.get('[data-testid="governance"]').click({
     animationDistanceThreshold: 20,
     waitForAnimations: true,
   });
 
-  cy.get('[data-testid="app-bar-item-tags"]').click();
+  cy.sidebarClick('app-bar-item-tags');
 
   verifyResponseStatusCode('@getTags', 200);
 };

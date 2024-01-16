@@ -57,6 +57,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
+import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
@@ -172,6 +173,7 @@ const StoredProcedurePage = () => {
     try {
       const response = await getStoredProceduresByFqn(storedProcedureFQN, {
         fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+        include: Include.All,
       });
 
       setStoredProcedure(response);

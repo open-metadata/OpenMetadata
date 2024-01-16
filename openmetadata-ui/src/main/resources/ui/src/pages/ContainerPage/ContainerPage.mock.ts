@@ -88,3 +88,8 @@ export const CONTAINER_DATA = {
   ],
   deleted: false,
 };
+
+export const CONTAINER_DATA_1 = {
+  ...CONTAINER_DATA,
+  dataModel: {},
+};
