@@ -372,6 +372,7 @@ class DatabaseServiceSource(
 
     def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
         """
+        Method to get schema tags
         This will only get executed if the tags context
         is properly informed
         """
