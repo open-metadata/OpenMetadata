@@ -354,7 +354,7 @@ class ServiceBaseClass {
     verifyResponseStatusCode('@updateEntity', 200);
 
     // re-run ingestion flow
-    cy.get('[data-testid="app-bar-item-settings"]').click();
+    cy.sidebarClick('app-bar-item-settings');
 
     // Services page
     cy.get('.ant-menu-title-content').contains(this.category).click();

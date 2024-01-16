@@ -38,7 +38,7 @@ export const goToServiceListingPage = (services: Services) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
