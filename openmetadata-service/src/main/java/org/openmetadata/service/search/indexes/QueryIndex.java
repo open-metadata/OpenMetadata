@@ -6,7 +6,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -40,8 +39,7 @@ public class QueryIndex implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            query.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            query.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
     return doc;
   }
 

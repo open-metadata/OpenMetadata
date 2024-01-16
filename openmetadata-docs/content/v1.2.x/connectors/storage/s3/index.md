@@ -7,7 +7,7 @@ slug: /connectors/storage/s3
 
 | Feature            | Status                       |
 | :----------------- |:-----------------------------|
-| Stage              | BETA                         |
+| Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 
 This page contains the setup guide and reference information for the S3 connector.

@@ -22,7 +22,7 @@ class ValidatorUtilTest {
 
     // Invalid name
     glossary.withName("invalid::Name").withDescription("description");
-    assertEquals("[name must match \"(?U)^[\\w'\\- .&()%]+$\"]", ValidatorUtil.validate(glossary));
+    assertEquals("[name must match \"^((?!::).)*$\"]", ValidatorUtil.validate(glossary));
 
     // No error
     glossary.withName("validName").withId(UUID.randomUUID()).withDescription("description");

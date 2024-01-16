@@ -118,7 +118,7 @@ const DashboardDetailsPage = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      const res = await getDashboardByFqn(dashboardFQN, fields);
+      const res = await getDashboardByFqn(dashboardFQN, { fields });
 
       const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
@@ -305,7 +305,9 @@ const DashboardDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDashboardVotes(id, data);
-      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      const details = await getDashboardByFqn(dashboardFQN, {
+        fields: defaultFields,
+      });
       setDashboardDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

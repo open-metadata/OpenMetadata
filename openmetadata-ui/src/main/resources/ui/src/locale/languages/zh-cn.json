@@ -281,6 +281,7 @@
     "database-name": "数据库名称",
     "database-plural": "数据库",
     "database-schema": "数据库结构",
+    "database-schema-plural": "Database Schemas",
     "database-service-name": "数据库服务名称",
     "date": "日期",
     "date-and-time": "日期和时间",

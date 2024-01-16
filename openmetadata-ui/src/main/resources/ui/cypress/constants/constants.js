@@ -602,7 +602,7 @@ export const TAG_INVALID_NAMES = {
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  WITH_SPECIAL_CHARS: '::normalName::',
 };
 
 export const NAME_VALIDATION_ERROR =
@@ -739,4 +739,74 @@ export const DOMAIN_3 = {
       fullyQualifiedName: 'sample_looker.model.operations_view',
     },
   ],
+};
+export const GLOBAL_SETTING_PERMISSIONS = {
+  metadata: {
+    testid: '[data-menu-id*="metadata"]',
+  },
+  customAttributesTable: {
+    testid: '[data-menu-id*="tables"]',
+  },
+  customAttributesTopics: {
+    testid: '[data-menu-id*="topics"]',
+  },
+  customAttributesDashboards: {
+    testid: '[data-menu-id*="customAttributes.dashboards"]',
+  },
+  customAttributesPipelines: {
+    testid: '[data-menu-id*="customAttributes.pipelines"]',
+  },
+  customAttributesMlModels: {
+    testid: '[data-menu-id*="customAttributes.mlModels"]',
+  },
+  bots: {
+    testid: '[data-menu-id*="bots"]',
+  },
+};
+export const ID = {
+  teams: {
+    testid: '[data-menu-id*="teams"]',
+    button: 'add-team',
+    api: '/api/v1/teams/name/Organization?*',
+  },
+  users: {
+    testid: '[data-menu-id*="users"]',
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  admins: {
+    testid: '[data-menu-id*="admins"]',
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  databases: {
+    testid: '[data-menu-id*="databases"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/databaseServices?*',
+  },
+  messaging: {
+    testid: '[data-menu-id*="messaging"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/messagingServices?*',
+  },
+  dashboard: {
+    testid: '[data-menu-id*="services.dashboards"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/dashboardServices?*',
+  },
+  pipelines: {
+    testid: '[data-menu-id*="services.pipelines"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/pipelineServices?*',
+  },
+  mlmodels: {
+    testid: '[data-menu-id*="services.mlmodels"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/mlmodelServices?*',
+  },
+  storage: {
+    testid: '[data-menu-id*="services.storages"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/storageServices?*',
+  },
 };

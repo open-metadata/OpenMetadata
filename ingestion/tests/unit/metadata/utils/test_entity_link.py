@@ -14,6 +14,7 @@ test entity link utils
 """
 
 import pytest
+from antlr4.error.Errors import ParseCancellationException
 
 from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
 
@@ -50,7 +51,7 @@ def test_get_table_or_column_fqn():
     invalid_entity_link = (
         "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>"
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ParseCancellationException):
         get_table_or_column_fqn(invalid_entity_link)
 
     invalid_entity_link = "<#E::table::rds.dev.dbt_jaffle.customers>"

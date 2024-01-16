@@ -28,6 +28,8 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
+  | SearchIndex.DATABASE
+  | SearchIndex.DATABASE_SCHEMA
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
   | SearchIndex.STORED_PROCEDURE
@@ -193,32 +195,6 @@ export const formatSearchTagsResponse = (
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType,
   }));
-};
-
-/**
- * @deprecated getURLWithQueryFields is deprecated, Please use params to pass query parameters wherever it is required
- */
-export const getURLWithQueryFields = (
-  url: string,
-  lstQueryFields?: string | string[],
-  qParams?: string
-) => {
-  let strQuery = lstQueryFields
-    ? typeof lstQueryFields === 'string'
-      ? lstQueryFields
-      : lstQueryFields.length
-      ? lstQueryFields.join()
-      : ''
-    : '';
-  strQuery = strQuery.replace(/ /g, '');
-
-  let queryParam = strQuery ? `?fields=${strQuery}` : '';
-
-  if (qParams) {
-    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
-  }
-
-  return url + queryParam;
 };
 
 export const omitDeep = <T>(

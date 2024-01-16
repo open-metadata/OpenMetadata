@@ -149,6 +149,7 @@ const AddPipeLineModal = ({
               className={classNames('edge-option-item gap-2', {
                 active: edgeSelection?.id === item.id,
               })}
+              data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
               key={item.id}
               onClick={() => setEdgeSelection(item)}>
               <div className="flex-center mention-icon-image">{icon}</div>

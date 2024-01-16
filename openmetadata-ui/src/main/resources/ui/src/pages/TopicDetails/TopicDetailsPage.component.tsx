@@ -124,14 +124,16 @@ const TopicDetailsPage: FunctionComponent = () => {
   const fetchTopicDetail = async (topicFQN: string) => {
     setLoading(true);
     try {
-      const res = await getTopicByFqn(topicFQN, [
-        TabSpecificField.OWNER,
-        TabSpecificField.FOLLOWERS,
-        TabSpecificField.TAGS,
-        TabSpecificField.DOMAIN,
-        TabSpecificField.DATA_PRODUCTS,
-        TabSpecificField.VOTES,
-      ]);
+      const res = await getTopicByFqn(topicFQN, {
+        fields: [
+          TabSpecificField.OWNER,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.DATA_PRODUCTS,
+          TabSpecificField.VOTES,
+        ].join(','),
+      });
       const { id, fullyQualifiedName, serviceType } = res;
 
       setTopicDetails(res);
@@ -236,12 +238,14 @@ const TopicDetailsPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTopicVotes(id, data);
-      const details = await getTopicByFqn(topicFQN, [
-        TabSpecificField.OWNER,
-        TabSpecificField.FOLLOWERS,
-        TabSpecificField.TAGS,
-        TabSpecificField.VOTES,
-      ]);
+      const details = await getTopicByFqn(topicFQN, {
+        fields: [
+          TabSpecificField.OWNER,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ].join(','),
+      });
       setTopicDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

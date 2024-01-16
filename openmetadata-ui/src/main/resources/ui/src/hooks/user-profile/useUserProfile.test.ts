@@ -54,7 +54,7 @@ describe('useUserProfile hook', () => {
     expect(result.current[0]).toBeNull();
     expect(result.current[1]).toBe(true);
     expect(result.current[2]).toBeUndefined();
-    expect(getUserByName).toHaveBeenCalledWith('test', 'profile');
+    expect(getUserByName).toHaveBeenCalledWith('test', { fields: 'profile' });
   });
 
   it('should not call api if name is empty', () => {

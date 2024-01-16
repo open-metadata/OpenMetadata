@@ -15,7 +15,6 @@ import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
-import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
@@ -116,14 +115,6 @@ Searchbar.defaultProps = {
   typingInterval: 1000,
   placeholder: 'Search...',
   label: '',
-};
-
-Searchbar.propTypes = {
-  onSearch: PropTypes.func.isRequired,
-  searchValue: PropTypes.string,
-  typingInterval: PropTypes.number,
-  placeholder: PropTypes.string,
-  label: PropTypes.string,
 };
 
 export default Searchbar;

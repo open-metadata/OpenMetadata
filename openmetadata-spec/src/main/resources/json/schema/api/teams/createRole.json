@@ -9,7 +9,7 @@
 
   "properties": {
     "name": {
-      "$ref": "../../entity/teams/role.json#/definitions/roleName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Optional name used for display purposes. Example 'Data Consumer'",

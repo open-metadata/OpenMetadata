@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ENTITY_NAME_REGEX } from './regex.constants';
+import { ENTITY_NAME_REGEX, TAG_NAME_REGEX } from './regex.constants';
 
 describe('Test Regex', () => {
   it('EntityName regex should pass for the valid entity name', () => {
@@ -156,26 +156,57 @@ describe('Test Regex', () => {
   });
 
   it('EntityName regex should fail for the invalid entity name', () => {
-    // Contains letters, numbers, and # special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123#')).toEqual(false);
+    // conatines :: in the name should fail
+    expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
+  });
 
-    // Contains letters, numbers, and $ special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123$')).toEqual(false);
+  describe('TAG_NAME_REGEX', () => {
+    it('should match English letters', () => {
+      expect(TAG_NAME_REGEX.test('Hello')).toEqual(true);
+    });
 
-    // Contains letters, numbers, and ! special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123!')).toEqual(false);
+    it('should match non-English letters', () => {
+      expect(TAG_NAME_REGEX.test('こんにちは')).toEqual(true);
+    });
 
-    // Contains letters, numbers, and @ special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123@')).toEqual(false);
+    it('should match combined characters', () => {
+      expect(TAG_NAME_REGEX.test('é')).toEqual(true);
+    });
 
-    // Contains letters, numbers, and * special characters.
-    expect(ENTITY_NAME_REGEX.test('HelloWorld123*')).toEqual(false);
+    it('should match numbers', () => {
+      expect(TAG_NAME_REGEX.test('123')).toEqual(true);
+    });
 
-    // Contains letters, numbers, and special characters.
-    expect(ENTITY_NAME_REGEX.test('!@#$%^&*()')).toEqual(false);
+    it('should match underscores', () => {
+      expect(TAG_NAME_REGEX.test('_')).toEqual(true);
+    });
 
-    // Contains spanish characters and special characters.
-    expect(ENTITY_NAME_REGEX.test('¡Buenos días!')).toEqual(false);
-    expect(ENTITY_NAME_REGEX.test('¿Cómo estás?')).toEqual(false);
+    it('should match hyphens', () => {
+      expect(TAG_NAME_REGEX.test('-')).toEqual(true);
+    });
+
+    it('should match spaces', () => {
+      expect(TAG_NAME_REGEX.test(' ')).toEqual(true);
+    });
+
+    it('should match periods', () => {
+      expect(TAG_NAME_REGEX.test('.')).toEqual(true);
+    });
+
+    it('should match ampersands', () => {
+      expect(TAG_NAME_REGEX.test('&')).toEqual(true);
+    });
+
+    it('should match parentheses', () => {
+      expect(TAG_NAME_REGEX.test('()')).toEqual(true);
+    });
+
+    it('should not match other special characters', () => {
+      expect(TAG_NAME_REGEX.test('$')).toEqual(false);
+    });
+
+    it('should not match empty string', () => {
+      expect(TAG_NAME_REGEX.test('')).toEqual(false);
+    });
   });
 });

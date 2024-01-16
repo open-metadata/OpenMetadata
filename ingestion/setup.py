@@ -157,6 +157,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
+    "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {VERSIONS["sqlalchemy-databricks"], VERSIONS["databricks-sdk"]},
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -246,6 +247,7 @@ plugins: Dict[str, Set[str]] = {
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
+    "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"]},
@@ -267,6 +269,7 @@ dev = {
     "twine",
     "build",
 }
+
 
 test = {
     # Install Airflow as it's not part of `all` plugin
@@ -305,6 +308,10 @@ e2e_test = {
     "pytest-base-url",
 }
 
+extended_testing = {
+    "Faker",  # For Sample Data Generation
+}
+
 
 def filter_requirements(filtered: Set[str]) -> List[str]:
     """Filter out requirements from base_requirements"""
@@ -326,6 +333,7 @@ setup(
         "dev": list(dev),
         "test": list(test),
         "e2e_test": list(e2e_test),
+        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),

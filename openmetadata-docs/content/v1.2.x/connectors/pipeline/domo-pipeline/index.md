@@ -5,6 +5,16 @@ slug: /connectors/pipeline/domo-pipeline
 
 # Domo Pipeline
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="cross" /%} |
+| Lineage         | {% icon iconName="check" /%} |
+
+
+
 In this section, we provide guides and references to use the Domo-Pipeline connector.
 
 Configure and schedule Domo-Pipeline metadata and profiler workflows from the OpenMetadata UI:
