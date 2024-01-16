@@ -52,7 +52,6 @@ class QueryByProcedure(BaseModel):
     """
 
     procedure_id: str = Field(..., alias="PROCEDURE_ID")
-    query_id: str = Field(..., alias="QUERY_ID")
     query_type: str = Field(..., alias="QUERY_TYPE")
     query_database_name: str = Field(None, alias="QUERY_DATABASE_NAME")
     query_schema_name: str = Field(None, alias="QUERY_SCHEMA_NAME")

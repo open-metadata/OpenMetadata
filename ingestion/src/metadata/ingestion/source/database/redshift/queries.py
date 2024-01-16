@@ -338,7 +338,6 @@ select
     sp.procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,
-    q.query_id,
     q.query_text,
     q.query_type,
     q.query_database_name,

@@ -110,7 +110,6 @@ Q_HISTORY AS (
 )
 SELECT
   SP.job_id as procedure_id,
-  Q.job_id as query_id,
   Q.query_type as query_type,
   SP.query_text as procedure_text,
   Q.query_text as query_text,
