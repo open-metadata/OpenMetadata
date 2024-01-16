@@ -300,7 +300,6 @@ REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 with SP_HISTORY as (
     select
-        query as procedure_id,
         querytxt as procedure_text,
         starttime as procedure_start_time,
         endtime as procedure_end_time,
@@ -311,7 +310,6 @@ with SP_HISTORY as (
 ),
 Q_HISTORY as (
     select
-        query as query_id,
         querytxt as query_text,
         case
             when querytxt ilike '%%MERGE%%' then 'MERGE'
@@ -334,7 +332,6 @@ Q_HISTORY as (
       and userid <> 1
 )
 select
-    sp.procedure_id,
     sp.procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,

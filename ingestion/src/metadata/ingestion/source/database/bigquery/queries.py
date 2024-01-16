@@ -75,7 +75,6 @@ BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
   SELECT
-    job_id,
     query AS query_text,
     start_time,
     end_time,
@@ -90,7 +89,6 @@ WITH SP_HISTORY AS (
 ),
 Q_HISTORY AS (
   SELECT
-    job_id,
     project_id as database_name,
     user_email as user_name,
     statement_type as query_type,
@@ -109,7 +107,6 @@ Q_HISTORY AS (
     AND error_result is NULL
 )
 SELECT
-  SP.job_id as procedure_id,
   Q.query_type as query_type,
   SP.query_text as procedure_text,
   Q.query_text as query_text,
