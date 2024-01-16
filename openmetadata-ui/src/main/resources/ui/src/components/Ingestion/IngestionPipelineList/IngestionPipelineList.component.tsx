@@ -22,6 +22,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
@@ -169,26 +170,26 @@ export const IngestionPipelineList = ({
   };
 
   const fetchPipelines = async ({
-    cursor,
+    paging,
     pipelineType,
     limit,
   }: {
-    cursor?: string;
+    paging?: Omit<Paging, 'total'>;
     pipelineType?: PipelineType[];
     limit?: number;
   }) => {
     setLoading(true);
     try {
-      const { data, paging } = await getIngestionPipelines({
+      const { data, paging: pagingRes } = await getIngestionPipelines({
         arrQueryFields: ['owner'],
         serviceType: getEntityTypeFromServiceCategory(serviceName),
-        paging: cursor,
+        paging,
         pipelineType,
         limit,
       });
 
       setPipelines(data);
-      handlePagingChange(paging);
+      handlePagingChange(pagingRes);
     } catch {
       // Error
     } finally {
@@ -201,9 +202,10 @@ export const IngestionPipelineList = ({
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      const pagingString = `&${cursorType}=${paging[cursorType]}`;
-
-      fetchPipelines({ cursor: pagingString, limit: pageSize });
+      fetchPipelines({
+        paging: { [cursorType]: paging[cursorType] },
+        limit: pageSize,
+      });
       handlePageChange(currentPage);
     }
   };

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from functools import partial
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -43,7 +44,11 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"CheckAccess": client.get_user_account}
+    test_fn = {
+        "CheckDashboards": partial(
+            client.fetch_all_reports, service_connection.workspaceName
+        )
+    }
 
     test_connection_steps(
         metadata=metadata,

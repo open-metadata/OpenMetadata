@@ -297,11 +297,11 @@ const AssetsTabs = forwardRef(
       const fqn = getEncodedFqn(entityFqn ?? '');
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          data = await getDomainByName(fqn, '');
+          data = await getDomainByName(fqn);
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
-          data = await getDataProductByName(fqn, 'domain,assets');
+          data = await getDataProductByName(fqn, { fields: 'domain,assets' });
 
           break;
         case AssetsOfEntity.GLOSSARY:
@@ -682,7 +682,7 @@ const AssetsTabs = forwardRef(
         try {
           const entities = [...(assetsData?.values() ?? [])].map((item) => {
             return getEntityReferenceFromEntity(
-              item,
+              item as EntityDetailUnion,
               (item as EntityDetailUnion).entityType
             );
           });

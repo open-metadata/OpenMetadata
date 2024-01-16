@@ -109,10 +109,9 @@ const DomainPage = () => {
   const fetchDomainByName = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(
-        getEncodedFqn(fqn),
-        'children,owner,parent,experts'
-      );
+      const data = await getDomainByName(getEncodedFqn(fqn), {
+        fields: 'children,owner,parent,experts',
+      });
       setActiveDomain(data);
     } catch (error) {
       showErrorToast(error as AxiosError);

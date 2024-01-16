@@ -34,7 +34,7 @@
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
     "parse-ingestion-schema": "node parseIngestionSchema && rm -rf ingestionTemp",
     "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr \"$PWD\"/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4",
-    "cypress:open": "CYPRESS_BASE_URL=http://localhost:8585 cypress open --e2e",
+    "cypress:open": "CYPRESS_BASE_URL=http://localhost:3000 cypress open --e2e",
     "cypress:run": "CYPRESS_BASE_URL=http://localhost:8585 cypress run --config-file=cypress.config.ts",
     "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel",
     "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 --fn",

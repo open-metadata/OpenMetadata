@@ -100,10 +100,9 @@ const DataProductsPage = () => {
   const fetchDataProductByFqn = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDataProductByName(
-        getEncodedFqn(fqn),
-        'domain,owner,experts,assets'
-      );
+      const data = await getDataProductByName(getEncodedFqn(fqn), {
+        fields: 'domain,owner,experts,assets',
+      });
       setDataProduct(data);
 
       if (version) {

@@ -128,10 +128,9 @@ const AddCustomMetricPage = () => {
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
-      const table = await getTableDetailsByFQN(
-        fqn,
-        'testSuite,customMetrics,columns'
-      );
+      const table = await getTableDetailsByFQN(fqn, {
+        fields: 'testSuite,customMetrics,columns',
+      });
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);

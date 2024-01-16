@@ -239,7 +239,9 @@ export const DataAssetsHeader = ({
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, 'parent');
+      const response = await getContainerByName(parentName, {
+        fields: 'parent',
+      });
       const updatedParent = [response, ...parents];
       if (response?.parent?.fullyQualifiedName) {
         await fetchContainerParent(

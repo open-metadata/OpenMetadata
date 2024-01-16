@@ -23,6 +23,7 @@ export const LINEAGE_ITEMS = [
     entityType: 'Table',
     fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
     searchIndex: SEARCH_INDEX.tables,
+    columns: ['sample_data.ecommerce_db.shopify.fact_sale.shop_id'],
   },
   {
     term: 'fact_session',
@@ -33,6 +34,7 @@ export const LINEAGE_ITEMS = [
     entityType: 'Table',
     fqn: 'sample_data.ecommerce_db.shopify.fact_session',
     searchIndex: SEARCH_INDEX.tables,
+    columns: ['sample_data.ecommerce_db.shopify.fact_session.shop_id'],
   },
   {
     term: 'shop_products',
@@ -58,5 +60,15 @@ export const LINEAGE_ITEMS = [
     entityType: 'Container',
     fqn: 's3_storage_sample.departments.media',
     searchIndex: SEARCH_INDEX.containers,
+  },
+];
+
+export const PIPELINE_ITEMS = [
+  {
+    term: 'dim_location_etl',
+    name: 'dim_location etl',
+    entity: DATA_ASSETS.pipelines,
+    fqn: 'sample_airflow.dim_location_etl',
+    searchIndex: SEARCH_INDEX.pipelines,
   },
 ];

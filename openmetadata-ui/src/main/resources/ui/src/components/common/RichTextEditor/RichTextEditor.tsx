@@ -23,6 +23,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from 'react';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
 import './rich-text-editor.less';
 import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
@@ -72,10 +73,34 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       setEditorValue(initialValue);
     }, [initialValue]);
 
+    // handle the direction of the editor
+    useEffect(() => {
+      const dir = i18n.dir();
+      const editorElement = document.querySelector('.toastui-editor.md-mode');
+      const previewElement = document.querySelector(
+        '.toastui-editor-md-preview'
+      );
+      const textAlign = dir === 'rtl' ? 'right' : 'left';
+      if (editorElement) {
+        editorElement.setAttribute('dir', dir);
+        editorElement.setAttribute('style', `text-align: ${textAlign};`);
+      }
+
+      if (previewElement) {
+        previewElement.setAttribute('dir', dir);
+        previewElement.setAttribute('style', `text-align: ${textAlign};`);
+      }
+    }, []);
+
     return (
       <div className={classNames(className)} style={style}>
         {readonly ? (
-          <div className="border p-xs rounded-4" data-testid="viewer">
+          <div
+            className={classNames('border p-xs rounded-4', {
+              'text-right': i18n.dir() === 'rtl',
+            })}
+            data-testid="viewer"
+            dir={i18n.dir()}>
             <Viewer
               extendedAutolinks={extendedAutolinks}
               initialValue={editorValue}
