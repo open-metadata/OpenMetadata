@@ -63,6 +63,7 @@ from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
     RESTRICT_UPDATE_LIST,
+    PatchedEntity,
     PatchRequest,
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -175,7 +176,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
         )
-        return Either(right=entity)
+        patched_entity = PatchedEntity(new_entity=entity) if entity else None
+        return Either(right=patched_entity)
 
     @_run_dispatch.register
     def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:

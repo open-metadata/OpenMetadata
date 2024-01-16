@@ -62,9 +62,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
               return (
                 <div
                   className="right-panel-list-item flex items-center justify-between"
-                  data-testid={`${testIDText}-${getEntityName(
-                    item as unknown as EntityReference
-                  )}`}
+                  data-testid={`${testIDText}-${item.name}`}
                   key={item.id}>
                   <div className="flex items-center">
                     <Link

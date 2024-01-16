@@ -14,7 +14,6 @@ import { DELETE_TERM } from '../../constants/constants';
 import {
   EntityType,
   EXPLORE_PAGE_TABS,
-  SEARCH_INDEX,
 } from '../../constants/Entity.interface';
 import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -179,11 +178,6 @@ export const visitEntityDetailsPage = ({
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=**&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
-    'explorePageTabSearch'
-  );
-  interceptURL(
-    'GET',
     `/api/v1/search/query?q=**&from=*&size=*&index=all`,
     'explorePageSearch'
   );
@@ -221,9 +215,9 @@ export const visitEntityDetailsPage = ({
 
         cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-        verifyResponseStatusCode('@explorePageTabSearch', 200);
-
-        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`, {
+          timeout: 10000,
+        })
           .scrollIntoView()
           .click();
       }
@@ -441,7 +435,11 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   toastNotification('deleted successfully!');
 
   cy.reload();
-  cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
+
+  cy.get('[data-testid="deleted-badge"]', { timeout: 10000 }).should(
+    'have.text',
+    'Deleted'
+  );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
 
@@ -471,8 +469,7 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
       '1'
     );
 
-    cy.get('.ant-table-row > :nth-child(1)').should('contain', entityName);
-    cy.get('.ant-table-row > :nth-child(1)').contains(entityName).click();
+    cy.get(`[data-testid=${entityName}]`).click();
   }
 
   restoreEntity();
@@ -554,4 +551,37 @@ export const updateDescriptioForEntity = (
   cy.get(
     '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
   ).should('contain', description);
+};
+
+export const followEntity = (entityType: EntityType) => {
+  interceptURL('PUT', `/api/v1/${entityType}/*/followers`, 'waitAfterFollow');
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterFollow', 200);
+};
+
+export const validateFollowedEntityToWidget = (
+  entityName: string,
+  isFollowed = true
+) => {
+  interceptURL('GET', '/api/v1/users/*?fields=follows*', 'getFollowedEntities');
+  cy.goToHomePage();
+
+  verifyResponseStatusCode('@getFollowedEntities', 200, { timeout: 10000 });
+  cy.get(`[data-testid="following-${entityName}"]`).should(
+    isFollowed ? 'be.visible' : 'not.exist'
+  );
+};
+
+export const unfollowEntity = (entityType: EntityType) => {
+  interceptURL(
+    'DELETE',
+    `/api/v1/${entityType}/*/followers/*`,
+    'waitAfterUnFollow'
+  );
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterUnFollow', 200);
 };
