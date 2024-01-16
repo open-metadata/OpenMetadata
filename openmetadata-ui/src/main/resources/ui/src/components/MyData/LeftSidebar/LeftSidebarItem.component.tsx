@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Typography } from 'antd';
+import { Badge, Button, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
@@ -55,13 +55,14 @@ const LeftSidebarItem = ({
       </div>
     </NavLink>
   ) : (
-    <div
-      className="left-panel-item d-flex items-center"
+    <Button
+      className="left-panel-item d-flex items-center p-0"
       data-testid={dataTestId}
+      type="text"
       onClick={onClick}>
       <Icon component={icon} />
       <Typography.Text className="left-panel-label">{label}</Typography.Text>
-    </div>
+    </Button>
   );
 };
 

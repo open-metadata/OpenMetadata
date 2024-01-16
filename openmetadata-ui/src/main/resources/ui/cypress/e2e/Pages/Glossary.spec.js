@@ -591,7 +591,7 @@ const goToGlossaryPage = () => {
     waitForAnimations: true,
   });
 
-  cy.sidebarClick('app-bar-item-glossary');
+  cy.sidebarClick('app-bar-item-glossary', 'governance');
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
