@@ -36,7 +36,7 @@ import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDas
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
+import { DEFAULT_SELECTED_RANGE } from '../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -63,7 +63,11 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
@@ -79,7 +83,8 @@ const IncidentManagerPage = () => {
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    ...DEFAULT_RANGE_DATA,
+    startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+    endTs: getCurrentMillis(),
   });
   const [users, setUsers] = useState<{
     options: Option[];
