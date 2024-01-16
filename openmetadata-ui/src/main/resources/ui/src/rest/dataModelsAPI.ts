@@ -19,6 +19,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';
@@ -33,7 +34,7 @@ const configOptions = {
 
 export const getDataModelByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `${URL}/name/${fqn}`,
+    `${URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
         ...params,

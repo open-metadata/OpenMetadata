@@ -29,6 +29,7 @@ import {
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
 
@@ -84,7 +85,7 @@ export const getServiceByFQN = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<ServicesType>(
-    `/services/${serviceCat}/name/${fqn}`,
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
     { params: { ...params, include: params?.include ?? Include.NonDeleted } }
   );
 
@@ -97,7 +98,7 @@ export const getDomainSupportedServiceByFQN = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<DomainSupportedServiceTypes>(
-    `/services/${serviceCat}/name/${fqn}`,
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
     { params }
   );
 
