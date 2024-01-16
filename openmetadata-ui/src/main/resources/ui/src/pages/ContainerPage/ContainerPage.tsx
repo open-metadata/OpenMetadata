@@ -84,11 +84,11 @@ const ContainerPage = () => {
   const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: containerName, tab } =
+  const { fqn: containerFQN, tab } =
     useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
@@ -108,8 +108,8 @@ const ContainerPage = () => {
   );
 
   const decodedContainerName = useMemo(
-    () => getDecodedFqn(containerName),
-    [containerName]
+    () => getDecodedFqn(containerFQN),
+    [containerFQN]
   );
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -143,7 +143,7 @@ const ContainerPage = () => {
   const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerName, {
+      const { children } = await getContainerByName(containerFQN, {
         fields: 'children',
       });
       setContainerChildrenData(children);
@@ -154,14 +154,24 @@ const ContainerPage = () => {
     }
   };
 
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
+
   const fetchResourcePermission = async (containerFQN: string) => {
-    setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.CONTAINER,
         containerFQN
       );
       setContainerPermissions(entityPermission);
+
+      const viewBasicPermission =
+        entityPermission.ViewAll || entityPermission.ViewBasic;
+
+      if (viewBasicPermission) {
+        await fetchContainerDetail(containerFQN);
+        getEntityFeedCount();
+      }
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -237,9 +247,6 @@ const ContainerPage = () => {
     () => isEmpty(containerData?.dataModel),
     [containerData]
   );
-
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
@@ -507,7 +514,7 @@ const ContainerPage = () => {
 
   const versionHandler = () =>
     history.push(
-      getVersionPath(EntityType.CONTAINER, containerName, toString(version))
+      getVersionPath(EntityType.CONTAINER, containerFQN, toString(version))
     );
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -654,7 +661,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
+            onUpdateEntityDetails={() => fetchContainerDetail(containerFQN)}
           />
         ),
       },
@@ -694,7 +701,7 @@ const ContainerPage = () => {
       isDataModelEmpty,
       containerData,
       description,
-      containerName,
+      containerFQN,
       decodedContainerName,
       entityName,
       editDescriptionPermission,
@@ -721,9 +728,11 @@ const ContainerPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateContainerVotes(id, data);
-      const details = await getContainerByName(containerName, {
+
+      const details = await getContainerByName(containerFQN, {
         fields: 'parent,dataModel,owner,tags,followers,extension,votes',
       });
+
       setContainerData(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -732,20 +741,8 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (viewBasicPermission) {
-      fetchContainerDetail(containerName);
-    }
-  }, [containerName, viewBasicPermission]);
-
-  useEffect(() => {
-    fetchResourcePermission(containerName);
-  }, [containerName]);
-
-  useEffect(() => {
-    if (viewBasicPermission) {
-      getEntityFeedCount();
-    }
-  }, [containerName, viewBasicPermission]);
+    fetchResourcePermission(containerFQN);
+  }, [containerFQN]);
 
   // Rendering
   if (isLoading) {
@@ -755,7 +752,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), containerName)}
+        {getEntityMissingError(t('label.container'), containerFQN)}
       </ErrorPlaceHolder>
     );
   }

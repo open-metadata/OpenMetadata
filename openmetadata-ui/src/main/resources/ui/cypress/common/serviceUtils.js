@@ -24,7 +24,8 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+
+  cy.sidebarClick('app-bar-item-settings');
 
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
