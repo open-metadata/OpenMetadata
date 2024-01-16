@@ -28,9 +28,9 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -101,7 +101,7 @@ const StoredProcedureTab = () => {
           <div className="d-inline-flex w-max-90">
             <Link
               className="break-word"
-              to={getEntityLink(
+              to={entityUtilClassBase.getEntityLink(
                 EntityType.STORED_PROCEDURE,
                 record.fullyQualifiedName ?? ''
               )}>

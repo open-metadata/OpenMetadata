@@ -13,7 +13,7 @@
     },
     "name": {
       "description": "Name of the bot.",
-      "$ref": "../entity/teams/user.json#/definitions/entityName"
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",

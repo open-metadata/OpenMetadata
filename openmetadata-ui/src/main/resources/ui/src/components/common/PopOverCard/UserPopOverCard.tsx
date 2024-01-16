@@ -123,7 +123,7 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        const user = await getUserByName(userName, 'teams, roles');
+        const user = await getUserByName(userName, { fields: 'teams, roles' });
 
         updateUserProfilePics({
           id: userName,
@@ -262,7 +262,7 @@ const UserPopOverCard: FC<Props> = ({
             },
             className
           )}
-          data-testid={displayName}
+          data-testid={userName}
           to={
             type === UserTeam.Team
               ? getTeamAndUserDetailsPath(userName)

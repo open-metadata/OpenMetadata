@@ -16,13 +16,14 @@ export const PIPELINE_SUPPORTED_TYPES = ['Table', 'Topic'];
 
 export const LINEAGE_ITEMS = [
   {
-    term: 'raw_customer',
-    displayName: 'raw_customer',
+    term: 'fact_sale',
+    displayName: 'fact_sale',
     entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
-    fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
+    fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
     searchIndex: SEARCH_INDEX.tables,
+    columns: ['sample_data.ecommerce_db.shopify.fact_sale.shop_id'],
   },
   {
     term: 'fact_session',
@@ -33,6 +34,7 @@ export const LINEAGE_ITEMS = [
     entityType: 'Table',
     fqn: 'sample_data.ecommerce_db.shopify.fact_session',
     searchIndex: SEARCH_INDEX.tables,
+    columns: ['sample_data.ecommerce_db.shopify.fact_session.shop_id'],
   },
   {
     term: 'shop_products',
@@ -50,5 +52,23 @@ export const LINEAGE_ITEMS = [
     entityType: 'ML Model',
     fqn: 'mlflow_svc.forecast_sales',
     searchIndex: SEARCH_INDEX.mlmodels,
+  },
+  {
+    term: 'media',
+    entity: DATA_ASSETS.containers,
+    serviceName: 's3_storage_sample',
+    entityType: 'Container',
+    fqn: 's3_storage_sample.departments.media',
+    searchIndex: SEARCH_INDEX.containers,
+  },
+];
+
+export const PIPELINE_ITEMS = [
+  {
+    term: 'dim_location_etl',
+    name: 'dim_location etl',
+    entity: DATA_ASSETS.pipelines,
+    fqn: 'sample_airflow.dim_location_etl',
+    searchIndex: SEARCH_INDEX.pipelines,
   },
 ];

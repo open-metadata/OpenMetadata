@@ -56,14 +56,14 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
-import { getDataModelDetailsByFQN } from '../rest/dataModelsAPI';
+import { getDataModelByFqn } from '../rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getUserSuggestions } from '../rest/miscAPI';
 import { getMlModelByFQN } from '../rest/mlModelAPI';
 import { getPipelineByFqn } from '../rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
 import { getContainerByFQN } from '../rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from '../rest/storedProceduresAPI';
+import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
 import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
@@ -76,6 +76,7 @@ import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
@@ -84,7 +85,6 @@ import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -299,7 +299,10 @@ export const getBreadCrumbList = (
 ) => {
   const activeEntity = {
     name: getEntityName(entityData),
-    url: getEntityLink(entityType, entityData.fullyQualifiedName || ''),
+    url: entityUtilClassBase.getEntityLink(
+      entityType,
+      entityData.fullyQualifiedName || ''
+    ),
   };
 
   const database = {
@@ -411,7 +414,7 @@ export const fetchEntityDetail = (
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
-      getTableDetailsByFQN(entityFQN, TableFields)
+      getTableDetailsByFQN(entityFQN, { fields: TableFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -419,7 +422,9 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.TOPIC:
-      getTopicByFqn(entityFQN, [TabSpecificField.OWNER, TabSpecificField.TAGS])
+      getTopicByFqn(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
         .then((res) => {
           setEntityData(res as EntityData);
         })
@@ -427,7 +432,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.DASHBOARD:
-      getDashboardByFqn(entityFQN, DashboardFields)
+      getDashboardByFqn(entityFQN, { fields: DashboardFields })
         .then((res) => {
           setEntityData(res);
           fetchCharts(res.charts)
@@ -440,7 +445,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.PIPELINE:
-      getPipelineByFqn(entityFQN, PipelineFields)
+      getPipelineByFqn(entityFQN, { fields: PipelineFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -448,7 +453,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.MLMODEL:
-      getMlModelByFQN(entityFQN, MlModelFields)
+      getMlModelByFQN(entityFQN, { fields: MlModelFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -457,7 +462,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.DATABASE:
-      getDatabaseDetailsByFQN(entityFQN, DatabaseFields)
+      getDatabaseDetailsByFQN(entityFQN, { fields: DatabaseFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -466,7 +471,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.DATABASE_SCHEMA:
-      getDatabaseSchemaDetailsByFQN(entityFQN, DatabaseSchemaFields)
+      getDatabaseSchemaDetailsByFQN(entityFQN, { fields: DatabaseSchemaFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -475,7 +480,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      getDataModelDetailsByFQN(entityFQN, DataModelFields)
+      getDataModelByFqn(entityFQN, { fields: DataModelFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -484,7 +489,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.CONTAINER:
-      getContainerByFQN(entityFQN, ContainerFields)
+      getContainerByFQN(entityFQN, { fields: ContainerFields })
         .then((res) => {
           setEntityData(res);
         })
@@ -493,7 +498,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      getSearchIndexDetailsByFQN(entityFQN, '')
+      getSearchIndexDetailsByFQN(entityFQN)
         .then((res) => {
           setEntityData(res);
         })
@@ -501,10 +506,9 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.STORED_PROCEDURE:
-      getStoredProceduresDetailsByFQN(
-        entityFQN,
-        STORED_PROCEDURE_DEFAULT_FIELDS
-      )
+      getStoredProceduresByFqn(entityFQN, {
+        fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      })
         .then((res) => {
           setEntityData(res);
         })
@@ -512,7 +516,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY:
-      getGlossariesByName(entityFQN, TabSpecificField.TAGS)
+      getGlossariesByName(entityFQN, { fields: TabSpecificField.TAGS })
         .then((res) => {
           setEntityData(res);
         })
@@ -520,7 +524,9 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY_TERM:
-      getGlossaryTermByFQN(getDecodedFqn(entityFQN), TabSpecificField.TAGS)
+      getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+        fields: TabSpecificField.TAGS,
+      })
         .then((res) => {
           setEntityData(res);
         })

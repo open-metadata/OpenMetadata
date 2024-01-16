@@ -223,12 +223,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           isEqual
         );
 
-        setEntityLineage((prev) => {
-          return {
-            ...prev,
-            nodes: allNodes,
-            edges: allEdges,
-          };
+        setEntityLineage({
+          nodes: allNodes,
+          edges: allEdges,
+          entity: res.entity,
         });
       } catch (err) {
         showErrorToast(
@@ -393,8 +391,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       if (!entityLineage) {
         return;
       }
+
+      // Filter column edges, as main edge will automatically remove column
+      // edge on delete
+      const nodeEdges = edges.filter(
+        (item) => item?.data?.isColumnLineage === false
+      );
+
       // Get edges connected to selected node
-      const edgesToRemove = getConnectedEdges([node as Node], edges);
+      const edgesToRemove = getConnectedEdges([node as Node], nodeEdges);
       edgesToRemove.forEach((edge) => {
         removeEdgeHandler(edge, true);
       });
@@ -792,6 +797,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           }
 
           return edge;
+        });
+        setSelectedEdge((pre) => {
+          if (!pre) {
+            return pre;
+          }
+
+          return {
+            ...pre,
+            data: {
+              ...pre.data,
+              edge: {
+                ...pre.data.edge,
+                description,
+                sqlQuery,
+              },
+            },
+          };
         });
         setEntityLineage((prev) => {
           return {

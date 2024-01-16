@@ -155,10 +155,9 @@ const PoliciesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'policies'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: 'policies',
+      });
       const updatedAttributeData = (team.policies ?? []).filter(
         (attrData) => attrData.id !== policy.id
       );

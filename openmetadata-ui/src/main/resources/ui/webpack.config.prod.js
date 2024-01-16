@@ -33,8 +33,8 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: 'openmetadata.[hash].js',
-    chunkFilename: '[name].[hash].js',
+    filename: 'openmetadata.[fullhash].js',
+    chunkFilename: '[name].[fullhash].js',
     publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
   },
 
@@ -164,11 +164,9 @@ module.exports = {
     // File types to be handled
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg'],
     fallback: {
-      http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: require.resolve('url/'),
       'process/browser': require.resolve('process/browser'),
     },
     alias: {

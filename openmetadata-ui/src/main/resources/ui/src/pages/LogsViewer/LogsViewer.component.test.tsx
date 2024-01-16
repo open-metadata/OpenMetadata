@@ -46,7 +46,7 @@ jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLogsData })),
-  getIngestionPipelineByName: jest
+  getIngestionPipelineByFqn: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockIngestionPipeline)),
 }));

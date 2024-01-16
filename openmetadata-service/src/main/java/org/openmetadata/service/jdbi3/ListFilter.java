@@ -16,7 +16,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter {
   @Getter private final Include include;
-  private final Map<String, String> queryParams = new HashMap<>();
+  protected final Map<String, String> queryParams = new HashMap<>();
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -294,7 +294,7 @@ public class ListFilter {
         : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
-  private String addCondition(String condition1, String condition2) {
+  protected String addCondition(String condition1, String condition2) {
     if (condition1.isEmpty()) {
       return condition2;
     }

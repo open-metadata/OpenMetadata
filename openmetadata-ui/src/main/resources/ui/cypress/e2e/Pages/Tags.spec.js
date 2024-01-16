@@ -299,9 +299,7 @@ describe('Classification Page', () => {
     )
       .click()
       .type(assignee);
-    cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .scrollIntoView()
-      .click();
+    cy.get(`[data-testid="${assignee}"]`).scrollIntoView().click();
 
     // click outside the select box
     cy.clickOutside();

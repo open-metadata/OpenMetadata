@@ -41,7 +41,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Include } from '../../generated/type/include';
 import {
   addDataModelFollower,
-  getDataModelsByName,
+  getDataModelByFqn,
   patchDataModelDetails,
   removeDataModelFollower,
   updateDataModelVotes,
@@ -121,11 +121,10 @@ const DataModelsPage = () => {
   const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
-      const response = await getDataModelsByName(
-        dashboardDataModelFQN,
-        'owner,tags,followers,votes,domain,dataProducts',
-        Include.All
-      );
+      const response = await getDataModelByFqn(dashboardDataModelFQN, {
+        fields: 'owner,tags,followers,votes,domain,dataProducts',
+        include: Include.All,
+      });
       setDataModelData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -295,10 +294,13 @@ const DataModelsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDataModelVotes(id, data);
-      const details = await getDataModelsByName(
+      const details = await getDataModelByFqn(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes,domain,dataProducts',
-        Include.All
+
+        {
+          fields: 'owner,tags,followers,votes,domain,dataProducts',
+          include: Include.All,
+        }
       );
       setDataModelData(details);
     } catch (error) {

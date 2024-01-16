@@ -35,7 +35,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
   it(`should show the quick filters for respective assets`, () => {
     // Navigate to explore page
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
     QUICK_FILTERS_BY_ASSETS.map((asset) => {
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
@@ -52,7 +52,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
     const asset = QUICK_FILTERS_BY_ASSETS[0];
 
     // Navigate to explore page
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
     cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
     asset.filters
@@ -64,15 +64,12 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
         const querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
         }*query_filter=*should*${filter.key}*${encodeURI(
-          Cypress._.toLower(filter.selectOption1)
+          Cypress._.toLower(filter.selectOption1).replace(' ', '+')
         )}*`;
 
         interceptURL('GET', querySearchURL, 'querySearchAPI');
 
-        cy.get('[data-testid="update-btn"]')
-          .should('exist')
-          .and('be.visible')
-          .click();
+        cy.get('[data-testid="update-btn"]').click();
 
         verifyResponseStatusCode('@querySearchAPI', 200);
       });

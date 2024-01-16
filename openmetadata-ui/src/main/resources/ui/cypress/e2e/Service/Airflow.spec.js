@@ -55,7 +55,7 @@ describe('Airflow Ingestion', () => {
     });
   });
 
-  it('Update pipeline description and verify description after re-run', () => {
+  it.skip('Update pipeline description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,

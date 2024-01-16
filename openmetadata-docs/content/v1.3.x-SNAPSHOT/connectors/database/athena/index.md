@@ -14,7 +14,8 @@ slug: /connectors/database/athena
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
@@ -119,9 +120,6 @@ And is defined as:
 If you have external services other than glue and facing permission issues, add the permissions to the list above.
 
 {% /note %}
-
-
-You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
 
 ## Metadata Ingestion
 

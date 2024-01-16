@@ -209,7 +209,7 @@ export const AuthProvider = ({
 
   const getLoggedInUserDetails = () => {
     setLoading(true);
-    getLoggedInUser(userAPIQueryFields)
+    getLoggedInUser({ fields: userAPIQueryFields })
       .then((res) => {
         if (res) {
           setCurrentUser(res);
@@ -363,7 +363,7 @@ export const AuthProvider = ({
       authConfig?.provider === AuthProviderEnum.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
         : userAPIQueryFields;
-    getLoggedInUser(fields)
+    getLoggedInUser({ fields })
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);

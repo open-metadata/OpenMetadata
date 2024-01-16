@@ -20,8 +20,8 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 import { ListTestCaseResultsParams } from './testAPI';
 
@@ -63,26 +63,10 @@ export const getPipelines = async (
   return response.data;
 };
 
-export const getPipelineDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getPipelineByFqn = async (
-  fqn: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
-  );
-
-  const response = await APIClient.get<Pipeline>(url);
+export const getPipelineByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Pipeline>(`${BASE_URL}/name/${fqn}`, {
+    params: { ...params, include: params?.include ?? Include.All },
+  });
 
   return response.data;
 };

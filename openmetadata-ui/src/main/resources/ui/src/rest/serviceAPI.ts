@@ -23,12 +23,12 @@ import { configOptions, PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import {
   DomainSupportedServiceTypes,
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
 
@@ -81,16 +81,12 @@ export const getServiceById = async (serviceName: string, id: string) => {
 export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = '',
-  include = Include.NonDeleted
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
+  const response = await APIClient.get<ServicesType>(
     `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+    { params: { ...params, include: params?.include ?? Include.NonDeleted } }
   );
-
-  const response = await APIClient.get<ServicesType>(url);
 
   return response.data;
 };
@@ -98,14 +94,12 @@ export const getServiceByFQN = async (
 export const getDomainSupportedServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = ''
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
+  const response = await APIClient.get<DomainSupportedServiceTypes>(
     `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields
+    { params }
   );
-
-  const response = await APIClient.get<DomainSupportedServiceTypes>(url);
 
   return response.data;
 };

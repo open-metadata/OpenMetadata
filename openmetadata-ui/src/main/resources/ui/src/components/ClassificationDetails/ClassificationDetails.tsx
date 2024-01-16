@@ -115,7 +115,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          arrQueryFields: ['usageCount'],
+          fields: 'usageCount',
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,

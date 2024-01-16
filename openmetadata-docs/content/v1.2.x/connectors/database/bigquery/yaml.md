@@ -14,7 +14,9 @@ slug: /connectors/database/bigquery/yaml
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="check" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | Policy Tags                  |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 

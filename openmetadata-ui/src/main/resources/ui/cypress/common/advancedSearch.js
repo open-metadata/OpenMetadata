@@ -229,7 +229,7 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 
 export const goToAdvanceSearch = () => {
   // Navigate to explore page
-  cy.get('[data-testid="app-bar-item-explore"]').click();
+  cy.sidebarClick('app-bar-item-explore');
   cy.get('[data-testid="advance-search-button"]').click();
   cy.get('[data-testid="reset-btn"]').click();
 };

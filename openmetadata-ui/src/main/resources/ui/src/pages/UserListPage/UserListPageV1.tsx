@@ -215,7 +215,6 @@ const UserListPageV1 = () => {
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
-      pathname: location.pathname,
       search: value && params.toString(),
     });
     if (value) {
@@ -325,9 +324,7 @@ const UserListPageV1 = () => {
                 disabled={!isAdminUser}
                 icon={
                   <IconDelete
-                    data-testid={`delete-user-btn-${
-                      record.displayName || record.name
-                    }`}
+                    data-testid={`delete-user-btn-${record.name}`}
                     name={t('label.delete')}
                     width="16px"
                   />
