@@ -30,6 +30,7 @@ import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
@@ -37,8 +38,9 @@ import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
-  const { fqn, dashboardType } =
-    useParams<{ fqn: string; dashboardType: ProfilerDashboardType }>();
+  const { dashboardType } =
+    useParams<{ dashboardType: ProfilerDashboardType }>();
+  const { fqn } = useFqn();
 
   const history = useHistory();
   const location = useLocation();

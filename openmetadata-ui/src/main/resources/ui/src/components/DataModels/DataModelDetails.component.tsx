@@ -34,6 +34,7 @@ import {
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreDataModel } from '../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -69,8 +70,9 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: dashboardDataModelFQN, tab: activeTab } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: dashboardDataModelFQN } = useFqn();
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');

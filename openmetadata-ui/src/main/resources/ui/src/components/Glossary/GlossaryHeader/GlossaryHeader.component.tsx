@@ -71,6 +71,7 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 
+import { useFqn } from '../../../hooks/useFqn';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -93,10 +94,10 @@ const GlossaryHeader = ({
   const history = useHistory();
   const { currentUser } = useAuthContext();
 
-  const { fqn, version } = useParams<{
-    fqn: string;
+  const { version } = useParams<{
     version: string;
   }>();
+  const { fqn } = useFqn();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']

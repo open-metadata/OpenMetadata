@@ -55,6 +55,7 @@ import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -84,8 +85,9 @@ const ContainerPage = () => {
   const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: containerFQN, tab } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: containerFQN } = useFqn();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);

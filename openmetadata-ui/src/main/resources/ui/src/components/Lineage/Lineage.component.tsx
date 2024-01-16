@@ -16,12 +16,13 @@ import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, { DragEvent, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
+import { useFqn } from '../../hooks/useFqn';
 import {
   customEdges,
   dragHandle,
@@ -62,7 +63,8 @@ const Lineage = ({
     onZoomUpdate,
     onInitReactFlow,
   } = useLineageProvider();
-  const { fqn: entityFQN } = useParams<{ fqn: string }>();
+
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
 

@@ -47,6 +47,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -67,15 +68,11 @@ function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
-    fqn: databaseSchemaFQN,
-    version,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { version, tab } = useParams<{
     version: string;
     tab: EntityTabs;
   }>();
+  const { fqn: databaseSchemaFQN } = useFqn();
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
     data: [],

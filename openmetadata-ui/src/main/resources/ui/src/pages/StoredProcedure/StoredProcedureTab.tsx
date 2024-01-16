@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -26,6 +26,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -47,7 +48,7 @@ const StoredProcedureTab = () => {
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { fqn: databaseSchemaFQN } = useParams<{ fqn: string }>();
+  const { fqn: databaseSchemaFQN } = useFqn();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const decodedDatabaseSchemaFQN = useMemo(

@@ -15,13 +15,11 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import {
   getServiceDetailsPath,
-  INGESTION_NAME,
   IN_PAGE_SEARCH_ROUTES,
   LOG_ENTITY_NAME,
   LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
-  PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -355,7 +353,7 @@ export const getAddDataQualityTableTestPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(fqn));
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
@@ -415,7 +413,7 @@ export const getLogsViewerPath = (
 
   path = path.replace(LOG_ENTITY_TYPE, logEntityType);
   path = path.replace(LOG_ENTITY_NAME, logEntityName);
-  path = path.replace(INGESTION_NAME, getEncodedFqn(ingestionName));
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
 
   return path;
 };

@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -34,6 +33,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { useFqn } from '../../../hooks/useFqn';
 import { useIncidentManagerProvider } from '../../../pages/IncidentManager/IncidentManagerProvider/IncidentManagerProvider';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
@@ -48,7 +48,7 @@ import './test-case-issue-tab.style.less';
 
 const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const decodedFqn = getDecodedFqn(fqn);
   const {
     selectedThread,

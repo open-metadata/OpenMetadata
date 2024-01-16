@@ -21,12 +21,12 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { useFqn } from '../../../../hooks/useFqn';
 import { searchData } from '../../../../rest/miscAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import {
@@ -45,7 +45,7 @@ import { DataProductsTabProps } from './DataProductsTab.interface';
 const DataProductsTab = forwardRef(
   ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
-    const { fqn: domainFqn } = useParams<{ fqn: string }>();
+    const { fqn: domainFqn } = useFqn();
     const [dataProducts, setDataProducts] = useState<
       PagingResponse<DataProduct[]>
     >({

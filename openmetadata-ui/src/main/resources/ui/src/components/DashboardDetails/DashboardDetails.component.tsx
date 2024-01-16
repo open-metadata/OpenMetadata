@@ -40,6 +40,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreDashboard } from '../../rest/dashboardAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -91,8 +92,10 @@ const DashboardDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: dashboardFQN } = useFqn();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);

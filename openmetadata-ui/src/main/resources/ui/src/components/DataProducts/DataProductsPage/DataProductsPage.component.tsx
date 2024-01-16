@@ -21,6 +21,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteDataProduct,
   getDataProductByName,
@@ -44,7 +45,8 @@ import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDeta
 const DataProductsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn, version } = useParams<{ fqn: string; version: string }>();
+  const { version } = useParams<{ version: string }>();
+  const { fqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();
   const [versionList, setVersionList] = useState<EntityHistory>(

@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { SummaryPanel } from '../../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from '../../../components/ProfilerDashboard/component/DataQualityTab';
 import TestSuitePipelineTab from '../../../components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -31,6 +31,7 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityType as TestType } from '../../../generated/tests/testDefinition';
+import { useFqn } from '../../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
@@ -51,7 +52,7 @@ export const QualityTab = () => {
   } = useTableProfiler();
 
   const editTest = permissions.EditAll || permissions.EditTests;
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
 

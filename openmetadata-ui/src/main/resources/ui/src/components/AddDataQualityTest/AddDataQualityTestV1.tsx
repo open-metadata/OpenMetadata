@@ -42,6 +42,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { useFqn } from '../../hooks/useFqn';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -59,8 +60,9 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   table,
 }: AddDataQualityTestProps) => {
-  const { entityTypeFQN, dashboardType } =
-    useParams<{ entityTypeFQN: string; dashboardType: string }>();
+  const { dashboardType } = useParams<{ dashboardType: string }>();
+
+  const { fqn } = useFqn();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
   const history = useHistory();
@@ -91,7 +93,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     ];
 
     return data;
-  }, [table, entityTypeFQN, isColumnFqn]);
+  }, [table, fqn, isColumnFqn]);
 
   const owner = useMemo(
     () => ({
@@ -233,7 +235,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       />
       {isTableFqn && (
         <TableProfilerChart
-          entityFqn={entityTypeFQN}
+          entityFqn={fqn}
           showHeader={false}
           tableDetails={table}
         />

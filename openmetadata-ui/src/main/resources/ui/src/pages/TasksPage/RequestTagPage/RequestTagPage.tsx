@@ -33,6 +33,7 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
@@ -59,8 +60,8 @@ const RequestTag = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');

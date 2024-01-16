@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -26,6 +25,7 @@ import {
   CustomProperty,
   Type,
 } from '../../../generated/entity/type';
+import { useFqn } from '../../../hooks/useFqn';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
@@ -67,7 +67,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
-  const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
+  const { fqn } = useFqn();
   const decodedeFqn = getDecodedFqn(fqn);
 
   const fetchExtentiondetails = async () => {

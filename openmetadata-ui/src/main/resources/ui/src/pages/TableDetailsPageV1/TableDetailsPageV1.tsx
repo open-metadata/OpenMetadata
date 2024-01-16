@@ -63,6 +63,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -97,8 +98,9 @@ const TableDetailsPageV1 = () => {
     useTourProvider();
   const { currentUser } = useAuthContext();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = currentUser?.id ?? '';

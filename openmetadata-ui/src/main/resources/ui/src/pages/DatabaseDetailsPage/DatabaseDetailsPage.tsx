@@ -60,6 +60,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useFqn } from '../../hooks/useFqn';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -88,8 +89,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
 
-  const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: databaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
 
   const [database, setDatabase] = useState<Database>({} as Database);

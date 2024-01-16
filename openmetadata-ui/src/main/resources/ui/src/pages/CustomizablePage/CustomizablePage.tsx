@@ -30,6 +30,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createDocument,
   getDocumentByFQN,
@@ -43,8 +44,8 @@ import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export const CustomizablePage = () => {
-  const { fqn: personaFQN, pageFqn } =
-    useParams<{ fqn: string; pageFqn: PageType }>();
+  const { pageFqn } = useParams<{ pageFqn: PageType }>();
+  const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);

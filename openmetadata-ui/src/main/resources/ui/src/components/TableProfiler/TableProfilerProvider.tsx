@@ -23,12 +23,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { Table } from '../../generated/entity/data/table';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../generated/tests/testCase';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
@@ -58,7 +59,7 @@ export const TableProfilerProvider = ({
   isTableDeleted,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const location = useLocation();
   // profiler has its own api but sent's the data in Table type

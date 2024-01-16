@@ -103,7 +103,6 @@ export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 
 export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
 export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
@@ -111,9 +110,7 @@ export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
-export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
-export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 
 export const pagingObject = { after: '', before: '', total: 0 };
@@ -272,11 +269,11 @@ export const ROUTES = {
   GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
-  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
-  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ROUTE_FQN}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_FQN}/add-field`,
+  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -311,13 +308,13 @@ export const ROUTES = {
   INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
-  LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
+  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
   DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,
   KPI_LIST: `/data-insights/kpi`,
   ADD_KPI: `/data-insights/kpi/add-kpi`,
-  EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
+  EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
@@ -736,10 +733,7 @@ export const getMlModelPath = (mlModelFqn: string, tab = '') => {
 
 export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(
-    PLACEHOLDER_ENTITY_TYPE_FQN,
-    getEncodedFqn(entityTypeFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityTypeFQN));
 
   return path;
 };
@@ -765,7 +759,7 @@ export const getBotsPagePath = () => {
 export const getKpiPath = (kpiName: string) => {
   let path = ROUTES.EDIT_KPI;
 
-  path = path.replace(KPI_NAME, getEncodedFqn(kpiName));
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
 
   return path;
 };

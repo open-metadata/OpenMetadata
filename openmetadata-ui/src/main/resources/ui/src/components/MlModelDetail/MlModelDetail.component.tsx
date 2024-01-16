@@ -34,6 +34,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreMlmodel } from '../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -75,8 +76,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { currentUser } = useAuthContext();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: mlModelFqn, tab: activeTab } =
-    useParams<{ tab: EntityTabs; fqn: string }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: mlModelFqn } = useFqn();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);

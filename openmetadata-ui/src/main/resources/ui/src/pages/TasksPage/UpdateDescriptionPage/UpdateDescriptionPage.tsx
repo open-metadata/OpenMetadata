@@ -34,6 +34,7 @@ import {
   TaskType,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
@@ -63,8 +64,8 @@ const UpdateDescription = () => {
   const history = useHistory();
   const [form] = useForm();
 
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');

@@ -63,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
@@ -101,11 +102,9 @@ const DataProductsDetailsPage = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const {
-    fqn,
-    tab: activeTab,
-    version,
-  } = useParams<{ fqn: string; tab: string; version: string }>();
+  const { tab: activeTab, version } =
+    useParams<{ tab: string; version: string }>();
+  const { fqn } = useFqn();
   const dataProductFqn = fqn ? getDecodedFqn(fqn) : '';
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);

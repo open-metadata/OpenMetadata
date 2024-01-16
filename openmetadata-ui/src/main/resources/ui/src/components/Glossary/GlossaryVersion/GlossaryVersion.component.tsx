@@ -18,6 +18,7 @@ import { LOADING_STATE } from '../../../enums/common.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getGlossaryTermsVersion,
   getGlossaryTermsVersionsList,
@@ -41,11 +42,9 @@ interface GlossaryVersionProps {
 
 const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const history = useHistory();
-  const {
-    fqn: glossaryName,
-    version,
-    tab = 'overview',
-  } = useParams<{ fqn: string; version: string; tab: string }>();
+  const { version, tab = 'overview' } =
+    useParams<{ version: string; tab: string }>();
+  const { fqn: glossaryName } = useFqn();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );

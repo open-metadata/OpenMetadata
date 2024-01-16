@@ -39,6 +39,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getDashboards } from '../../rest/dashboardAPI';
@@ -73,15 +74,12 @@ function ServiceVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
-    serviceCategory,
-    fqn: serviceFQN,
-    version,
-  } = useParams<{
+  const { serviceCategory, version } = useParams<{
     serviceCategory: ServiceTypes;
-    fqn: string;
     version: string;
   }>();
+
+  const { fqn: serviceFQN } = useFqn();
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [data, setData] = useState<Array<ServicePageData>>([]);

@@ -28,7 +28,7 @@ import {
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -44,6 +44,7 @@ import {
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { getEntityName, searchInColumns } from '../../../utils/EntityUtils';
@@ -76,7 +77,7 @@ const ColumnProfileTable = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const {
     isTestsLoading,
     isProfilerDataLoading,

@@ -22,7 +22,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -33,6 +33,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Category, CustomProperty, Type } from '../../../generated/entity/type';
+import { useFqn } from '../../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   addPropertyToEntity,
@@ -48,7 +49,7 @@ import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
-  const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
+  const { fqn } = useFqn();
   const history = useHistory();
 
   const [typeDetail, setTypeDetail] = useState<Type>();
@@ -67,7 +68,7 @@ const AddCustomProperty = () => {
         name: t('label.custom-attribute-plural'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
-          getSettingOptionByEntityType(entityTypeFQN)
+          getSettingOptionByEntityType(fqn as EntityType)
         ),
       },
       {
@@ -77,7 +78,7 @@ const AddCustomProperty = () => {
         url: '',
       },
     ],
-    [entityTypeFQN]
+    [fqn]
   );
 
   const propertyTypeOptions = useMemo(() => {
@@ -147,8 +148,8 @@ const AddCustomProperty = () => {
   };
 
   useEffect(() => {
-    fetchTypeDetail(entityTypeFQN);
-  }, [entityTypeFQN]);
+    fetchTypeDetail(fqn);
+  }, [fqn]);
 
   useEffect(() => {
     fetchPropertyType();

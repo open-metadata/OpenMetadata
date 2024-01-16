@@ -70,6 +70,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import {
   getDashboards,
@@ -131,15 +132,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const { isAirflowAvailable } = useAirflowStatus();
-  const {
-    fqn: serviceFQN,
-    serviceCategory,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { serviceCategory, tab } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
+
+  const { fqn: serviceFQN } = useFqn();
 
   const decodedServiceFQN = useMemo(
     () => getDecodedFqn(serviceFQN),

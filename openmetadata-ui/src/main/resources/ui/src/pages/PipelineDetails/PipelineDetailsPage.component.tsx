@@ -16,7 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
@@ -29,6 +29,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
   getPipelineByFqn,
@@ -56,7 +57,7 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
-  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
+  const { fqn: pipelineFQN } = useFqn();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );

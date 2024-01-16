@@ -68,6 +68,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -107,11 +108,9 @@ const DomainDetailsPage = ({
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const {
-    fqn,
-    tab: activeTab,
-    version,
-  } = useParams<{ fqn: string; tab: string; version: string }>();
+  const { tab: activeTab, version } =
+    useParams<{ tab: string; version: string }>();
+  const { fqn } = useFqn();
   const domainFqn = fqn ? getDecodedFqn(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);

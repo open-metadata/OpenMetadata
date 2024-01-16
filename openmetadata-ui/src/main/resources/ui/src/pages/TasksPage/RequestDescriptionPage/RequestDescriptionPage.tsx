@@ -34,6 +34,7 @@ import {
   TaskType,
 } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
@@ -61,8 +62,9 @@ const RequestDescription = () => {
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>();
 
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');

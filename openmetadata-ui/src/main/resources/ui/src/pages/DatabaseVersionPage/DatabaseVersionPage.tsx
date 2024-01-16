@@ -45,6 +45,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseVersionData,
@@ -63,15 +64,12 @@ function DatabaseVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
-    fqn: databaseFQN,
-    version,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { version, tab } = useParams<{
     version: string;
     tab: EntityTabs;
   }>();
+
+  const { fqn: databaseFQN } = useFqn();
 
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);

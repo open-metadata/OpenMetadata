@@ -40,7 +40,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
@@ -60,6 +59,7 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import {
   getDataProductByName,
@@ -134,7 +134,7 @@ const AssetsTabs = forwardRef(
     const [assetRemoving, setAssetRemoving] = useState(false);
 
     const [activeFilter, _] = useState<SearchIndex[]>([]);
-    const { fqn } = useParams<{ fqn: string }>();
+    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =

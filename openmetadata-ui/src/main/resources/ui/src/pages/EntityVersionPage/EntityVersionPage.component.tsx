@@ -64,6 +64,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -135,17 +136,13 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const {
-    entityType,
-    version,
-    fqn: entityFQN,
-    tab,
-  } = useParams<{
+  const { entityType, version, tab } = useParams<{
     entityType: EntityType;
     version: string;
-    fqn: string;
     tab: EntityTabs;
   }>();
+
+  const { fqn: entityFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =

@@ -59,6 +59,7 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
@@ -86,8 +87,9 @@ const StoredProcedurePage = () => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
-  const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
-    useParams<{ fqn: string; tab: string }>();
+  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
+
+  const { fqn: storedProcedureFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();

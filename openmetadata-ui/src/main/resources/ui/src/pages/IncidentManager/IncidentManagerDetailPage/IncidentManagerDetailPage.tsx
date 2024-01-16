@@ -35,6 +35,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
@@ -47,10 +48,10 @@ const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
 
-  const {
-    fqn: testCaseFQN,
-    tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
-  } = useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: testCaseFQN } = useFqn();
 
   const [testCaseData, setTestCaseData] = useState<TestCaseData>({
     data: undefined,

@@ -33,6 +33,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   FieldProp,
   FieldTypes,
@@ -59,8 +60,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN, dashboardType } =
-    useParams<{ entityTypeFQN: string; dashboardType: string }>();
+  const { dashboardType } = useParams<{ dashboardType: string }>();
+
+  const { fqn } = useFqn();
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
@@ -69,7 +71,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
     return searchData as { activeColumnFqn: string };
   }, [location.search]);
-  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
+  const decodedEntityFQN = getDecodedFqn(fqn);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);

@@ -67,8 +67,8 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 
-import { useParams } from 'react-router-dom';
 import { PipelineStatus } from '../../generated/entity/data/pipeline';
+import { useFqn } from '../../hooks/useFqn';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -101,7 +101,8 @@ export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
-  const { fqn: entityFqn } = useParams<{ fqn: string }>();
+
+  const { fqn: entityFqn } = useFqn();
   const decodedFqn = getDecodedFqn(entityFqn);
   const { isTourOpen } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =

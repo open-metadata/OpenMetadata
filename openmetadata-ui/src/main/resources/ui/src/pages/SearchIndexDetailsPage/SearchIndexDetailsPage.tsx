@@ -54,6 +54,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -83,8 +84,8 @@ import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 function SearchIndexDetailsPage() {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ fqn: string; tab: string }>();
+  const { tab: activeTab = EntityTabs.FIELDS } = useParams<{ tab: string }>();
+  const { fqn: searchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
   const { currentUser } = useAuthContext();

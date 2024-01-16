@@ -62,6 +62,7 @@ import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -89,8 +90,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.TABLE } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: databaseSchemaFQN } = useFqn();
   const history = useHistory();
   const isMounting = useRef(true);
 

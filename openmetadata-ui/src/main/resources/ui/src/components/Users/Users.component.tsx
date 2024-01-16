@@ -26,6 +26,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { useAuth } from '../../hooks/authHooks';
+import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -51,8 +52,9 @@ import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.c
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
 const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
-  const { fqn: username, tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ fqn: string; tab: UserPageTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY } =
+    useParams<{ tab: UserPageTabs }>();
+  const { fqn: username } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();

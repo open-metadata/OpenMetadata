@@ -41,6 +41,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
   getApplicationRuns,
@@ -59,7 +60,8 @@ import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
 
 const LogsViewer = () => {
-  const { logEntityType, ingestionName } = useParams<LogViewerParams>();
+  const { logEntityType } = useParams<LogViewerParams>();
+  const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
 
