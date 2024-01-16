@@ -42,11 +42,7 @@ import {
   userMentionItemWithAvatar,
 } from '../../utils/FeedUtils';
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
-import {
-  directionHandler,
-  insertMention,
-  insertRef,
-} from '../../utils/QuillUtils';
+import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { editorRef } from '../common/RichTextEditor/RichTextEditor.interface';
@@ -180,7 +176,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           handlers: {
             insertMention: insertMention,
             insertRef: insertRef,
-            direction: directionHandler,
           },
         },
         'emoji-toolbar': true,
