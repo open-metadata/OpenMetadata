@@ -31,4 +31,9 @@ public abstract class EntityTimeSeriesResource<
     entity = repository.createNewRecord(entity, extension, recordFQN);
     return Response.ok(entity).build();
   }
+
+  protected Response create(T entity, String recordFQN) {
+    entity = repository.createNewRecord(entity, recordFQN);
+    return Response.ok(entity).build();
+  }
 }

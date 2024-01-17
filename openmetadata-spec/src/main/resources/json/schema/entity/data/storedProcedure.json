@@ -18,7 +18,8 @@
             "SQL",
             "Java",
             "JavaScript",
-            "Python"
+            "Python",
+            "External"
           ],
           "javaEnums": [
             {
@@ -32,6 +33,9 @@
             },
             {
               "name": "Python"
+            },
+            {
+              "name": "External"
             }
           ]
         },
