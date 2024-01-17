@@ -85,6 +85,6 @@ public class EmailPublisher extends AbstractEventConsumer {
 
   @Override
   public void stop() {
-    LOG.info("Email Publisher Stopped");
+    LOG.debug("Email Publisher Stopped");
   }
 }
