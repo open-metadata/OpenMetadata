@@ -107,9 +107,7 @@ const LeftSidebar = () => {
           <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
             <BrandImage
               alt="OpenMetadata Logo"
-              className={classNames('vertical-middle ', {
-                'm-l-sm': !isSidebarCollapsed,
-              })}
+              className="vertical-middle"
               dataTestId="image"
               height={isSidebarCollapsed ? 30 : 34}
               isMonoGram={isSidebarCollapsed}
