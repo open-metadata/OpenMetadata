@@ -21,7 +21,10 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -35,7 +38,11 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
+import {
+  getCustomizePagePath,
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
@@ -56,6 +63,17 @@ export const CustomPageSettings = () => {
     handlePagingChange,
     showPagination,
   } = usePaging();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.OPEN_METADATA,
+        t('label.customize-entity', {
+          entity: t('label.landing-page'),
+        })
+      ),
+    []
+  );
 
   const fetchPersonas = async (params?: Partial<Paging>) => {
     try {
@@ -131,67 +149,75 @@ export const CustomPageSettings = () => {
   );
 
   return (
-    <Row
-      className="customize-landing-page user-listing p-b-md"
-      data-testid="custom-page-setting-component"
-      gutter={[16, 16]}>
-      <Col span={18}>
-        <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
-      </Col>
+    <PageLayoutV1
+      pageTitle={t('label.customize-entity', {
+        entity: t('label.landing-page'),
+      })}>
+      <Row
+        className="customize-landing-page user-listing p-b-md page-container"
+        data-testid="custom-page-setting-component"
+        gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={18}>
+          <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
+        </Col>
 
-      {isLoading
-        ? [1, 2, 3].map((key) => (
-            <Col key={key} span={8}>
-              <Card>
-                <Skeleton active paragraph title />
-              </Card>
-            </Col>
-          ))
-        : personas?.map((persona) => (
-            <Col key={persona.id} span={8}>
-              <Card
-                bodyStyle={{ height: '100%' }}
-                className="h-full"
-                data-testid={`persona-details-card-${persona.name}`}
-                extra={
-                  <Button
-                    className="text-link-color"
-                    data-testid="customize-page-button"
-                    size="small"
-                    type="text"
-                    onClick={() => handleCustomisePersona(persona)}>
-                    {t('label.customize-entity', {
-                      entity: t('label.landing-page'),
-                    })}
-                  </Button>
-                }
-                title={getEntityName(persona)}>
-                {persona.description ? (
-                  <RichTextEditorPreviewer
-                    markdown={persona.description ?? ''}
-                  />
-                ) : (
-                  <Typography.Text className="text-grey-muted">
-                    {t('label.no-description')}
-                  </Typography.Text>
-                )}
-              </Card>
-            </Col>
-          ))}
+        {isLoading
+          ? [1, 2, 3].map((key) => (
+              <Col key={key} span={8}>
+                <Card>
+                  <Skeleton active paragraph title />
+                </Card>
+              </Col>
+            ))
+          : personas?.map((persona) => (
+              <Col key={persona.id} span={8}>
+                <Card
+                  bodyStyle={{ height: '100%' }}
+                  className="h-full"
+                  data-testid={`persona-details-card-${persona.name}`}
+                  extra={
+                    <Button
+                      className="text-link-color"
+                      data-testid="customize-page-button"
+                      size="small"
+                      type="text"
+                      onClick={() => handleCustomisePersona(persona)}>
+                      {t('label.customize-entity', {
+                        entity: t('label.landing-page'),
+                      })}
+                    </Button>
+                  }
+                  title={getEntityName(persona)}>
+                  {persona.description ? (
+                    <RichTextEditorPreviewer
+                      markdown={persona.description ?? ''}
+                    />
+                  ) : (
+                    <Typography.Text className="text-grey-muted">
+                      {t('label.no-description')}
+                    </Typography.Text>
+                  )}
+                </Card>
+              </Col>
+            ))}
 
-      {showErrorPlaceholder && errorPlaceHolder}
+        {showErrorPlaceholder && errorPlaceHolder}
 
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePersonaPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-    </Row>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePersonaPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };

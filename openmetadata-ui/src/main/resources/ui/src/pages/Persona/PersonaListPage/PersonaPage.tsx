@@ -19,7 +19,10 @@ import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWid
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
 import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -30,6 +33,10 @@ import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
+import {
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../../utils/GlobalSettingsUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -51,6 +58,15 @@ export const PersonaPage = () => {
     handlePagingChange,
     showPagination,
   } = usePaging();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.MEMBERS,
+        t('label.persona-plural')
+      ),
+    []
+  );
 
   const fetchPersonas = useCallback(async (params?: Partial<Paging>) => {
     try {
@@ -113,71 +129,76 @@ export const PersonaPage = () => {
   };
 
   return (
-    <Row
-      className="user-listing p-b-md"
-      data-testid="user-list-v1-component"
-      gutter={[16, 16]}>
-      <Col span={18}>
-        <PageHeader data={PAGE_HEADERS.PERSONAS} />
-      </Col>
-      <Col span={6}>
-        <Space align="center" className="w-full justify-end" size={16}>
-          <Button
-            data-testid="add-persona-button"
-            type="primary"
-            onClick={handleAddNewPersona}>
-            {t('label.add-entity', { entity: t('label.persona') })}
-          </Button>
-        </Space>
-      </Col>
-
-      {isLoading
-        ? [1, 2, 3].map((key) => (
-            <Col key={key} span={8}>
-              <Card>
-                <Skeleton active paragraph title />
-              </Card>
-            </Col>
-          ))
-        : persona?.map((persona) => (
-            <Col key={persona.id} span={8}>
-              <PersonaDetailsCard persona={persona} />
-            </Col>
-          ))}
-
-      {isEmpty(persona) && !isLoading && errorPlaceHolder}
-
-      {showPagination && (
+    <PageLayoutV1 pageTitle={t('label.persona-plural')}>
+      <Row
+        className="user-listing page-container p-b-md"
+        data-testid="user-list-v1-component"
+        gutter={[16, 16]}>
         <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePersonaPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
-      )}
+        <Col span={18}>
+          <PageHeader data={PAGE_HEADERS.PERSONAS} />
+        </Col>
+        <Col span={6}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <Button
+              data-testid="add-persona-button"
+              type="primary"
+              onClick={handleAddNewPersona}>
+              {t('label.add-entity', { entity: t('label.persona') })}
+            </Button>
+          </Space>
+        </Col>
 
-      {Boolean(addEditPersona) && (
-        <AddEditPersonaForm
-          persona={addEditPersona}
-          onCancel={handlePersonalAddEditCancel}
-          onSave={handlePersonaAddEditSave}
+        {isLoading
+          ? [1, 2, 3].map((key) => (
+              <Col key={key} span={8}>
+                <Card>
+                  <Skeleton active paragraph title />
+                </Card>
+              </Col>
+            ))
+          : persona?.map((persona) => (
+              <Col key={persona.id} span={8}>
+                <PersonaDetailsCard persona={persona} />
+              </Col>
+            ))}
+
+        {isEmpty(persona) && !isLoading && errorPlaceHolder}
+
+        {showPagination && (
+          <Col span={24}>
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePersonaPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          </Col>
+        )}
+
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+
+        <DeleteWidgetModal
+          afterDeleteAction={() => fetchPersonas()}
+          allowSoftDelete={false}
+          entityId={personaDeleting?.id ?? ''}
+          entityName={personaDeleting?.name ?? ''}
+          entityType={EntityType.PERSONA}
+          visible={Boolean(personaDeleting)}
+          onCancel={() => {
+            setPersonaDeleting(undefined);
+          }}
         />
-      )}
-
-      <DeleteWidgetModal
-        afterDeleteAction={() => fetchPersonas()}
-        allowSoftDelete={false}
-        entityId={personaDeleting?.id ?? ''}
-        entityName={personaDeleting?.name ?? ''}
-        entityType={EntityType.PERSONA}
-        visible={Boolean(personaDeleting)}
-        onCancel={() => {
-          setPersonaDeleting(undefined);
-        }}
-      />
-    </Row>
+      </Row>
+    </PageLayoutV1>
   );
 };

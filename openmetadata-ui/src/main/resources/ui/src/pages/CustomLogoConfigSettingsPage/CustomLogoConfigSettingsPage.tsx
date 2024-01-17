@@ -15,13 +15,16 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GRAYED_OUT_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -32,6 +35,10 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import {
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomLogoConfigSettingsPage = () => {
@@ -39,6 +46,15 @@ const CustomLogoConfigSettingsPage = () => {
   const history = useHistory();
   const [loading, setLoading] = useState<boolean>(false);
   const [config, setConfig] = useState<LogoConfiguration>();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.OPEN_METADATA,
+        t('label.custom-logo')
+      ),
+    []
+  );
 
   const fetchCustomLogoConfig = async () => {
     try {
@@ -81,110 +97,115 @@ const CustomLogoConfigSettingsPage = () => {
   }
 
   return (
-    <Row align="middle" gutter={[16, 16]}>
-      <Col span={24}>
-        <Row align="middle" justify="space-between">
-          <Col>
-            <PageHeader
-              data={{
-                header: t('label.custom-logo'),
-                subHeader: t('message.custom-logo-configuration-message'),
-              }}
-            />
-          </Col>
-          <Col>
-            <Button
-              data-testid="edit-button"
-              icon={<Icon component={IconEdit} size={12} />}
-              onClick={handleEditClick}>
-              {t('label.edit')}
-            </Button>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Row align="middle" gutter={[16, 16]}>
-          <Col span={12}>
-            <Row align="middle">
-              <Col span={24}>
-                <Typography.Text className="m-0 text-grey-muted">
-                  {t('label.logo-url')}
-                  <Tooltip
-                    placement="top"
-                    title={t('message.custom-logo-url-path-message')}
-                    trigger="hover">
-                    <InfoCircleOutlined
-                      className="m-x-xss"
-                      data-testid="logo-url-info"
-                      style={{ color: GRAYED_OUT_COLOR }}
-                    />
-                  </Tooltip>
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text data-testid="logo-url">
-                  {isEmpty(config?.customLogoUrlPath)
-                    ? NO_DATA_PLACEHOLDER
-                    : config?.customLogoUrlPath}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-          <Col span={12}>
-            <Row align="middle">
-              <Col span={24}>
-                <Typography.Text className="m-0 text-grey-muted">
-                  {t('label.monogram-url')}
-                  <Tooltip
-                    placement="top"
-                    title={t('message.custom-monogram-url-path-message')}
-                    trigger="hover">
-                    <InfoCircleOutlined
-                      className="m-x-xss"
-                      data-testid="monogram-url-info"
-                      style={{ color: GRAYED_OUT_COLOR }}
-                    />
-                  </Tooltip>
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text data-testid="monogram-url">
-                  {isEmpty(config?.customMonogramUrlPath)
-                    ? NO_DATA_PLACEHOLDER
-                    : config?.customMonogramUrlPath}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-          <Col span={12}>
-            <Row align="middle">
-              <Col span={24}>
-                <Typography.Text className="m-0 text-grey-muted">
-                  {t('label.favicon-url')}
-                  <Tooltip
-                    placement="top"
-                    title={t('message.custom-favicon-url-path-message')}
-                    trigger="hover">
-                    <InfoCircleOutlined
-                      className="m-x-xss"
-                      data-testid="favicon-url-info"
-                      style={{ color: GRAYED_OUT_COLOR }}
-                    />
-                  </Tooltip>
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text data-testid="favicon-url">
-                  {isEmpty(config?.customFaviconUrlPath)
-                    ? NO_DATA_PLACEHOLDER
-                    : config?.customFaviconUrlPath}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <PageLayoutV1 pageTitle={t('label.custom-logo')}>
+      <Row align="middle" className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Row align="middle" justify="space-between">
+            <Col>
+              <PageHeader
+                data={{
+                  header: t('label.custom-logo'),
+                  subHeader: t('message.custom-logo-configuration-message'),
+                }}
+              />
+            </Col>
+            <Col>
+              <Button
+                data-testid="edit-button"
+                icon={<Icon component={IconEdit} size={12} />}
+                onClick={handleEditClick}>
+                {t('label.edit')}
+              </Button>
+            </Col>
+          </Row>
+        </Col>
+        <Col span={24}>
+          <Row align="middle" gutter={[16, 16]}>
+            <Col span={12}>
+              <Row align="middle">
+                <Col span={24}>
+                  <Typography.Text className="m-0 text-grey-muted">
+                    {t('label.logo-url')}
+                    <Tooltip
+                      placement="top"
+                      title={t('message.custom-logo-url-path-message')}
+                      trigger="hover">
+                      <InfoCircleOutlined
+                        className="m-x-xss"
+                        data-testid="logo-url-info"
+                        style={{ color: GRAYED_OUT_COLOR }}
+                      />
+                    </Tooltip>
+                  </Typography.Text>
+                </Col>
+                <Col span={24}>
+                  <Typography.Text data-testid="logo-url">
+                    {isEmpty(config?.customLogoUrlPath)
+                      ? NO_DATA_PLACEHOLDER
+                      : config?.customLogoUrlPath}
+                  </Typography.Text>
+                </Col>
+              </Row>
+            </Col>
+            <Col span={12}>
+              <Row align="middle">
+                <Col span={24}>
+                  <Typography.Text className="m-0 text-grey-muted">
+                    {t('label.monogram-url')}
+                    <Tooltip
+                      placement="top"
+                      title={t('message.custom-monogram-url-path-message')}
+                      trigger="hover">
+                      <InfoCircleOutlined
+                        className="m-x-xss"
+                        data-testid="monogram-url-info"
+                        style={{ color: GRAYED_OUT_COLOR }}
+                      />
+                    </Tooltip>
+                  </Typography.Text>
+                </Col>
+                <Col span={24}>
+                  <Typography.Text data-testid="monogram-url">
+                    {isEmpty(config?.customMonogramUrlPath)
+                      ? NO_DATA_PLACEHOLDER
+                      : config?.customMonogramUrlPath}
+                  </Typography.Text>
+                </Col>
+              </Row>
+            </Col>
+            <Col span={12}>
+              <Row align="middle">
+                <Col span={24}>
+                  <Typography.Text className="m-0 text-grey-muted">
+                    {t('label.favicon-url')}
+                    <Tooltip
+                      placement="top"
+                      title={t('message.custom-favicon-url-path-message')}
+                      trigger="hover">
+                      <InfoCircleOutlined
+                        className="m-x-xss"
+                        data-testid="favicon-url-info"
+                        style={{ color: GRAYED_OUT_COLOR }}
+                      />
+                    </Tooltip>
+                  </Typography.Text>
+                </Col>
+                <Col span={24}>
+                  <Typography.Text data-testid="favicon-url">
+                    {isEmpty(config?.customFaviconUrlPath)
+                      ? NO_DATA_PLACEHOLDER
+                      : config?.customFaviconUrlPath}
+                  </Typography.Text>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

@@ -12,22 +12,31 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { IngestionPipelineList } from '../../components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import Services from '../../components/Services/Services';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import {
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
+  const { t } = useTranslation();
   const location = useLocation();
   const history = useHistory();
 
@@ -55,24 +64,41 @@ const ServicesPage = () => {
     );
   }, [permissions]);
 
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(SettingCategory.SERVICES, capitalize(tab)),
+    []
+  );
+
   return viewAllPermission ? (
-    <Tabs
-      destroyInactiveTabPane
-      activeKey={search as string}
-      items={[
-        {
-          key: 'services',
-          children: <Services serviceName={serviceName} />,
-          label: 'Services',
-        },
-        {
-          key: 'pipelines',
-          children: <IngestionPipelineList serviceName={serviceName} />,
-          label: 'Pipelines',
-        },
-      ]}
-      onChange={(activeKey) => history.push({ search: `tab=${activeKey}` })}
-    />
+    <PageLayoutV1 pageTitle={serviceName}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={search as string}
+            items={[
+              {
+                key: 'services',
+                children: <Services serviceName={serviceName} />,
+                label: 'Services',
+              },
+              {
+                key: 'pipelines',
+                children: <IngestionPipelineList serviceName={serviceName} />,
+                label: 'Pipelines',
+              },
+            ]}
+            onChange={(activeKey) =>
+              history.push({ search: `tab=${activeKey}` })
+            }
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   ) : (
     <Row>
       <Col span={24}>

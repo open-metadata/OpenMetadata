@@ -20,6 +20,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -510,7 +511,7 @@ const TeamsPage = () => {
   }
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
         assetsCount={assets}
@@ -543,7 +544,7 @@ const TeamsPage = () => {
           onSave={(data) => createNewTeam(data)}
         />
       )}
-    </>
+    </PageLayoutV1>
   );
 };
 

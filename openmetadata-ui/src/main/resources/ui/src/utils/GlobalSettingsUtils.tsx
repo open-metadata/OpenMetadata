@@ -62,6 +62,8 @@ import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
+import i18n from './i18next/LocalUtil';
+import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
 export interface MenuListItem {
@@ -469,4 +471,73 @@ export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
   return path
     .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
     .replace(':pageFqn', pageFqn);
+};
+
+export enum SettingCategory {
+  SERVICES = 'services',
+  INTEGRATIONS = 'integrations',
+  DATA_OBSERVABILITY = 'data-observability',
+  NOTIFICATIONS = 'notifications',
+  MEMBERS = 'members',
+  ACCESS = 'access',
+  OPEN_METADATA = 'openMetadata',
+  CUSTOM_ATTRIBUTES = 'customAttributes',
+}
+
+export const settingCategories = {
+  [SettingCategory.SERVICES]: {
+    name: i18n.t('label.service-plural'),
+    url: SettingCategory.SERVICES,
+  },
+  [SettingCategory.INTEGRATIONS]: {
+    name: i18n.t('label.integration-plural'),
+    url: SettingCategory.INTEGRATIONS,
+  },
+  [SettingCategory.DATA_OBSERVABILITY]: {
+    name: i18n.t('label.observability'),
+    url: SettingCategory.DATA_OBSERVABILITY,
+  },
+  [SettingCategory.NOTIFICATIONS]: {
+    name: i18n.t('label.notification-plural'),
+    url: SettingCategory.NOTIFICATIONS,
+  },
+  [SettingCategory.MEMBERS]: {
+    name: i18n.t('label.member-plural'),
+    url: SettingCategory.MEMBERS,
+  },
+  [SettingCategory.ACCESS]: {
+    name: i18n.t('label.access-control'),
+    url: SettingCategory.ACCESS,
+  },
+  [SettingCategory.OPEN_METADATA]: {
+    name: i18n.t('label.open-metadata'),
+    url: SettingCategory.OPEN_METADATA,
+  },
+  [SettingCategory.CUSTOM_ATTRIBUTES]: {
+    name: i18n.t('label.custom-property-plural'),
+    url: SettingCategory.CUSTOM_ATTRIBUTES,
+  },
+};
+
+export const getSettingPageEntityBreadCrumb = (
+  category: SettingCategory,
+  entityName: string
+) => {
+  const categoryObject = settingCategories[category];
+
+  return [
+    {
+      name: i18next.t('label.setting-plural'),
+      url: ROUTES.SETTINGS,
+    },
+    {
+      name: categoryObject.name,
+      url: getSettingPath(categoryObject.url),
+    },
+    {
+      name: entityName,
+      url: '',
+      activeTitle: true,
+    },
+  ];
 };

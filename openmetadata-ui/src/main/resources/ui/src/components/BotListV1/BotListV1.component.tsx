@@ -32,6 +32,10 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getBots } from '../../rest/botsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../utils/GlobalSettingsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -40,6 +44,8 @@ import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../PageHeader/PageHeader.component';
 import { BotListV1Props } from './BotListV1.interfaces';
 
@@ -66,6 +72,15 @@ const BotListV1 = ({
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.INTEGRATIONS,
+        t('label.bot-plural')
+      ),
+    []
+  );
 
   /**
    *
@@ -234,7 +249,11 @@ const BotListV1 = ({
       </Col>
     </Row>
   ) : (
-    <Row gutter={[16, 16]}>
+    <Row className="page-container" gutter={[16, 16]}>
+      <Col span={24}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </Col>
+
       <Col span={12}>
         <PageHeader data={PAGE_HEADERS.BOTS} />
       </Col>

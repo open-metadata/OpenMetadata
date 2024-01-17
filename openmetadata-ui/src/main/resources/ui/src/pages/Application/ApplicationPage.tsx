@@ -34,14 +34,15 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getApplicationDetailsPath,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../utils/GlobalSettingsUtils';
+import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ApplicationPage = () => {
   const { t } = useTranslation();
-  const { settingCategory, tab: settingService } =
+  const { tab: settingService } =
     useParams<{ settingCategory: string; tab: string }>();
 
   const {
@@ -59,22 +60,12 @@ const ApplicationPage = () => {
   const [showDisabled, setShowDisabled] = useState(false);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => [
-      {
-        name: t('label.setting-plural'),
-        url: ROUTES.SETTINGS,
-      },
-      {
-        name: capitalize(settingCategory),
-        url: getSettingPath(settingCategory),
-      },
-      {
-        name: capitalize(settingService),
-        url: '',
-        activeTitle: true,
-      },
-    ],
-    [settingCategory, settingService]
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.INTEGRATIONS,
+        capitalize(settingService)
+      ),
+    [settingService]
   );
 
   const fetchApplicationList = useCallback(

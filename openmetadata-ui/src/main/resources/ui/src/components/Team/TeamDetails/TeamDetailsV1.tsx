@@ -1091,7 +1091,7 @@ const TeamDetailsV1 = ({
   }
 
   return (
-    <div className="teams-layout">
+    <div className="teams-layout page-container">
       <Row className="h-full" data-testid="team-details-container">
         <Col
           className="teams-profile-container"
