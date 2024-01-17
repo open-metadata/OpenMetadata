@@ -117,7 +117,6 @@ base_requirements = {
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
-    "typing_extensions>=4.8.0",
     "typing-inspect",
     "wheel~=0.38.4",
 }
