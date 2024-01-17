@@ -3708,14 +3708,6 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
-    @SqlUpdate(
-        value =
-            "UPDATE data_quality_data_time_series SET incidentId = NULL "
-                + "WHERE entityFQNHash = :testCaseFQNHash and incidentId = :incidentStateId")
-    void cleanTestCaseIncident(
-        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
-        @Bind("incidentStateId") String incidentStateId);
-
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
