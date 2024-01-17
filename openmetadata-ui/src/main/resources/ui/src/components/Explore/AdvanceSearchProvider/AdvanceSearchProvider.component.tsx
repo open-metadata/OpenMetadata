@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { cloneDeep, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -116,10 +115,6 @@ export const AdvanceSearchProvider = ({
     treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
   );
 
-  useEffect(() => {
-    setConfig(getQbConfigs(searchIndex));
-  }, [searchIndex]);
-
   const handleChange = useCallback(
     (nTree, nConfig) => {
       setConfig(nConfig);
@@ -170,8 +165,8 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
-  async function getCustomAttributesSubfields() {
-    const updatedConfig = cloneDeep(config);
+  async function getCustomAttributesSubfields(configData: Config) {
+    const updatedConfig = cloneDeep(configData);
     try {
       const entityType = getEntityTypeFromSearchIndex(searchIndex);
       if (!entityType) {
@@ -202,9 +197,18 @@ export const AdvanceSearchProvider = ({
     }
   }
 
+  const loadData = useCallback(async () => {
+    const actualConfig = getQbConfigs(searchIndex);
+    const updatedConfig =
+      (await getCustomAttributesSubfields(actualConfig)) ?? actualConfig;
+    setConfig(updatedConfig);
+
+    return updatedConfig;
+  }, [searchIndex]);
+
   const loadTree = useCallback(
     async (treeObj: JsonTree) => {
-      const updatedConfig = (await getCustomAttributesSubfields()) ?? config;
+      const updatedConfig = await loadData();
       const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
       setTreeInternal(tree);
       const qFilter = {
@@ -215,6 +219,12 @@ export const AdvanceSearchProvider = ({
     },
     [config]
   );
+
+  useEffect(() => {
+    if (!jsonTree) {
+      loadData();
+    }
+  }, [searchIndex]);
 
   useEffect(() => {
     if (jsonTree) {
