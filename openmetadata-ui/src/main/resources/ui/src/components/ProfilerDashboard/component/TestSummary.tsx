@@ -19,7 +19,6 @@ import {
   isEmpty,
   isEqual,
   isUndefined,
-  last,
   omitBy,
   round,
   uniqueId,
@@ -184,17 +183,19 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
   const incidentData = useMemo(() => {
     const data = chartData.data ?? [];
+
     const issueData = entityThread.map((task) => {
       const failedRows = data.filter(
         (chart) => task.task?.testCaseResolutionStatusId === chart.incidentId
       );
+      const x2 =
+        task.task?.status === ThreadTaskStatus.Closed
+          ? task.task?.closedAt
+          : undefined;
 
       return {
         x1: first(failedRows)?.name,
-        x2:
-          task.task?.status === ThreadTaskStatus.Closed
-            ? last(failedRows)?.name
-            : undefined,
+        x2,
         task,
       };
     });
@@ -293,7 +294,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     );
   };
 
-  const getGraph = () => {
+  const getGraph = useMemo(() => {
     if (isGraphLoading) {
       return <Loader />;
     }
@@ -316,7 +317,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             domain={['auto', 'auto']}
             padding={{ left: 8, right: 8 }}
             scale="time"
-            tickFormatter={(value) => formatDateTime(value)}
+            tickFormatter={formatDateTime}
             type="number"
           />
           <YAxis
@@ -373,7 +374,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         </Typography.Paragraph>
       </ErrorPlaceHolder>
     );
-  };
+  }, [isGraphLoading, selectedTimeRange, incidentData, chartData]);
 
   useEffect(() => {
     if (dateRangeObject) {
@@ -498,7 +499,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               </Row>
             </Col>
             <Col data-testid="graph-container" span={24}>
-              {getGraph()}
+              {getGraph}
             </Col>
           </Row>
         )}
