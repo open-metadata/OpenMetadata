@@ -69,12 +69,6 @@
       display: none;
     }
 
-    .ant-menu-submenu-open {
-      .ant-menu-submenu-title {
-        background: rgba(9, 80, 197, 0.04);
-      }
-    }
-
     .left-sidebar-menu.ant-menu {
       .ant-menu-item {
         .ant-menu-item-icon {
@@ -264,6 +258,13 @@
 .left-panel-item.active,
 .left-panel-item:hover {
   text-decoration: none;
+}
+
+.left-panel-item.ant-btn-text {
+  &:hover,
+  &:focus {
+    background: initial;
+  }
 }
 
 .page-layout-leftpanel {
