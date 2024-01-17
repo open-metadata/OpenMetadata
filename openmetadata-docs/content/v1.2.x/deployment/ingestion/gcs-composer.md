@@ -3,6 +3,8 @@ title: Run the ingestion from GCS Composer
 slug: /deployment/ingestion/gcs-composer
 ---
 
+{% partial file="/v1.2/deployment/external-ingestion.md" /%}
+
 # Run the ingestion from GCS Composer
 
 **Note:** This approach has been tested against Airflow 2.1.4 & 2.2.5 If you have any issues or questions,
