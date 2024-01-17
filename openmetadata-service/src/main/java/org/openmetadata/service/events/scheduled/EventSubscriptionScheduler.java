@@ -224,8 +224,9 @@ public class EventSubscriptionScheduler {
   }
 
   public static void shutDown() throws SchedulerException {
+    LOG.info("Shutting Down Event Subscription Scheduler");
     if (instance != null) {
-      instance.alertsScheduler.shutdown();
+      instance.alertsScheduler.shutdown(true);
     }
   }
 }
