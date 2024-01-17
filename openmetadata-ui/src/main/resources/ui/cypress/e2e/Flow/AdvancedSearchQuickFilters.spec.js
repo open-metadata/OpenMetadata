@@ -40,9 +40,9 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
       asset.filters.map((filter) => {
-        cy.get(`[data-testid="search-dropdown-${filter.label}"]`).should(
-          'be.visible'
-        );
+        cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
+          .scrollIntoView()
+          .should('be.visible');
       });
     });
   });
