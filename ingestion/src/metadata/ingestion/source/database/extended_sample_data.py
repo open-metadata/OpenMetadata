@@ -15,6 +15,8 @@ import json
 from collections import namedtuple
 from typing import Iterable
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
@@ -24,6 +26,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -36,7 +39,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -45,6 +52,7 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -132,6 +140,13 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 encoding=UTF_8,
             )
         )
+        self.charts = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/dashboards/charts.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
         self.database_service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=WorkflowSource(**self.database_service_json)
         )
@@ -147,6 +162,13 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.data_models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/dashboardDataModels.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.dashboards = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/dashboards/dashboards.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -195,13 +217,15 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                         type="table",
                     ),
                     lineageDetails=LineageDetails(
-                        columnsLineage=[ColumnLineage(fromColumns=from_col_list, toColumn=to_col)]
-                    )
+                        columnsLineage=[
+                            ColumnLineage(fromColumns=from_col_list, toColumn=to_col)
+                        ]
+                    ),
                 )
             )
         )
 
-    def generate_sample_data(self):
+    def generate_sample_data(self):  # pylint: disable=too-many-locals
         """
         Generate sample data for dashboard and database service,
         with lineage between them, having long names, special characters and description
@@ -216,7 +240,9 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         yield Either(right=schema)
         for table in self.extended_tables["tables"]:
             text = self.generate_text()
-            table_request = self.create_table_request(table['name'], text, schema, table)
+            table_request = self.create_table_request(
+                table["name"], text, schema, table
+            )
             yield Either(right=table_request)
             downstream_node_fqn_table = fqn.build(
                 self.metadata,
@@ -231,7 +257,6 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
             )
             main_table = to_table
             self.store_table_fqn.add(downstream_node_fqn_table)
-            
 
             for _ in range(40):
                 # 40 Dynamic Lineage Depths
@@ -255,7 +280,9 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 to_table = from_table
         for _ in range(40):
             name = self.generate_name()
-            table_request = self.create_table_request(name, text, schema, table)
+            table_request = self.create_table_request(
+                name, text, schema, self.extended_tables["tables"][-1]
+            )
             yield Either(right=table_request)
             upstream_node_fqn_table = fqn.build(
                 self.metadata,
@@ -271,10 +298,12 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
             yield from self.create_depth_nodes(
                 from_table=from_table, to_table=main_table
             )
-            
+
         for table in self.tables["tables"]:
             text = self.generate_text()
-            table_request = self.create_table_request(table['name'], text, schema, table)
+            table_request = self.create_table_request(
+                table["name"], text, schema, table
+            )
             yield Either(right=table_request)
             table_entity_fqn = fqn.build(
                 self.metadata,
@@ -284,17 +313,23 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 schema_name=schema.name.__root__,
                 table_name=table_request.name.__root__,
             )
-            from_table = self.metadata.get_by_name(
-                    entity=Table, fqn=table_entity_fqn
-                )
-            
-            yield from self.create_depth_nodes(
-                    from_table=from_table, to_table=to_table
-                )
+            from_table = self.metadata.get_by_name(entity=Table, fqn=table_entity_fqn)
+
+            yield from self.create_depth_nodes(from_table=from_table, to_table=to_table)
 
         self.dashboard_service_json["name"] = name
         self.dashboard_service_json["description"] = text
-
+        for chart in self.charts["charts"]:
+            yield Either(
+                right=CreateChartRequest(
+                    name=chart["name"],
+                    displayName=chart["displayName"],
+                    description=chart["description"],
+                    chartType=get_standard_chart_type(chart["chartType"]),
+                    sourceUrl=chart["sourceUrl"],
+                    service=self.dashboard_service.fullyQualifiedName,
+                )
+            )
         for data_model in self.data_models["datamodels"]:
             name = self.generate_name()
             text = self.generate_text()
@@ -333,6 +368,41 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                         )
                     )
                 )
+                for dashboard in self.dashboards["dashboards"]:
+                    dashboard_request = CreateDashboardRequest(
+                        name=dashboard["name"],
+                        displayName=dashboard["displayName"],
+                        description=dashboard["description"],
+                        sourceUrl=dashboard["sourceUrl"],
+                        charts=dashboard["charts"],
+                        service=self.dashboard_service.fullyQualifiedName,
+                    )
+                    yield Either(right=dashboard_request)
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.dashboard_service.name.__root__,
+                        dashboard_name=dashboard_request.name.__root__,
+                    )
+                    to_dashboard = self.metadata.get_by_name(
+                        entity=Dashboard, fqn=dashboard_fqn
+                    )
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=to_datamodel.id.__root__,
+                                    type="dashboardDataModel",
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_dashboard.id.__root__, type="dashboard"
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage
+                                ),
+                            )
+                        )
+                    )
 
     def generate_name(self):
         return f"Sample-@!3_(%t3st@)%_^{self.fake.name()}"
