@@ -38,6 +38,30 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
+const acknowledgeTask = (testCase) => {
+  goToProfilerTab();
+
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Data Quality')
+    .click();
+  cy.get(`[data-testid="${testCase}"]`)
+    .find('.last-run-box.failed')
+    .should('be.visible');
+  cy.get('.ant-table-row-level-0').should('contain', 'New');
+  cy.get(`[data-testid="${testCase}"]`).contains(testCase).click();
+  cy.get('[data-testid="edit-resolution-icon"]').click();
+  cy.get('[data-testid="test-case-resolution-status-type"]').click();
+  cy.get('[title="Ack"]').click();
+  interceptURL(
+    'POST',
+    '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+    'updateTestCaseIncidentStatus'
+  );
+  cy.get('#update-status-button').click();
+  verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+  cy.get(`[data-testid="${testCase}-status"]`).should('contain', 'Ack');
+};
+
 describe('Incident Manager', () => {
   before(() => {
     cy.login();
@@ -120,37 +144,13 @@ describe('Incident Manager', () => {
     });
 
     it("Acknowledge table test case's failure", () => {
-      goToProfilerTab();
-
-      cy.get('[data-testid="profiler-tab-left-panel"]')
-        .contains('Data Quality')
-        .click();
-      cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
-        .find('.last-run-box.failed')
-        .should('be.visible');
-      cy.get('.ant-table-row-level-0').should('contain', 'New');
-      cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
-        .contains(NEW_TABLE_TEST_CASE.name)
-        .click();
-      cy.get('[data-testid="edit-resolution-icon"]').click();
-      cy.get('[data-testid="test-case-resolution-status-type"]').click();
-      cy.get('[title="Ack"]').click();
-      interceptURL(
-        'POST',
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-        'updateTestCaseIncidentStatus'
-      );
-      cy.get('#update-status-button').click();
-      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
-      cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}-status"]`).should(
-        'contain',
-        'Ack'
-      );
+      acknowledgeTask(NEW_TABLE_TEST_CASE.name);
     });
 
     it('Assign incident to user', () => {
+      cy.sidebarHover();
       cy.get("[data-testid='data-quality'").click();
-      cy.get("[data-testid='app-bar-item-incident-manager'").click();
+      cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
         'be.visible'
       );
@@ -187,8 +187,9 @@ describe('Incident Manager', () => {
         'getTestCase'
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarHover();
       cy.get("[data-testid='data-quality'").click();
-      cy.get("[data-testid='app-bar-item-incident-manager'").click();
+      cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
@@ -225,8 +226,9 @@ describe('Incident Manager', () => {
         'getTestCase'
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarHover();
       cy.get("[data-testid='data-quality'").click();
-      cy.get("[data-testid='app-bar-item-incident-manager'").click();
+      cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
@@ -311,6 +313,10 @@ describe('Incident Manager', () => {
       cy.get('[data-testid="run"]').click();
     });
 
+    it("Acknowledge table test case's failure", () => {
+      acknowledgeTask(testName);
+    });
+
     it('Resolve task from incident list page', () => {
       goToProfilerTab();
 
@@ -332,8 +338,9 @@ describe('Incident Manager', () => {
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*',
         'getIncidentList'
       );
+      cy.sidebarHover();
       cy.get("[data-testid='data-quality'").click();
-      cy.get("[data-testid='app-bar-item-incident-manager'").click();
+      cy.sidebarClick('app-bar-item-incident-manager');
       verifyResponseStatusCode('@getIncidentList', 200);
 
       cy.get(`[data-testid="test-case-${testName}"]`).should('be.visible');
