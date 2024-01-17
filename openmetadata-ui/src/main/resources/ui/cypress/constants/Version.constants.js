@@ -1048,13 +1048,14 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.storages',
   },
-  Search: {
-    serviceName: SEARCH_SERVICE_NAME,
-    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
-    entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: COMMON_PATCH_PAYLOAD,
-    settingsMenuId: 'services.search',
-  },
+  // ES issue
+  //   Search: {
+  //     serviceName: SEARCH_SERVICE_NAME,
+  //     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  //     entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
+  //     entityPatchPayload: COMMON_PATCH_PAYLOAD,
+  //     settingsMenuId: 'services.search',
+  //   },
 };
 
 export const DATABASE_DETAILS_FOR_VERSION_TEST = {
