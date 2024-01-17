@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import io.dropwizard.lifecycle.Managed;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +21,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.quartz.JobExecutionContext;
 
-public interface Consumer<T> extends Managed {
+public interface Consumer<T> {
   List<T> pollEvents(long offset, long batchSize);
 
   void publishEvents(Map<ChangeEvent, Set<UUID>> events);

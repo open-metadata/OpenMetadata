@@ -20,4 +20,6 @@ public interface Alert<T> {
   void sendAlert(UUID receiverId, T event) throws EventPublisherException;
 
   boolean getEnabled();
+
+  void stop();
 }

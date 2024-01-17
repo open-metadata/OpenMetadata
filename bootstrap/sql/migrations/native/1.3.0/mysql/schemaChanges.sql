@@ -160,6 +160,11 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     UNIQUE(id, extension)
 );
 
+-- Add supportsQueryComment to MSSQL
+update dbservice_entity
+set json = JSON_SET(json, '$.connection.config.supportsQueryComment', true)
+where serviceType = 'Mssql';
+
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers
 DELETE FROM consumers_dlq;

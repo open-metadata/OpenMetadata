@@ -182,10 +182,10 @@ const AddAlertPage = () => {
 
     const requestFilteringRules = filteringRules?.rules?.map((curr) => ({
       ...curr,
-      condition: `${curr.name}(${map(
+      condition: `${curr.name}({${map(
         curr.condition,
         (v: string) => `'${v}'`
-      )?.join(', ')})`,
+      )?.join(', ')}})`,
     }));
 
     try {
