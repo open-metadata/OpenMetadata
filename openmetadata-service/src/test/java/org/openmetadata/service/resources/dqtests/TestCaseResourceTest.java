@@ -1118,8 +1118,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     UUID incidentId = result.getIncidentId();
     assertNotNull(result.getIncidentId());
 
-    // Resolving the status triggers resolving the task, which triggers removing the ongoing
-    // incident from the test case
+    // Resolving the status
     CreateTestCaseResolutionStatus createResolvedStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
@@ -1145,8 +1144,52 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         ADMIN_AUTH_HEADERS);
 
     result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    UUID newIncidentId = result.getIncidentId();
+
     assertNotNull(result.getIncidentId());
     assertNotEquals(incidentId, result.getIncidentId());
+
+    // Add a new testCase Result with status Success. This should clear the incidentId
+    // from the testCase and the testCaseResult should not have an incidentId.
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-03")),
+        ADMIN_AUTH_HEADERS);
+
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    List<TestCaseResult> testCaseResults =
+        getTestCaseResults(
+                testCaseEntity.getFullyQualifiedName(),
+                TestUtils.dateToTimestamp("2024-01-03"),
+                TestUtils.dateToTimestamp("2024-01-03"),
+                ADMIN_AUTH_HEADERS)
+            .getData();
+    assertNull(testCaseResults.get(0).getIncidentId());
+    assertNull(result.getIncidentId());
+
+    // Add a new testCase Result with status Failure at an older date.
+    // The incidentId should be the one from "2024-01-02" but the testCase incidentId should be null
+    // as it should reflect the latest testCaseResult
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2023-12-31")),
+        ADMIN_AUTH_HEADERS);
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+                testCaseEntity.getFullyQualifiedName(),
+                TestUtils.dateToTimestamp("2023-12-31"),
+                TestUtils.dateToTimestamp("2023-12-31"),
+                ADMIN_AUTH_HEADERS)
+            .getData();
+    assertEquals(newIncidentId, testCaseResults.get(0).getIncidentId());
+    assertNull(result.getIncidentId());
   }
 
   @Test
