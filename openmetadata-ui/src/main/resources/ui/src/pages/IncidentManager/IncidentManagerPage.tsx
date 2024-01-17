@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual, startCase } from 'lodash';
+import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,6 @@ import Severity from '../../components/IncidentManager/Severity/Severity.compone
 import TestCaseIncidentManagerStatus from '../../components/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, PAGE_SIZE_BASE } from '../../constants/constants';

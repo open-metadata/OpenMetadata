@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DateRangeObject } from 'Models';
 import { CurveType } from 'recharts/types/shape/Curve';
 import {
   Column,
@@ -22,7 +23,6 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { ListTestCaseParams } from '../../rest/testAPI';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;

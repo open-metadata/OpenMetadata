@@ -14,7 +14,17 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined, omitBy, round, uniqueId } from 'lodash';
+import {
+  first,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  last,
+  omitBy,
+  round,
+  uniqueId,
+} from 'lodash';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, {
   ReactElement,
@@ -25,6 +35,7 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  CartesianGrid,
   Legend,
   Line,
   LineChart,
@@ -36,6 +47,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
@@ -43,14 +55,20 @@ import {
   GREEN_3,
   GREEN_3_OPACITY,
   RED_3,
+  RED_3_OPACITY,
   YELLOW_2,
 } from '../../../constants/Color.constants';
+import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import {
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -66,33 +84,28 @@ import {
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import {
-  MetricChartType,
-  TestSummaryProps,
-} from '../profilerDashboard.interface';
+import { TestSummaryProps } from '../profilerDashboard.interface';
 import './test-summary.less';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
-  data: MetricChartType['data'];
+  data: Record<string, string | number | undefined | Thread>[];
 };
-
-export interface DateRangeObject {
-  startTs: number;
-  endTs: number;
-}
 
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
   showOnlyGraph = false,
   showExpandIcon = true,
 }) => {
+  const { entityThread } = useActivityFeedProvider();
+
   const defaultRange = useMemo(
     () => ({
       initialRange: {
@@ -107,9 +120,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     []
   );
   const history = useHistory();
-  const [chartData, setChartData] = useState<ChartDataType>(
-    {} as ChartDataType
-  );
   const [results, setResults] = useState<TestCaseResult[]>([]);
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
     defaultRange.initialRange
@@ -126,13 +136,16 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
-  const generateChartData = (currentData: TestCaseResult[]) => {
+  const chartData = useMemo(() => {
     const chartData: ChartDataType['data'] = [];
-    currentData.forEach((result) => {
+
+    results.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
+        const value = round(parseFloat(curr.value ?? ''), 2) || 0;
+
         return {
           ...acc,
-          [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
+          [curr.name ?? 'value']: value,
         };
       }, {});
       const metric = {
@@ -147,22 +160,67 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       };
 
       chartData.push({
-        name: formatDateTime(result.timestamp),
+        name: result.timestamp,
         status: result.testCaseStatus,
         ...values,
         ...omitBy(metric, isUndefined),
+        incidentId: result.incidentId,
+        task: entityThread.find(
+          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
+        ),
       });
     });
     chartData.reverse();
-    setChartData({
+
+    return {
       information:
-        currentData[0]?.testResultValue?.map((info, i) => ({
+        results[0]?.testResultValue?.map((info, i) => ({
           label: info.name ?? '',
           color: COLORS[i],
         })) ?? [],
       data: chartData,
+    };
+  }, [results, entityThread]);
+
+  const incidentData = useMemo(() => {
+    const data = chartData.data ?? [];
+    const issueData = entityThread.map((task) => {
+      const failedRows = data.filter(
+        (chart) => task.task?.testCaseResolutionStatusId === chart.incidentId
+      );
+
+      return {
+        x1: first(failedRows)?.name,
+        x2:
+          task.task?.status === ThreadTaskStatus.Closed
+            ? last(failedRows)?.name
+            : undefined,
+        task,
+      };
     });
-  };
+
+    return issueData as {
+      x1?: string | number;
+      x2?: string | number;
+      task: Thread;
+    }[];
+  }, [entityThread, chartData]);
+
+  const customLegendPayLoad = useMemo(() => {
+    const legendPayload: Payload[] = chartData?.information.map((info) => ({
+      value: info.label,
+      type: 'line',
+      color: info.color,
+    }));
+
+    legendPayload.push({
+      value: 'Incident',
+      type: 'rect',
+      color: RED_3,
+    });
+
+    return legendPayload;
+  }, [chartData]);
 
   const updatedDot: LineProps['dot'] = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -198,8 +256,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         getEncodedFqn(data.fullyQualifiedName || ''),
         dateRangeObj
       );
+
       setResults(chartData);
-      generateChartData(chartData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -252,15 +310,27 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             bottom: 16,
             right: 40,
           }}>
-          <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+          <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+          <XAxis
+            dataKey="name"
+            domain={['auto', 'auto']}
+            padding={{ left: 8, right: 8 }}
+            scale="time"
+            tickFormatter={(value) => formatDateTime(value)}
+            type="number"
+          />
           <YAxis
             allowDataOverflow
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
           />
-          <Tooltip content={<TestSummaryCustomTooltip />} />
-          <Legend />
+          <Tooltip
+            content={<TestSummaryCustomTooltip />}
+            offset={-200}
+            wrapperStyle={{ pointerEvents: 'auto' }}
+          />
           {referenceArea()}
+          <Legend payload={customLegendPayLoad} />
           {chartData?.information?.map((info) => (
             <Line
               dataKey={info.label}
@@ -270,6 +340,17 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               type="monotone"
             />
           ))}
+
+          {incidentData.length > 0 &&
+            incidentData.map((data) => (
+              <ReferenceArea
+                fill={RED_3_OPACITY}
+                ifOverflow="extendDomain"
+                key={data.task.id}
+                x1={data.x1}
+                x2={data.x2}
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
     ) : (

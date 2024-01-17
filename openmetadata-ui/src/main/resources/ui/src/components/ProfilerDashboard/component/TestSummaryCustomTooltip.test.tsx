@@ -44,10 +44,10 @@ describe('Test AddServicePage component', () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
     expect(
-      await screen.findByTestId('test-summary-tool-tip-container')
+      await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
     expect(
-      await screen.findByTestId('test-summary-tool-tip-container')
+      await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
     expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
     expect((await screen.findByTestId('minValueLength')).textContent).toEqual(
