@@ -13,6 +13,7 @@ slug: /connectors/database/mssql/yaml
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
 | Owners             | {% icon iconName="cross" /%} |
 | Tags               | {% icon iconName="cross" /%} |
