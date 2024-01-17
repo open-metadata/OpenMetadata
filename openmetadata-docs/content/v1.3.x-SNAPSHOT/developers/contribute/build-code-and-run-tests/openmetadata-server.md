@@ -56,6 +56,7 @@ sh bootstrap/bootstrap_storage.sh drop-create-all
 You can run the OpenMetadata server directly
 
 ```shell
+cd open-metadata-<version>
 sh bin/openmetadata-server-start.sh conf/openmetadata.yaml
 ```
 ### Using IntelliJ IDEA
