@@ -97,15 +97,6 @@ entities.forEach((entity) => {
       entity.removeInactiveAnnouncement();
     });
 
-    it(`UpVote & DownVote entity`, () => {
-      entity.upVote();
-      entity.downVote();
-    });
-
-    it(`follow unfollow entity`, () => {
-      entity.followUnfollowEntity();
-    });
-
     Object.values(CustomPropertyType).forEach((type) => {
       it(`Set ${type} Custom Property `, () => {
         entity.setCustomProperty(
@@ -120,6 +111,15 @@ entities.forEach((entity) => {
           entity.customPropertyValue[type].newValue
         );
       });
+    });
+
+    it(`UpVote & DownVote entity`, () => {
+      entity.upVote();
+      entity.downVote();
+    });
+
+    it(`follow unfollow entity`, () => {
+      entity.followUnfollowEntity();
     });
 
     it(`Soft delete`, () => {
