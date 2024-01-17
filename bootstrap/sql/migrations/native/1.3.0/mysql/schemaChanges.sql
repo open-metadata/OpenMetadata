@@ -159,3 +159,8 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
     UNIQUE(id, extension)
 );
+
+-- Add supportsQueryComment to MSSQL
+update dbservice_entity
+set json = JSON_SET(json, '$.connection.config.supportsQueryComment', true)
+where serviceType = 'Mssql';

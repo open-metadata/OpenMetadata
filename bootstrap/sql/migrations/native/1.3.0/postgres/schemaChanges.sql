@@ -172,3 +172,7 @@ CREATE TABLE IF NOT EXISTS consumers_dlq (
     UNIQUE(id, extension)
 );
 
+-- Add supportsQueryComment to MSSQL
+update dbservice_entity
+set json = jsonb_set(json::jsonb, '{connection,config,supportsQueryComment}', 'true', true)
+where serviceType = 'Mssql';
