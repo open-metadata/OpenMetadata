@@ -75,3 +75,110 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
       });
   });
 });
+
+const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
+  cy.sidebarClick('app-bar-item-explore');
+  const asset = QUICK_FILTERS_BY_ASSETS[0];
+  cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+  cy.get('[data-testid="advance-search-button"]').click();
+
+  // Check Is Null or Is Not Null
+  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
+  cy.get(`[title="${operatorTitle}"]`).click();
+
+  cy.intercept('GET', '/api/v1/search/query?*', (req) => {
+    req.alias = alias;
+  }).as(alias);
+
+  cy.get('[data-testid="apply-btn"]').click();
+
+  cy.wait(`@${alias}`).then((xhr) => {
+    const actualQueryFilter = JSON.parse(xhr.request.query['query_filter']);
+
+    expect(actualQueryFilter).to.deep.equal(queryFilter);
+  });
+};
+
+describe(`Advanced Search Modal`, () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('should check isNull and isNotNull filters', () => {
+    // Table
+    const asset = QUICK_FILTERS_BY_ASSETS[0];
+    cy.sidebarClick('app-bar-item-explore');
+    cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+    cy.get('[data-testid="advance-search-button"]').click();
+
+    // Check Is Null
+
+    // Click on field dropdown
+    cy.get('.rule--operator > .ant-select > .ant-select-selector')
+      .eq(0)
+      .click();
+    // Verify field exists
+    cy.get(`[title="Is null"]`).click();
+    interceptURL('GET', '/api/v1/search/query?*', 'searchAPI');
+    cy.get('[data-testid="apply-btn"]').click();
+
+    cy.wait('@searchAPI').then((xhr) => {
+      const queryFilter = xhr.request.query['query_filter'];
+
+      const isNullQuery = {
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must: [
+                    {
+                      bool: {
+                        must_not: {
+                          exists: { field: 'owner.displayName.keyword' },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      expect(queryFilter).to.deep.equal(JSON.stringify(isNullQuery));
+    });
+
+    // Check Is Not Null
+    cy.get('[data-testid="clear-filters"]').click();
+    cy.get('[data-testid="advance-search-button"]').click();
+
+    cy.get('.rule--operator > .ant-select > .ant-select-selector')
+      .eq(0)
+      .click();
+    // Verify field exists
+    cy.get(`[title="Is not null"]`).click();
+    interceptURL('GET', '/api/v1/search/query?*', 'newSearchAPI');
+    cy.get('[data-testid="apply-btn"]').click();
+
+    cy.wait('@newSearchAPI').then((xhr) => {
+      const queryFilter = xhr.request.query['query_filter'];
+      const isNotNullQuery = {
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must: [{ exists: { field: 'owner.displayName.keyword' } }],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      expect(queryFilter).to.deep.equal(JSON.stringify(isNotNullQuery));
+    });
+  });
+});
