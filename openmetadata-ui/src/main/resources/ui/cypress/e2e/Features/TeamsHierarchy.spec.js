@@ -38,15 +38,9 @@ describe('Add nested teams and test TeamsSelectable', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
-
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
-    // Clicking on teams
-    cy.get('[data-menu-id*="teams"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.sidebarClick('app-bar-item-settings');
 
     verifyResponseStatusCode('@getOrganization', 200);
   });

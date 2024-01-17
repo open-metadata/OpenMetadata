@@ -64,7 +64,7 @@ const DomainSelectableList = ({
     if (searchText) {
       try {
         const res = await searchData(
-          searchText,
+          encodeURIComponent(searchText),
           1,
           PAGE_SIZE_MEDIUM,
           '',
