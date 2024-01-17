@@ -17,4 +17,6 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 
 public interface Alert<T> {
   void sendAlert(T event) throws EventPublisherException;
+
+  void stop();
 }

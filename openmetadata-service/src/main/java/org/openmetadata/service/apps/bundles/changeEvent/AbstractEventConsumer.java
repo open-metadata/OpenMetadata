@@ -301,6 +301,9 @@ public abstract class AbstractEventConsumer
       offset += batchSize;
       commit(jobExecutionContext);
     }
+
+    // Call stop to close the client
+    this.stop();
   }
 
   public EventSubscription getEventSubscription() {

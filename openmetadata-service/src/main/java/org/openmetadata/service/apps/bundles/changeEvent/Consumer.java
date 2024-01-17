@@ -13,12 +13,11 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import io.dropwizard.lifecycle.Managed;
 import java.util.List;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.quartz.JobExecutionContext;
 
-public interface Consumer<T> extends Managed {
+public interface Consumer<T> {
   List<T> pollEvents(long offset, long batchSize);
 
   void publishEvents(List<T> events);
