@@ -126,6 +126,7 @@ Cypress.Commands.add('storeSession', (username, password) => {
         .replaceAll('.', '_')}`;
 
       cy.setCookie(versionCookie, 'true');
+      window.localStorage.setItem('loggedInUsers', 'admin');
     });
   });
 });
@@ -142,6 +143,14 @@ Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
 });
 
+Cypress.Commands.add('sidebarHover', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseover'); // trigger mouseover event inside the sidebar
+});
+
+Cypress.Commands.add('sidebarHoverOutside', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseout'); // trigger mouseout event outside the sidebar
+});
+
 Cypress.Commands.add('logout', () => {
   interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
   cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
@@ -153,4 +162,20 @@ Cypress.Commands.add('logout', () => {
 
   cy.url().should('eq', `${BASE_URL}/signin`);
   Cypress.session.clearAllSavedSessions();
+});
+
+// This command is used to click on the sidebar item
+// id: data-testid of the sidebar item
+// parentId: data-testid of the parent sidebar item to close after click if present
+Cypress.Commands.add('sidebarClick', (id, parentId) => {
+  cy.get(`[data-testid="${id}"]`).click({
+    animationDistanceThreshold: 20,
+    waitForAnimations: true,
+  });
+
+  if (parentId) {
+    cy.get(`[data-testid="${parentId}"]`).click();
+  }
+
+  cy.sidebarHoverOutside();
 });

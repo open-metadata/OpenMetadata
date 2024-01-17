@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -41,7 +40,7 @@ public class MlModelIndex implements SearchIndex {
         "fqnParts",
         getFQNParts(
             mlModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(mlModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(mlModel.getService()));
     doc.put("domain", getEntityWithDisplayName(mlModel.getDomain()));
@@ -50,7 +49,7 @@ public class MlModelIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("mlFeatures.name", 2.0f);
+    fields.put("mlFeatures.name", 8.0f);
     fields.put("mlFeatures.description", 1.0f);
     return fields;
   }
