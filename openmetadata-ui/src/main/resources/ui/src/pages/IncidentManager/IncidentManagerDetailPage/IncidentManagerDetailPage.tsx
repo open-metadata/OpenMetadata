@@ -43,6 +43,7 @@ import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import { TestCaseData } from './IncidentManagerDetailPage.interface';
@@ -57,6 +58,11 @@ const IncidentManagerDetailPage = () => {
     fqn: testCaseFQN,
     tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
   } = useParams<{ fqn: string; tab: EntityTabs }>();
+
+  const decodedTestCaseFQN = useMemo(
+    () => getDecodedFqn(testCaseFQN),
+    [testCaseFQN]
+  );
 
   const [testCaseData, setTestCaseData] = useState<TestCaseData>({
     data: undefined,
@@ -109,7 +115,7 @@ const IncidentManagerDetailPage = () => {
   const fetchTestCaseData = async () => {
     setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
-      const response = await getTestCaseByFqn(testCaseFQN, {
+      const response = await getTestCaseByFqn(decodedTestCaseFQN, {
         fields: [
           'testSuite',
           'testCaseResult',
@@ -154,7 +160,7 @@ const IncidentManagerDetailPage = () => {
     if (activeKey !== activeTab) {
       history.push(
         getIncidentManagerDetailPagePath(
-          testCaseFQN,
+          decodedTestCaseFQN,
           activeKey as IncidentManagerTabs
         )
       );
@@ -184,7 +190,7 @@ const IncidentManagerDetailPage = () => {
   const getEntityFeedCount = useCallback(async () => {
     try {
       const response = await getFeedCount(
-        getEntityFeedLink(EntityType.TEST_CASE, testCaseFQN),
+        getEntityFeedLink(EntityType.TEST_CASE, decodedTestCaseFQN),
         ThreadType.Task,
         ThreadTaskStatus.Open
       );
@@ -192,16 +198,16 @@ const IncidentManagerDetailPage = () => {
     } catch (err) {
       setTaskCount(0);
     }
-  }, [testCaseFQN]);
+  }, [decodedTestCaseFQN]);
 
   useEffect(() => {
-    if (hasViewPermission && testCaseFQN) {
+    if (hasViewPermission && decodedTestCaseFQN) {
       fetchTestCaseData();
       getEntityFeedCount();
     } else {
       setTestCaseData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [testCaseFQN, hasViewPermission]);
+  }, [decodedTestCaseFQN, hasViewPermission]);
 
   if (testCaseData.isLoading) {
     return <Loader />;

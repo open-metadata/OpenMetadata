@@ -13,7 +13,7 @@
 import { Divider, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, last } from 'lodash';
+import { first, isUndefined, last } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +31,10 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../generated/tests/testCaseResolutionStatus';
-import { updateTestCaseIncidentById } from '../../../rest/incidentManagerAPI';
+import {
+  getListTestCaseIncidentByStateId,
+  updateTestCaseIncidentById,
+} from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
@@ -98,6 +101,16 @@ const IncidentManagerPageHeader = ({
     updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
   };
 
+  const fetchTestCaseResolution = async (id: string) => {
+    try {
+      const { data } = await getListTestCaseIncidentByStateId(id);
+
+      setTestCaseStatusData(first(data));
+    } catch (error) {
+      setTestCaseStatusData(undefined);
+    }
+  };
+
   useEffect(() => {
     if (decodedFqn) {
       setIsLoading(true);
@@ -136,6 +149,12 @@ const IncidentManagerPageHeader = ({
       }
     }
   }, [testCaseResolutionStatus]);
+
+  useEffect(() => {
+    if (testCaseData?.incidentId) {
+      fetchTestCaseResolution(testCaseData.incidentId);
+    }
+  }, [testCaseData]);
 
   const { permissions } = usePermissionProvider();
   const hasEditPermission = useMemo(() => {
