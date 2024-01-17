@@ -209,7 +209,9 @@ class OracleUnitTest(TestCase):
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
             either.right
-            for either in self.oracle.yield_database_schema(MOCK_DATABASE_SCHEMA.name)
+            for either in self.oracle.yield_database_schema(
+                MOCK_DATABASE_SCHEMA.name.__root__
+            )
         ]
         self.oracle.context.__dict__[
             "database_schema"

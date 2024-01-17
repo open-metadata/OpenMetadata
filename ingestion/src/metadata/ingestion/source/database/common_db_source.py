@@ -212,6 +212,7 @@ class CommonDbSourceService(
                     database_name=self.context.database,
                     schema_name=schema_name,
                 ),
+                tags=self.get_schema_tag_labels(schema_name=schema_name),
             )
         )
 

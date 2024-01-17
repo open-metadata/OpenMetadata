@@ -83,10 +83,16 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 1)
-        self.assertTrue(len(source_status.records) >= self.expected_tables())
+        self.assertTrue(
+            (len(source_status.records) + len(source_status.updated_records))
+            >= self.expected_tables()
+        )
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(len(sink_status.records) > self.expected_tables())
+        self.assertTrue(
+            (len(sink_status.records) + len(sink_status.updated_records))
+            > self.expected_tables()
+        )
 
     def create_table_and_view(self) -> None:
         with self.engine.connect() as connection:

@@ -29,6 +29,7 @@ export enum EntityType {
   PipelineService = 'services/pipelineServices',
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
+  MetadataService = 'services/metadataServices',
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
@@ -48,6 +49,7 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.Domain
+    | EntityType.MetadataService
   >,
   string
 > = {
@@ -76,6 +78,7 @@ export const SEARCH_INDEX: Record<
     | EntityType.Database
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
+    | EntityType.MetadataService
   >,
   string
 > = {
