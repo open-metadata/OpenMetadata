@@ -8,6 +8,7 @@ source:
       sourcePythonClass: metadata.ingestion.source.database.extended_sample_data.ExtendedSampleDataSource
       connectionOptions:
         sampleDataFolder: "./examples/sample_data"
+        extendedSampleDataFolder: "./examples/extended_sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest
