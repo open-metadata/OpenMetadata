@@ -57,6 +57,15 @@ CREATE USER Mary WITH PASSWORD = '********';
 -- Grant SELECT on table
 GRANT SELECT TO Mary;
 ```
+
+### Usage & Lineage consideration
+
+To perform the query analysis for Usage and Lineage computation, we fetch the query logs from `sys.dm_exec_cached_plans`, `sys.dm_exec_query_stats` &  `sys.dm_exec_sql_text` system tables. To access these tables your user must have `VIEW SERVER STATE` privilege.
+
+```sql
+GRANT VIEW SERVER STATE TO YourUser;
+```
+
 ### For Remote Connection
 
 #### 1. SQL Server running
