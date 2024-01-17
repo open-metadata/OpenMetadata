@@ -238,7 +238,7 @@ public class TestCaseResolutionStatusResource
             createTestCaseResolutionStatus,
             securityContext.getUserPrincipal().getName());
 
-    return create(testCaseResolutionStatus, null, testCaseEntity.getFullyQualifiedName());
+    return create(testCaseResolutionStatus, testCaseEntity.getFullyQualifiedName());
   }
 
   @PATCH
