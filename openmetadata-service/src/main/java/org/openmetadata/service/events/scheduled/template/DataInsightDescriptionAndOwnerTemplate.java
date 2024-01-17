@@ -28,9 +28,9 @@ public class DataInsightDescriptionAndOwnerTemplate {
     NOT_MET
   }
 
-  private final Double percentCompleted;
+  private final String percentCompleted;
   private boolean kpiAvailable;
-  private Double percentChange;
+  private String percentChange;
   private String targetKpi;
   private String numberOfDaysLeft;
   private String completeMessage;
@@ -47,9 +47,9 @@ public class DataInsightDescriptionAndOwnerTemplate {
       String numberOfDaysLeft,
       int numberOfDaysChange,
       Map<String, Double> tierMap) {
-    this.percentCompleted = percentCompleted;
+    this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
-    this.percentChange = percentChange;
+    this.percentChange = String.format("%.2f", percentChange);
     this.kpiAvailable = isKpiAvailable;
     this.numberOfDaysLeft = numberOfDaysLeft;
     this.tierMap = tierMap;
@@ -60,10 +60,10 @@ public class DataInsightDescriptionAndOwnerTemplate {
     }
     this.completeMessage =
         String.format(
-            "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
+            "The %s changed by <strong style=\"color: %s;\">%s</strong>%% in the last week. %s",
             getMetricTypeMessage(metricType),
             color,
-            percentChange,
+            this.percentChange,
             getKpiCriteriaMessage(metricType, criteria));
   }
 
@@ -81,8 +81,8 @@ public class DataInsightDescriptionAndOwnerTemplate {
         return switch (criteria) {
           case MET -> "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
           case IN_PROGRESS -> String.format(
-              "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
-              targetKpi, numberOfDaysLeft);
+              "To meet the KPIs you will need a minimum of %s%% %s in the next %s days.",
+              targetKpi, getMetricTypeMessage(metricType).toLowerCase(), numberOfDaysLeft);
           case NOT_MET -> "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
         };
       }
@@ -91,7 +91,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     return "";
   }
 
-  public Double getPercentCompleted() {
+  public String getPercentCompleted() {
     return percentCompleted;
   }
 
@@ -103,12 +103,12 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.targetKpi = targetKpi;
   }
 
-  public Double getPercentChange() {
+  public String getPercentChange() {
     return percentChange;
   }
 
   public void setPercentChange(Double percentChange) {
-    this.percentChange = percentChange;
+    this.percentChange = String.format("%.2f", percentChange);
   }
 
   public boolean isKpiAvailable() {

@@ -6,7 +6,6 @@
     "sendToTeams": true
   },
   "appSchedule": {
-    "scheduleType": "Custom",
-    "cronExpression": "0 59 23 ? * 1"
+    "scheduleType": "Weekly"
   }
 }
