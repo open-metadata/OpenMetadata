@@ -41,9 +41,10 @@ source:
   serviceConnection:
     config:
       type: CustomDatabase
-      sourcePythonClass: metadata.ingestion.source.database.sample_data.ExtendedSampleDataSource
+      sourcePythonClass: metadata.ingestion.source.database.extended_sample_data.ExtendedSampleDataSource
       connectionOptions:
         sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
+        extendedSampleDataFolder: "/home/airflow/ingestion/examples/extended_sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest
