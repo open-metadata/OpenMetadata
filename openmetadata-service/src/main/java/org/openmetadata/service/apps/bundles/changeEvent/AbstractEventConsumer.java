@@ -273,37 +273,42 @@ public abstract class AbstractEventConsumer
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
-    this.init(jobExecutionContext);
+    try {
 
-    // Poll Events from Change Event Table
-    List<ChangeEvent> batch = pollEvents(offset, 100);
-    int batchSize = batch.size();
+      this.init(jobExecutionContext);
 
-    // Retry Failed Events
-    Set<FailedEvent> failedEventsList =
-        JsonUtils.convertValue(
-            jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION), new TypeReference<>() {});
-    if (failedEventsList != null) {
-      List<ChangeEvent> failedChangeEvents =
-          failedEventsList.stream()
-              .filter(failedEvent -> failedEvent.getRetriesLeft() > 0)
-              .map(FailedEvent::getChangeEvent)
-              .toList();
-      batch.addAll(failedChangeEvents);
+      // Poll Events from Change Event Table
+      List<ChangeEvent> batch = pollEvents(offset, 100);
+      int batchSize = batch.size();
+
+      // Retry Failed Events
+      Set<FailedEvent> failedEventsList =
+          JsonUtils.convertValue(
+              jobDetail.getJobDataMap().get(FAILED_EVENT_EXTENSION), new TypeReference<>() {});
+      if (failedEventsList != null) {
+        List<ChangeEvent> failedChangeEvents =
+            failedEventsList.stream()
+                .filter(failedEvent -> failedEvent.getRetriesLeft() > 0)
+                .map(FailedEvent::getChangeEvent)
+                .toList();
+        batch.addAll(failedChangeEvents);
+      }
+
+      if (!batch.isEmpty()) {
+        // Publish Events
+        alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
+        publishEvents(batch);
+
+        // Commit the Offset
+        offset += batchSize;
+        commit(jobExecutionContext);
+      }
+    } catch (Exception e) {
+      LOG.error("Error in executing the Job : {} ", e.getMessage());
+    } finally {
+      // Call stop to close the client
+      this.stop();
     }
-
-    if (!batch.isEmpty()) {
-      // Publish Events
-      alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
-      publishEvents(batch);
-
-      // Commit the Offset
-      offset += batchSize;
-      commit(jobExecutionContext);
-    }
-
-    // Call stop to close the client
-    this.stop();
   }
 
   public EventSubscription getEventSubscription() {
