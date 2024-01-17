@@ -38,11 +38,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Transaction
   public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
-    if (extension != null) {
-      timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
-    } else {
-      timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
-    }
+    timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    postCreate(recordEntity);
+    return recordEntity;
+  }
+
+  @Transaction
+  public T createNewRecord(T recordEntity, String recordFQN) {
+    recordEntity.setId(UUID.randomUUID());
+    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
     postCreate(recordEntity);
     return recordEntity;
   }

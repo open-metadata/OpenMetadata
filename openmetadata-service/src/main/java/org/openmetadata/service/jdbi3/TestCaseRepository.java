@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -281,7 +282,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             JsonUtils.pojoToJson(testCaseResult),
             incidentStateId != null ? incidentStateId.toString() : null);
 
-    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
+    setFieldsInternal(
+        testCase, new EntityUtil.Fields(allowedFields, Set.of(TEST_SUITE_FIELD, INCIDENTS_FIELD)));
     setTestSuiteSummary(
         testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus(), false);
     setTestCaseResult(testCase, testCaseResult, false);
@@ -326,7 +328,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     TestCaseResolutionStatus incident =
         testCaseResolutionStatusRepository.createNewRecord(
-            status, null, testCase.getFullyQualifiedName());
+            status, testCase.getFullyQualifiedName());
 
     return incident.getStateId();
   }
@@ -538,16 +540,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private UUID getIncidentId(TestCase test) {
     UUID ongoingIncident = null;
 
-    List<UUID> incidents =
-        daoCollection
-            .dataQualityDataTimeSeriesDao()
-            .getResultsWithIncidents(test.getFullyQualifiedName())
-            .stream()
-            .map(UUID::fromString)
-            .toList();
+    String json =
+        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecord(test.getFullyQualifiedName());
+    TestCaseResult latestTestCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
 
-    if (!nullOrEmpty(incidents)) {
-      ongoingIncident = incidents.get(0);
+    if (!nullOrEmpty(latestTestCaseResult)) {
+      ongoingIncident = latestTestCaseResult.getIncidentId();
     }
 
     return ongoingIncident;
@@ -791,12 +789,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               Entity.TEST_CASE_RESOLUTION_STATUS,
               JsonUtils.pojoToJson(testCaseResolutionStatus));
       testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
-
-      // When we resolve a task, we clean up the test case results associated
-      // with the resolved stateId
-      dataQualityDataTimeSeriesDao.cleanTestCaseIncident(
-          latestTestCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
-          latestTestCaseResolutionStatus.getStateId().toString());
 
       // Return the TestCase with the StateId to avoid any unnecessary PATCH when resolving the task
       // in the feed repo,
