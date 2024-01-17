@@ -273,13 +273,11 @@ public abstract class AbstractEventConsumer
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
+    this.init(jobExecutionContext);
+    // Poll Events from Change Event Table
+    List<ChangeEvent> batch = pollEvents(offset, 100);
+    int batchSize = batch.size();
     try {
-
-      this.init(jobExecutionContext);
-
-      // Poll Events from Change Event Table
-      List<ChangeEvent> batch = pollEvents(offset, 100);
-      int batchSize = batch.size();
 
       // Retry Failed Events
       Set<FailedEvent> failedEventsList =
@@ -293,7 +291,9 @@ public abstract class AbstractEventConsumer
                 .toList();
         batch.addAll(failedChangeEvents);
       }
-
+    } catch (Exception e) {
+      LOG.error("Error in executing the Job : {} ", e.getMessage());
+    } finally {
       if (!batch.isEmpty()) {
         // Publish Events
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + batch.size());
@@ -303,9 +303,6 @@ public abstract class AbstractEventConsumer
         offset += batchSize;
         commit(jobExecutionContext);
       }
-    } catch (Exception e) {
-      LOG.error("Error in executing the Job : {} ", e.getMessage());
-    } finally {
       // Call stop to close the client
       this.stop();
     }
