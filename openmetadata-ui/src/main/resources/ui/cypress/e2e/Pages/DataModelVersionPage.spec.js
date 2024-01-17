@@ -176,28 +176,21 @@ describe('Data model version page should work properly', () => {
   it('Data model version page should show version details after soft deleted', () => {
     visitDataModelPage(dataModelFQN, dataModelName);
 
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-menu-id*="delete-button"]')
-      .should('exist')
-      .should('be.visible');
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
     cy.get('[data-testid="delete-button-title"]')
-      .should('be.visible')
+
       .click()
       .as('deleteBtn');
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="soft-delete-option"]')
       .contains(DATA_MODEL_DETAILS.name)
-      .should('be.visible')
+
       .click();
 
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
+    cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
     interceptURL('DELETE', `/api/v1/dashboard/datamodels/*`, 'deleteDataModel');
 
