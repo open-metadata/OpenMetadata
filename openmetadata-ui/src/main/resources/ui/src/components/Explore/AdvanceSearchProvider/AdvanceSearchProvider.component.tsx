@@ -154,7 +154,7 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
     setQueryFilter(undefined);
     setSQLQuery('');
-  }, []);
+  }, [config]);
 
   const handleConfigUpdate = (updatedConfig: Config) => {
     setConfig(updatedConfig);
