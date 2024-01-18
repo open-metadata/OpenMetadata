@@ -13,7 +13,7 @@ Query Parser Source module. Parent class for Lineage & Usage workflows
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator, Optional
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -90,7 +90,9 @@ class QueryParserSource(Source, ABC):
         )
 
     def check_life_cycle_query(
-        self, query_type: str  # pylint: disable=unused-argument
+        self,
+        query_type: Optional[str],  # pylint: disable=unused-argument
+        query_text: Optional[str],  # pylint: disable=unused-argument
     ) -> bool:
         """
         returns true if query is to be used for life cycle processing.
