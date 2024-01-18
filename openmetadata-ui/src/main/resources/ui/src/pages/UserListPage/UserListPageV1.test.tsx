@@ -14,6 +14,7 @@
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { act } from 'react-test-renderer';
+import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_USER_DATA } from './MockUserPageData';
@@ -60,7 +61,7 @@ jest.mock('../../utils/GlobalSettingsUtils', () => ({
   getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
     {
       name: 'setting',
-      url: '/setting',
+      url: ROUTES.SETTINGS,
     },
   ]),
 }));

@@ -305,9 +305,7 @@ const PoliciesDetailPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <div
-        className="page-container"
-        data-testid="policy-details-container page-container">
+      <div className="page-container" data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         <>
