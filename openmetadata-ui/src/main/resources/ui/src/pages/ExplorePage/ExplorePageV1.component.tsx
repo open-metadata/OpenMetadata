@@ -36,7 +36,6 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
-  EntityTypeSearchIndexMapping,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
 import {
@@ -63,6 +62,8 @@ import {
 
 const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
+  const EntityTypeSearchIndexMapping =
+    searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();

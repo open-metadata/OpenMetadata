@@ -36,6 +36,22 @@ describe('Glossary Utils', () => {
                 ],
               },
             },
+            {
+              bool: {
+                must_not: [
+                  {
+                    term: {
+                      entityType: 'glossaryTerm',
+                    },
+                  },
+                  {
+                    term: {
+                      entityType: 'tag',
+                    },
+                  },
+                ],
+              },
+            },
           ],
         },
       },

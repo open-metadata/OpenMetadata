@@ -111,13 +111,13 @@
     "indexName": "glossary_term_search_index",
     "indexMappingFile": "/elasticsearch/%s/glossary_term_index_mapping.json",
     "alias": "glossaryTerm",
-    "parentAliases": ["all", "glossary"]
+    "parentAliases": ["all", "glossary", "dataAsset"]
   },
   "tag": {
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",
     "alias": "tag",
-    "parentAliases": ["classification","all"]
+    "parentAliases": ["classification","all", "dataAsset"]
   },
   "classification": {
     "indexName": "classification_search_index",
