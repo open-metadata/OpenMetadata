@@ -35,7 +35,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn, stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TopicVersionProp } from './TopicVersion.interface';
@@ -89,7 +89,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TOPIC,
-        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+        currentVersionData.fullyQualifiedName ?? '',
         String(version),
         activeKey
       )

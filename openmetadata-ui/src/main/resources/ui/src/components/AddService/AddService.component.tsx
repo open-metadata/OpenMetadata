@@ -38,7 +38,6 @@ import {
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
@@ -174,12 +173,7 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(
-        getServiceDetailsPath(
-          getEncodedFqn(newServiceData.name),
-          serviceCategory
-        )
-      );
+      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
     }
   };
 

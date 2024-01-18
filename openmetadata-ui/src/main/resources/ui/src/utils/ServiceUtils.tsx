@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import { getDatabaseDetailsPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
@@ -54,7 +55,6 @@ import {
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getBrokers } from './MessagingServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getFormattedGuideText = (
@@ -475,6 +475,6 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return `/database/${getEncodedFqn(fqn)}`;
+      return getDatabaseDetailsPath(fqn);
   }
 };

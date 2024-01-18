@@ -34,7 +34,6 @@ import {
   createTestSuites,
 } from '../../../rest/testAPI';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
@@ -49,11 +48,7 @@ const TestSuiteStepper = () => {
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
   const handleViewTestSuiteClick = () => {
-    history.push(
-      getTestSuitePath(
-        getEncodedFqn(testSuiteResponse?.fullyQualifiedName ?? '')
-      )
-    );
+    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
   };
 
   const handleTestSuitNextClick = (data: TestSuite) => {

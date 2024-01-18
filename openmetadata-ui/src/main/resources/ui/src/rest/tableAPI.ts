@@ -63,9 +63,12 @@ export const getTableDetailsByFQN = async (
   fqn: string,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<Table>(`${BASE_URL}/name/${fqn}`, {
-    params: { ...params, include: params?.include ?? Include.All },
-  });
+  const response = await APIClient.get<Table>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
 
   return response.data;
 };
@@ -154,7 +157,7 @@ export const getTableProfilesList = async (
     endTs?: number;
   }
 ) => {
-  const url = `${BASE_URL}/${tableFqn}/tableProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/tableProfile`;
 
   const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
     params,
@@ -170,7 +173,7 @@ export const getSystemProfileList = async (
     endTs?: number;
   }
 ) => {
-  const url = `${BASE_URL}/${tableFqn}/systemProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/systemProfile`;
 
   const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
     params,
@@ -189,7 +192,7 @@ export const getColumnProfilerList = async (
     after?: string;
   }
 ) => {
-  const url = `${BASE_URL}/${columnFqn}/columnProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(columnFqn)}/columnProfile`;
 
   const response = await APIClient.get<{
     data: ColumnProfile[];

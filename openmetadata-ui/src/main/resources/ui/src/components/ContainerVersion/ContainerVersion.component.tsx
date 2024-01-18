@@ -42,7 +42,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
+
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { ContainerVersionProp } from './ContainerVersion.interface';
 
@@ -68,8 +68,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const encodedFQN = useMemo(
-    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+  const entityFqn = useMemo(
+    () => currentVersionData.fullyQualifiedName ?? '',
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -99,7 +99,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.CONTAINER,
-        encodedFQN,
+        entityFqn,
         String(version),
         activeKey
       )
@@ -160,7 +160,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                   <VersionTable
                     addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
-                      encodedFQN,
+                      entityFqn,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -217,7 +217,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     ],
     [
       description,
-      encodedFQN,
+      entityFqn,
       columns,
       currentVersionData,
       entityPermissions,

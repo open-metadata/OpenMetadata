@@ -33,7 +33,7 @@ import { AxiosError } from 'axios';
 import { intersection, isEmpty, map, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
@@ -53,6 +53,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import { SubscriptionResourceDescriptor } from '../../generated/events/subscriptionResourceDescriptor';
 import { Function } from '../../generated/type/function';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createAlert,
   getAlertsFromId,
@@ -78,7 +79,7 @@ const AddAlertPage = () => {
   const { t } = useTranslation();
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   // To block certain action based on provider of the Alert e.g. System / User
   const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 

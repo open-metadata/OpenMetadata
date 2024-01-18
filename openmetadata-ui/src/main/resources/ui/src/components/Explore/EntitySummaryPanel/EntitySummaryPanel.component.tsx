@@ -42,7 +42,7 @@ import { StorageService } from '../../../generated/entity/services/storageServic
 import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { getEncodedFqn, stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
@@ -289,7 +289,7 @@ export default function EntitySummaryPanel({
 
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
-    [entityDetails, getEntityLinkFromType, getEncodedFqn]
+    [entityDetails, getEntityLinkFromType]
   );
 
   return (

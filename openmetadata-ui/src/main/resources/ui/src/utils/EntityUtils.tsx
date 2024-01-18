@@ -116,7 +116,7 @@ import {
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn, stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -1307,7 +1307,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
-      return getTagsDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getTagsDetailsPath(fullyQualifiedName);
     case EntityType.TOPIC:
       return getTopicDetailsPath(fullyQualifiedName);
     case EntityType.DASHBOARD:
@@ -1323,7 +1323,7 @@ export const getEntityLinkFromType = (
     case EntityType.DATABASE_SCHEMA:
       return getDatabaseSchemaDetailsPath(fullyQualifiedName);
     case EntityType.DATA_PRODUCT:
-      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getDataProductsDetailsPath(fullyQualifiedName);
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
     case EntityType.STORED_PROCEDURE:
@@ -1333,42 +1333,42 @@ export const getEntityLinkFromType = (
 
     case EntityType.DATABASE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.DATABASE_SERVICES
       );
     case EntityType.MESSAGING_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.MESSAGING_SERVICES
       );
     case EntityType.DASHBOARD_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.DASHBOARD_SERVICES
       );
     case EntityType.PIPELINE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.PIPELINE_SERVICES
       );
     case EntityType.MLMODEL_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.ML_MODEL_SERVICES
       );
     case EntityType.STORAGE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.STORAGE_SERVICES
       );
     case EntityType.SEARCH_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.SEARCH_SERVICES
       );
     case EntityType.METADATA_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
     default:
@@ -1387,7 +1387,7 @@ export const getBreadcrumbForTable = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategory.DATABASE_SERVICES
           )
         : '',
@@ -1427,7 +1427,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategoryPlural[
               service?.type as keyof typeof ServiceCategoryPlural
             ]
@@ -1461,7 +1461,7 @@ export const getBreadcrumbForContainer = (data: {
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategoryPlural[
               service?.type as keyof typeof ServiceCategoryPlural
             ]
@@ -1569,7 +1569,7 @@ export const getEntityBreadcrumbs = (
           name: getEntityName((entity as DatabaseSchema).service),
           url: (entity as DatabaseSchema).service?.name
             ? getServiceDetailsPath(
-                getEncodedFqn((entity as DatabaseSchema).service?.name ?? ''),
+                (entity as DatabaseSchema).service?.name ?? '',
                 ServiceCategoryPlural[
                   (entity as DatabaseSchema).service
                     ?.type as keyof typeof ServiceCategoryPlural

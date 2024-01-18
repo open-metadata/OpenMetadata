@@ -31,7 +31,6 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import './ingestion-recent-run.style.less';
 
 interface Props {
@@ -55,7 +54,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        getEncodedFqn(ingestion.fullyQualifiedName || ''),
+        ingestion.fullyQualifiedName || '',
         queryParams
       );
 

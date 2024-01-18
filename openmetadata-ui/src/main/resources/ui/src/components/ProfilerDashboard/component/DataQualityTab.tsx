@@ -48,7 +48,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
-import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
+import { replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
@@ -179,10 +179,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(
-                        getEncodedFqn(tableFqn),
-                        'profiler'
-                      ),
+                      pathname: getTableTabPath(tableFqn, 'profiler'),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),

@@ -26,7 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../assets/svg/ic-version.svg';
@@ -47,6 +47,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { getTags } from '../../rest/tagAPI';
 import {
   getClassificationExtraDropdownContent,
@@ -92,7 +93,7 @@ const ClassificationDetails = forwardRef(
   ) => {
     const { permissions } = usePermissionProvider();
     const { t } = useTranslation();
-    const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
+    const { fqn: tagCategoryName } = useFqn();
     const history = useHistory();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);

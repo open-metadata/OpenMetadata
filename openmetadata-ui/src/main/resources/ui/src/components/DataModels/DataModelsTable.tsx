@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../components/common/Table/Table';
@@ -30,6 +30,7 @@ import {
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getDataModels } from '../../rest/dashboardAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -39,7 +40,7 @@ import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface
 
 const DataModelTable = () => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
   const [showDeleted, setShowDeleted] = useState(false);
   const {

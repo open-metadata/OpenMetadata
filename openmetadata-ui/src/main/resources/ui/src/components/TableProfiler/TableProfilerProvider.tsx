@@ -23,18 +23,19 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { Table } from '../../generated/entity/data/table';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../generated/tests/testCase';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
-import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
+import { bytesToSize } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -58,7 +59,7 @@ export const TableProfilerProvider = ({
   isTableDeleted,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const location = useLocation();
   // profiler has its own api but sent's the data in Table type
@@ -190,10 +191,9 @@ export const TableProfilerProvider = ({
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
-    const decodedDatasetFQN = getDecodedFqn(datasetFQN);
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
+      const profiler = await getLatestTableProfileByFqn(datasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
         fields: 'customMetrics,columns',
       });
@@ -213,7 +213,7 @@ export const TableProfilerProvider = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult, testDefinition, incidentId',
-        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) ?? ''),
+        entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });

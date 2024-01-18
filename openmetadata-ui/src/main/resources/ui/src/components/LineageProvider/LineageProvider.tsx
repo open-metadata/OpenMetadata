@@ -67,11 +67,10 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 
-import { useParams } from 'react-router-dom';
 import { PipelineStatus } from '../../generated/entity/data/pipeline';
+import { useFqn } from '../../hooks/useFqn';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -101,8 +100,8 @@ export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
-  const { fqn: entityFqn } = useParams<{ fqn: string }>();
-  const decodedFqn = getDecodedFqn(entityFqn);
+
+  const { fqn: decodedFqn } = useFqn();
   const { isTourOpen } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -854,7 +853,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const updatedNodes = createNodes(
         allNodes,
         lineageData.edges ?? [],
-        entityFqn
+        decodedFqn
       );
       const updatedEdges = createEdges(allNodes, lineageData.edges ?? []);
       setNodes(updatedNodes);

@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { SummaryPanel } from '../../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from '../../../components/ProfilerDashboard/component/DataQualityTab';
 import TestSuitePipelineTab from '../../../components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -32,13 +32,13 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityType as TestType } from '../../../generated/tests/testDefinition';
+import { useFqn } from '../../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -57,7 +57,7 @@ export const QualityTab = () => {
   } = useTableProfiler();
 
   const editTest = permissions.EditAll || permissions.EditTests;
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -76,7 +76,7 @@ export const QualityTab = () => {
             name: getEntityName(table),
             url:
               getTableTabPath(
-                getEncodedFqn(table.fullyQualifiedName ?? ''),
+                table.fullyQualifiedName ?? '',
                 EntityTabs.PROFILER
               ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
           },
@@ -146,9 +146,7 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(
-      getAddDataQualityTableTestPath(type, getDecodedFqn(datasetFQN))
-    );
+    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
   const addButtonContent = useMemo(

@@ -51,7 +51,6 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
@@ -105,9 +104,7 @@ const RolesListPage = () => {
           <Link
             className="link-hover"
             data-testid="role-name"
-            to={getRoleWithFqnPath(
-              getEncodedFqn(record.fullyQualifiedName ?? '')
-            )}>
+            to={getRoleWithFqnPath(record.fullyQualifiedName ?? '')}>
             {getEntityName(record)}
           </Link>
         ),

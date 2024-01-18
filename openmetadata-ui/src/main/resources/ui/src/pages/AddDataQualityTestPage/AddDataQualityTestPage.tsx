@@ -13,22 +13,22 @@
 
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
 import Loader from '../../components/Loader/Loader';
 import { Table } from '../../generated/entity/data/table';
+import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
-  const { entityTypeFQN } = useParams<{ entityTypeFQN: string }>();
+  const { fqn } = useFqn();
   const [table, setTable] = useState({} as Table);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
-      const table = await getTableDetailsByFQN(entityTypeFQN, {
+      const table = await getTableDetailsByFQN(fqn, {
         fields: 'testSuite,customMetrics,columns',
       });
       setTable(table);
@@ -41,7 +41,7 @@ const AddDataQualityTestPage = () => {
 
   useEffect(() => {
     fetchTableData();
-  }, [entityTypeFQN]);
+  }, [fqn]);
 
   if (isLoading) {
     return <Loader />;

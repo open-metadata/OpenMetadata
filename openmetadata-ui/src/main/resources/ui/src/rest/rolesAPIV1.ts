@@ -21,6 +21,7 @@ import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const patchConfig = {
@@ -72,17 +73,23 @@ export const getPolicies = async (
 };
 
 export const getRoleByName = async (name: string, fields: string) => {
-  const response = await APIClient.get<Role>(`/roles/name/${name}`, {
-    params: { fields },
-  });
+  const response = await APIClient.get<Role>(
+    `/roles/name/${getEncodedFqn(name)}`,
+    {
+      params: { fields },
+    }
+  );
 
   return response.data;
 };
 
 export const getPolicyByName = async (name: string, fields: string) => {
-  const response = await APIClient.get<Policy>(`/policies/name/${name}`, {
-    params: { fields },
-  });
+  const response = await APIClient.get<Policy>(
+    `/policies/name/${getEncodedFqn(name)}`,
+    {
+      params: { fields },
+    }
+  );
 
   return response.data;
 };

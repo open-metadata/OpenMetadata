@@ -28,6 +28,7 @@ import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export interface UsersQueryParams {
@@ -64,7 +65,10 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
 };
 
 export const getUserByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<User>(`/users/name/${name}`, { params });
+  const response = await APIClient.get<User>(
+    `/users/name/${getEncodedFqn(name)}`,
+    { params }
+  );
 
   return response.data;
 };
@@ -183,7 +187,10 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
 };
 
 export const getBotByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Bot>(`/bots/name/${name}`, { params });
+  const response = await APIClient.get<Bot>(
+    `/bots/name/${getEncodedFqn(name)}`,
+    { params }
+  );
 
   return response.data;
 };

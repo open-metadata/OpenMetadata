@@ -21,6 +21,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {
@@ -56,12 +57,15 @@ export const getContainers = async (args: {
 };
 
 export const getContainerByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Container>(`${BASE_URL}/name/${name}`, {
-    params: {
-      ...params,
-      include: params?.include ?? Include.All,
-    },
-  });
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -124,9 +128,12 @@ export const getContainerVersion = async (id: string, version: string) => {
 };
 
 export const getContainerByFQN = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Container>(`${BASE_URL}/name/${fqn}`, {
-    params: { ...params, include: params?.include ?? Include.All },
-  });
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
 
   return response.data;
 };

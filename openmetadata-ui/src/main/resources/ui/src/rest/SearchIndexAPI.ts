@@ -23,6 +23,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getSearchIndexes = async (args: {
@@ -52,7 +53,7 @@ export const getSearchIndexDetailsByFQN = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<SearchIndex>(
-    `/searchIndexes/name/${fqn}`,
+    `/searchIndexes/name/${getEncodedFqn(fqn)}`,
     { params: { ...params, include: params?.include ?? Include.All } }
   );
 

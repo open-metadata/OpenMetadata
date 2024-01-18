@@ -32,7 +32,7 @@ import { isUndefined, toInteger, toNumber } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -42,6 +42,7 @@ import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
+import { useFqn } from '../../hooks/useFqn';
 import { getChartById } from '../../rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
@@ -55,7 +56,7 @@ import { KPIFormValues } from './KPIPage.interface';
 
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
-  const { kpiName } = useParams<{ kpiName: string }>();
+  const { fqn: kpiName } = useFqn();
 
   const { t } = useTranslation();
   const history = useHistory();

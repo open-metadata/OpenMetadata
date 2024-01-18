@@ -16,6 +16,7 @@ import { PagingResponse, RestoreRequestType } from 'Models';
 import axiosClient from '.';
 import { CreatePersona } from '../generated/api/teams/createPersona';
 import { Persona } from '../generated/entity/teams/persona';
+import { getEncodedFqn } from '../utils/StringsUtils';
 
 const BASE_URL = '/personas';
 
@@ -35,11 +36,14 @@ export const getAllPersonas = async (params: GetPersonasParams) => {
 };
 
 export const getPersonaByName = async (fqn: string) => {
-  const response = await axiosClient.get<Persona>(`${BASE_URL}/name/${fqn}`, {
-    params: {
-      fields: 'users',
-    },
-  });
+  const response = await axiosClient.get<Persona>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        fields: 'users',
+      },
+    }
+  );
 
   return response.data;
 };

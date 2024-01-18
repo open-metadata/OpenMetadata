@@ -42,10 +42,10 @@ interface GlossaryVersionProps {
 const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const history = useHistory();
   const {
-    fqn: glossaryName,
     version,
     tab = 'overview',
-  } = useParams<{ fqn: string; version: string; tab: string }>();
+    id,
+  } = useParams<{ version: string; tab: string; id: string }>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
@@ -55,8 +55,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const fetchVersionsInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossaryVersionsList(glossaryName)
-        : await getGlossaryTermsVersionsList(glossaryName);
+        ? await getGlossaryVersionsList(id)
+        : await getGlossaryTermsVersionsList(id);
 
       setVersionList(res);
     } catch (error) {
@@ -68,8 +68,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     setIsVersionLoading(true);
     try {
       const res = isGlossary
-        ? await getGlossaryVersion(glossaryName, version)
-        : await getGlossaryTermsVersion(glossaryName, version);
+        ? await getGlossaryVersion(id, version)
+        : await getGlossaryTermsVersion(id, version);
 
       setSelectedData(res);
     } catch (error) {
@@ -81,8 +81,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   const onVersionChange = (selectedVersion: string) => {
     const path = isGlossary
-      ? getGlossaryVersionsPath(glossaryName, selectedVersion)
-      : getGlossaryTermsVersionsPath(glossaryName, selectedVersion, tab);
+      ? getGlossaryVersionsPath(id, selectedVersion)
+      : getGlossaryTermsVersionsPath(id, selectedVersion, tab);
     history.push(path);
   };
 
@@ -93,11 +93,11 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   useEffect(() => {
     fetchVersionsInfo();
-  }, [glossaryName]);
+  }, [id]);
 
   useEffect(() => {
     fetchActiveVersion();
-  }, [glossaryName, version]);
+  }, [id, version]);
 
   return (
     <PageLayoutV1 pageTitle="Glossary version">

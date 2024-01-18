@@ -18,7 +18,7 @@ import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,6 +33,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Query } from '../../generated/entity/data/query';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getQueriesList,
   getQueryById,
@@ -61,7 +62,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
 
   const searchParams = useMemo(() => {

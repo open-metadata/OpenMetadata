@@ -19,7 +19,6 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { getSuggestions, searchData } from '../../../../rest/miscAPI';
 import { getEntityBreadcrumbs } from '../../../../utils/EntityUtils';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import HashList from './HashList';
@@ -49,7 +48,7 @@ export const hashtagSuggestion = () => ({
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
           hit._source.entityType,
-          getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+          hit._source.fullyQualifiedName ?? ''
         ),
         type: hit._source.entityType,
         breadcrumbs: getEntityBreadcrumbs(
@@ -69,7 +68,7 @@ export const hashtagSuggestion = () => ({
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
           hit._source.entityType,
-          getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+          hit._source.fullyQualifiedName ?? ''
         ),
         type: hit._source.entityType,
         breadcrumbs: getEntityBreadcrumbs(

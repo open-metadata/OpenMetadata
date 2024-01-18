@@ -34,7 +34,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
@@ -92,7 +91,7 @@ const StoredProcedureVersion = ({
     history.push(
       getVersionPathWithTab(
         EntityType.STORED_PROCEDURE,
-        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+        currentVersionData.fullyQualifiedName ?? '',
         String(version),
         activeKey
       )

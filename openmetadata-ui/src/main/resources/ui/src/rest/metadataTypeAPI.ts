@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { Category, CustomProperty, Type } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getTypeListByCategory = async (category: Category) => {
@@ -30,7 +31,7 @@ export const getTypeListByCategory = async (category: Category) => {
 };
 
 export const getTypeByFQN = async (typeFQN: string) => {
-  const path = `/metadata/types/name/${typeFQN}`;
+  const path = `/metadata/types/name/${getEncodedFqn(typeFQN)}`;
 
   const params = { fields: 'customProperties' };
 

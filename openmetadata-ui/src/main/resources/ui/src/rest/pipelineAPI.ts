@@ -22,6 +22,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { ListTestCaseResultsParams } from './testAPI';
 
@@ -64,9 +65,12 @@ export const getPipelines = async (
 };
 
 export const getPipelineByFqn = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Pipeline>(`${BASE_URL}/name/${fqn}`, {
-    params: { ...params, include: params?.include ?? Include.All },
-  });
+  const response = await APIClient.get<Pipeline>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
 
   return response.data;
 };
@@ -119,7 +123,7 @@ export const getPipelineStatus = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${BASE_URL}/${fqn}/status`;
+  const url = `${BASE_URL}/${getEncodedFqn(fqn)}/status`;
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
     url,

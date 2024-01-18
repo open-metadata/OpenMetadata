@@ -16,7 +16,7 @@ import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -32,6 +32,7 @@ import { UserImportResult } from '../../../components/Team/UserImportResult/User
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getTeamByName,
   importTeam,
@@ -43,7 +44,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { ImportType } from './ImportTeamsPage.interface';
 
 const ImportTeamsPage = () => {
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const history = useHistory();
   const location = useLocation();
   const { t } = useTranslation();

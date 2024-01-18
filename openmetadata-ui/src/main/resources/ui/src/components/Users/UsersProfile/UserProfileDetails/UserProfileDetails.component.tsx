@@ -15,7 +15,6 @@ import { Button, Divider, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
 import ChangePasswordForm from '../../../../components/Users/ChangePasswordForm';
@@ -32,6 +31,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useFqn } from '../../../../hooks/useFqn';
 import { changePassword } from '../../../../rest/auth-API';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -47,8 +47,7 @@ const UserProfileDetails = ({
   updateUserDetails,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
-  const { fqn: username } = useParams<{ fqn: string }>();
-
+  const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
   const { authConfig, currentUser } = useAuthContext();
 

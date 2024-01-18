@@ -38,7 +38,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
@@ -127,9 +126,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 <Col span={24}>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
-                      getEncodedFqn(
-                        currentVersionData.fullyQualifiedName ?? ''
-                      ),
+                      currentVersionData.fullyQualifiedName ?? '',
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}

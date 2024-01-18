@@ -29,7 +29,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -44,6 +44,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getPolicyByName,
   getRoleByName,
@@ -69,7 +70,7 @@ type Attribute = 'roles' | 'teams';
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);

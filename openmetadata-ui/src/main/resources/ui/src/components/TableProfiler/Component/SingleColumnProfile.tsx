@@ -25,7 +25,7 @@ import {
 import { ColumnProfile } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../rest/tableAPI';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+
 import {
   calculateColumnProfilerMetrics,
   calculateCustomMetrics,
@@ -80,7 +80,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     try {
       setIsLoading(true);
       const { data } = await getColumnProfilerList(
-        getEncodedFqn(fqn),
+        fqn,
         dateRangeObject ?? DEFAULT_RANGE_DATA
       );
       setColumnProfilerData(data);

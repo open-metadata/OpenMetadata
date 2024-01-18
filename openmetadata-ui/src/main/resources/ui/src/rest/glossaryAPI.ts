@@ -76,9 +76,12 @@ export const patchGlossaries = async (id: string, patch: Operation[]) => {
 };
 
 export const getGlossariesByName = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Glossary>(`/glossaries/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<Glossary>(
+    `/glossaries/name/${getEncodedFqn(fqn)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -152,7 +155,7 @@ export const deleteGlossaryTerm = (id: string) => {
 
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   const response = await APIClient.get<string>(
-    `/glossaries/name/${glossaryName}/export`
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
   );
 
   return response.data;

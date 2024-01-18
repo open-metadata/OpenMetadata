@@ -30,7 +30,7 @@ const mockProps = {
 };
 
 const mockParams = {
-  entityTypeFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  fqn: 'sample_data.ecommerce_db.shopify.dim_address',
   dashboardType: ProfilerDashboardType.TABLE,
 };
 

@@ -20,6 +20,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export interface ListStoredProcedureParams {
@@ -55,12 +56,15 @@ export const getStoredProceduresByFqn = async (
   fqn: string,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<StoredProcedure>(`${URL}/name/${fqn}`, {
-    params: {
-      ...params,
-      include: params?.include ?? Include.NonDeleted,
-    },
-  });
+  const response = await APIClient.get<StoredProcedure>(
+    `${URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
+      },
+    }
+  );
 
   return response.data;
 };

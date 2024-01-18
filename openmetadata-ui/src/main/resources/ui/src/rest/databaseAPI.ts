@@ -24,6 +24,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getDatabases = async (
@@ -55,12 +56,15 @@ export const getDatabaseDetailsByFQN = async (
   fqn: string,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<Database>(`/databases/name/${fqn}`, {
-    params: {
-      ...params,
-      include: params?.include ?? Include.NonDeleted,
-    },
-  });
+  const response = await APIClient.get<Database>(
+    `/databases/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -127,7 +131,7 @@ export const getDatabaseSchemaDetailsByFQN = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<DatabaseSchema>(
-    `/databaseSchemas/name/${databaseSchemaName}`,
+    `/databaseSchemas/name/${getEncodedFqn(databaseSchemaName)}`,
     {
       params: {
         ...params,

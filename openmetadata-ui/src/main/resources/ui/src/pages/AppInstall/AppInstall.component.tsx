@@ -17,7 +17,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
 import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -38,6 +38,7 @@ import {
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import {
@@ -55,7 +56,7 @@ import './app-install.less';
 const AppInstall = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
   const [activeServiceStep, setActiveServiceStep] = useState(1);

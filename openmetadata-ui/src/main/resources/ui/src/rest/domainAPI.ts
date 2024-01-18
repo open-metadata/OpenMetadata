@@ -18,6 +18,7 @@ import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/domains';
@@ -54,9 +55,12 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
 };
 
 export const getDomainByName = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Domain>(`/domains/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<Domain>(
+    `/domains/name/${getEncodedFqn(fqn)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -86,7 +90,7 @@ export const addAssetsToDomain = async (
   const response = await APIClient.put<
     { assets: EntityReference[] },
     AxiosResponse<Domain>
-  >(`/domains/${domainFqn}/assets/add`, data);
+  >(`/domains/${getEncodedFqn(domainFqn)}/assets/add`, data);
 
   return response.data;
 };
@@ -102,7 +106,7 @@ export const removeAssetsFromDomain = async (
   const response = await APIClient.put<
     { assets: EntityReference[] },
     AxiosResponse<Domain>
-  >(`/domains/${domainFqn}/assets/remove`, data);
+  >(`/domains/${getEncodedFqn(domainFqn)}/assets/remove`, data);
 
   return response.data;
 };

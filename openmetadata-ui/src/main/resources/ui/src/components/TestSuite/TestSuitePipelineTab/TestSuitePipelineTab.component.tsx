@@ -54,7 +54,6 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface Props {
@@ -452,8 +451,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     onClick={() => {
                       history.push(
                         getTestSuiteIngestionPath(
-                          getEncodedFqn(testSuiteFQN),
-                          getEncodedFqn(record.fullyQualifiedName ?? '')
+                          testSuiteFQN,
+                          record.fullyQualifiedName ?? ''
                         )
                       );
                     }}>
@@ -518,7 +517,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     to={getLogsViewerPath(
                       EntityType.TEST_SUITE,
                       record.service?.name || '',
-                      getEncodedFqn(record.fullyQualifiedName || '')
+                      record.fullyQualifiedName || ''
                     )}>
                     <Button
                       className="p-0"
@@ -576,9 +575,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(
-                  getTestSuiteIngestionPath(getEncodedFqn(testSuiteFQN))
-                );
+                history.push(getTestSuiteIngestionPath(testSuiteFQN));
               }}>
               {t('label.add')}
             </Button>

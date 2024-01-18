@@ -48,7 +48,7 @@ import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
-  const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
   const history = useHistory();
 
   const [typeDetail, setTypeDetail] = useState<Type>();
@@ -67,7 +67,7 @@ const AddCustomProperty = () => {
         name: t('label.custom-attribute-plural'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
-          getSettingOptionByEntityType(entityTypeFQN)
+          getSettingOptionByEntityType(entityType)
         ),
       },
       {
@@ -77,7 +77,7 @@ const AddCustomProperty = () => {
         url: '',
       },
     ],
-    [entityTypeFQN]
+    [entityType]
   );
 
   const propertyTypeOptions = useMemo(() => {
@@ -147,8 +147,8 @@ const AddCustomProperty = () => {
   };
 
   useEffect(() => {
-    fetchTypeDetail(entityTypeFQN);
-  }, [entityTypeFQN]);
+    fetchTypeDetail(entityType);
+  }, [entityType]);
 
   useEffect(() => {
     fetchPropertyType();

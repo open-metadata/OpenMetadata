@@ -40,7 +40,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
@@ -60,6 +59,7 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import {
   getDataProductByName,
@@ -87,7 +87,6 @@ import {
 } from '../../../../utils/Explore.utils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -135,7 +134,7 @@ const AssetsTabs = forwardRef(
     const [assetRemoving, setAssetRemoving] = useState(false);
 
     const [activeFilter, _] = useState<SearchIndex[]>([]);
-    const { fqn } = useParams<{ fqn: string }>();
+    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
@@ -294,7 +293,7 @@ const AssetsTabs = forwardRef(
 
     const fetchCurrentEntity = useCallback(async () => {
       let data;
-      const fqn = getEncodedFqn(entityFqn ?? '');
+      const fqn = entityFqn ?? '';
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           data = await getDomainByName(fqn);
@@ -305,7 +304,7 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          data = await getGlossaryTermByFQN(getDecodedFqn(fqn));
+          data = await getGlossaryTermByFQN(fqn);
 
           break;
         default:
@@ -690,7 +689,7 @@ const AssetsTabs = forwardRef(
           switch (type) {
             case AssetsOfEntity.DATA_PRODUCT:
               await removeAssetsFromDataProduct(
-                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                activeEntity.fullyQualifiedName ?? '',
                 entities
               );
 
@@ -706,7 +705,7 @@ const AssetsTabs = forwardRef(
 
             case AssetsOfEntity.DOMAIN:
               await removeAssetsFromDomain(
-                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                activeEntity.fullyQualifiedName ?? '',
                 entities
               );
 

@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -29,6 +29,7 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useFqn } from '../../hooks/useFqn';
 import {
   addIngestionPipeline,
   deployIngestionPipelineById,
@@ -52,7 +53,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   testSuite,
   onCancel,
 }) => {
-  const { ingestionFQN } = useParams<{ ingestionFQN: string }>();
+  const { ingestionFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
   const [ingestionData, setIngestionData] = useState<

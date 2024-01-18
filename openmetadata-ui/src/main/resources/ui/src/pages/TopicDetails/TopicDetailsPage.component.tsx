@@ -21,7 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
@@ -37,6 +37,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -61,7 +62,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: topicFQN } = useParams<{ fqn: string }>();
+  const { fqn: topicFQN } = useFqn();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);

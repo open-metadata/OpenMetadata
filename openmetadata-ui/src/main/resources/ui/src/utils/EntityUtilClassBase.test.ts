@@ -57,10 +57,6 @@ jest.mock('./SearchIndexUtils', () => ({
   getSearchIndexDetailsPath: jest.fn(),
 }));
 
-jest.mock('./StringsUtils', () => ({
-  getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
-}));
-
 describe('EntityUtilClassBase', () => {
   let entityUtil: EntityUtilClassBase;
 
