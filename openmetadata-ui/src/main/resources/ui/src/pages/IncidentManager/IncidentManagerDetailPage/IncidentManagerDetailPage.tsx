@@ -38,6 +38,7 @@ import { ThreadType } from '../../../generated/api/feed/createThread';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
@@ -54,10 +55,10 @@ const IncidentManagerDetailPage = () => {
   const location =
     useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
-  const {
-    fqn: testCaseFQN,
-    tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
-  } = useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: testCaseFQN } = useFqn();
 
   const decodedTestCaseFQN = useMemo(
     () => getDecodedFqn(testCaseFQN),

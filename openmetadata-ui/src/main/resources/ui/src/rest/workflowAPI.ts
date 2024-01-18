@@ -14,13 +14,16 @@ import { AxiosResponse } from 'axios';
 import { CreateWorkflow } from '../generated/api/automations/createWorkflow';
 import { Workflow } from '../generated/entity/automations/workflow';
 import { TestConnectionDefinition } from '../generated/entity/services/connections/testConnectionDefinition';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getTestConnectionDefinitionByName = async (
   testDefinitionName: string
 ) => {
   const response = await APIClient.get<TestConnectionDefinition>(
-    `services/testConnectionDefinitions/name/${testDefinitionName}`
+    `services/testConnectionDefinitions/name/${getEncodedFqn(
+      testDefinitionName
+    )}`
   );
 
   return response.data;

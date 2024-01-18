@@ -40,7 +40,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
@@ -82,7 +81,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.DASHBOARD,
-        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+        currentVersionData.fullyQualifiedName ?? '',
         String(version),
         activeKey
       )

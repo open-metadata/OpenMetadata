@@ -21,6 +21,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/classifications';
@@ -60,7 +61,7 @@ export const getClassificationByName = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<Classification>(
-    `${BASE_URL}/name/${name}`,
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
     { params }
   );
 

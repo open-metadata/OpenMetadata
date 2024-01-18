@@ -40,7 +40,6 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -84,9 +83,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               data-testid={name}
               to={{
                 pathname: getTableTabPath(
-                  getEncodedFqn(
-                    record.executableEntityReference?.fullyQualifiedName ?? ''
-                  ),
+                  record.executableEntityReference?.fullyQualifiedName ?? '',
                   EntityTabs.PROFILER
                 ),
                 search: QueryString.stringify({
@@ -99,9 +96,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           ) : (
             <Link
               data-testid={name}
-              to={getTestSuitePath(
-                getEncodedFqn(record.fullyQualifiedName ?? record.name)
-              )}>
+              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
               {getEntityName(record)}
             </Link>
           );

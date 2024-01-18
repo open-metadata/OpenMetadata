@@ -59,6 +59,7 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
@@ -76,7 +77,6 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -86,8 +86,9 @@ const StoredProcedurePage = () => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
-  const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
-    useParams<{ fqn: string; tab: string }>();
+  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
+
+  const { fqn: decodedStoredProcedureFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -103,11 +104,6 @@ const StoredProcedurePage = () => {
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
-  );
-
-  const decodedStoredProcedureFQN = useMemo(
-    () => getDecodedFqn(storedProcedureFQN),
-    [storedProcedureFQN]
   );
 
   const {
@@ -145,7 +141,7 @@ const StoredProcedurePage = () => {
     try {
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.STORED_PROCEDURE,
-        storedProcedureFQN
+        decodedStoredProcedureFQN
       );
 
       setStoredProcedurePermissions(permission);
@@ -171,10 +167,13 @@ const StoredProcedurePage = () => {
   const fetchStoredProcedureDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await getStoredProceduresByFqn(storedProcedureFQN, {
-        fields: STORED_PROCEDURE_DEFAULT_FIELDS,
-        include: Include.All,
-      });
+      const response = await getStoredProceduresByFqn(
+        decodedStoredProcedureFQN,
+        {
+          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+          include: Include.All,
+        }
+      );
 
       setStoredProcedure(response);
 
@@ -198,11 +197,11 @@ const StoredProcedurePage = () => {
       history.push(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
-          storedProcedureFQN,
+          decodedStoredProcedureFQN,
           version + ''
         )
       );
-  }, [storedProcedureFQN, version]);
+  }, [decodedStoredProcedureFQN, version]);
 
   const saveUpdatedStoredProceduresData = useCallback(
     (updatedData: StoredProcedure) => {
@@ -648,9 +647,12 @@ const StoredProcedurePage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
-      const details = await getStoredProceduresByFqn(storedProcedureFQN, {
-        fields: STORED_PROCEDURE_DEFAULT_FIELDS,
-      });
+      const details = await getStoredProceduresByFqn(
+        decodedStoredProcedureFQN,
+        {
+          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+        }
+      );
       setStoredProcedure(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -658,17 +660,17 @@ const StoredProcedurePage = () => {
   };
 
   useEffect(() => {
-    if (storedProcedureFQN) {
+    if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
     }
-  }, [storedProcedureFQN]);
+  }, [decodedStoredProcedureFQN]);
 
   useEffect(() => {
     if (viewBasicPermission) {
       fetchStoredProcedureDetails();
       getEntityFeedCount();
     }
-  }, [storedProcedureFQN, storedProcedurePermissions]);
+  }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
   if (isLoading) {
     return <Loader />;

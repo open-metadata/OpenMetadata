@@ -70,7 +70,6 @@ import {
   getSelectedValuesFromQuickFilter,
 } from '../../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -170,10 +169,10 @@ export const AssetSelectionModal = ({
 
   const fetchCurrentEntity = useCallback(async () => {
     if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(getEncodedFqn(entityFqn));
+      const data = await getDomainByName(entityFqn);
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(getEncodedFqn(entityFqn), {
+      const data = await getDataProductByName(entityFqn, {
         fields: 'domain,assets',
       });
       setActiveEntity(data);
@@ -263,7 +262,7 @@ export const AssetSelectionModal = ({
       switch (type) {
         case AssetsOfEntity.DATA_PRODUCT:
           res = await addAssetsToDataProduct(
-            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            activeEntity.fullyQualifiedName ?? '',
             entities
           );
 
@@ -277,7 +276,7 @@ export const AssetSelectionModal = ({
           break;
         case AssetsOfEntity.DOMAIN:
           res = await addAssetsToDomain(
-            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            activeEntity.fullyQualifiedName ?? '',
             entities
           );
 

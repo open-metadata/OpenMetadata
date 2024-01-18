@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/ClassificationDetails/ClassificationDetails.interface';
@@ -50,6 +50,7 @@ import {
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createClassification,
   createTag,
@@ -66,7 +67,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
@@ -74,7 +75,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
-  const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
+  const { fqn: tagCategoryName } = useFqn();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -503,9 +504,7 @@ const TagsPage = () => {
      */
     if (tagCategoryName) {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(
-        isTier ? TIER_CATEGORY : getDecodedFqn(tagCategoryName)
-      );
+      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
     }
   }, [tagCategoryName]);
 

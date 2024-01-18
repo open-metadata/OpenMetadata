@@ -24,12 +24,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
-import { UserProfileTab } from '../../enums/user.enum';
 import { User } from '../../generated/entity/teams/user';
+import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,7 +37,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { fqn: username } = useParams<{ fqn: string; tab: UserProfileTab }>();
+  const { fqn: username } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);

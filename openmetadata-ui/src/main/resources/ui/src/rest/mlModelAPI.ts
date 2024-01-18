@@ -22,6 +22,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/mlmodels';
@@ -43,9 +44,12 @@ export const getMlModelVersion = async (id: string, version: string) => {
 };
 
 export const getMlModelByFQN = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Mlmodel>(`${BASE_URL}/name/${fqn}`, {
-    params: { ...params, include: params?.include ?? Include.All },
-  });
+  const response = await APIClient.get<Mlmodel>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
 
   return response.data;
 };
