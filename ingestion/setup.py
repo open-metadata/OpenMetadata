@@ -20,16 +20,19 @@ from setuptools import setup
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.7.3",
+    "adlfs": "adlfs==2022.11.2",  # Python 3.7 does only support up to 2022.2.0
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
+    "gcsfs": "gcsfs==2022.11.0",
     "great-expectations": "great-expectations~=0.18.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas<=2,<3",
     "pyarrow": "pyarrow~=14.0",
+    "pydantic": "pydantic==1.10.13",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -106,7 +109,7 @@ base_requirements = {
     "jsonschema",
     "memory-profiler",
     "mypy_extensions>=0.4.3",
-    "pydantic~=1.10",
+    VERSIONS["pydantic"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-jose~=3.3",
@@ -161,12 +164,12 @@ plugins: Dict[str, Set[str]] = {
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
-        "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
+        VERSIONS["adlfs"],  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
         VERSIONS["google-cloud-storage"],
-        "gcsfs==2022.11.0",
+        VERSIONS["gcsfs"],
         *COMMONS["datalake"],
     },
     "datalake-s3": {
@@ -196,6 +199,13 @@ plugins: Dict[str, Set[str]] = {
         "pure-sasl",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
+    },
+    "iceberg": {
+        "pyiceberg",
+        # Forcing the version of a few packages so it plays nicely with other requirements.
+        VERSIONS["pydantic"],
+        VERSIONS["adlfs"],
+        VERSIONS["gcsfs"],
     },
     "impala": {
         "presto-types-parser>=0.0.2",
