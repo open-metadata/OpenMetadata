@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { entries, omit, startCase } from 'lodash';
+import { entries, isNumber, isString, omit, startCase } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -33,6 +34,56 @@ const TestSummaryCustomTooltip = (
     return null;
   }
 
+  const tooltipRender = ([key, value]: [
+    key: string,
+    value: string | number | Thread
+  ]) => {
+    if (key === 'task' && !isString(value) && !isNumber(value)) {
+      return value?.task ? (
+        <>
+          <li
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+            key="item-incident">
+            <span className="flex items-center text-grey-muted">
+              {t('label.incident')}
+            </span>
+            <span className="font-medium" data-testid={key}>
+              <Link
+                className="font-medium cursor-pointer"
+                data-testid="table-name"
+                to={getTaskDetailPath(value)}>
+                {`#${value.task.id}`}
+              </Link>
+            </span>
+          </li>
+          <li
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+            key="item-assignee">
+            <span className="flex items-center text-grey-muted">
+              {t('label.assignee')}
+            </span>
+            <span className="font-medium cursor-pointer" data-testid={key}>
+              <OwnerLabel owner={value.task.assignees[0]} />
+            </span>
+          </li>
+        </>
+      ) : null;
+    }
+
+    return (
+      <li
+        className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+        key={`item-${key}`}>
+        <span className="flex items-center text-grey-muted">
+          {startCase(key)}
+        </span>
+        <span className="font-medium" data-testid={key}>
+          {value}
+        </span>
+      </li>
+    );
+  };
+
   return (
     <Card
       title={
@@ -41,52 +92,7 @@ const TestSummaryCustomTooltip = (
         </Typography.Title>
       }>
       <ul data-testid="test-summary-tooltip-container">
-        {data.map(([key, value]) =>
-          key === 'task' ? (
-            value?.task ? (
-              <>
-                <li
-                  className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                  key="item-incident">
-                  <span className="flex items-center text-grey-muted">
-                    {t('label.incident')}
-                  </span>
-                  <span className="font-medium" data-testid={key}>
-                    <Link
-                      className="font-medium cursor-pointer"
-                      data-testid="table-name"
-                      to={getTaskDetailPath(value)}>
-                      {`#${value.task.id}` ?? '--'}
-                    </Link>
-                  </span>
-                </li>
-                <li
-                  className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                  key="item-assignee">
-                  <span className="flex items-center text-grey-muted">
-                    {t('label.assignee')}
-                  </span>
-                  <span
-                    className="font-medium cursor-pointer"
-                    data-testid={key}>
-                    <OwnerLabel owner={value.task.assignees[0]} />
-                  </span>
-                </li>
-              </>
-            ) : null
-          ) : (
-            <li
-              className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-              key={`item-${key}`}>
-              <span className="flex items-center text-grey-muted">
-                {startCase(key)}
-              </span>
-              <span className="font-medium" data-testid={key}>
-                {value}
-              </span>
-            </li>
-          )
-        )}
+        {data.map(tooltipRender)}
       </ul>
     </Card>
   );

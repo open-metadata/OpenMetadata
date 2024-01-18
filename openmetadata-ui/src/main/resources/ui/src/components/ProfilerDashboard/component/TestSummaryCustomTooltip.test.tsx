@@ -38,6 +38,9 @@ const mockProps = {
     },
   ],
 };
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
+}));
 
 describe('Test AddServicePage component', () => {
   it('AddServicePage component should render', async () => {

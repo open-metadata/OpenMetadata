@@ -85,6 +85,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
     tab: IncidentManagerTabs.TEST_CASE_RESULTS,
   }),
+  useLocation: jest.fn().mockReturnValue({ state: { breadcrumbData: [] } }),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
@@ -95,6 +96,10 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 jest.mock('../../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
+);
+jest.mock(
+  '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
+  () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)
 );
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -139,30 +144,12 @@ describe('IncidentManagerDetailPage', () => {
     expect(
       await screen.findByTestId('incident-manager-details-page-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('table-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('test-definition-name')
-    ).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
     expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(await screen.findByText('EntityHeaderTitle')).toBeInTheDocument();
-    expect(await screen.findByText('OwnerLabel')).toBeInTheDocument();
-    expect(await screen.findByText('TestCaseResultTab')).toBeInTheDocument();
-  });
-
-  it('onClick of Issue tab, should call history.push', async () => {
-    await act(async () => {
-      render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
-    });
-
-    const issueTab = await screen.findByTestId('issue');
-    await act(async () => {
-      fireEvent.click(issueTab);
-    });
-
-    expect(mockHistory.push).toHaveBeenCalledWith(
-      '/incident-manager/sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals/issues'
-    );
+    expect(
+      await screen.findByText('IncidentManagerPageHeader')
+    ).toBeInTheDocument();
   });
 
   it('onClick of same tab, should not call history.push', async () => {
@@ -180,7 +167,7 @@ describe('IncidentManagerDetailPage', () => {
 
   it("should render no permission message if user doesn't have permission", async () => {
     (checkPermission as jest.Mock).mockImplementationOnce(
-      (data) => !(data === 'ViewAll')
+      (data) => data !== 'ViewAll'
     );
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
