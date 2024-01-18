@@ -4,63 +4,21 @@
   "title": "SubscriptionResourceDescriptor",
   "description": "Subscription descriptor",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.SubscriptionResourceDescriptor",
+  "javaType": "org.openmetadata.schema.type.NotificationResourceDescriptor",
   "definitions": {
     "operation": {
-      "javaType": "org.openmetadata.schema.type.SubscriptionFilterOperation",
+      "javaType": "org.openmetadata.schema.type.NotificationFilterOperation",
       "description": "This schema defines all possible filter operations on metadata of entities in OpenMetadata.",
       "type": "string",
       "enum": [
-        "matchAnySource",
-        "matchAnyOwnerName",
-        "matchAnyEntityFqn",
-        "matchAnyEntityId",
-        "matchAnyEventType",
-        "matchTestResult",
-        "filterByTableNameTestCaseBelongsTo",
-        "getTestCaseStatusIfInTestSuite",
-        "matchUpdatedBy",
-        "matchIngestionPipelineState",
-        "matchAnyFieldChange",
-        "matchAnyDomain"
-      ],
-      "javaEnums": [
-        {
-          "name": "matchAnySource"
-        },
-        {
-          "name": "matchAnyOwnerName"
-        },
-        {
-          "name": "matchAnyEntityFqn"
-        },
-        {
-          "name": "matchAnyEntityId"
-        },
-        {
-          "name": "matchAnyEventType"
-        },
-        {
-          "name": "matchTestResult"
-        },
-        {
-          "name": "filterByTableNameTestCaseBelongsTo"
-        },
-        {
-          "name": "getTestCaseStatusIfInTestSuite"
-        },
-        {
-          "name": "matchUpdatedBy"
-        },
-        {
-          "name": "matchIngestionPipelineState"
-        },
-        {
-          "name": "matchAnyFieldChange"
-        },
-        {
-          "name": "matchAnyDomain"
-        }
+        "filterBySource",
+        "filterByEntityId",
+        "filterByOwnerName",
+        "filterByFqn",
+        "filterByEventType",
+        "filterByUpdaterName",
+        "filterByFieldChange",
+        "filterByDomain"
       ]
     }
   },

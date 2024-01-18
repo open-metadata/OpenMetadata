@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -29,7 +32,6 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -164,7 +166,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
@@ -225,8 +227,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             entityType,
             ingestionPipeline.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public ResultList<PipelineStatus> listPipelineStatus(

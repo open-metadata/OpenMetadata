@@ -65,7 +65,6 @@ import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getFunctionDisplayName,
-  listLengthValidator,
   StyledCard,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -562,15 +561,7 @@ const AddAlertPage = () => {
                         subHeading={t('message.alerts-filter-description')}
                       />
 
-                      <Form.List
-                        name={['filteringRules', 'rules']}
-                        rules={[
-                          {
-                            validator: listLengthValidator(
-                              t('label.filter-plural')
-                            ),
-                          },
-                        ]}>
+                      <Form.List name={['filteringRules', 'rules']}>
                         {(fields, { add, remove }, { errors }) => (
                           <>
                             <Button

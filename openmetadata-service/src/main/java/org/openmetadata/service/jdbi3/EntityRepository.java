@@ -15,6 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
+import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -783,7 +789,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
-          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
+          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
     return update(uriInfo, original, updated);
   }
@@ -815,8 +821,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
-    String change =
-        entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.fieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
     setInheritedFields(updated, new Fields(allowedFields));
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -839,9 +844,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
-    String change = RestUtil.ENTITY_NO_CHANGE;
+    EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
-      change = RestUtil.ENTITY_UPDATED;
+      change = EventType.ENTITY_UPDATED;
       setInheritedFields(original, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
@@ -878,7 +883,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
     postUpdate(entity, entity);
-    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
@@ -925,7 +930,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(originalEntity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     postUpdate(originalEntity, originalEntity);
-    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
@@ -952,9 +957,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void postDelete(T entity) {}
 
-  public final void deleteFromSearch(T entity, String changeType) {
+  public final void deleteFromSearch(T entity, EventType changeType) {
     if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
+      if (changeType.equals(ENTITY_SOFT_DELETED)) {
         searchRepository.softDeleteOrRestoreEntity(entity, true);
       } else {
         searchRepository.deleteEntity(entity);
@@ -976,7 +981,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
     deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
 
-    String changeType;
+    EventType changeType;
     T updated = get(null, original.getId(), putFields, ALL, false);
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(deletedBy);
@@ -984,10 +989,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
       updater.update();
-      changeType = RestUtil.ENTITY_SOFT_DELETED;
+      changeType = ENTITY_SOFT_DELETED;
     } else {
       cleanup(updated);
-      changeType = RestUtil.ENTITY_DELETED;
+      changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
@@ -1113,7 +1118,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
-    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   public final ResultList<T> getResultList(
@@ -1418,7 +1423,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
       updater.update();
-      return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
+      return new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
       LOG.info("Entity is not in deleted state {} {}", entityType, id);
       return null;

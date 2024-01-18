@@ -25,6 +25,18 @@
           "domainList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
       }
     ],
     "supportedActions" : [
@@ -34,7 +46,7 @@
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange({'columns'})",
+        "condition": "matchAnyFieldChange({'columns','dataModel','joins'})",
         "inputType": "none"
       },
       {
@@ -72,6 +84,18 @@
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
           "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
         ],
         "inputType": "runtime"
       }
@@ -117,6 +141,18 @@
           "domainList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
       }
     ],
     "supportedActions" : [
@@ -158,6 +194,18 @@
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
           "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
         ],
         "inputType": "runtime"
       }
@@ -217,6 +265,18 @@
         "inputType": "runtime"
       },
       {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      },
+      {
         "name": "filterByTableNameTestCaseBelongsTo",
         "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
         "displayName": "Filter By Table Name",
@@ -268,6 +328,18 @@
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
           "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Filter By Owner Name",
+        "description" : "Filter A Change Event By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
         ],
         "inputType": "runtime"
       },

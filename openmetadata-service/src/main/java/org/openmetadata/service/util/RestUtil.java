@@ -13,6 +13,12 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
+
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -29,23 +35,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
-  public static final String ENTITY_CREATED = "entityCreated";
-  public static final String ENTITY_UPDATED = "entityUpdated";
-  public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
-  public static final String ENTITY_NO_CHANGE = "entityNoChange";
-  public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
-  public static final String ENTITY_RESTORED = "entityRestored";
-  public static final String ENTITY_DELETED = "entityDeleted";
-  public static final String DELETED_USER_NAME = "DeletedUser";
-  public static final String DELETED_USER_DISPLAY = "User was deleted";
-  public static final String DELETED_TEAM_NAME = "DeletedTeam";
-  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
-  public static final String LOGICAL_TEST_CASES_ADDED = "Logical Test Cases Added to Test Suite";
-
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;
 
@@ -124,20 +118,20 @@ public final class RestUtil {
     @Getter private T entity;
     private ChangeEvent changeEvent;
     @Getter private final Response.Status status;
-    private final String changeType;
+    private final EventType changeType;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
      * a new entity
      */
-    public PutResponse(Response.Status status, T entity, String changeType) {
+    public PutResponse(Response.Status status, T entity, EventType changeType) {
       this.entity = entity;
       this.status = status;
       this.changeType = changeType;
     }
 
     /** When PUT response updates an entity */
-    public PutResponse(Response.Status status, ChangeEvent changeEvent, String changeType) {
+    public PutResponse(Response.Status status, ChangeEvent changeEvent, EventType changeType) {
       this.changeEvent = changeEvent;
       this.status = status;
       this.changeType = changeType;
@@ -146,11 +140,11 @@ public final class RestUtil {
     public Response toResponse() {
       ResponseBuilder responseBuilder =
           Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
-      if (changeType.equals(RestUtil.ENTITY_CREATED)
-          || changeType.equals(RestUtil.ENTITY_UPDATED)
-          || changeType.equals(RestUtil.ENTITY_NO_CHANGE)
-          || changeType.equals(RestUtil.ENTITY_RESTORED)
-          || changeType.equals(RestUtil.LOGICAL_TEST_CASES_ADDED)) {
+      if (changeType.equals(ENTITY_CREATED)
+          || changeType.equals(ENTITY_UPDATED)
+          || changeType.equals(ENTITY_NO_CHANGE)
+          || changeType.equals(ENTITY_RESTORED)
+          || changeType.equals(LOGICAL_TEST_CASE_ADDED)) {
         return responseBuilder.entity(entity).build();
       } else {
         return responseBuilder.entity(changeEvent).build();
@@ -158,19 +152,19 @@ public final class RestUtil {
     }
   }
 
-  public record PatchResponse<T>(Status status, T entity, String changeType) {
+  public record PatchResponse<T>(Status status, T entity, EventType changeType) {
     public Response toResponse() {
       return Response.status(status)
-          .header(CHANGE_CUSTOM_HEADER, changeType)
+          .header(CHANGE_CUSTOM_HEADER, changeType.value())
           .entity(entity)
           .build();
     }
   }
 
-  public record DeleteResponse<T>(T entity, String changeType) {
+  public record DeleteResponse<T>(T entity, EventType changeType) {
     public Response toResponse() {
       ResponseBuilder responseBuilder =
-          Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
+          Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType.value());
       return responseBuilder.entity(entity).build();
     }
   }

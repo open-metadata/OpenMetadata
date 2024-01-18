@@ -17,8 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -267,7 +267,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String eventPublisherFailedToPublish(
-      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) {
+      SubscriptionDestination.SubscriptionType type, ChangeEvent event, String message) {
     return String.format(
         "Failed to publish event %s to %s due to %s ",
         JsonUtils.pojoToJson(event), type.value(), message);

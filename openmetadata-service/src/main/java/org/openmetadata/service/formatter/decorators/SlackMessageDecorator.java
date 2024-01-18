@@ -13,19 +13,14 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
-import org.openmetadata.service.util.FeedUtils;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -69,43 +64,34 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildMessage(ChangeEvent event) {
-    SlackMessage slackMessage = new SlackMessage();
-    slackMessage.setUsername(event.getUserName());
-    EntityInterface entityInterface = getEntity(event);
-    if (event.getEntity() != null) {
-      String eventType;
-      if (event.getEntity() instanceof TestCase) {
-        eventType = "testSuite";
-      } else {
-        eventType = event.getEntityType();
-      }
-      String headerTxt;
-      String headerText;
-      if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt, event.getUserName());
-      } else {
-        headerTxt = "%s posted on " + eventType + " %s";
-        headerText =
-            String.format(
-                headerTxt,
-                event.getUserName(),
-                this.buildEntityUrl(event.getEntityType(), entityInterface));
-      }
-      slackMessage.setText(headerText);
+  public SlackMessage buildEntityMessage(ChangeEvent event) {
+    return getSlackMessage(createEntityMessage(event));
+  }
+
+  @Override
+  public SlackMessage buildThreadMessage(ChangeEvent event) {
+    return getSlackMessage(createThreadMessage(event));
+  }
+
+  private SlackMessage getSlackMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      SlackMessage message = new SlackMessage();
+      List<SlackAttachment> attachmentList = new ArrayList<>();
+      outgoingMessage.getMessages().forEach(m -> attachmentList.add(getSlackAttachment(m)));
+      message.setUsername(outgoingMessage.getUserName());
+      message.setText(outgoingMessage.getHeader());
+      message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+      return message;
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
-    List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (Thread entry : thread) {
-      SlackAttachment attachment = new SlackAttachment();
-      List<String> mark = new ArrayList<>();
-      mark.add("text");
-      attachment.setMarkdownIn(mark);
-      attachment.setText(entry.getMessage());
-      attachmentList.add(attachment);
-    }
-    slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
-    return slackMessage;
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private SlackAttachment getSlackAttachment(String message) {
+    SlackAttachment attachment = new SlackAttachment();
+    List<String> mark = new ArrayList<>();
+    mark.add("text");
+    attachment.setMarkdownIn(mark);
+    attachment.setText(message);
+    return attachment;
   }
 }

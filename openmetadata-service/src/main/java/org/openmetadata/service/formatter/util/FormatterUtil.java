@@ -14,10 +14,11 @@
 package org.openmetadata.service.formatter.util;
 
 import static java.lang.String.format;
-import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 
 import java.util.ArrayList;
@@ -29,15 +30,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.json.stream.JsonParsingException;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -53,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class FormatterUtil {
 
   public static MessageParser.EntityLink getEntityLink(String fieldName, EntityInterface entity) {
@@ -79,7 +80,7 @@ public class FormatterUtil {
   }
 
   public static String getFieldValue(Object fieldValue) {
-    if (CommonUtil.nullOrEmpty(fieldValue)) {
+    if (nullOrEmpty(fieldValue)) {
       return StringUtils.EMPTY;
     }
     try {
@@ -168,7 +169,7 @@ public class FormatterUtil {
     String oldField = getFieldValue(fieldChange.getOldValue());
     String newField = getFieldValue(fieldChange.getNewValue());
     DefaultFieldFormatter fieldSpecificFormatter;
-    if (CommonUtil.nullOrEmpty(arrayFieldValue)) {
+    if (nullOrEmpty(arrayFieldValue)) {
       fieldSpecificFormatter =
           getFieldParserObject(messageFormatter, oldField, newField, updatedField, link);
     } else {
@@ -230,10 +231,7 @@ public class FormatterUtil {
                     CHANGE_TYPE.UPDATE);
         messages.put(link, message);
         // Remove the field from addedFields list to avoid double processing
-        fieldsAdded =
-            fieldsAdded.stream()
-                .filter(f -> !f.equals(addedField.get()))
-                .collect(Collectors.toList());
+        fieldsAdded = fieldsAdded.stream().filter(f -> !f.equals(addedField.get())).toList();
       } else {
         // process the deleted field
         messages.putAll(
@@ -266,73 +264,71 @@ public class FormatterUtil {
     return messages;
   }
 
-  public static ChangeEvent getChangeEventFromResponseContext(
+  public static Optional<ChangeEvent> getChangeEventFromResponseContext(
       ContainerResponseContext responseContext, String updateBy, String method) {
     // GET operations don't produce change events , Response has no entity to produce change event
     // from
     if (method.equals("GET") || responseContext.getEntity() == null) {
-      return null;
+      return Optional.empty();
     }
 
-    int responseCode = responseContext.getStatus();
+    Optional<EventType> eventType = getEventTypeFromResponse(responseContext);
+    if (eventType.isEmpty() || !responseContext.hasEntity()) {
+      return Optional.empty();
+    }
+
+    return Optional.ofNullable(extractChangeEvent(responseContext, updateBy, eventType.get()));
+  }
+
+  private static ChangeEvent extractChangeEvent(
+      ContainerResponseContext responseContext, String updateBy, EventType eventType) {
+    // If the response entity is a ChangeEvent, then return it as is , example in case of
+    // ENTITY_FIELDS_CHANGED
+    if (responseContext.getEntity() instanceof ChangeEvent fieldChangedChangeEvent) {
+      return fieldChangedChangeEvent;
+    }
+
+    // If the response entity is an EntityInterface, then create a ChangeEvent from it
+    if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
+      return createChangeEventForEntity(updateBy, eventType, entityInterface);
+    }
+
+    // If the response entity is a Thread, then create a ChangeEvent from it
+    if (responseContext.getEntity() instanceof Thread thread) {
+      return createChangeEventForThread(updateBy, eventType, thread);
+    }
+
+    LOG.debug("Unknown event type in Change Event :  {}", eventType.value());
+    return null;
+  }
+
+  private static ChangeEvent createChangeEventForEntity(
+      String updateBy, EventType eventType, EntityInterface entityInterface) {
+    return getChangeEvent(
+            updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
+        .withPreviousVersion(
+            entityInterface.getChangeDescription() != null
+                ? entityInterface.getChangeDescription().getPreviousVersion()
+                : entityInterface.getVersion())
+        .withEntity(entityInterface)
+        .withEntityFullyQualifiedName(entityInterface.getEntityReference().getFullyQualifiedName());
+  }
+
+  private static ChangeEvent createChangeEventForThread(
+      String updateBy, EventType eventType, Thread threadEntity) {
+    return getChangeEventForThread(updateBy, eventType, THREAD, threadEntity)
+        .withEntity(threadEntity);
+  }
+
+  private static Optional<EventType> getEventTypeFromResponse(
+      ContainerResponseContext responseContext) {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
-    ChangeEvent changeEvent = null;
-
-    // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT
-    // ../tables/{id}/followera
-    if (changeType != null && changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
-      changeEvent = (ChangeEvent) responseContext.getEntity();
-    } else if (responseContext.getEntity() != null
-        && responseContext.getEntity() instanceof EntityInterface entityInterface) {
-      EntityReference entityReference = entityInterface.getEntityReference();
-      String entityType = entityReference.getType();
-      String entityFQN = entityReference.getFullyQualifiedName();
-      EventType eventType = changeType != null ? EventType.fromValue(changeType) : null;
-
-      // Entity was created by either POST .../entities or PUT .../entities
-      if (responseCode == Response.Status.CREATED.getStatusCode()
-          && !responseContext.getEntity().getClass().equals(Thread.class)) {
-        changeEvent =
-            getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(entityFQN);
-      } else if (changeType != null
-          && changeType.equals(
-              RestUtil.LOGICAL_TEST_CASES_ADDED)) { // Handles Bulk Add test cases to a logical test
-        // suite
-        changeEvent =
-            getChangeEvent(updateBy, EventType.ENTITY_UPDATED, entityType, entityInterface)
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(entityFQN);
-      } else if ((changeType != null
-              && !RestUtil.ENTITY_NO_CHANGE.equals(
-                  changeType)) // PUT or PATCH operation didn't result in any change
-          && (changeType.equals(RestUtil.ENTITY_UPDATED)
-              || changeType.equals(RestUtil.ENTITY_SOFT_DELETED))) {
-        changeEvent =
-            getChangeEvent(updateBy, eventType, entityType, entityInterface)
-                .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(entityFQN);
-      } else if (changeType != null
-          && changeType.equals(
-              RestUtil.ENTITY_RESTORED)) { // Entity was restored by PUT ../entities/{id}/restore
-        changeEvent =
-            getChangeEvent(updateBy, ENTITY_RESTORED, entityType, entityInterface)
-                .withPreviousVersion(entityInterface.getVersion())
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(entityFQN);
-      } else if (changeType != null
-          && changeType.equals(RestUtil.ENTITY_DELETED)) { // Entity was hard deleted by DELETE
-        // ../entities/{id}?hardDelete=true
-        changeEvent =
-            getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
-                .withPreviousVersion(entityInterface.getVersion())
-                .withEntity(entityInterface)
-                .withEntityFullyQualifiedName(entityFQN);
-      }
+    if (changeType != null) {
+      return Optional.of(EventType.fromValue(changeType));
+    } else if (responseContext.getStatus() == Response.Status.CREATED.getStatusCode()) {
+      return Optional.of(ENTITY_CREATED);
     }
-    return changeEvent;
+    return Optional.empty();
   }
 
   private static ChangeEvent getChangeEvent(
@@ -346,5 +342,16 @@ public class FormatterUtil {
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
+  }
+
+  private static ChangeEvent getChangeEventForThread(
+      String updateBy, EventType eventType, String entityType, Thread thread) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(eventType)
+        .withEntityId(thread.getId())
+        .withEntityType(entityType)
+        .withUserName(updateBy)
+        .withTimestamp(thread.getUpdatedAt());
   }
 }

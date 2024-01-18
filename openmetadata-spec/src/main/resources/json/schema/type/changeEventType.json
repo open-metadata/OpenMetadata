@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/changeEventTyoe.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventType",
+  "description": "Type of event.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.type.EventType",
+  "enum": [
+    "entityCreated",
+    "entityUpdated",
+    "entityFieldsChanged",
+    "entityNoChange",
+    "entitySoftDeleted",
+    "entityDeleted",
+    "entityRestored",
+    "threadCreated",
+    "threadUpdated",
+    "postCreated",
+    "postUpdated",
+    "taskResolved",
+    "taskClosed",
+    "logicalTestCaseAdded"
+  ]
+}

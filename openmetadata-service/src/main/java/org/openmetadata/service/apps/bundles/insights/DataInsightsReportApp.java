@@ -4,6 +4,7 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TIER;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TYPE;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
@@ -150,7 +150,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   private void sendToAdmins(
       SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
-    Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
+    Set<String> emailList = getAdminsData(EMAIL);
     try {
       // Build Insights Report
       DataInsightTotalAssetTemplate totalAssetTemplate =
