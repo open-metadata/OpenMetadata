@@ -25,6 +25,7 @@ import {
   map,
   toLower,
 } from 'lodash';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +60,6 @@ import { SummaryCardProps } from '../../common/SummaryCard/SummaryCard.interface
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-import { DateRangeObject } from '../../ProfilerDashboard/component/TestSummary';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import {
   columnTestResultType,
