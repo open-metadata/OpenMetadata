@@ -17,6 +17,7 @@ from typing import Iterable, Optional, cast
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -117,7 +118,6 @@ class OpenMetadataSource(Source):
         self.metadata.health_check()
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-
         for database in self.get_database_entities():
             try:
                 profiler_source = profiler_source_factory.create(
@@ -149,9 +149,17 @@ class OpenMetadataSource(Source):
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.config.source.serviceName,
+            database_name=database.name.__root__,
+        )
         if filter_by_database(
             self.source_config.databaseFilterPattern,
-            database.name.__root__,
+            database_fqn
+            if self.source_config.useFqnForFiltering
+            else database.name.__root__,
         ):
             self.status.filter(database.name.__root__, "Database pattern not allowed")
             return None
@@ -166,18 +174,38 @@ class OpenMetadataSource(Source):
         """
         for table in tables:
             try:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                )
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern,
-                    table.databaseSchema.name,  # type: ignore
+                    schema_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.databaseSchema.name,  # type: ignore
                 ):
                     self.status.filter(
                         f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
                         "Schema pattern not allowed",
                     )
                     continue
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                    table_name=table.name.__root__,
+                )
+
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table.name.__root__,
+                    table_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.name.__root__,
                 ):
                     self.status.filter(
                         f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",
