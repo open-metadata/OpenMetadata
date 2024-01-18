@@ -1,26 +1,5 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -89,20 +68,6 @@ import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryConte
 import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -156,6 +121,42 @@ import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
+
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -442,11 +443,12 @@ public class ElasticSearchClient implements SearchClient {
       String entityType)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
-    List<Map<String, Object>> edges = new ArrayList<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+      return searchPipelineLineage(
+          fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
@@ -457,10 +459,6 @@ public class ElasticSearchClient implements SearchClient {
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
       responseMap.put("entity", hit.getSourceAsMap());
-    }
-    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
-        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     }
     getLineage(
         fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
@@ -474,7 +472,7 @@ public class ElasticSearchClient implements SearchClient {
   private void getLineage(
       String fqn,
       int depth,
-      List<Map<String, Object>> edges,
+      Set<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
       String queryFilter,
       String direction,
@@ -535,10 +533,14 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private Response searchPipelineLineage(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Map<String, Object> responseMap)
       throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    List<Map<String, Object>> edges = new ArrayList<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -577,22 +579,26 @@ public class ElasticSearchClient implements SearchClient {
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
         HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        getLineage(
-            fromEntity.get("fqn"),
-            upstreamDepth,
-            edges,
-            nodes,
-            queryFilter,
-            "lineage.toEntity.fqn.keyword",
-            deleted);
-        getLineage(
-            toEntity.get("fqn"),
-            downstreamDepth,
-            edges,
-            nodes,
-            queryFilter,
-            "lineage.fromEntity.fqn.keyword",
-            deleted);
+        HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
+        if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
+          edges.add(lin);
+          getLineage(
+              fromEntity.get("fqn"),
+              upstreamDepth,
+              edges,
+              nodes,
+              queryFilter,
+              "lineage.toEntity.fqn.keyword",
+              deleted);
+          getLineage(
+              toEntity.get("fqn"),
+              downstreamDepth,
+              edges,
+              nodes,
+              queryFilter,
+              "lineage.fromEntity.fqn.keyword",
+              deleted);
+        }
       }
     }
     responseMap.put("edges", edges);
