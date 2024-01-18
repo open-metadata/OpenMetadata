@@ -388,7 +388,7 @@ class BigquerySource(
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         return self.client.get_table(bq_table_fqn)
 
-    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+    def yield_table_tags(self, table_name_and_type: Tuple[str, str]):
         table_name, _ = table_name_and_type
         table_obj = self.get_table_obj(table_name=table_name)
         if table_obj.labels:
