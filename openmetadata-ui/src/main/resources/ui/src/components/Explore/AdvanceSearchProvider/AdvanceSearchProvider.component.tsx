@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isNil, isString } from 'lodash';
+import { cloneDeep, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -71,6 +71,7 @@ export const AdvanceSearchProvider = ({
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
   const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
+  const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
     () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
@@ -118,6 +119,10 @@ export const AdvanceSearchProvider = ({
     treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
   );
 
+  useEffect(() => {
+    setConfig(getQbConfigs(searchIndex));
+  }, [searchIndex]);
+
   const handleChange = useCallback(
     (nTree, nConfig) => {
       setConfig(nConfig);
@@ -148,7 +153,7 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
     setQueryFilter(undefined);
     setSQLQuery('');
-  }, [config]);
+  }, []);
 
   const handleConfigUpdate = (updatedConfig: Config) => {
     setConfig(updatedConfig);
@@ -229,35 +234,46 @@ export const AdvanceSearchProvider = ({
       (await getCustomAttributesSubfields(actualConfig)) ?? actualConfig;
     updatedConfig = await getTierFields(updatedConfig);
     setConfig(updatedConfig);
+    setInitialised(true);
 
     return updatedConfig;
   };
 
-  const loadTree = async (treeObj: JsonTree) => {
-    const config = await loadData();
-    const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), config);
-    setTreeInternal(tree);
-    const qFilter = {
-      query: elasticSearchFormat(tree, config),
-    };
-    setQueryFilter(qFilter);
-    setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
-  };
+  const loadTree = useCallback(
+    async (treeObj: JsonTree) => {
+      const updatedConfig = config;
+      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+
+      setTreeInternal(tree);
+      const qFilter = {
+        query: elasticSearchFormat(tree, updatedConfig),
+      };
+      if (isEqual(qFilter, queryFilter)) {
+        return;
+      }
+
+      setQueryFilter(qFilter);
+      setSQLQuery(QbUtils.sqlFormat(tree, updatedConfig) ?? '');
+    },
+    [config, queryFilter]
+  );
 
   useEffect(() => {
-    if (!jsonTree) {
-      loadData();
-    }
+    loadData();
   }, [searchIndex]);
 
   useEffect(() => {
+    if (!initialised) {
+      return;
+    }
     if (jsonTree) {
       loadTree(jsonTree);
     } else {
       handleReset();
     }
+
     setLoading(false);
-  }, [jsonTree]);
+  }, [jsonTree, initialised]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
