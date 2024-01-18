@@ -307,6 +307,10 @@ export const ROUTES = {
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
 
+  INCIDENT_MANAGER: '/incident-manager',
+  INCIDENT_MANAGER_DETAILS: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}`,
+  INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 
@@ -776,15 +780,15 @@ export const ENTITY_PATH = {
   topics: 'topic',
   dashboards: 'dashboard',
   pipelines: 'pipeline',
-  mlModels: 'mlmodel',
+  mlmodels: 'mlmodel',
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-  searchIndex: 'searchIndex',
-  storedProcedure: 'storedProcedure',
+  searchIndexes: 'searchIndex',
+  storedProcedures: 'storedProcedure',
   glossaryTerm: 'glossaryTerm',
-  database: 'database',
-  databaseSchema: 'databaseSchema',
+  databases: 'database',
+  databaseSchemas: 'databaseSchema',
 };
 
 export const VALIDATION_MESSAGES = {

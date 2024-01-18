@@ -202,6 +202,76 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT count(*) FROM <table>")
   int listTotalCount(@Define("table") String table);
 
+  @ConnectionAwareSqlQuery(
+      value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <mysqlCond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <postgresCond>",
+      connectionType = POSTGRES)
+  int listCount(
+      @Define("table") String table,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond,
+      @Define("distinctColumn") String distinctColumn);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM ("
+              + "SELECT <table>.name, <table>.json FROM <table> <mysqlCond> AND "
+              + "<table>.name < :before "
+              + "<groupBy> "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY <table>.name DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
+              // have fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY name",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM ("
+              + "SELECT <table>.name, <table>.json FROM <table> <postgresCond> AND "
+              + "<table>.name < :before "
+              + "<groupBy> "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY <table>.name DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
+              // have fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY name",
+      connectionType = POSTGRES)
+  List<String> listBefore(
+      @Define("table") String table,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond,
+      @Bind("limit") int limit,
+      @Bind("before") String before,
+      @Define("groupBy") String groupBy);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <table>.json FROM <table> <mysqlCond> AND "
+              + "<table>.name > :after "
+              + "<groupBy> "
+              + "ORDER BY <table>.name "
+              + "LIMIT :limit",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <table>.json FROM <table> <postgresCond> AND "
+              + "<table>.name > :after "
+              + "<groupBy> "
+              + "ORDER BY <table>.name "
+              + "LIMIT :limit",
+      connectionType = POSTGRES)
+  List<String> listAfter(
+      @Define("table") String table,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond,
+      @Bind("limit") int limit,
+      @Bind("after") String after,
+      @Define("groupBy") String groupBy);
+
   @SqlQuery(
       "SELECT json FROM ("
           + "SELECT name, json FROM <table> <cond> AND "

@@ -52,9 +52,9 @@ import {
   replaceAllSpacialCharWith_,
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getBrokers } from './MessagingServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getFormattedGuideText = (
@@ -456,22 +456,22 @@ export const getEntityTypeFromServiceCategory = (
 export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
   switch (serviceCategory) {
     case ServiceCategory.MESSAGING_SERVICES:
-      return getEntityLink(SearchIndex.TOPIC, fqn);
+      return entityUtilClassBase.getEntityLink(SearchIndex.TOPIC, fqn);
 
     case ServiceCategory.DASHBOARD_SERVICES:
-      return getEntityLink(SearchIndex.DASHBOARD, fqn);
+      return entityUtilClassBase.getEntityLink(SearchIndex.DASHBOARD, fqn);
 
     case ServiceCategory.PIPELINE_SERVICES:
-      return getEntityLink(SearchIndex.PIPELINE, fqn);
+      return entityUtilClassBase.getEntityLink(SearchIndex.PIPELINE, fqn);
 
     case ServiceCategory.ML_MODEL_SERVICES:
-      return getEntityLink(SearchIndex.MLMODEL, fqn);
+      return entityUtilClassBase.getEntityLink(SearchIndex.MLMODEL, fqn);
 
     case ServiceCategory.STORAGE_SERVICES:
-      return getEntityLink(EntityType.CONTAINER, fqn);
+      return entityUtilClassBase.getEntityLink(EntityType.CONTAINER, fqn);
 
     case ServiceCategory.SEARCH_SERVICES:
-      return getEntityLink(EntityType.SEARCH_INDEX, fqn);
+      return entityUtilClassBase.getEntityLink(EntityType.SEARCH_INDEX, fqn);
 
     case ServiceCategory.DATABASE_SERVICES:
     default:

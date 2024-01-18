@@ -183,10 +183,10 @@ const AddAlertPage = () => {
 
     const requestFilteringRules = filteringRules?.rules?.map((curr) => ({
       ...curr,
-      condition: `${curr.name}(${map(
+      condition: `${curr.name}({${map(
         curr.condition,
         (v: string) => `'${v}'`
-      )?.join(', ')})`,
+      )?.join(', ')}})`,
     }));
 
     try {
@@ -323,7 +323,7 @@ const AddAlertPage = () => {
                 data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
-                  func.paramAdditionalContext?.data?.map((d) => ({
+                  func.paramAdditionalContext?.data?.map((d: string) => ({
                     label: startCase(d),
                     value: d,
                   })) ?? []

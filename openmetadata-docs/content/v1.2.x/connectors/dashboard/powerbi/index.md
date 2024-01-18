@@ -12,6 +12,7 @@ slug: /connectors/dashboard/powerbi
 | Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Datamodels | {% icon iconName="check" /%} |
+| Projects   | {% icon iconName="check" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the PowerBI connector.

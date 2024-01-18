@@ -24,37 +24,23 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  // Click on settings page
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
 
-  verifyResponseStatusCode('@getSettingsPage', 200);
+  cy.sidebarClick('app-bar-item-settings');
+
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-  cy.get('.ant-menu-title-content')
-    .contains(service.type)
-    .should('be.visible')
-    .click();
+  cy.get('.ant-menu-title-content').contains(service.type).click();
 
   cy.wait('@getServices');
 
   searchServiceFromSettingPage(service.name);
 
   // click on created service
-  cy.get(`[data-testid="service-name-${service.name}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="service-name-${service.name}"]`).click();
 
   if (verifyHeader) {
     cy.get(`[data-testid="entity-header-display-name"]`)
-      .should('exist')
-      .should('be.visible')
       .invoke('text')
       .then((text) => {
         expect(text).to.equal(service.displayName);

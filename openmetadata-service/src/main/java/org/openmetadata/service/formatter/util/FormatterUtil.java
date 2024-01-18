@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -337,6 +338,7 @@ public class FormatterUtil {
   private static ChangeEvent getChangeEvent(
       String updateBy, EventType eventType, String entityType, EntityInterface entityInterface) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)

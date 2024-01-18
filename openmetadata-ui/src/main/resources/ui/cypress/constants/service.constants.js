@@ -58,7 +58,7 @@ export const VISIT_SERVICE_PAGE_DETAILS = {
     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
   },
   [SERVICE_TYPE.MLModels]: {
-    settingsMenuId: 'services.mlModels',
+    settingsMenuId: 'services.mlmodels',
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
   },
   [SERVICE_TYPE.Storage]: {
@@ -68,5 +68,9 @@ export const VISIT_SERVICE_PAGE_DETAILS = {
   [SERVICE_TYPE.Search]: {
     settingsMenuId: 'services.search',
     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  },
+  [SERVICE_TYPE.Metadata]: {
+    settingsMenuId: 'services.metadata',
+    serviceCategory: SERVICE_CATEGORIES.METADATA_SERVICES,
   },
 };

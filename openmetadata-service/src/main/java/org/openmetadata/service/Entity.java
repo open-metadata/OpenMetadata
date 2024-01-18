@@ -467,7 +467,12 @@ public final class Entity {
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId, recursive, hardDelete);
+    try {
+      dao.find(entityId, Include.ALL);
+      dao.delete(updatedBy, entityId, recursive, hardDelete);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Entity {} is already deleted.", entityId);
+    }
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {

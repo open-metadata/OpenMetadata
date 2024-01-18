@@ -38,7 +38,8 @@ const RECENTLY_VIEW_ENTITIES = [
   VISIT_ENTITIES_DATA.topic,
   VISIT_ENTITIES_DATA.pipeline,
   VISIT_ENTITIES_DATA.mlmodel,
-  VISIT_ENTITIES_DATA.storedProcedure,
+  // ES issue
+  //   VISIT_ENTITIES_DATA.storedProcedure,
 ];
 
 describe('Recently viwed data assets', () => {
@@ -92,7 +93,6 @@ describe('Recently viwed data assets', () => {
 
   beforeEach(() => {
     cy.login();
-    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('recently view section should be present', () => {

@@ -12,6 +12,7 @@
  */
 
 import React, { FC } from 'react';
+import { getEntityName } from '../../../utils/EntityUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import { AssigneeListProps, UserTeam } from './AssigneeList.interface';
 
@@ -23,6 +24,7 @@ const AssigneeList: FC<AssigneeListProps> = ({
     <div className="d-flex gap-1 flex-wrap">
       {assignees.map((assignee) => (
         <UserPopOverCard
+          displayName={getEntityName(assignee)}
           key={assignee.name}
           showUserName={showUserName}
           type={assignee.type as UserTeam}

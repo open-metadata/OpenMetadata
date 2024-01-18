@@ -35,14 +35,14 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
   it(`should show the quick filters for respective assets`, () => {
     // Navigate to explore page
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
     QUICK_FILTERS_BY_ASSETS.map((asset) => {
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
       asset.filters.map((filter) => {
         cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
-          .should('exist')
-          .and('be.visible');
+          .scrollIntoView()
+          .should('be.visible');
       });
     });
   });
@@ -52,7 +52,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
     const asset = QUICK_FILTERS_BY_ASSETS[0];
 
     // Navigate to explore page
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick('app-bar-item-explore');
     cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
     asset.filters
@@ -64,17 +64,89 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
         const querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
         }*query_filter=*should*${filter.key}*${encodeURI(
-          Cypress._.toLower(filter.selectOption1)
+          Cypress._.toLower(filter.selectOption1).replace(' ', '+')
         )}*`;
 
         interceptURL('GET', querySearchURL, 'querySearchAPI');
 
-        cy.get('[data-testid="update-btn"]')
-          .should('exist')
-          .and('be.visible')
-          .click();
+        cy.get('[data-testid="update-btn"]').click();
 
         verifyResponseStatusCode('@querySearchAPI', 200);
       });
+  });
+});
+
+const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
+  cy.sidebarClick('app-bar-item-explore');
+  const asset = QUICK_FILTERS_BY_ASSETS[0];
+  cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+  cy.get('[data-testid="advance-search-button"]').click();
+
+  // Check Is Null or Is Not Null
+  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
+  cy.get(`[title="${operatorTitle}"]`).click();
+
+  cy.intercept('GET', '/api/v1/search/query?*', (req) => {
+    req.alias = alias;
+  }).as(alias);
+
+  cy.get('[data-testid="apply-btn"]').click();
+
+  cy.wait(`@${alias}`).then((xhr) => {
+    const actualQueryFilter = JSON.parse(xhr.request.query['query_filter']);
+
+    expect(actualQueryFilter).to.deep.equal(queryFilter);
+  });
+};
+
+describe(`Advanced Search Modal`, () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('should check isNull and isNotNull filters', () => {
+    // Check Is Null
+    const isNullQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [
+                  {
+                    bool: {
+                      must_not: {
+                        exists: { field: 'owner.displayName.keyword' },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+    testIsNullAndIsNotNullFilters('Is null', isNullQuery, 'searchAPI');
+
+    // Check Is Not Null
+    const isNotNullQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [{ exists: { field: 'owner.displayName.keyword' } }],
+              },
+            },
+          ],
+        },
+      },
+    };
+    testIsNullAndIsNotNullFilters(
+      'Is not null',
+      isNotNullQuery,
+      'newSearchAPI'
+    );
   });
 });

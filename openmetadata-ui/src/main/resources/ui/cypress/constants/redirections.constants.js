@@ -66,8 +66,14 @@ export const NAVBAR_DETAILS = {
     url: `${BASE_URL}/explore/tables`,
   },
   quality: {
-    testid: '[data-testid="app-bar-item-data-quality"]',
+    testid: `[data-testid="data-quality"]`,
+    subMenu: '[data-testid="app-bar-item-data-contract"]',
     url: `${BASE_URL}/data-quality`,
+  },
+  incidentManager: {
+    testid: `[data-testid="data-quality"]`,
+    subMenu: '[data-testid="app-bar-item-incident-manager"]',
+    url: `${BASE_URL}/incident-manager`,
   },
   insights: {
     testid: '[data-testid="app-bar-item-data-insight"]',
@@ -120,11 +126,11 @@ export const SETTINGS_LEFT_PANEL = {
     url: `${BASE_URL}/settings/access/policies`,
   },
   databases: {
-    testid: '[data-menu-id*="databases"]',
+    testid: '[data-menu-id*="services.databases"]',
     url: `${BASE_URL}/settings/services/databases`,
   },
   messaging: {
-    testid: '[data-menu-id*="messaging"]',
+    testid: '[data-menu-id*="services.messaging"]',
     url: `${BASE_URL}/settings/services/messaging`,
   },
   dashboard: {
@@ -136,8 +142,8 @@ export const SETTINGS_LEFT_PANEL = {
     url: `${BASE_URL}/settings/services/pipelines`,
   },
   mlmodels: {
-    testid: '[data-menu-id*="services.mlModels"]',
-    url: `${BASE_URL}/settings/services/mlModels`,
+    testid: '[data-menu-id*="services.mlmodels"]',
+    url: `${BASE_URL}/settings/services/mlmodels`,
   },
   metadata: {
     testid: '[data-menu-id*="services.metadata"]',
@@ -176,20 +182,20 @@ export const SETTINGS_LEFT_PANEL = {
     url: `${BASE_URL}/settings/customAttributes/pipelines`,
   },
   customAttributesMlModels: {
-    testid: '[data-menu-id*="customAttributes.mlModels"]',
-    url: `${BASE_URL}/settings/customAttributes/mlModels`,
+    testid: '[data-menu-id*="customAttributes.mlmodels"]',
+    url: `${BASE_URL}/settings/customAttributes/mlmodels`,
   },
   customAttributesContainers: {
     testid: '[data-menu-id*="customAttributes.containers"]',
     url: `${BASE_URL}/settings/customAttributes/containers`,
   },
   customAttributesSearchIndex: {
-    testid: '[data-menu-id*="customAttributes.searchIndex"]',
-    url: `${BASE_URL}/settings/customAttributes/searchIndex`,
+    testid: '[data-menu-id*="customAttributes.searchIndexes"]',
+    url: `${BASE_URL}/settings/customAttributes/searchIndexes`,
   },
   customAttributesStoredProcedure: {
-    testid: '[data-menu-id*="customAttributes.storedProcedure"]',
-    url: `${BASE_URL}/settings/customAttributes/storedProcedure`,
+    testid: '[data-menu-id*="customAttributes.storedProcedures"]',
+    url: `${BASE_URL}/settings/customAttributes/storedProcedures`,
   },
   applications: {
     testid: '[data-menu-id*="integrations.apps"]',

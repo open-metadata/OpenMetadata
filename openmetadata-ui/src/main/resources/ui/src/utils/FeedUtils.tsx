@@ -68,6 +68,7 @@ import {
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
 import Fqn from './Fqn';
 import {
@@ -75,7 +76,6 @@ import {
   ImageQuality,
 } from './ProfilerUtils';
 import { getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -561,7 +561,7 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
     EntityType.TYPE,
   ];
 
-  const entityLink = getEntityLink(entityType, entityFQN);
+  const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
   if (!withoutFeedEntities.includes(entityType as EntityType)) {
     return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
@@ -602,7 +602,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
   ) {
     displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
   } else {
-    displayName = getPartialNameFromFQN(entityFQN, ['database']);
+    displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
   }
 
   // Remove quotes if the name is wrapped in quotes

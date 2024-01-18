@@ -97,7 +97,7 @@ const QueryPage = () => {
 
   const fetchEntityDetails = async () => {
     try {
-      const tableRes = await getTableDetailsByFQN(datasetFQN, '');
+      const tableRes = await getTableDetailsByFQN(datasetFQN);
       setTitleBreadcrumb([
         ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {

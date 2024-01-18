@@ -14,7 +14,8 @@ slug: /connectors/database/athena/yaml
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
@@ -62,7 +63,7 @@ This policy groups the following permissions:
 
 - `athena` – Allows the principal to run queries on Athena resources.
 - `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena. Resources of each table and database needs to be added as resource for each database user wants to ingest.
-- `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
+- `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation and allows access to the LF-tags linked to databases, tables and columns.
 
 And is defined as:
 
@@ -91,7 +92,8 @@ And is defined as:
             "Action": [
                 "glue:GetTables",
                 "glue:GetTable",
-                "glue:GetDatabases"
+                "glue:GetDatabases",
+                "glue:GetPartitions"
             ],
             "Effect": "Allow",
             "Resource": [
@@ -111,11 +113,24 @@ And is defined as:
             "Resource": [
                 "arn:aws:s3:::<<ATHENA_S3_BUCKET>>/*"
             ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+              "lakeformation:GetResourceLFTags"
+            ],
+            "Resource": [
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:datacatalog/<<DATA_CATALOG_NAME>>/database/<<DATABASE_NAME>>"
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:datacatalog/<<DATA_CATALOG_NAME>>/database/<<DATABASE_NAME>>/table/<<TABLE_NAME>>"
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:datacatalog/<<DATA_CATALOG_NAME>>/database/<<DATABASE_NAME>>/table/<<TABLE_NAME>>/column/<<COLUMN_NAME>>"
+            ]
         }
     ]
 }
 ```
 
+### LF-Tags
+Athena connector ingests and creates LF-tags in OpenMetadata with LF-tag key mapped to OpenMetadata's classification and the values mapped to tag labels. To ingest LF-tags provide the appropriate permissions as to the resources as mentioned above and enable the `includeTags` toggle in the ingestion config.
 
 {% note %}
 
@@ -124,7 +139,7 @@ If you have external services other than glue and facing permission issues, add 
 {% /note %}
 
 
-You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
+You can find further information on the Athena connector in the [docs](/connectors/database/athena).
 
 ### Python Requirements
 

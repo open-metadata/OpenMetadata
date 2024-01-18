@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
-    EntityName,
     IntervalType,
     Table,
     TableConstraint,
@@ -48,6 +47,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData

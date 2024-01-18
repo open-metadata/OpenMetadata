@@ -40,7 +40,7 @@ export const EXPLORE_PAGE_TABS = {
   mlmodels: 'ml models',
   storedProcedures: 'stored procedures',
   dataProducts: 'data products',
-  dataModel: 'dashboard data model',
+  dataModel: 'dashboard data models',
   searchIndexes: 'search indexes',
 };
 
@@ -51,6 +51,7 @@ export const SEARCH_INDEX = {
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
   containers: 'container_search_index',
+  searchIndexes: 'search_entity_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
@@ -238,10 +239,10 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
-  name: 'table_column_name_to_exist_in_id',
+  name: `table_column_name_to_exist_in_id_${uuid()}`,
   label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
-  field: 'id',
+  field: 'testCase',
   description: 'New table test case for TableColumnNameToExist',
 };
 
@@ -601,7 +602,7 @@ export const TAG_INVALID_NAMES = {
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  WITH_SPECIAL_CHARS: '::normalName::',
 };
 
 export const NAME_VALIDATION_ERROR =
@@ -738,4 +739,73 @@ export const DOMAIN_3 = {
       fullyQualifiedName: 'sample_looker.model.operations_view',
     },
   ],
+};
+export const GLOBAL_SETTING_PERMISSIONS = {
+  metadata: {
+    testid: '[data-menu-id*="metadata"]',
+  },
+  customAttributesTable: {
+    testid: '[data-menu-id*="tables"]',
+  },
+  customAttributesTopics: {
+    testid: '[data-menu-id*="topics"]',
+  },
+  customAttributesDashboards: {
+    testid: '[data-menu-id*="customAttributes.dashboards"]',
+  },
+  customAttributesPipelines: {
+    testid: '[data-menu-id*="customAttributes.pipelines"]',
+  },
+  customAttributesMlModels: {
+    testid: '[data-menu-id*="customAttributes.mlModels"]',
+  },
+  bots: {
+    testid: '[data-menu-id*="bots"]',
+  },
+};
+export const ID = {
+  teams: {
+    testid: '[data-menu-id*="teams"]',
+    button: 'add-team',
+  },
+  users: {
+    testid: '[data-menu-id*="users"]',
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  admins: {
+    testid: '[data-menu-id*="admins"]',
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  databases: {
+    testid: '[data-menu-id*="databases"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/databaseServices?*',
+  },
+  messaging: {
+    testid: '[data-menu-id*="messaging"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/messagingServices?*',
+  },
+  dashboard: {
+    testid: '[data-menu-id*="services.dashboards"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/dashboardServices?*',
+  },
+  pipelines: {
+    testid: '[data-menu-id*="services.pipelines"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/pipelineServices?*',
+  },
+  mlmodels: {
+    testid: '[data-menu-id*="services.mlmodels"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/mlmodelServices?*',
+  },
+  storage: {
+    testid: '[data-menu-id*="services.storages"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/storageServices?*',
+  },
 };

@@ -99,7 +99,13 @@ export const QualityTab = () => {
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
     ],
-    [isTestsLoading, filteredTestCase, onTestCaseUpdate]
+    [
+      isTestsLoading,
+      filteredTestCase,
+      onTestCaseUpdate,
+      testSuite,
+      fetchAllTests,
+    ]
   );
 
   const handleTestCaseStatusChange = (value: string) => {
@@ -139,10 +145,9 @@ export const QualityTab = () => {
   const fetchTestSuiteDetails = async () => {
     setIsTestSuiteLoading(true);
     try {
-      const details = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.TESTSUITE
-      );
+      const details = await getTableDetailsByFQN(datasetFQN, {
+        fields: TabSpecificField.TESTSUITE,
+      });
       setTestSuite(details.testSuite);
     } catch (error) {
       showErrorToast(error as AxiosError);

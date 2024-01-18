@@ -95,6 +95,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "messageSchema": {
         "properties": {
           "schemaType": {

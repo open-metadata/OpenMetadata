@@ -16,7 +16,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter {
   @Getter private final Include include;
-  private final Map<String, String> queryParams = new HashMap<>();
+  protected final Map<String, String> queryParams = new HashMap<>();
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -56,9 +56,8 @@ public class ListFilter {
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
-    condition = addCondition(condition, getTestSuiteTypeCondition());
+    condition = addCondition(condition, getTestSuiteTypeCondition(tableName));
     condition = addCondition(condition, getTestSuiteFQNCondition());
-    condition = addCondition(condition, getEmptyTestSuiteCondition());
     condition = addCondition(condition, getDomainCondition());
     condition = addCondition(condition, getEntityFQNHashCondition());
     condition = addCondition(condition, getTestCaseResolutionStatusType());
@@ -205,41 +204,33 @@ public class ListFilter {
     return addCondition(condition1, condition2);
   }
 
-  private String getTestSuiteTypeCondition() {
+  private String getTestSuiteTypeCondition(String tableName) {
     String testSuiteType = getQueryParam("testSuiteType");
 
     if (testSuiteType == null) {
       return "";
     }
 
-    switch (testSuiteType) {
-      case ("executable"):
+    return switch (testSuiteType) {
+      case ("executable") -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-          return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true')";
+          yield String.format(
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
         }
-        return "(json->>'executable' = 'true')";
-      case ("logical"):
+        yield String.format("(%s.json->>'executable' = 'true')", tableName);
+      }
+      case ("logical") -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-          return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) IS NULL)";
+          yield String.format(
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) IS NULL)",
+              tableName, tableName);
         }
-        return "(json->>'executable' = 'false' or json -> 'executable' is null)";
-      default:
-        return "";
-    }
-  }
-
-  private String getEmptyTestSuiteCondition() {
-    String includeEmptyTestSuites = getQueryParam("includeEmptyTestSuites");
-    if (includeEmptyTestSuites == null || Boolean.parseBoolean(includeEmptyTestSuites)) {
-      // if we want to include empty test suites, then we don't need to add a condition
-      return "";
-    }
-
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "JSON_LENGTH(JSON_EXTRACT(json, '$.testCaseResultSummary')) != 0";
-    }
-
-    return "jsonb_array_length(json#>'{testCaseResultSummary}') != 0";
+        yield String.format(
+            "(%s.json->>'executable' = 'false' or %s.json -> 'executable' is null)",
+            tableName, tableName);
+      }
+      default -> "";
+    };
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
@@ -303,7 +294,7 @@ public class ListFilter {
         : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
-  private String addCondition(String condition1, String condition2) {
+  protected String addCondition(String condition1, String condition2) {
     if (condition1.isEmpty()) {
       return condition2;
     }

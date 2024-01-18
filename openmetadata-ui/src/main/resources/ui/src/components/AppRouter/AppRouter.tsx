@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
@@ -80,8 +81,9 @@ const AppRouter = () => {
     /**
      * Ignore the slash path because we are treating my data as
      * default path.
+     * And check if analytics instance is available
      */
-    if (pathname !== '/') {
+    if (pathname !== '/' && !isNil(analytics)) {
       // track page view on route change
       analytics.page();
     }
@@ -91,7 +93,11 @@ const AppRouter = () => {
     (event: MouseEvent) => {
       const eventValue =
         (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
-      if (eventValue) {
+      /**
+       * Ignore the click event if the event value is undefined
+       * And analytics instance is not available
+       */
+      if (eventValue && !isNil(analytics)) {
         analytics.track(eventValue);
       }
     },

@@ -5,6 +5,11 @@ slug: /connectors/messaging/kafka
 
 # Kafka
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Topics     | {% icon iconName="check" /%} |
+| Sample Data| {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Kafka connector.
 
 Configure and schedule Kafka metadata and profiler workflows from the OpenMetadata UI:

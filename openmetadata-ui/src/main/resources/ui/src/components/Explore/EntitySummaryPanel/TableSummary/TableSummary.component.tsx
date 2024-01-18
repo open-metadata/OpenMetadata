@@ -31,7 +31,7 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -92,7 +92,7 @@ function TableSummary({
     try {
       const res = await getTableDetailsByFQN(
         getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
-        'testSuite'
+        { fields: 'testSuite' }
       );
 
       if (res?.testSuite?.summary) {

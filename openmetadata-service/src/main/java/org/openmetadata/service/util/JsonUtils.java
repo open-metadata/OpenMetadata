@@ -118,6 +118,14 @@ public final class JsonUtils {
     return map;
   }
 
+  public static <T> T readOrConvertValue(Object obj, Class<T> clz) {
+    if (obj instanceof String) {
+      return (T) readValue((String) obj, clz);
+    } else {
+      return (T) convertValue(obj, clz);
+    }
+  }
+
   public static <T> T readValue(String json, String clazzName) {
     try {
       return (T) readValue(json, Class.forName(clazzName));

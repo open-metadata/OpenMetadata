@@ -84,6 +84,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("domain", getEntityWithDisplayName(table.getDomain()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
+    doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }
@@ -109,12 +110,11 @@ public record TableIndex(Table table) implements ColumnIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
-    fields.put("columns.name", 2.0f);
-    fields.put("columns.name.ngram", 1.0f);
-    fields.put("columns.displayName", 1.0f);
+    fields.put(COLUMNS_NAME_KEYWORD, 5.0f);
+    fields.put("columns.name", 7.0f);
+    fields.put("columns.displayName", 7.0f);
     fields.put("columns.description", 1.0f);
-    fields.put("columns.children.name", 2.0f);
+    fields.put("columns.children.name", 7.0f);
     return fields;
   }
 }

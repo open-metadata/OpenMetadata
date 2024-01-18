@@ -11,25 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { isUndefined, sortBy } from 'lodash';
+import { PagingResponse } from 'Models';
 import QueryString from 'qs';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconCheckMark } from '../../../assets/svg/ic-check-mark.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from '../../../components/common/Badge/Badge.component';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
 import Table from '../../../components/common/Table/Table';
-import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
@@ -40,10 +38,8 @@ import { TestCaseStatus } from '../../../generated/configuration/testResultNotif
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
-import {
-  patchTestCaseResult,
-  removeTestCaseFromTestSuite,
-} from '../../../rest/testAPI';
+import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
+import { removeTestCaseFromTestSuite } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDate,
@@ -51,6 +47,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -62,14 +59,12 @@ import {
   TestCaseAction,
 } from '../profilerDashboard.interface';
 import './data-quality-tab.less';
-import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,
   pagingData,
   onTestUpdate,
-  onTestCaseResultUpdate,
   removeFromTestSuite,
   showTableColumn = true,
   afterDeleteAction,
@@ -78,6 +73,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
+  const [testCaseStatus, setTestCaseStatus] = useState<
+    TestCaseResolutionStatus[]
+  >([]);
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -117,35 +116,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setSelectedTestCase(undefined);
   };
 
-  const handleStatusSubmit = async (data: TestCaseResolutionStatus) => {
-    if (selectedTestCase?.data?.testCaseResult) {
-      const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
-      const updatedResult: TestCaseResult = {
-        ...selectedTestCase.data?.testCaseResult,
-        testCaseResolutionStatusReference: data,
-      };
-      const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
-      const patch = compare(
-        selectedTestCase.data.testCaseResult,
-        updatedResult
-      );
-      try {
-        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
-
-        onTestCaseResultUpdate?.({
-          ...selectedTestCase.data,
-          testCaseResult: updatedResult,
-        });
-
-        handleCancel();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-
-    return;
-  };
-
   const handleConfirmClick = async () => {
     if (isUndefined(removeFromTestSuite)) {
       return;
@@ -181,7 +151,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               </Tooltip>
 
               <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
-                {getEntityName(record)}
+                <Link
+                  to={getIncidentManagerDetailPagePath(
+                    record.fullyQualifiedName ?? ''
+                  )}>
+                  {getEntityName(record)}
+                </Link>
               </Typography.Paragraph>
             </Space>
           );
@@ -245,37 +220,38 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           result?.timestamp ? formatDateTime(result.timestamp) : '--',
       },
       {
-        title: t('label.resolution'),
+        title: t('label.incident'),
         dataIndex: 'testCaseResult',
-        key: 'resolution',
+        key: 'incident',
         width: 100,
-        render: (value: TestCaseResult) => {
-          const label =
-            value?.testCaseResolutionStatusReference
-              ?.testCaseResolutionStatusType;
-          const failureStatus = value?.testCaseResolutionStatusReference;
+        render: (_, record) => {
+          const testCaseResult = testCaseStatus.find(
+            (status) =>
+              status.testCaseReference?.fullyQualifiedName ===
+              record.fullyQualifiedName
+          );
+          const label = testCaseResult?.testCaseResolutionStatusType;
+
+          if (isStatusLoading) {
+            return <Skeleton.Input size="small" />;
+          }
 
           return label ? (
             <Tooltip
               placement="bottom"
               title={
-                failureStatus?.updatedAt &&
-                `${formatDate(failureStatus.updatedAt)}
+                testCaseResult?.updatedAt &&
+                `${formatDate(testCaseResult.updatedAt)}
                     ${
-                      failureStatus.updatedBy
-                        ? 'by ' + failureStatus.updatedBy
+                      testCaseResult.updatedBy
+                        ? 'by ' + getEntityName(testCaseResult.updatedBy)
                         : ''
                     }`
               }>
-              <div>
-                <AppBadge
-                  className={classNames(
-                    'resolution',
-                    label.toLocaleLowerCase()
-                  )}
-                  label={label}
-                />
-              </div>
+              <AppBadge
+                className={classNames('resolution', label.toLocaleLowerCase())}
+                label={label}
+              />
             </Tooltip>
           ) : (
             '--'
@@ -289,8 +265,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 100,
         fixed: 'right',
         render: (_, record) => {
-          const status = record.testCaseResult?.testCaseStatus;
-
           return (
             <Row align="middle">
               <Tooltip
@@ -360,32 +334,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   />
                 </Tooltip>
               )}
-              {status === TestCaseStatus.Failed && (
-                <Tooltip
-                  placement="bottomRight"
-                  title={
-                    testCaseEditPermission
-                      ? t('label.edit-entity', { entity: t('label.status') })
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className="flex-center"
-                    data-testid={`update-status-${record.name}`}
-                    disabled={!testCaseEditPermission}
-                    icon={<IconCheckMark height={16} width={16} />}
-                    size="small"
-                    type="text"
-                    onClick={(e) => {
-                      // preventing expand/collapse on click of edit button
-                      e.stopPropagation();
-                      setSelectedTestCase({
-                        data: record,
-                        action: 'UPDATE_STATUS',
-                      });
-                    }}
-                  />
-                </Tooltip>
-              )}
             </Row>
           );
         },
@@ -393,7 +341,50 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     ];
 
     return data;
-  }, [testCaseEditPermission, testCaseDeletePermission, testCases]);
+  }, [
+    testCaseEditPermission,
+    testCaseDeletePermission,
+    testCases,
+    testCaseStatus,
+    isStatusLoading,
+  ]);
+
+  const fetchTestCaseStatus = async () => {
+    try {
+      setIsStatusLoading(true);
+      const promises = testCases.reduce((acc, testCase) => {
+        if (testCase.incidentId) {
+          return [
+            ...acc,
+            getListTestCaseIncidentByStateId(testCase.incidentId ?? ''),
+          ];
+        }
+
+        return acc;
+      }, [] as Promise<PagingResponse<TestCaseResolutionStatus[]>>[]);
+      const testCaseStatus = await Promise.allSettled(promises);
+      const data = testCaseStatus.reduce((acc, status) => {
+        if (status.status === 'fulfilled' && status.value.data.length) {
+          return [...acc, status.value.data[0]];
+        }
+
+        return acc;
+      }, [] as TestCaseResolutionStatus[]);
+      setTestCaseStatus(data);
+    } catch (error) {
+      // do nothing
+    } finally {
+      setIsStatusLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (testCases.length) {
+      fetchTestCaseStatus();
+    } else {
+      setIsStatusLoading(false);
+    }
+  }, [testCases]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -404,11 +395,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           columns={columns}
           data-testid="test-case-table"
           dataSource={sortedData}
-          expandable={{
-            expandRowByClick: true,
-            rowExpandable: () => true,
-            expandedRowRender: (recode) => <TestSummary data={recode} />,
-          }}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
@@ -427,16 +413,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           visible={selectedTestCase?.action === 'UPDATE'}
           onCancel={handleCancel}
           onUpdate={onTestUpdate}
-        />
-
-        <TestCaseStatusModal
-          data={
-            selectedTestCase?.data?.testCaseResult
-              ?.testCaseResolutionStatusReference
-          }
-          open={selectedTestCase?.action === 'UPDATE_STATUS'}
-          onCancel={handleCancel}
-          onSubmit={handleStatusSubmit}
         />
 
         {removeFromTestSuite ? (

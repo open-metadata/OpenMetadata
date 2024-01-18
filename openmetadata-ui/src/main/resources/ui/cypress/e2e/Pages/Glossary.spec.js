@@ -27,6 +27,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   CYPRESS_ASSETS_GLOSSARY,
@@ -44,12 +45,12 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
-const name = `test_dataconsumer${uuid()}`;
+const userName = `test_dataconsumer${uuid()}`;
 
 const CREDENTIALS = {
   firstName: 'Cypress',
   lastName: 'UserDC',
-  email: `${name}@openmetadata.org`,
+  email: `${userName}@openmetadata.org`,
   password: 'User@OMD123',
   username: 'CypressUserDC',
 };
@@ -583,16 +584,14 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
+
+  cy.sidebarHover();
   cy.get('[data-testid="governance"]').click({
     animationDistanceThreshold: 20,
+    waitForAnimations: true,
   });
 
-  // Clicking on Glossary
-  cy.get('.govern-menu').then(($el) => {
-    cy.wrap($el)
-      .find('[data-testid="app-bar-item-glossary"]')
-      .click({ force: true });
-  });
+  cy.sidebarClick('app-bar-item-glossary', 'governance');
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
@@ -713,6 +712,33 @@ describe('Glossary page should work properly', () => {
     createGlossary(NEW_GLOSSARY_1);
   });
 
+  it('Assign Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    addOwner(CREDENTIALS.username);
+  });
+
+  it('Update Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    addOwner('Aaron Johnson');
+  });
+
+  it('Remove Owner', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
+    removeOwner('Aaron Johnson');
+  });
+
   it('Verify and Remove Tags from Glossary', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
@@ -812,6 +838,10 @@ describe('Glossary page should work properly', () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
+
+    // Updating owner
+    addOwner(CREDENTIALS.username);
+
     // updating tags
     updateTags(false);
 
@@ -878,8 +908,8 @@ describe('Glossary page should work properly', () => {
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
     )
       .click()
-      .type(name);
-    cy.get(`[data-testid="assignee-option-${name}"]`).click();
+      .type(userName);
+    cy.get(`[data-testid="${userName}"]`).click();
     cy.clickOutside();
 
     cy.get('[data-testid="tag-selector"]')
@@ -1041,8 +1071,8 @@ describe('Glossary page should work properly', () => {
     cy.get(
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="icon"]'
     ).should('be.visible');
-    cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
+
+    goToGlossaryPage();
 
     cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
@@ -1134,8 +1164,7 @@ describe('Glossary page should work properly', () => {
       .should('not.contain', name)
       .and('not.contain', 'Personal');
 
-    cy.get('[data-testid="governance"]').click();
-    cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
+    goToGlossaryPage();
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 

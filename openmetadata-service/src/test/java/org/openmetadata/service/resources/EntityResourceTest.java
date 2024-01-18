@@ -1480,7 +1480,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     // user will always have the same user assigned as the owner
-    if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)) {
+    if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)
+        && entity.getOwner() != null
+        && !entity.getOwner().getInherited()) {
       assertListNull(entity.getOwner());
     }
     entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
@@ -1901,7 +1903,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       IndexMapping indexMapping =
           Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1923,7 +1927,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       IndexMapping indexMapping =
           Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1939,7 +1945,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // search again in search after deleting
 
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexMapping.getIndexName());
+      response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1963,7 +1971,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1997,7 +2007,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
+      SearchResponse response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2014,7 +2026,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexMapping.getIndexName());
+      response =
+          getResponseFormSearch(
+              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2886,6 +2900,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /** Compare entity Id and types in the entityReference */
   protected static void assertReference(EntityReference expected, EntityReference actual) {
+    // If the actual value is inherited, it will never match the expected
+    // We just ignore the validation in these cases
+    if (actual != null && actual.getInherited() != null && actual.getInherited()) {
+      return;
+    }
     if (expected != null) {
       assertNotNull(actual);
       TestUtils.validateEntityReference(actual);
@@ -3158,7 +3177,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference reduceEntityReference(EntityReference ref) {
     // In requests send minimum entity reference information to ensure the server fills rest of the
     // details
-    return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
+    return ref != null && (ref.getInherited() == null || !ref.getInherited())
+        ? new EntityReference()
+            .withType(ref.getType())
+            .withId(ref.getId())
+            .withInherited(ref.getInherited())
+        : null;
   }
 
   public String getAllowedFields() {

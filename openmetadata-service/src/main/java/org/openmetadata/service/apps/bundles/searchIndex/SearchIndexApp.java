@@ -66,6 +66,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "searchIndex",
           "user",
           "team",
+          "glossary",
           "glossaryTerm",
           "mlmodel",
           "tag",

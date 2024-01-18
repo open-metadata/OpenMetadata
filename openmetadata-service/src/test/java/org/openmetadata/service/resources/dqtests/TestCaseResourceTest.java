@@ -161,6 +161,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void patch_entityComputePassedFailedRowCount(TestInfo test) throws IOException {
+    TestCase entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setComputePassedFailedRowCount(true);
+
+    patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+
+    entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+
+    assertTrue(entity.getComputePassedFailedRowCount());
+  }
+
+  @Test
   void post_testWithoutRequiredFields_4xx(TestInfo test) {
     // name is required field
     assertResponse(
@@ -443,7 +459,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the executable test suite
     TestSummary executableTestSummary =
         getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
-    assertEquals(2, executableTestSummary.getTotal());
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
 
     // test we get the right summary for the logical test suite
     TestSummary logicalTestSummary =
@@ -453,30 +471,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        2,
-        logicalTestSummary
-            .getTotal()); // we added a new test case to the logical test suite check if the summary
-    // is updated
-
+    assertEquals(2, logicalTestSummary.getTotal());
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
-
     executableTestSummary =
         getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
-    assertEquals(
-        1,
-        executableTestSummary
-            .getTotal()); // we deleted a test case from the executable test suite check if the
-    // summary is updated
+    testSuite =
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
 
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(1, logicalTestSummary.getTotal());
+    assertEquals(2, logicalTestSummary.getTotal());
     // check the deletion of the test case from the executable test suite
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     // check the deletion of the test case from the logical test suite is reflected in the summary
-    assertNull(logicalTestSummary.getTotal());
+    assertEquals(1, logicalTestSummary.getTotal());
   }
 
   @Test
@@ -1105,11 +1115,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // We can get it via API with a list of ongoing incidents
     TestCase result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-
+    UUID incidentId = result.getIncidentId();
     assertNotNull(result.getIncidentId());
 
-    // Resolving the status triggers resolving the task, which triggers removing the ongoing
-    // incident from the test case
+    // Resolving the status
     CreateTestCaseResolutionStatus createResolvedStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
@@ -1121,9 +1130,65 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withResolvedBy(USER1_REF));
     createTestCaseFailureStatus(createResolvedStatus);
 
-    // If we read again, the incident list will be empty
     result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNotNull(result.getIncidentId());
+    assertEquals(incidentId, result.getIncidentId());
 
+    // Add a new failed result, which will create a NEW incident and start a new stateId
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-02")),
+        ADMIN_AUTH_HEADERS);
+
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    UUID newIncidentId = result.getIncidentId();
+
+    assertNotNull(result.getIncidentId());
+    assertNotEquals(incidentId, result.getIncidentId());
+
+    // Add a new testCase Result with status Success. This should clear the incidentId
+    // from the testCase and the testCaseResult should not have an incidentId.
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-03")),
+        ADMIN_AUTH_HEADERS);
+
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    List<TestCaseResult> testCaseResults =
+        getTestCaseResults(
+                testCaseEntity.getFullyQualifiedName(),
+                TestUtils.dateToTimestamp("2024-01-03"),
+                TestUtils.dateToTimestamp("2024-01-03"),
+                ADMIN_AUTH_HEADERS)
+            .getData();
+    assertNull(testCaseResults.get(0).getIncidentId());
+    assertNull(result.getIncidentId());
+
+    // Add a new testCase Result with status Failure at an older date.
+    // The incidentId should be the one from "2024-01-02" but the testCase incidentId should be null
+    // as it should reflect the latest testCaseResult
+    putTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2023-12-31")),
+        ADMIN_AUTH_HEADERS);
+    result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(
+                testCaseEntity.getFullyQualifiedName(),
+                TestUtils.dateToTimestamp("2023-12-31"),
+                TestUtils.dateToTimestamp("2023-12-31"),
+                ADMIN_AUTH_HEADERS)
+            .getData();
+    assertEquals(newIncidentId, testCaseResults.get(0).getIncidentId());
     assertNull(result.getIncidentId());
   }
 
@@ -1616,6 +1681,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
+      result.setIncidentId(null);
       testCaseResultMap.put(result.getTimestamp(), result);
     }
     for (TestCaseResult result : expectedTestCaseResults) {

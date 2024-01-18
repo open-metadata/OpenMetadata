@@ -122,7 +122,9 @@ const PipelineDetailsPage = () => {
     setLoading(true);
 
     try {
-      const res = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const res = await getPipelineByFqn(pipelineFQN, {
+        fields: defaultFields,
+      });
       const { id, fullyQualifiedName, serviceType } = res;
 
       setPipelineDetails(res);
@@ -244,7 +246,10 @@ const PipelineDetailsPage = () => {
 
   const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
     try {
-      const data = await saveUpdatedPipelineData(updatedPipeline);
+      const data = await saveUpdatedPipelineData({
+        ...pipelineDetails,
+        extension: updatedPipeline.extension,
+      });
       setPipelineDetails(data);
     } catch (error) {
       showErrorToast(
@@ -273,7 +278,9 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
-      const details = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const details = await getPipelineByFqn(pipelineFQN, {
+        fields: defaultFields,
+      });
       setPipelineDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -48,7 +48,10 @@ export const getClassifications = async (
 ) => {
   try {
     const listOfClassifications: Array<Classification> = [];
-    const classifications = await getAllClassifications(fields, 1000);
+    const classifications = await getAllClassifications({
+      fields,
+      limit: 1000,
+    });
     const classificationList = classifications.data.map(
       (category: Classification) => {
         return {
@@ -59,7 +62,7 @@ export const getClassifications = async (
     );
     if (classificationList.length && callGetClassificationByName) {
       const promiseArr = classificationList.map((category: Classification) =>
-        getClassificationByName(category.name, fields)
+        getClassificationByName(category.name, { fields })
       );
 
       const categories = await Promise.allSettled(promiseArr);
@@ -110,7 +113,6 @@ export const getTaglist = async (
 
     const tagsListPromise = classifications.map((classification) =>
       getTags({
-        arrQueryFields: '',
         parent: classification.name,
         after: paging?.after,
         before: paging?.before,

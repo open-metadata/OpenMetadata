@@ -17,9 +17,12 @@
         "matchAnyEntityId",
         "matchAnyEventType",
         "matchTestResult",
+        "filterByTableNameTestCaseBelongsTo",
+        "getTestCaseStatusIfInTestSuite",
         "matchUpdatedBy",
         "matchIngestionPipelineState",
-        "matchAnyFieldChange"
+        "matchAnyFieldChange",
+        "matchAnyDomain"
       ],
       "javaEnums": [
         {
@@ -41,6 +44,12 @@
           "name": "matchTestResult"
         },
         {
+          "name": "filterByTableNameTestCaseBelongsTo"
+        },
+        {
+          "name": "getTestCaseStatusIfInTestSuite"
+        },
+        {
           "name": "matchUpdatedBy"
         },
         {
@@ -48,6 +57,9 @@
         },
         {
           "name": "matchAnyFieldChange"
+        },
+        {
+          "name": "matchAnyDomain"
         }
       ]
     }

@@ -47,7 +47,8 @@ export const navigateToCustomizeLandingPage = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.get('[data-testid="app-bar-item-settings"]').click();
+  cy.sidebarClick('app-bar-item-settings');
+
   verifyResponseStatusCode('@settingsPage', 200);
   cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
@@ -63,7 +64,7 @@ export const navigateToCustomizeLandingPage = ({
     `/api/v1/docStore/name/persona.${personaName}.Page.LandingPage`,
     'getCustomPageData'
   );
-  interceptURL('GET', `/api/v1/users/*?fields=follows,owns`, 'getMyData');
+  interceptURL('GET', `/api/v1/users/*?fields=follows%2C%20owns`, 'getMyData');
 
   cy.get(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`

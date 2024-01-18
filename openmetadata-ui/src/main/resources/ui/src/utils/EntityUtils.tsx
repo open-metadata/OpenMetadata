@@ -14,7 +14,6 @@
 import { Popover } from 'antd';
 import i18next from 'i18next';
 import {
-  get,
   isEmpty,
   isNil,
   isObject,
@@ -204,21 +203,28 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     profile,
     columns,
     tableType,
+    service,
+    database,
+    databaseSchema,
   } = tableDetails;
-  const [service, database, schema] = getPartialNameFromTableFQN(
+  const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
     [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
     FQN_SEPARATOR_CHAR
   ).split(FQN_SEPARATOR_CHAR);
+
+  const serviceDisplayName = getEntityName(service) || serviceName;
+  const databaseDisplayName = getEntityName(database) || databaseName;
+  const schemaDisplayName = getEntityName(databaseSchema) || schemaName;
 
   const tier = getTierFromTableTags(tags ?? []);
 
   return {
     fullyQualifiedName,
     owner,
-    service,
-    database,
-    schema,
+    service: serviceDisplayName,
+    database: databaseDisplayName,
+    schema: schemaDisplayName,
     tier,
     usage: getUsageData(usageSummary),
     profile,
@@ -336,6 +342,7 @@ const getTableOverview = (tableDetails: Table) => {
 const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const { owner, tags, sourceUrl, service, displayName } = pipelineDetails;
   const tier = getTierFromTableTags(tags ?? []);
+  const serviceDisplayName = getEntityName(service);
 
   const overview = [
     {
@@ -365,7 +372,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.name as string) || NO_DATA,
+      value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name as string,
         ServiceCategory.PIPELINE_SERVICES
@@ -388,6 +395,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const { owner, tags, sourceUrl, service, displayName } = dashboardDetails;
   const tier = getTierFromTableTags(tags ?? []);
+  const serviceDisplayName = getEntityName(service);
 
   const overview = [
     {
@@ -416,7 +424,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name as string,
         ServiceCategory.DASHBOARD_SERVICES
@@ -1258,14 +1266,14 @@ export const getEntityReferenceFromEntity = <
   type: EntityType
 ): EntityReference => {
   return {
-    id: get(entity, 'id', ''),
+    id: entity.id,
     type,
-    deleted: get(entity, 'deleted', false),
-    description: get(entity, 'description', ''),
-    displayName: get(entity, 'displayName', ''),
-    fullyQualifiedName: get(entity, 'fullyQualifiedName', ''),
-    href: get(entity, 'href', ''),
-    name: get(entity, 'name', ''),
+    deleted: entity.deleted,
+    description: entity.description,
+    displayName: entity.displayName,
+    fullyQualifiedName: entity.fullyQualifiedName,
+    href: entity.href,
+    name: entity.name,
   };
 };
 

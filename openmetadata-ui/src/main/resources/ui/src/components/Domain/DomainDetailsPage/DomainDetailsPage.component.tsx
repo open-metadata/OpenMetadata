@@ -202,7 +202,7 @@ const DomainDetailsPage = ({
         const res = await addDataProducts(data as CreateDataProduct);
         history.push(
           getDataProductsDetailsPath(
-            encodeURIComponent(res.fullyQualifiedName ?? '')
+            getEncodedFqn(res.fullyQualifiedName ?? '')
           )
         );
       } catch (error) {
@@ -229,7 +229,7 @@ const DomainDetailsPage = ({
     const path = isVersionsView
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(
-          encodeURIComponent(domainFqn),
+          getEncodedFqn(domainFqn),
           toString(domain.version)
         );
 
@@ -300,9 +300,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(
-        getDomainDetailsPath(encodeURIComponent(domainFqn), activeKey)
-      );
+      history.push(getDomainDetailsPath(getEncodedFqn(domainFqn), activeKey));
     }
   };
 

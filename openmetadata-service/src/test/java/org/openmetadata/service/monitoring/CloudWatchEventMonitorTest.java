@@ -63,6 +63,7 @@ public class CloudWatchEventMonitorTest {
 
   private ChangeEvent buildChangeEvent(EventType eventType) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntityType(Entity.INGESTION_PIPELINE)
         .withEventType(eventType)
         .withEntityFullyQualifiedName(FQN)
