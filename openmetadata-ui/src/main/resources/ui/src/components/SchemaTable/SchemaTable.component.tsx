@@ -27,7 +27,6 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -44,12 +43,12 @@ import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -90,8 +89,8 @@ const SchemaTable = ({
   const [tablePermissions, setTablePermissions] =
     useState<OperationPermission>();
   const [editColumn, setEditColumn] = useState<Column>();
-  const { fqn: entityFqn } = useParams<{ fqn: string }>();
-  const decodedEntityFqn = getDecodedFqn(entityFqn);
+
+  const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -123,8 +122,8 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    fetchResourcePermission(entityFqn);
-  }, [entityFqn]);
+    fetchResourcePermission(decodedEntityFqn);
+  }, [decodedEntityFqn]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);

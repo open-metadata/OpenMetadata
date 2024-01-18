@@ -28,6 +28,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
@@ -43,10 +44,10 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
   const { t } = useTranslation();
-  const { fqn: serviceFQN, serviceCategory } = useParams<{
-    fqn: string;
+  const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
   }>();
+  const { fqn: serviceFQN } = useFqn();
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,

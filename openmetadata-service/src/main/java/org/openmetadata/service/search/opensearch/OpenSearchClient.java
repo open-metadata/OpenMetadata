@@ -322,6 +322,8 @@ public class OpenSearchClient implements SearchClient {
               "search_service_index",
               "metadata_service_index" -> buildServiceSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
+          case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
           default -> buildAggregateSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
         };
@@ -728,6 +730,28 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("charts.displayName.keyword")
                 .field("charts.displayName.keyword"));
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private static SearchSourceBuilder buildSearchAcrossIndexesBuilder(
+      String query, int from, int size) {
+    QueryStringQueryBuilder queryStringBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(SearchIndex.getAllFields())
+            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+            .fuzziness(Fuzziness.AUTO);
+    FieldValueFactorFunctionBuilder boostScoreBuilder =
+        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
+            .missing(0)
+            .factor(0.2f);
+    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
+          new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder)
+        };
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
+    queryBuilder.boostMode(CombineFunction.SUM);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
 

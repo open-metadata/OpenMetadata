@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
@@ -27,6 +27,7 @@ import { getTableTabPath } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -34,8 +35,7 @@ import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
-  const { fqn: testSuiteFQN, ingestionFQN } =
-    useParams<{ fqn: string; ingestionFQN: string }>();
+  const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
   const { t } = useTranslation();
 
   const history = useHistory();

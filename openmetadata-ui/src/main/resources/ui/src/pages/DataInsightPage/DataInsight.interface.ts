@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
-import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import {
   SearchDropdownOption,
   SearchDropdownProps,

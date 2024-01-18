@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import TestCaseIssueTab from './TestCaseIssueTab.component';
+import TestCaseIncidentTab from './TestCaseIncidentTab.component';
 const mockThread = [
   {
     id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
@@ -143,7 +143,7 @@ jest.mock('react-router-dom', () => ({
 
 describe('TestCaseIssueTab', () => {
   it('Should render component', async () => {
-    render(<TestCaseIssueTab />);
+    render(<TestCaseIncidentTab />);
 
     expect(
       await screen.findByTestId('issue-tab-container')
@@ -161,13 +161,13 @@ describe('TestCaseIssueTab', () => {
       ...mockUseActivityFeedProviderValue,
       loading: true,
     }));
-    render(<TestCaseIssueTab />);
+    render(<TestCaseIncidentTab />);
 
     expect(await screen.findAllByText('Loader')).toHaveLength(2);
   });
 
   it('Should call getFeedData after closing the task', async () => {
-    render(<TestCaseIssueTab />);
+    render(<TestCaseIncidentTab />);
 
     const closeBtn = await screen.findByTestId('close-btn');
     await act(async () => {
@@ -184,7 +184,7 @@ describe('TestCaseIssueTab', () => {
   });
 
   it('Should call setActiveThread, on click of task', async () => {
-    render(<TestCaseIssueTab />);
+    render(<TestCaseIncidentTab />);
 
     const feed = await screen.findByTestId('feed');
     await act(async () => {
@@ -197,7 +197,7 @@ describe('TestCaseIssueTab', () => {
   });
 
   it('Should call setActiveThread, on click of open and close task btn', async () => {
-    render(<TestCaseIssueTab />);
+    render(<TestCaseIncidentTab />);
 
     const closeTaskBtn = await screen.findByTestId('closed-task');
     await act(async () => {

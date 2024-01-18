@@ -29,6 +29,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
@@ -66,10 +67,11 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
-  const { fqn: serviceFQN, serviceCategory } = useParams<{
-    fqn: string;
+  const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
+
+  const { fqn: serviceFQN } = useFqn();
   const [isEdit, setIsEdit] = useState(false);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
