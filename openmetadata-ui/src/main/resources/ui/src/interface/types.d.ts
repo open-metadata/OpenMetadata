@@ -275,4 +275,9 @@ declare module 'Models' {
     fullyQualifiedName?: string;
     children?: TagsData[];
   };
+
+  export interface DateRangeObject {
+    startTs: number;
+    endTs: number;
+  }
 }

@@ -65,4 +65,5 @@ export interface ActivityFeedProviderContextType {
     reactionOperation: ReactionOperation
   ) => void;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
+  updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
 }
