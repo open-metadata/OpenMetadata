@@ -355,13 +355,6 @@ const getCommonQueryBuilderFields = (
       label: t('label.tier'),
       type: 'select',
       mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [SearchIndex.TAG],
-          entityField: EntityFields.TIER,
-        }),
-        useAsyncSearch: true,
-      },
     },
     extension: {
       label: t('label.custom-property-plural'),

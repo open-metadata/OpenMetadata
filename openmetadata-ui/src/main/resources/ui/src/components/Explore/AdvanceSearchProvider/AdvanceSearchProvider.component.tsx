@@ -21,6 +21,7 @@ import React, {
 } from 'react';
 import {
   Config,
+  Field,
   FieldGroup,
   ImmutableTree,
   JsonTree,
@@ -32,8 +33,10 @@ import {
   emptyJsonTree,
   getQbConfigs,
 } from '../../../constants/AdvancedSearch.constants';
+import { TIER_FQN_KEY } from '../../../constants/explore.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getTags } from '../../../rest/tagAPI';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
@@ -197,10 +200,34 @@ export const AdvanceSearchProvider = ({
     }
   }
 
+  async function getTierFields(configData: Config) {
+    const updatedConfig = cloneDeep(configData);
+
+    try {
+      const { data: Tiers } = await getTags({
+        parent: 'Tier',
+      });
+
+      const tierFields = Tiers.map((tier) => ({
+        title: tier.name,
+        value: tier.fullyQualifiedName,
+      }));
+
+      (updatedConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
+        listValues: tierFields,
+      };
+
+      return updatedConfig;
+    } catch (error) {
+      return updatedConfig;
+    }
+  }
+
   const loadData = useCallback(async () => {
     const actualConfig = getQbConfigs(searchIndex);
-    const updatedConfig =
+    let updatedConfig =
       (await getCustomAttributesSubfields(actualConfig)) ?? actualConfig;
+    updatedConfig = await getTierFields(updatedConfig);
     setConfig(updatedConfig);
 
     return updatedConfig;
