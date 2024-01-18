@@ -25,6 +25,8 @@ declare global {
       goToHomePage(doNotNavigate: boolean): void;
       clickOnLogo(): void;
       clickOutside(): void;
+      sidebarClick(id: string, parentId?: string): void;
+      sidebarHoverOutside(): void;
     }
   }
 }

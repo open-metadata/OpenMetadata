@@ -11,12 +11,12 @@ import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -258,6 +258,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
+    ArrayList<String> fields = new ArrayList<>();
+    fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -269,6 +271,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // plotting the UI
       // even after the incident has been closed.
       testCaseResult.setIncidentId(incidentStateId);
+      // if the test case failed, we'll add the incidentId field to update the testCase entity on ln
+      // 293
+      fields.add(INCIDENTS_FIELD);
+    } else {
+      // If the test case passed, we'll remove the incidentId from the test case
+      testCase.setIncidentId(null);
     }
 
     // We add the incidentStateId in the DQ table to quickly link Test Case <> Incident
@@ -282,8 +290,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             JsonUtils.pojoToJson(testCaseResult),
             incidentStateId != null ? incidentStateId.toString() : null);
 
-    setFieldsInternal(
-        testCase, new EntityUtil.Fields(allowedFields, Set.of(TEST_SUITE_FIELD, INCIDENTS_FIELD)));
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, ImmutableSet.copyOf(fields)));
     setTestSuiteSummary(
         testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus(), false);
     setTestCaseResult(testCase, testCaseResult, false);

@@ -830,19 +830,20 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityChildRemovedDescription: 'Description for field displayName',
     entityChildAddedDescription: 'Description for field description',
   },
-  'Stored Procedure': {
-    name: STORED_PROCEDURE_NAME,
-    serviceName: 'sample_data',
-    entity: 'storedProcedures',
-    entityCreationDetails: STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: STORED_PROCEDURE_PATCH_PAYLOAD,
-    isChildrenExist: false,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${STORED_PROCEDURE_NAME}`,
-    updatedTagEntityChildName: '',
-    entityChildRemovedDescription: '',
-    entityChildAddedDescription: '',
-  },
+  // ES issue
+  //   'Stored Procedure': {
+  //     name: STORED_PROCEDURE_NAME,
+  //     serviceName: 'sample_data',
+  //     entity: 'storedProcedures',
+  //     entityCreationDetails: STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST,
+  //     entityPatchPayload: STORED_PROCEDURE_PATCH_PAYLOAD,
+  //     isChildrenExist: false,
+  //     childSelector: 'data-row-key',
+  //     entityAddedDescription: `Description for ${STORED_PROCEDURE_NAME}`,
+  //     updatedTagEntityChildName: '',
+  //     entityChildRemovedDescription: '',
+  //     entityChildAddedDescription: '',
+  //   },
 };
 
 export const DATA_MODEL_DETAILS = {
@@ -1047,13 +1048,14 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.storages',
   },
-  Search: {
-    serviceName: SEARCH_SERVICE_NAME,
-    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
-    entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: COMMON_PATCH_PAYLOAD,
-    settingsMenuId: 'services.search',
-  },
+  // ES issue
+  //   Search: {
+  //     serviceName: SEARCH_SERVICE_NAME,
+  //     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  //     entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
+  //     entityPatchPayload: COMMON_PATCH_PAYLOAD,
+  //     settingsMenuId: 'services.search',
+  //   },
 };
 
 export const DATABASE_DETAILS_FOR_VERSION_TEST = {
