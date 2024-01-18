@@ -112,6 +112,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -3167,14 +3168,14 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 
-    default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
+    default List<String> list(EventType eventType, List<String> entityTypes, long timestamp) {
       if (nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType, timestamp);
+        return listWithoutEntityFilter(eventType.value(), timestamp);
       }
-      return listWithEntityFilter(eventType, entityTypes, timestamp);
+      return listWithEntityFilter(eventType.value(), entityTypes, timestamp);
     }
 
     @SqlQuery(

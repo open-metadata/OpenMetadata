@@ -113,6 +113,22 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
             ],
           },
         },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: 'glossaryTerm',
+                },
+              },
+              {
+                term: {
+                  entityType: 'tag',
+                },
+              },
+            ],
+          },
+        },
       ],
     },
   },

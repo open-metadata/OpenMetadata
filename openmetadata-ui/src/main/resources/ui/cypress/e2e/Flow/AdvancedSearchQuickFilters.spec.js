@@ -75,3 +75,78 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
       });
   });
 });
+
+const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
+  cy.sidebarClick('app-bar-item-explore');
+  const asset = QUICK_FILTERS_BY_ASSETS[0];
+  cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+  cy.get('[data-testid="advance-search-button"]').click();
+
+  // Check Is Null or Is Not Null
+  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
+  cy.get(`[title="${operatorTitle}"]`).click();
+
+  cy.intercept('GET', '/api/v1/search/query?*', (req) => {
+    req.alias = alias;
+  }).as(alias);
+
+  cy.get('[data-testid="apply-btn"]').click();
+
+  cy.wait(`@${alias}`).then((xhr) => {
+    const actualQueryFilter = JSON.parse(xhr.request.query['query_filter']);
+
+    expect(actualQueryFilter).to.deep.equal(queryFilter);
+  });
+};
+
+describe(`Advanced Search Modal`, () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('should check isNull and isNotNull filters', () => {
+    // Check Is Null
+    const isNullQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [
+                  {
+                    bool: {
+                      must_not: {
+                        exists: { field: 'owner.displayName.keyword' },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+    testIsNullAndIsNotNullFilters('Is null', isNullQuery, 'searchAPI');
+
+    // Check Is Not Null
+    const isNotNullQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [{ exists: { field: 'owner.displayName.keyword' } }],
+              },
+            },
+          ],
+        },
+      },
+    };
+    testIsNullAndIsNotNullFilters(
+      'Is not null',
+      isNotNullQuery,
+      'newSearchAPI'
+    );
+  });
+});
