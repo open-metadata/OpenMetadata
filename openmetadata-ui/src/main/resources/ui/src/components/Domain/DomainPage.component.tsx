@@ -105,10 +105,10 @@ const DomainPage = () => {
     history.push(domainPath);
   };
 
-  const fetchDomainByName = async (fqn: string) => {
+  const fetchDomainByName = async (domainFqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(fqn, {
+      const data = await getDomainByName(domainFqn, {
         fields: 'children,owner,parent,experts',
       });
       setActiveDomain(data);

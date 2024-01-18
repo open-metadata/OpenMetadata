@@ -22,7 +22,6 @@ import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
-import { useFqn } from '../../hooks/useFqn';
 import {
   customEdges,
   dragHandle,
@@ -64,7 +63,6 @@ const Lineage = ({
     onInitReactFlow,
   } = useLineageProvider();
 
-  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
 
@@ -72,13 +70,13 @@ const Lineage = ({
     history.push({
       search: Qs.stringify({ fullscreen: true }),
     });
-  }, [entityFQN]);
+  }, []);
 
   const onExitFullScreenViewClick = useCallback(() => {
     history.push({
       search: '',
     });
-  }, [entityFQN]);
+  }, []);
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
