@@ -340,6 +340,7 @@ const TestSuiteDetailsPage = () => {
                 allowSoftDelete={false}
                 canDelete={isAdminUser}
                 deleted={testSuite?.deleted}
+                displayName={getEntityName(testSuite)}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}

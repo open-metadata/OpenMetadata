@@ -474,7 +474,7 @@ const UserListPageV1 = () => {
         afterDeleteAction={() => handleSearch('')}
         allowSoftDelete={!showDeletedUser}
         entityId={selectedUser?.id || ''}
-        entityName={selectedUser?.name || ''}
+        entityName={getEntityName(selectedUser)}
         entityType={EntityType.USER}
         visible={showDeleteModal}
         onCancel={() => {

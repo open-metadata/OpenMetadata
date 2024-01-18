@@ -322,6 +322,7 @@ export const UserTab = ({
             {!isTeamDeleted && (
               <ManageButton
                 canDelete={false}
+                displayName={getEntityName(currentTeam)}
                 entityName={currentTeam.name}
                 entityType={EntityType.USER}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -367,6 +368,7 @@ export const UserTab = ({
                 )}
                 <ManageButton
                   canDelete={false}
+                  displayName={getEntityName(currentTeam)}
                   entityName={currentTeam.name}
                   entityType={EntityType.USER}
                   extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}

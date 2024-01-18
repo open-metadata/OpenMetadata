@@ -72,6 +72,7 @@ import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -651,7 +652,7 @@ const DomainDetailsPage = ({
           afterDeleteAction={() => onDelete(domain.id)}
           allowSoftDelete={false}
           entityId={domain.id}
-          entityName={domain.name}
+          entityName={getEntityName(domain)}
           entityType={EntityType.DOMAIN}
           visible={isDelete}
           onCancel={() => {
