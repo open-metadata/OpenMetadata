@@ -615,7 +615,7 @@ public class IngestionPipelineResource
   @Operation(
       operationId = "checkRestAirflowStatus",
       summary = "Check the airflow REST status",
-      description = "Check that the Airflow REST endpoint is reachable and up and running",
+      description = "Check that the Airflow REST endpoint is reachable and up and running blablabla",
       responses = {
         @ApiResponse(
             responseCode = "200",
