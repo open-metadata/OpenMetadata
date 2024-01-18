@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
-import { capitalize } from 'lodash';
+import { upperFirst } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -55,7 +55,7 @@ const GlobalSettingCategoryPage = () => {
         activeTitle: false,
       },
       {
-        name: capitalize(settingCategory),
+        name: upperFirst(settingCategory),
         url: '',
         activeTitle: true,
       },

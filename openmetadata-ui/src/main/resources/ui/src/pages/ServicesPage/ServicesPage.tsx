@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -36,7 +35,6 @@ import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
-  const { t } = useTranslation();
   const location = useLocation();
   const history = useHistory();
 

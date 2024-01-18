@@ -140,7 +140,7 @@ const ApplicationPage = () => {
   }, [pageSize]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.domain')}>
+    <PageLayoutV1 pageTitle={t('label.application-plural')}>
       <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />

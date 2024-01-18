@@ -80,6 +80,10 @@ import { getSuggestions } from '../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../rest/teamsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getSettingPageEntityBreadCrumb,
+  SettingCategory,
+} from '../../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
@@ -153,6 +157,7 @@ const TeamDetailsV1 = ({
 
     return searchData as { activeTab: TeamsPageTab };
   }, [location.search]);
+
   const isOrganization = currentTeam.name === TeamType.Organization;
   const isGroupType = currentTeam.teamType === TeamType.Group;
   const DELETE_USER_INITIAL_STATE = {
@@ -187,6 +192,15 @@ const TeamDetailsV1 = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const { showModal } = useEntityExportModalProvider();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        SettingCategory.MEMBERS,
+        t('label.team-plural')
+      ),
+    []
+  );
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -1093,6 +1107,12 @@ const TeamDetailsV1 = ({
   return (
     <div className="teams-layout page-container">
       <Row className="h-full" data-testid="team-details-container">
+        {isOrganization && (
+          <Col className="p-x-md p-y-sm" span={24}>
+            <TitleBreadcrumb titleLinks={breadcrumbs} />
+          </Col>
+        )}
+
         <Col
           className="teams-profile-container"
           data-testid="team-detail-header"
