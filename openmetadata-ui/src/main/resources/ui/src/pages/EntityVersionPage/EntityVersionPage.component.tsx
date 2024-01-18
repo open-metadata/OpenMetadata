@@ -318,7 +318,9 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const { id } = await getTableDetailsByFQN(decodedEntityFQN);
+          const { id } = await getTableDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -330,7 +332,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(decodedEntityFQN);
+          const { id } = await getTopicByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -342,7 +346,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(decodedEntityFQN);
+          const { id } = await getDashboardByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -354,7 +360,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(decodedEntityFQN);
+          const { id } = await getPipelineByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -366,7 +374,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(decodedEntityFQN);
+          const { id } = await getMlModelByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -378,7 +388,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.CONTAINER: {
-          const { id } = await getContainerByName(decodedEntityFQN);
+          const { id } = await getContainerByName(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -390,7 +402,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.SEARCH_INDEX: {
-          const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN);
+          const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -402,7 +416,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD_DATA_MODEL: {
-          const { id } = await getDataModelByFqn(decodedEntityFQN);
+          const { id } = await getDataModelByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id ?? '');
 
