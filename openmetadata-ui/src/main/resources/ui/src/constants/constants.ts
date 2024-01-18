@@ -269,10 +269,7 @@ export const ROUTES = {
   GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
-  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ROUTE_FQN}`,
-  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_FQN}/add-field`,
-  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
-  PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/add-field`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
@@ -733,7 +730,10 @@ export const getMlModelPath = (mlModelFqn: string, tab = '') => {
 
 export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityTypeFQN));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    getEncodedFqn(entityTypeFQN)
+  );
 
   return path;
 };
