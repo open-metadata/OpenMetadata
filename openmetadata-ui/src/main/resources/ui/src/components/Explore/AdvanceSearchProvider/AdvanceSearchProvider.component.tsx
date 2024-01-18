@@ -148,6 +148,15 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
     setQueryFilter(undefined);
     setSQLQuery('');
+
+    history.push({
+      pathname: location.pathname,
+      search: Qs.stringify({
+        quickFilter: undefined,
+        queryFilter: undefined,
+        page: 1,
+      }),
+    });
   }, []);
 
   const handleConfigUpdate = (updatedConfig: Config) => {
@@ -214,6 +223,7 @@ export const AdvanceSearchProvider = ({
       }));
 
       (updatedConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
+        showSearch: true,
         listValues: tierFields,
       };
 
@@ -235,33 +245,33 @@ export const AdvanceSearchProvider = ({
 
   const loadTree = useCallback(
     async (treeObj: JsonTree) => {
-      const updatedConfig = await loadData();
-      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), config);
       setTreeInternal(tree);
       const qFilter = {
-        query: elasticSearchFormat(tree, updatedConfig),
+        query: elasticSearchFormat(tree, config),
       };
       setQueryFilter(qFilter);
-      setSQLQuery(QbUtils.sqlFormat(tree, updatedConfig) ?? '');
+      setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
     },
     [config]
   );
 
   useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
     if (!jsonTree) {
-      loadData();
+      handleReset();
     }
-  }, [searchIndex]);
+  }, [jsonTree, handleReset]);
 
   useEffect(() => {
     if (jsonTree) {
       loadTree(jsonTree);
-    } else {
-      handleReset();
     }
-
     setLoading(false);
-  }, [jsonTree]);
+  }, [jsonTree, loadTree]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
