@@ -53,7 +53,10 @@ import {
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import {
+  getDataQualityPagePath,
+  getTestSuitePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.styles.less';
 
@@ -97,6 +100,19 @@ const TestSuiteDetailsPage = () => {
       testSuiteId: testSuite?.id ?? '',
       testSuiteDescription: testSuite?.description ?? '',
     };
+  }, [testSuite]);
+
+  const incidentUrlState = useMemo(() => {
+    return [
+      {
+        name: t('label.test-suite-plural'),
+        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+      },
+      {
+        name: getEntityName(testSuite),
+        url: getTestSuitePath(testSuite?.fullyQualifiedName ?? ''),
+      },
+    ];
   }, [testSuite]);
 
   const saveAndUpdateTestSuiteData = (updatedData: TestSuite) => {
@@ -370,6 +386,7 @@ const TestSuiteDetailsPage = () => {
         <Col span={24}>
           <DataQualityTab
             afterDeleteAction={fetchTestCases}
+            breadcrumbData={incidentUrlState}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}

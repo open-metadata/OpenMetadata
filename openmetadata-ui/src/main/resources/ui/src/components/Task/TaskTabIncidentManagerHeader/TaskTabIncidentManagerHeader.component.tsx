@@ -15,6 +15,7 @@ import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TEST_CASE_STATUS } from '../../../constants/TestSuite.constant';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
@@ -29,51 +30,65 @@ import './task-tab-incident-manager-header.style.less';
 const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
   const { t } = useTranslation();
   const { testCaseResolutionStatus } = useActivityFeedProvider();
-  const testCaseResolutionStepper = useMemo(
-    () =>
-      testCaseResolutionStatus.map((status) => {
-        const assigneeDetail =
-          TestCaseResolutionStatusTypes.Assigned ===
-          status.testCaseResolutionStatusType ? (
-            <Typography.Text className="text-grey-muted text-xss">
-              {`To ${getEntityName(
-                status.testCaseResolutionStatusDetails?.assignee
-              )} on `}
-            </Typography.Text>
-          ) : null;
+  const testCaseResolutionStepper = useMemo(() => {
+    const updatedData = [...testCaseResolutionStatus];
+    const lastStatusType = last(
+      testCaseResolutionStatus
+    )?.testCaseResolutionStatusType;
 
-        const resolvedDetail =
-          TestCaseResolutionStatusTypes.Resolved ===
-            status.testCaseResolutionStatusType &&
-          status.testCaseResolutionStatusDetails?.resolvedBy ? (
-            <Typography.Text className="text-grey-muted text-xss">
-              {`By ${getEntityName(
-                status.testCaseResolutionStatusDetails.resolvedBy
-              )} on `}
-            </Typography.Text>
-          ) : null;
+    if (lastStatusType && TEST_CASE_STATUS[lastStatusType]) {
+      updatedData.push(
+        ...TEST_CASE_STATUS[lastStatusType].map((type) => ({
+          testCaseResolutionStatusType: type,
+        }))
+      );
+    }
 
-        return {
-          className: toLower(status.testCaseResolutionStatusType),
-          title: (
-            <div>
-              <Typography.Paragraph className="m-b-0">
-                {status.testCaseResolutionStatusType}
-              </Typography.Paragraph>
-              <Typography.Paragraph className="m-b-0">
-                {assigneeDetail}
-                {resolvedDetail}
+    return updatedData.map((status) => {
+      const assigneeDetail =
+        TestCaseResolutionStatusTypes.Assigned ===
+          status.testCaseResolutionStatusType &&
+        status.testCaseResolutionStatusDetails?.assignee ? (
+          <Typography.Text className="text-grey-muted text-xss">
+            {`To ${getEntityName(
+              status.testCaseResolutionStatusDetails?.assignee
+            )} on `}
+          </Typography.Text>
+        ) : null;
+
+      const resolvedDetail =
+        TestCaseResolutionStatusTypes.Resolved ===
+          status.testCaseResolutionStatusType &&
+        status.testCaseResolutionStatusDetails?.resolvedBy ? (
+          <Typography.Text className="text-grey-muted text-xss">
+            {`By ${getEntityName(
+              status.testCaseResolutionStatusDetails.resolvedBy
+            )} on `}
+          </Typography.Text>
+        ) : null;
+
+      return {
+        className: toLower(status.testCaseResolutionStatusType),
+        title: (
+          <div>
+            <Typography.Paragraph className="m-b-0">
+              {status.testCaseResolutionStatusType}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0">
+              {assigneeDetail}
+              {resolvedDetail}
+              {status.updatedAt && (
                 <Typography.Text className="text-grey-muted text-xss">
                   {formatDateTime(status.updatedAt)}
                 </Typography.Text>
-              </Typography.Paragraph>
-            </div>
-          ),
-          key: status.testCaseResolutionStatusType,
-        };
-      }),
-    [testCaseResolutionStatus]
-  );
+              )}
+            </Typography.Paragraph>
+          </div>
+        ),
+        key: status.testCaseResolutionStatusType,
+      };
+    });
+  }, [testCaseResolutionStatus]);
 
   const latestTestCaseResolutionStatus = useMemo(
     () => last(testCaseResolutionStatus),
