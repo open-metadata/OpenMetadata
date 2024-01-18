@@ -3708,20 +3708,6 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
-    @SqlQuery(
-        value =
-            "SELECT DISTINCT incidentId FROM data_quality_data_time_series "
-                + "WHERE entityFQNHash = :testCaseFQNHash AND incidentId IS NOT NULL")
-    List<String> getResultsWithIncidents(@BindFQN("testCaseFQNHash") String testCaseFQNHash);
-
-    @SqlUpdate(
-        value =
-            "UPDATE data_quality_data_time_series SET incidentId = NULL "
-                + "WHERE entityFQNHash = :testCaseFQNHash and incidentId = :incidentStateId")
-    void cleanTestCaseIncident(
-        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
-        @Bind("incidentStateId") String incidentStateId);
-
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
