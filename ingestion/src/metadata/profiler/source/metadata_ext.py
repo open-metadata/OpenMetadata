@@ -26,8 +26,7 @@ from typing import Iterable, cast
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -225,72 +224,6 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         except Exception as exc:
             logger.debug(f"Failed to fetch database names {exc}")
             logger.debug(traceback.format_exc())
-
-    def filter_entities(self, tables: Iterable[Table]) -> Iterable[Table]:
-        """
-        From a list of tables, apply the SQLSourceConfig
-        filter patterns.
-
-        We will update the status on the SQLSource Status.
-        """
-        for table in tables:
-            try:
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.config.source.serviceName,
-                    database_name=table.database.name,
-                    schema_name=table.databaseSchema.name,
-                )
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern,
-                    schema_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table.databaseSchema.name,  # type: ignore
-                ):
-                    self.status.filter(
-                        f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
-                        "Schema pattern not allowed",
-                    )
-                    continue
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.config.source.serviceName,
-                    database_name=table.database.name,
-                    schema_name=table.databaseSchema.name,
-                    table_name=table.name.__root__,
-                )
-
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    table_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table.name.__root__,
-                ):
-                    self.status.filter(
-                        f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",
-                        "Table pattern not allowed",
-                    )
-                    continue
-                if (
-                    table.tableType == TableType.View
-                    and not self.source_config.includeViews
-                ):
-                    self.status.filter(
-                        table.fullyQualifiedName.__root__,
-                        "View filtered out",
-                    )
-                    continue
-                yield table
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.fullyQualifiedName.__root__,
-                        error=f"Unexpected error filtering entities for table [{table}]: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
 
     def get_table_entities(self, database):
         """
