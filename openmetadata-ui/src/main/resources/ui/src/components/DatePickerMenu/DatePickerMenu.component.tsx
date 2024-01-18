@@ -15,13 +15,11 @@ import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { isUndefined } from 'lodash';
-import { DateFilterType } from 'Models';
+import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
-import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,

@@ -178,7 +178,7 @@ export const visitEntityDetailsPage = ({
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=**&from=*&size=*&index=all`,
+    `/api/v1/search/query?q=**&from=*&size=*&index=*`,
     'explorePageSearch'
   );
   const id = dataTestId ?? `${serviceName}-${term}`;

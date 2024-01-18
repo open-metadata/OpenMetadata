@@ -11,41 +11,150 @@
  *  limitations under the License.
  */
 import { Divider, Skeleton, Space, Typography } from 'antd';
-import { isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { first, isUndefined, last } from 'lodash';
+import QueryString from 'qs';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getTableTabPath } from '../../../constants/constants';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import {
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
-import { useIncidentManagerProvider } from '../../../pages/IncidentManager/IncidentManagerProvider/IncidentManagerProvider';
+import {
+  Severities,
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../generated/tests/testCaseResolutionStatus';
+import {
+  getListTestCaseIncidentByStateId,
+  updateTestCaseIncidentById,
+} from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
-}: {
-  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
-}) => {
+  testCaseData,
+  fetchTaskCount,
+}: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
+  const [activeTask, setActiveTask] = useState<Thread>();
+  const [testCaseStatusData, setTestCaseStatusData] =
+    useState<TestCaseResolutionStatus>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const { fqn } = useParams<{ fqn: string }>();
+  const decodedFqn = getDecodedFqn(fqn);
   const {
-    testCaseData,
-    testCaseStatusData,
-    onSeverityUpdate,
-    onIncidentStatusUpdate,
-  } = useIncidentManagerProvider();
+    setActiveThread,
+    entityThread,
+    getFeedData,
+    testCaseResolutionStatus,
+    updateTestCaseIncidentStatus,
+  } = useActivityFeedProvider();
+
   const tableFqn = useMemo(
     () => getEntityFQN(testCaseData?.entityLink ?? ''),
     [testCaseData]
   );
+
+  const handleSeverityUpdate = async (severity: Severities) => {
+    if (isUndefined(testCaseStatusData)) {
+      return;
+    }
+
+    const updatedData = { ...testCaseStatusData, severity };
+    const patch = compare(testCaseStatusData, updatedData);
+    try {
+      await updateTestCaseIncidentById(testCaseStatusData.id ?? '', patch);
+      setTestCaseStatusData(updatedData);
+      updateTestCaseIncidentStatus([
+        ...testCaseResolutionStatus.slice(0, -1),
+        updatedData,
+      ]);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
+    setTestCaseStatusData(data);
+    updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
+  };
+
+  const fetchTestCaseResolution = async (id: string) => {
+    try {
+      const { data } = await getListTestCaseIncidentByStateId(id);
+
+      setTestCaseStatusData(first(data));
+    } catch (error) {
+      setTestCaseStatusData(undefined);
+    }
+  };
+
+  useEffect(() => {
+    if (decodedFqn) {
+      setIsLoading(true);
+      getFeedData(
+        undefined,
+        undefined,
+        ThreadType.Task,
+        EntityType.TEST_CASE,
+        decodedFqn
+      ).finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
+    }
+  }, [decodedFqn]);
+
+  useEffect(() => {
+    const openTask = entityThread.find(
+      (thread) => thread.task?.status === ThreadTaskStatus.Open
+    );
+    setActiveTask(openTask);
+    setActiveThread(openTask);
+  }, [entityThread]);
+
+  useEffect(() => {
+    const status = last(testCaseResolutionStatus);
+
+    if (status?.stateId === activeTask?.task?.testCaseResolutionStatusId) {
+      if (
+        status?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Resolved
+      ) {
+        setTestCaseStatusData(undefined);
+        fetchTaskCount();
+      } else {
+        setTestCaseStatusData(status);
+      }
+    }
+  }, [testCaseResolutionStatus]);
+
+  useEffect(() => {
+    if (testCaseData?.incidentId) {
+      fetchTestCaseResolution(testCaseData.incidentId);
+    }
+  }, [testCaseData]);
 
   const { permissions } = usePermissionProvider();
   const hasEditPermission = useMemo(() => {
@@ -57,18 +166,46 @@ const IncidentManagerPageHeader = ({
   }, [permissions]);
 
   const statusDetails = useMemo(() => {
-    if (testCaseStatusData.isLoading) {
+    if (isLoading) {
       return <Skeleton.Input size="small" />;
     }
 
-    if (isUndefined(testCaseStatusData.status)) {
-      return <></>;
+    if (isUndefined(testCaseStatusData)) {
+      return (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
+            <span className="text-grey-muted">{`${t(
+              'label.incident-status'
+            )}: `}</span>
+
+            <span>{t('label.no-entity', { entity: t('label.incident') })}</span>
+          </Typography.Text>
+        </>
+      );
     }
 
-    const details = testCaseStatusData.status?.testCaseResolutionStatusDetails;
+    const details = testCaseStatusData?.testCaseResolutionStatusDetails;
 
     return (
       <>
+        {activeTask && (
+          <>
+            <Divider className="self-center m-x-sm" type="vertical" />
+            <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
+              <span className="text-grey-muted">{`${t(
+                'label.incident'
+              )}: `}</span>
+
+              <Link
+                className="font-medium"
+                data-testid="table-name"
+                to={getTaskDetailPath(activeTask)}>
+                {`#${activeTask?.task?.id}` ?? '--'}
+              </Link>
+            </Typography.Text>
+          </>
+        )}
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
           <span className="text-grey-muted">{`${t(
@@ -76,20 +213,16 @@ const IncidentManagerPageHeader = ({
           )}: `}</span>
 
           <TestCaseIncidentManagerStatus
-            data={testCaseStatusData.status}
+            data={testCaseStatusData}
             onSubmit={onIncidentStatusUpdate}
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-          <span className="text-grey-muted">{`${t(
-            isUndefined(details?.resolvedBy)
-              ? 'label.assignee'
-              : 'label.resolved-by'
-          )}: `}</span>
+          <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
 
           <OwnerLabel
-            owner={details?.resolvedBy ?? details?.assignee}
+            owner={details?.assignee}
             placeHolder={t('label.no-entity', {
               entity: t('label.assignee'),
             })}
@@ -100,13 +233,13 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.severity')}: `}</span>
 
           <Severity
-            severity={testCaseStatusData.status.severity}
-            onSubmit={onSeverityUpdate}
+            severity={testCaseStatusData.severity}
+            onSubmit={handleSeverityUpdate}
           />
         </Typography.Text>
       </>
     );
-  }, [testCaseStatusData]);
+  }, [testCaseStatusData, isLoading, activeTask]);
 
   return (
     <Space align="center">
@@ -125,7 +258,12 @@ const IncidentManagerPageHeader = ({
             <Link
               className="font-medium"
               data-testid="table-name"
-              to={getTableTabPath(tableFqn, EntityTabs.PROFILER)}>
+              to={{
+                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                search: QueryString.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
               {getNameFromFQN(tableFqn)}
             </Link>
           </Typography.Text>

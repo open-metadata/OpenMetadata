@@ -13,11 +13,11 @@
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { first, isString, last } from 'lodash';
+import { DateRangeObject } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataDistributionHistogram from '../../../components/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../../../components/ProfilerDashboard/component/ProfilerDetailsCard';
-import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_COLUMN_METRICS_VALUE,

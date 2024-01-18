@@ -394,6 +394,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setIsDrawerOpen(false);
   }, []);
 
+  const updateTestCaseIncidentStatus = useCallback(
+    (status: TestCaseResolutionStatus[]) => {
+      setTestCaseResolutionStatus(status);
+    },
+    [setTestCaseResolutionStatus]
+  );
+
   const activityFeedContextValues = useMemo(() => {
     return {
       entityThread,
@@ -416,6 +423,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
       fetchUpdatedThread,
+      updateTestCaseIncidentStatus,
     };
   }, [
     entityThread,
@@ -439,6 +447,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     currentUser,
     testCaseResolutionStatus,
     fetchUpdatedThread,
+    updateTestCaseIncidentStatus,
   ]);
 
   return (

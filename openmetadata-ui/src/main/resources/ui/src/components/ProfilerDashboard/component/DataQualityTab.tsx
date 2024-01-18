@@ -69,6 +69,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   showTableColumn = true,
   afterDeleteAction,
   showPagination,
+  breadcrumbData,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -141,6 +142,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 300,
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
+          const urlData = {
+            pathname: getIncidentManagerDetailPagePath(
+              record.fullyQualifiedName ?? ''
+            ),
+            state: { breadcrumbData },
+          };
 
           return (
             <Space data-testid={name}>
@@ -151,12 +158,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               </Tooltip>
 
               <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
-                <Link
-                  to={getIncidentManagerDetailPagePath(
-                    record.fullyQualifiedName ?? ''
-                  )}>
-                  {getEntityName(record)}
-                </Link>
+                <Link to={urlData}>{getEntityName(record)}</Link>
               </Typography.Paragraph>
             </Space>
           );

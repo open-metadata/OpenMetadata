@@ -25,11 +25,11 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
+import { DateRangeObject } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
-import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
   DEFAULT_RANGE_DATA,

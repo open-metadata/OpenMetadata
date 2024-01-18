@@ -10,24 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
+import { EntityReference } from '../../../generated/entity/type';
 import { TestCase } from '../../../generated/tests/testCase';
-import {
-  Severities,
-  TestCaseResolutionStatus,
-} from '../../../generated/tests/testCaseResolutionStatus';
 
-export interface IncidentManagerProviderProps {
-  children: ReactNode;
+export interface IncidentManagerPageHeaderProps {
+  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   testCaseData?: TestCase;
-}
-
-export interface IncidentManagerContextInterface {
-  testCaseData?: TestCase;
-  testCaseStatusData: {
-    status?: TestCaseResolutionStatus;
-    isLoading: boolean;
-  };
-  onSeverityUpdate: (severity: Severities) => Promise<void>;
-  onIncidentStatusUpdate: (data: TestCaseResolutionStatus) => void;
+  fetchTaskCount: () => Promise<void>;
 }

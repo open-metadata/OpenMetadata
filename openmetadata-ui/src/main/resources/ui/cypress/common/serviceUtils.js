@@ -24,7 +24,6 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-
   cy.sidebarClick('app-bar-item-settings');
 
   // Services page

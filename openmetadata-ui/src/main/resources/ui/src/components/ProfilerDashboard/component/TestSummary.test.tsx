@@ -71,6 +71,15 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
+jest.mock(
+  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      entityThread: [],
+    })),
+  })
+);
+
 describe('TestSummary component', () => {
   it('Component should render', async () => {
     render(<TestSummary {...mockProps} />);
