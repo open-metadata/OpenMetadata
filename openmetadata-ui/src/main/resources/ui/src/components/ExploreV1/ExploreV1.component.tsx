@@ -287,6 +287,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       {(quickFilters || sqlQuery) && (
                         <Typography.Text
                           className="text-primary self-center cursor-pointer"
+                          data-testid="clear-filters"
                           onClick={() => clearFilters()}>
                           {t('label.clear-entity', {
                             entity: '',

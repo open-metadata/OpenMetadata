@@ -31,7 +31,6 @@ import { getTeamByName, updateTeam } from '../../../rest/teamsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { getMovedTeamData } from '../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -60,9 +59,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (_, record) => (
           <Link
             className="link-hover"
-            to={getTeamsWithFqnPath(
-              getEncodedFqn(record.fullyQualifiedName || record.name)
-            )}>
+            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
             {getEntityName(record)}
           </Link>
         ),

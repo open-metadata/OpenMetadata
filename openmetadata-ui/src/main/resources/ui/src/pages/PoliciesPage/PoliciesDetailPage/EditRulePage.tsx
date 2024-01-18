@@ -25,6 +25,7 @@ import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -49,7 +50,8 @@ const InitialData: Rule = {
 const EditRulePage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn, ruleName } = useParams<{ fqn: string; ruleName: string }>();
+  const { ruleName } = useParams<{ ruleName: string }>();
+  const { fqn } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);

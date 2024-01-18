@@ -29,6 +29,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getClassificationByName,
   getClassificationVersionData,
@@ -44,8 +45,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 function ClassificationVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn: classificationName, version } =
-    useParams<{ fqn: string; version: string }>();
+  const { version } = useParams<{ version: string }>();
+  const { fqn: classificationName } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [currentVersionData, setCurrentVersionData] = useState<Classification>(
     {} as Classification

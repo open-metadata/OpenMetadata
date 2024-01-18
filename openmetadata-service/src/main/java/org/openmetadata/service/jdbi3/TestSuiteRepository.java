@@ -1,6 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
@@ -20,6 +22,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -189,7 +192,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
 
-    String changeType;
+    EventType changeType;
     TestSuite updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestSuite.class);
     setFieldsInternal(updated, putFields);
 
@@ -199,10 +202,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updated.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
       updater.update();
-      changeType = RestUtil.ENTITY_SOFT_DELETED;
+      changeType = ENTITY_SOFT_DELETED;
     } else {
       cleanup(updated);
-      changeType = RestUtil.ENTITY_DELETED;
+      changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);

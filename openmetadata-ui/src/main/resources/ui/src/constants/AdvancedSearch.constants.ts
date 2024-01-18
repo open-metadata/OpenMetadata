@@ -451,8 +451,6 @@ const getInitialConfigWithoutFields = () => {
             operators: ['like', 'not_like'],
           },
         },
-        // Removes NULL check operators
-        excludeOperators: ['is_null', 'is_not_null'],
         // Limits source to user input values, not other fields
         valueSources: ['value'],
       },
@@ -464,7 +462,6 @@ const getInitialConfigWithoutFields = () => {
             operators: ['like', 'not_like'],
           },
         },
-        excludeOperators: ['is_null', 'is_not_null'],
         valueSources: ['value'],
       },
       text: {

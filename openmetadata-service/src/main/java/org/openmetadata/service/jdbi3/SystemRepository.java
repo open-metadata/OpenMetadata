@@ -1,5 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -111,11 +115,10 @@ public class SystemRepository {
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     if (oldValue == null) {
-      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+      return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
           .toResponse();
     } else {
-      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, RestUtil.ENTITY_UPDATED))
-          .toResponse();
+      return (new RestUtil.PutResponse<>(Response.Status.OK, setting, ENTITY_UPDATED)).toResponse();
     }
   }
 
@@ -126,7 +129,7 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED))
+    return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
         .toResponse();
   }
 
@@ -134,7 +137,7 @@ public class SystemRepository {
   public Response deleteSettings(SettingsType type) {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
-    return (new RestUtil.DeleteResponse<>(oldValue, RestUtil.ENTITY_DELETED)).toResponse();
+    return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
   public Response patchSetting(String settingName, JsonPatch patch) {
@@ -148,8 +151,7 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
-    return (new RestUtil.PutResponse<>(Response.Status.OK, original, RestUtil.ENTITY_UPDATED))
-        .toResponse();
+    return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
   }
 
   public void updateSetting(Settings setting) {
