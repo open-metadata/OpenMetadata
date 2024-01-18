@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
+import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
+import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import './observability-form-trigger-item.less';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
@@ -26,6 +29,21 @@ function ObservabilityFormTriggerItem({
   const [editMode, setEditMode] = useState<boolean>(false);
   const { t } = useTranslation();
 
+  const getIconForEntity = (type: string) => {
+    switch (type) {
+      case 'container':
+      case 'pipeline':
+      case 'topic':
+      case 'table':
+        return getEntityIcon(type);
+      case 'testCase':
+      case 'testSuite':
+        return <IconTestSuite height={16} width={16} />;
+    }
+
+    return null;
+  };
+
   const handleAddTriggerClick = useCallback(() => {
     setEditMode(true);
   }, []);
@@ -33,7 +51,12 @@ function ObservabilityFormTriggerItem({
   const resourcesOptions = useMemo(
     () =>
       filterResources.map((resource) => ({
-        label: resource.name,
+        label: (
+          <Space align="center" size={4}>
+            {getIconForEntity(resource.name ?? '')}
+            {startCase(resource.name)}
+          </Space>
+        ),
         value: resource.name,
       })),
     [filterResources]
@@ -57,7 +80,7 @@ function ObservabilityFormTriggerItem({
               messageVariables={{
                 fieldName: t('label.data-asset-plural'),
               }}
-              name={['filteringRules', 'resources']}>
+              name={['resources']}>
               <Select
                 className="w-full"
                 data-testid="triggerConfig-type"

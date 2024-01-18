@@ -13,17 +13,13 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  Effect,
-  Observability,
-} from '../../../generated/events/eventSubscription';
+import { Effect } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
@@ -35,17 +31,16 @@ function ObservabilityFormActionItem({
   heading,
   subHeading,
   filterResources,
-  form,
 }: Readonly<ObservabilityFormActionItemProps>) {
   const { t } = useTranslation();
-  const [filterForm] = useForm<Observability>();
+  const form = Form.useFormInstance();
 
   // Watchers
-  const filters = Form.useWatch(['observability', 'actions'], filterForm);
-  const triggerValue = Form.useWatch(['filteringRules', 'resources'], form);
+  const filters = Form.useWatch(['input', 'actions'], form);
+  const triggerValue = Form.useWatch(['resources'], form);
 
   const selectedTrigger = useMemo(
-    () => form.getFieldValue(['filteringRules', 'resources']),
+    () => form.getFieldValue(['resources']),
     [triggerValue, form]
   );
   const selectedDescriptor = useMemo(
@@ -243,76 +238,70 @@ function ObservabilityFormActionItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Form form={filterForm} name="filtersForm">
-            <Form.List
-              name={['observability', 'actions']}
-              rules={[
-                {
-                  validator: listLengthValidator(t('label.action-plural')),
-                },
-              ]}>
-              {(fields, { add, remove }, { errors }) => (
-                <Row gutter={[16, 16]}>
-                  {fields.map(({ key, name }) => (
-                    <Col key={`observability-${key}`} span={24}>
-                      <Row gutter={[8, 8]}>
-                        <Col span={11}>
-                          <Form.Item
-                            key={`action-${key}`}
-                            name={[name, 'name']}>
-                            <Select
-                              options={functions}
-                              placeholder={t('label.select-field', {
-                                field: t('label.action'),
-                              })}
-                            />
-                          </Form.Item>
-                        </Col>
-                        {!isNil(selectedDescriptor) &&
-                          !isEmpty(filters) &&
-                          filters[name] &&
-                          getConditionField(filters[name].name ?? '', name)}
-                        <Col span={2}>
-                          <Button
-                            data-testid={`remove-action-rule-${name}`}
-                            icon={<CloseOutlined />}
-                            onClick={() => remove(name)}
+          <Form.List
+            name={['input', 'actions']}
+            rules={[
+              {
+                validator: listLengthValidator(t('label.action-plural')),
+              },
+            ]}>
+            {(fields, { add, remove }, { errors }) => (
+              <Row gutter={[16, 16]}>
+                {fields.map(({ key, name }) => (
+                  <Col key={`observability-${key}`} span={24}>
+                    <Row gutter={[8, 8]}>
+                      <Col span={11}>
+                        <Form.Item key={`action-${key}`} name={[name, 'name']}>
+                          <Select
+                            options={functions}
+                            placeholder={t('label.select-field', {
+                              field: t('label.action'),
+                            })}
                           />
-                        </Col>
-                      </Row>
-                      <Form.Item
-                        getValueFromEvent={(value) =>
-                          value ? 'include' : 'exclude'
-                        }
-                        initialValue={Effect.Include}
-                        key={`effect-${key}`}
-                        label={
-                          <Typography.Text>
-                            {t('label.include')}
-                          </Typography.Text>
-                        }
-                        name={[name, 'effect']}>
-                        <Switch defaultChecked />
-                      </Form.Item>
-                    </Col>
-                  ))}
-                  {fields.length < (supportedActions?.length ?? 1) && (
-                    <Col span={24}>
-                      <Button
-                        data-testid="add-action"
-                        type="primary"
-                        onClick={() => add({})}>
-                        {t('label.add-entity', {
-                          entity: t('label.action'),
-                        })}
-                      </Button>
-                    </Col>
-                  )}
-                  <Form.ErrorList errors={errors} />
-                </Row>
-              )}
-            </Form.List>
-          </Form>
+                        </Form.Item>
+                      </Col>
+                      {!isNil(selectedDescriptor) &&
+                        !isEmpty(filters) &&
+                        filters[name] &&
+                        getConditionField(filters[name].name ?? '', name)}
+                      <Col span={2}>
+                        <Button
+                          data-testid={`remove-action-rule-${name}`}
+                          icon={<CloseOutlined />}
+                          onClick={() => remove(name)}
+                        />
+                      </Col>
+                    </Row>
+                    <Form.Item
+                      getValueFromEvent={(value) =>
+                        value ? 'include' : 'exclude'
+                      }
+                      initialValue={Effect.Include}
+                      key={`effect-${key}`}
+                      label={
+                        <Typography.Text>{t('label.include')}</Typography.Text>
+                      }
+                      name={[name, 'effect']}>
+                      <Switch defaultChecked />
+                    </Form.Item>
+                  </Col>
+                ))}
+                {fields.length < (supportedActions?.length ?? 1) && (
+                  <Col span={24}>
+                    <Button
+                      data-testid="add-action"
+                      type="primary"
+                      onClick={() => add({})}>
+                      {t('label.add-entity', {
+                        entity: t('label.action'),
+                      })}
+                    </Button>
+                  </Col>
+                )}
+                <Form.ErrorList errors={errors} />
+              </Row>
+            )}
+          </Form.List>
         </Col>
       </Row>
     </Card>

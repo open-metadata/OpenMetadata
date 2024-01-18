@@ -196,7 +196,7 @@ const AddAlertPage = () => {
           ...(filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
-        alertType: AlertType.ChangeEvent,
+        alertType: AlertType.Notification,
         provider,
       });
 
@@ -423,10 +423,10 @@ const AddAlertPage = () => {
               {sendToCommonFields}
             </>
           );
-        case SubscriptionType.GenericWebhook:
-        case SubscriptionType.SlackWebhook:
-        case SubscriptionType.MSTeamsWebhook:
-        case SubscriptionType.GChatWebhook:
+        case SubscriptionType.Generic:
+        case SubscriptionType.Slack:
+        case SubscriptionType.MSTeams:
+        case SubscriptionType.GChat:
           return (
             <>
               <Form.Item required name={['subscriptionConfig', 'endpoint']}>
@@ -677,10 +677,9 @@ const AddAlertPage = () => {
                         })}
                         showSearch={false}>
                         {map(SubscriptionType, (value) => {
-                          return [
-                            SubscriptionType.ActivityFeed,
-                            SubscriptionType.DataInsight,
-                          ].includes(value) ? null : (
+                          return [SubscriptionType.ActivityFeed].includes(
+                            value
+                          ) ? null : (
                             <Select.Option key={value} value={value}>
                               <Space size={16}>
                                 {getAlertsActionTypeIcon(

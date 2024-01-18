@@ -13,17 +13,13 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  Effect,
-  Observability,
-} from '../../../generated/events/eventSubscription';
+import { Effect } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
@@ -35,17 +31,17 @@ function ObservabilityFormFiltersItem({
   heading,
   subHeading,
   filterResources,
-  form,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
-  const [filterForm] = useForm<Observability>();
+
+  const form = Form.useFormInstance();
 
   // Watchers
-  const filters = Form.useWatch(['observability', 'filters'], filterForm);
-  const triggerValue = Form.useWatch(['filteringRules', 'resources'], form);
+  const filters = Form.useWatch(['input', 'filters'], form);
+  const triggerValue = Form.useWatch(['resources'], form);
 
   const selectedTrigger = useMemo(
-    () => form.getFieldValue(['filteringRules', 'resources']),
+    () => form.getFieldValue(['resources']),
     [triggerValue, form]
   );
   const selectedDescriptor = useMemo(
@@ -125,7 +121,7 @@ function ObservabilityFormFiltersItem({
   );
 
   const getFieldByArgumentType = useCallback(
-    (fieldName: number, argument: string) => {
+    (fieldName: number, argument: string, index: number) => {
       switch (argument) {
         case 'fqnList':
           return (
@@ -133,7 +129,7 @@ function ObservabilityFormFiltersItem({
               <Col key="fqn-list-select" span={11}>
                 <Form.Item
                   className="w-full"
-                  name={[fieldName, 'arguments', 'input']}>
+                  name={[fieldName, 'arguments', index, 'input']}>
                   <AsyncSelect
                     api={getEntityByFQN}
                     data-testid="fqn-list-select"
@@ -146,9 +142,9 @@ function ObservabilityFormFiltersItem({
                 </Form.Item>
               </Col>
               <Form.Item
-                className="d-none"
+                hidden
                 initialValue="fqnList"
-                name={[fieldName, 'arguments', 'name']}
+                name={[fieldName, 'arguments', index, 'name']}
               />
             </>
           );
@@ -224,8 +220,8 @@ function ObservabilityFormFiltersItem({
 
     return (
       <>
-        {requiredArguments?.map((argument) => {
-          return getFieldByArgumentType(name, argument);
+        {requiredArguments?.map((argument, index) => {
+          return getFieldByArgumentType(name, argument, index);
         })}
       </>
     );
@@ -243,74 +239,69 @@ function ObservabilityFormFiltersItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Form form={filterForm} name="filtersForm">
-            <Form.List
-              name={['observability', 'filters']}
-              rules={[
-                {
-                  validator: listLengthValidator(t('label.filter-plural')),
-                },
-              ]}>
-              {(fields, { add, remove }, { errors }) => (
-                <Row gutter={[16, 16]}>
-                  {fields.map(({ key, name }) => (
-                    <Col key={`observability-${key}`} span={24}>
-                      <Row gutter={[8, 8]}>
-                        <Col span={11}>
-                          <Form.Item
-                            key={`filter-${key}`}
-                            name={[name, 'name']}>
-                            <Select
-                              options={functions}
-                              placeholder={t('label.select-field', {
-                                field: t('label.filter'),
-                              })}
-                            />
-                          </Form.Item>
-                        </Col>
-                        {!isNil(selectedDescriptor) &&
-                          !isEmpty(filters) &&
-                          filters[name] &&
-                          getConditionField(filters[name].name ?? '', name)}
-                        <Col span={2}>
-                          <Button
-                            data-testid={`remove-filter-rule-${name}`}
-                            icon={<CloseOutlined />}
-                            onClick={() => remove(name)}
+          <Form.List
+            name={['input', 'filters']}
+            rules={[
+              {
+                validator: listLengthValidator(t('label.filter-plural')),
+              },
+            ]}>
+            {(fields, { add, remove }, { errors }) => (
+              <Row gutter={[16, 16]}>
+                {fields.map(({ key, name }) => (
+                  <Col key={`observability-${key}`} span={24}>
+                    <Row gutter={[8, 8]}>
+                      <Col span={11}>
+                        <Form.Item key={`filter-${key}`} name={[name, 'name']}>
+                          <Select
+                            options={functions}
+                            placeholder={t('label.select-field', {
+                              field: t('label.filter'),
+                            })}
                           />
-                        </Col>
-                      </Row>
-                      <Form.Item
-                        getValueFromEvent={(value) =>
-                          value ? 'include' : 'exclude'
-                        }
-                        initialValue={Effect.Include}
-                        key={`effect-${key}`}
-                        label={
-                          <Typography.Text>
-                            {t('label.include')}
-                          </Typography.Text>
-                        }
-                        name={[name, 'effect']}>
-                        <Switch defaultChecked />
-                      </Form.Item>
-                    </Col>
-                  ))}
-                  <Col span={24}>
-                    <Button
-                      data-testid="add-filters"
-                      type="primary"
-                      onClick={() => add({})}>
-                      {t('label.add-entity', {
-                        entity: t('label.filter'),
-                      })}
-                    </Button>
+                        </Form.Item>
+                      </Col>
+                      {!isNil(selectedDescriptor) &&
+                        !isEmpty(filters) &&
+                        filters[name] &&
+                        getConditionField(filters[name].name ?? '', name)}
+                      <Col span={2}>
+                        <Button
+                          data-testid={`remove-filter-rule-${name}`}
+                          icon={<CloseOutlined />}
+                          onClick={() => remove(name)}
+                        />
+                      </Col>
+                    </Row>
+                    <Form.Item
+                      getValueFromEvent={(value) =>
+                        value ? 'include' : 'exclude'
+                      }
+                      initialValue={Effect.Include}
+                      key={`effect-${key}`}
+                      label={
+                        <Typography.Text>{t('label.include')}</Typography.Text>
+                      }
+                      name={[name, 'effect']}
+                      valuePropName="checked">
+                      <Switch defaultChecked />
+                    </Form.Item>
                   </Col>
-                  <Form.ErrorList errors={errors} />
-                </Row>
-              )}
-            </Form.List>
-          </Form>
+                ))}
+                <Col span={24}>
+                  <Button
+                    data-testid="add-filters"
+                    type="primary"
+                    onClick={() => add({})}>
+                    {t('label.add-entity', {
+                      entity: t('label.filter'),
+                    })}
+                  </Button>
+                </Col>
+                <Form.ErrorList errors={errors} />
+              </Row>
+            )}
+          </Form.List>
         </Col>
       </Row>
     </Card>

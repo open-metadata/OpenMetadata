@@ -14,6 +14,7 @@
 
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
+import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
   EventSubscription,
   Status,
@@ -80,8 +81,13 @@ export const getAllAlerts = async (params: ListAlertsRequestParams) => {
   return response.data;
 };
 
-export const createObservabilityAlert = async (alert: EventSubscription) => {
-  const response = await axiosClient.post<EventSubscription>(BASE_URL, alert);
+export const createObservabilityAlert = async (
+  alert: CreateEventSubscription
+) => {
+  const response = await axiosClient.post<EventSubscription>(
+    `/events/subscriptions`,
+    alert
+  );
 
   return response.data;
 };

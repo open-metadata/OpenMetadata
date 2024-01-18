@@ -57,14 +57,6 @@ const AlertsActivityFeedPage = withSuspenseFallback(
     () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
   )
 );
-const AlertDataInsightReportPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/AlertDataInsightReportPage/AlertDataInsightReportPage'
-      )
-  )
-);
 
 const AlertsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
@@ -382,16 +374,6 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ACTIVITY_FEED
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertDataInsightReportPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.DATA_INSIGHT_REPORT_ALERT
         )}
       />
 

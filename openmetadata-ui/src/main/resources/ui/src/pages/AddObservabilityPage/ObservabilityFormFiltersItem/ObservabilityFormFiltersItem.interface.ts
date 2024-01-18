@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import { FormInstance } from 'antd';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
 
 export interface ObservabilityFormFiltersItemProps {
   heading: string;
   subHeading: string;
   filterResources: FilterResourceDescriptor[];
-  form: FormInstance<EventSubscription>;
 }
