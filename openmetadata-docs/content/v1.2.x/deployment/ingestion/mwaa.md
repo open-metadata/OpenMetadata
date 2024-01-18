@@ -3,6 +3,8 @@ title: Run the ingestion from AWS MWAA
 slug: /deployment/ingestion/mwaa
 ---
 
+{% partial file="/v1.2/deployment/external-ingestion.md" /%}
+
 # Run the ingestion from AWS MWAA
 
 When running ingestion workflows from MWAA we have three approaches:
