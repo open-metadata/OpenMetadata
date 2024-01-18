@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -173,20 +173,20 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
-  async function getCustomAttributesSubfields(configData: Config) {
-    const updatedConfig = cloneDeep(configData);
+  async function getCustomAttributesSubfields() {
+    const subfields: Record<
+      string,
+      { type: string; valueSources: ValueSource[] }
+    > = {};
+
     try {
       const entityType = getEntityTypeFromSearchIndex(searchIndex);
       if (!entityType) {
-        return;
+        return subfields;
       }
+
       const res = await getTypeByFQN(entityType);
       const customAttributes = res.customProperties;
-
-      const subfields: Record<
-        string,
-        { type: string; valueSources: ValueSource[] }
-      > = {};
 
       if (customAttributes) {
         customAttributes.forEach((attr) => {
@@ -196,47 +196,52 @@ export const AdvanceSearchProvider = ({
           };
         });
       }
-      (updatedConfig.fields.extension as FieldGroup).subfields = subfields;
 
-      return updatedConfig;
+      return subfields;
     } catch (error) {
       // Error
-      return updatedConfig;
+      return subfields;
     }
   }
 
-  async function getTierFields(configData: Config) {
-    const updatedConfig = cloneDeep(configData);
-
+  async function getTierFields() {
     try {
-      const { data: Tiers } = await getTags({
+      const { data: tiers } = await getTags({
         parent: 'Tier',
       });
 
-      const tierFields = Tiers.map((tier) => ({
+      const tierFields = tiers.map((tier) => ({
         title: tier.name,
         value: tier.fullyQualifiedName,
       }));
 
-      (updatedConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
-        listValues: tierFields,
-      };
-
-      return updatedConfig;
+      return tierFields;
     } catch (error) {
-      return updatedConfig;
+      return [];
     }
   }
 
   const loadData = async () => {
     const actualConfig = getQbConfigs(searchIndex);
-    let updatedConfig =
-      (await getCustomAttributesSubfields(actualConfig)) ?? actualConfig;
-    updatedConfig = await getTierFields(updatedConfig);
-    setConfig(updatedConfig);
-    setInitialised(true);
 
-    return updatedConfig;
+    const [extensionSubField, tierFieldOptions] = await Promise.all([
+      getCustomAttributesSubfields(),
+      getTierFields(),
+    ]);
+
+    if (!isEmpty(extensionSubField)) {
+      (actualConfig.fields.extension as FieldGroup).subfields =
+        extensionSubField;
+    }
+
+    if (!isEmpty(tierFieldOptions)) {
+      (actualConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
+        listValues: tierFieldOptions,
+      };
+    }
+
+    setConfig(actualConfig);
+    setInitialised(true);
   };
 
   const loadTree = useCallback(
