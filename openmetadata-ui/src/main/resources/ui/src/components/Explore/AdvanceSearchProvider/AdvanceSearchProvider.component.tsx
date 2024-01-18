@@ -37,6 +37,7 @@ import { TIER_FQN_KEY } from '../../../constants/explore.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getTags } from '../../../rest/tagAPI';
+import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
@@ -180,6 +181,10 @@ export const AdvanceSearchProvider = ({
     > = {};
 
     try {
+      if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+        return subfields;
+      }
+
       const entityType = getEntityTypeFromSearchIndex(searchIndex);
       if (!entityType) {
         return subfields;
