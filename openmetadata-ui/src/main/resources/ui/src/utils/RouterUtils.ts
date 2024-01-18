@@ -21,6 +21,7 @@ import {
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_FQN,
+  PLACEHOLDER_ROUTE_ID,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_QUERY_ID,
@@ -500,20 +501,17 @@ export const getDomainVersionsPath = (domainFqn: string, version: string) => {
   return path;
 };
 
-export const getGlossaryVersionsPath = (
-  glossaryFqn: string,
-  version: string
-) => {
+export const getGlossaryVersionsPath = (id: string, version: string) => {
   let path = ROUTES.GLOSSARY_VERSION;
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFqn))
+    .replace(PLACEHOLDER_ROUTE_ID, id)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };
 
 export const getGlossaryTermsVersionsPath = (
-  glossaryTermsFqn: string,
+  id: string,
   version: string,
   tab?: string
 ) => {
@@ -521,7 +519,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryTermsFqn))
+    .replace(PLACEHOLDER_ROUTE_ID, id)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {
