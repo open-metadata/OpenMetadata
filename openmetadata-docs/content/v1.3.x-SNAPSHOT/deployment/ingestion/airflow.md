@@ -3,6 +3,8 @@ title: Run the ingestion from your Airflow
 slug: /deployment/ingestion/airflow
 ---
 
+{% partial file="/v1.3/deployment/external-ingestion.md" /%}
+
 # Run the ingestion from your Airflow
 
 We can use Airflow in different ways:

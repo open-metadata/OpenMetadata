@@ -5,8 +5,13 @@ slug: /connectors/pipeline/airflow/gcs-composer
 
 # Extract Metadata from GCS Composer
 
-**Note:** This approach has been tested against Airflow 2.1.4 & 2.2.5 If you have any issues or questions,
-please do not hesitate to reach out!
+## Requirements
+
+This approach has been last tested against:
+- Composer version 2.5.4
+- Airflow version 2.6.3
+
+It also requires the ingestion package to be at least `openmetadata-ingestion==1.2.4.3`.
 
 There are 2 main approaches we can follow here to extract metadata from GCS. Both of them involve creating a DAG
 directly in your Composer instance, but the requirements and the steps to follow are going to be slightly different.
@@ -27,10 +32,8 @@ In any case, once the requirements are there, preparing the DAG is super straigh
 
 In your environment you will need to install the following packages:
 
-- `openmetadata-ingestion==x.y.z`, (e.g., `openmetadata-ingestion==0.12.0`).
+- `openmetadata-ingestion==x.y.z`, (e.g., `openmetadata-ingestion==1.2.4`).
 - `sqlalchemy==1.4.27`: This is needed to align OpenMetadata version with the Composer internal requirements.
-- `flask-appbuilder==3.4.5`: Again, this is just an alignment of versions so that `openmetadata-ingestion` can
-  work with GCS Composer internals.
 
 **Note:** Make sure to use the `openmetadata-ingestion` version that matches the server version
 you currently have!
