@@ -37,9 +37,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.orm.functions.table_metric_construct import (
-    table_metric_construct_factory,
-)
+from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -186,12 +184,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         # pylint: disable=protected-access
         try:
             dialect = runner._session.get_bind().dialect.name
-            row = table_metric_construct_factory.construct(
+            table_metric_computer: TableMetricComputer = TableMetricComputer(
                 dialect,
                 runner=runner,
                 metrics=metrics,
                 conn_config=self.service_connection_config,
             )
+            row = table_metric_computer.compute()
             if row:
                 return dict(row)
             return None
