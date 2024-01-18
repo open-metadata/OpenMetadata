@@ -767,7 +767,6 @@ export const ID = {
   teams: {
     testid: '[data-menu-id*="teams"]',
     button: 'add-team',
-    api: '/api/v1/teams/name/Organization?*',
   },
   users: {
     testid: '[data-menu-id*="users"]',

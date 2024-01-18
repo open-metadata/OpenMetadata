@@ -247,26 +247,22 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       double currentCompletedDescription = getCompletedDescriptionCount(last);
       double currentTotalCount = getTotalEntityFromDescriptionList(last);
 
-      // Calculate Percent Change
-      double previousDiff = previousTotalCount - previousCompletedDescription;
-      double currentDiff = currentTotalCount - currentCompletedDescription;
-
-      // Change
-      double percentChange = 0D;
-      if (previousDiff != 0) {
-        percentChange = ((currentDiff - previousDiff) / previousDiff) * 100;
+      // Previous Percent
+      double previousPercentCompleted = 0D;
+      if (previousTotalCount != 0) {
+        previousPercentCompleted = (previousCompletedDescription / previousTotalCount) * 100;
       }
-      // Completion
-      double percentCompleted = 0;
+      // Current Percent
+      double currentPercentCompleted = 0;
       if (currentTotalCount != 0) {
-        percentCompleted = (currentCompletedDescription / currentTotalCount) * 100;
+        currentPercentCompleted = (currentCompletedDescription / currentTotalCount) * 100;
       }
 
       return getTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
           PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-          percentCompleted,
-          percentChange,
+          currentPercentCompleted,
+          currentPercentCompleted - previousPercentCompleted,
           numberOfDaysChange);
     }
 
@@ -300,27 +296,22 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       double currentHasOwner = getCompletedOwnershipCount(last);
       double currentTotalCount = getTotalEntityFromOwnerList(last);
 
-      // Calculate Change
-      double previousDiff = previousTotalCount - previousHasOwner;
-      double currentDiff = currentTotalCount - currentHasOwner;
-
-      // Change Percent
-      double percentChange = 0D;
-      if (previousDiff != 0) {
-        percentChange = ((currentDiff - previousDiff) / previousDiff) * 100;
+      // Previous Percent
+      double previousPercentCompleted = 0D;
+      if (previousTotalCount != 0) {
+        previousPercentCompleted = (previousHasOwner / previousTotalCount) * 100;
       }
-
-      // Completion
-      double percentCompleted = 0;
+      // Current Percent
+      double currentPercentCompleted = 0;
       if (currentTotalCount != 0) {
-        percentCompleted = (currentHasOwner / currentTotalCount) * 100;
+        currentPercentCompleted = (currentHasOwner / currentTotalCount) * 100;
       }
 
       return getTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
           PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-          percentCompleted,
-          percentChange,
+          currentPercentCompleted,
+          currentPercentCompleted - previousPercentCompleted,
           numberOfDaysChange);
     }
 

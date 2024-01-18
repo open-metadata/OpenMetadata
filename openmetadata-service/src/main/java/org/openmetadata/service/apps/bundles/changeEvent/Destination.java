@@ -27,6 +27,8 @@ public interface Destination<T> {
 
   SubscriptionDestination getSubscriptionDestination();
 
+  void close();
+
   boolean getEnabled();
 
   default void setErrorStatus(Long attemptTime, Integer statusCode, String reason) {

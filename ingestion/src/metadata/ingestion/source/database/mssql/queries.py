@@ -186,3 +186,81 @@ index_info AS (
     ORDER BY fk_info.constraint_schema, fk_info.constraint_name,
         fk_info.ordinal_position
 """
+
+MSSQL_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+  ROUTINE_NAME AS name,
+  NULL AS owner,
+  ROUTINE_BODY AS language,
+  ROUTINE_DEFINITION AS definition
+FROM INFORMATION_SCHEMA.ROUTINES
+ WHERE ROUTINE_TYPE = 'PROCEDURE'
+   AND ROUTINE_CATALOG = '{database_name}'
+   AND ROUTINE_SCHEMA = '{schema_name}' 
+   AND LEFT(ROUTINE_NAME, 3) NOT IN ('sp_', 'xp_', 'ms_')
+    """
+)
+
+MSSQL_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (
+  select 
+    s.last_execution_time start_time,
+    DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
+    OBJECT_NAME(object_id, database_id) as procedure_name,
+    text as query_text
+  from sys.dm_exec_procedure_stats s
+  CROSS APPLY sys.dm_exec_sql_text(s.plan_handle)
+  WHERE OBJECT_NAME(object_id, database_id) IS NOT NULL
+    AND s.last_execution_time > '{start_date}'
+),
+Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type, schema_name, user_name) AS (
+  select    
+    db.NAME database_name,
+    t.text query_text,
+    s.last_execution_time start_time,
+    DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
+    s.total_elapsed_time/1000 duration,
+    case
+        when t.text LIKE '%%MERGE%%' then 'MERGE'
+        when t.text LIKE '%%UPDATE%%' then 'UPDATE'
+        when t.text LIKE '%%SELECT%%INTO%%' then 'CREATE_TABLE_AS_SELECT'
+        when t.text LIKE '%%INSERT%%' then 'INSERT'
+    else 'UNKNOWN' end query_type,
+    NULL schema_name,
+    NULL user_name
+  FROM sys.dm_exec_cached_plans AS p
+  INNER JOIN sys.dm_exec_query_stats AS s
+    ON p.plan_handle = s.plan_handle
+  CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
+  INNER JOIN sys.databases db
+    ON db.database_id = t.dbid
+  WHERE s.last_execution_time between '2024-01-13' and '2024-01-20'
+    AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND p.objtype NOT IN ('Prepared', 'Proc')
+    AND s.last_execution_time > '{start_date}'
+)
+select 
+  Q.query_type AS QUERY_TYPE,
+  Q.database_name  AS QUERY_DATABASE_NAME,
+  Q.schema_name AS QUERY_SCHEMA_NAME,
+  Q.query_text AS QUERY_TEXT,
+  Q.user_name AS QUERY_USER_NAME,
+  Q.start_time AS QUERY_START_TIME,
+  Q.duration AS QUERY_DURATION,
+  SP.procedure_name AS PROCEDURE_NAME,
+  SP.query_text AS PROCEDURE_TEXT,
+  SP.start_time AS PROCEDURE_START_TIME,
+  SP.end_time AS PROCEDURE_END_TIME
+from SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON (
+    Q.start_time BETWEEN SP.start_time and SP.end_time
+    OR Q.end_time BETWEEN SP.start_time and SP.end_time
+    )
+order by PROCEDURE_START_TIME desc
+;
+    """
+)

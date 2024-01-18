@@ -339,7 +339,8 @@ public class AlertsRuleEvaluator {
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
       if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
-        PipelineStatus pipelineStatus = (PipelineStatus) fieldChange.getNewValue();
+        PipelineStatus pipelineStatus =
+            JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
         PipelineStatusType status = pipelineStatus.getPipelineState();
         for (String givenStatus : pipelineState) {
           if (givenStatus.equals(status.value())) {

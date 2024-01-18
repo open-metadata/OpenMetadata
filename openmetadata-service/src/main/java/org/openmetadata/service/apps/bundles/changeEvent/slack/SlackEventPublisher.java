@@ -87,8 +87,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
     return subscriptionDestination.getEnabled();
   }
 
-  public void stop() {
+  public void close() {
     if (null != client) {
+      LOG.info("Closing Slack Client");
       client.close();
     }
   }

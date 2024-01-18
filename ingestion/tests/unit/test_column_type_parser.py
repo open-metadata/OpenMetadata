@@ -42,6 +42,7 @@ COLUMN_TYPE_PARSE = [
     "map<integer,string>",
     "string",
     "uniontype<int,double,array<string>,struct<a:int,b:string>>",
+    "array<array<double>>",
 ]
 
 COLUMN_TYPE = [

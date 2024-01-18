@@ -92,7 +92,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     return receiverList;
   }
 
-  public void stop() {
-    LOG.info("Email Publisher Stopped");
+  public void close() {
+    LOG.debug("Email Publisher Stopped");
   }
 }

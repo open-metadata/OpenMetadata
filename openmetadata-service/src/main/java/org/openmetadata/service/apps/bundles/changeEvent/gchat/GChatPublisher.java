@@ -89,7 +89,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
     return subscriptionDestination.getEnabled();
   }
 
-  public void stop() {
+  public void close() {
     if (null != client) {
       client.close();
     }

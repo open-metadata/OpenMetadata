@@ -14,16 +14,15 @@
 package org.openmetadata.service.events.scheduled.template;
 
 public class DataInsightTotalAssetTemplate {
-  private Double totalDataAssets;
-  private Double percentChangeTotalAssets;
+  private String totalDataAssets;
+  private String percentChangeTotalAssets;
   private String completeMessage;
-
   private int numberOfDaysChange;
 
   public DataInsightTotalAssetTemplate(
       Double totalDataAssets, Double percentChangeTotalAssets, int numberOfDaysChange) {
-    this.totalDataAssets = totalDataAssets;
-    this.percentChangeTotalAssets = percentChangeTotalAssets;
+    this.totalDataAssets = String.format("%.2f", totalDataAssets);
+    this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);
     this.numberOfDaysChange = numberOfDaysChange;
     String color = "#BF0000";
     if (percentChangeTotalAssets > 0) {
@@ -31,24 +30,24 @@ public class DataInsightTotalAssetTemplate {
     }
     completeMessage =
         String.format(
-            "In the past week, the Total Data Assets changed by a total of <span style=\"color: %s; font-weight: bold;\">%.2f%%</span>",
-            color, percentChangeTotalAssets);
+            "In the past week, the Total Data Assets changed by <span style=\"color: %s; font-weight: bold;\">%s</span>%%.",
+            color, this.percentChangeTotalAssets);
   }
 
-  public Double getTotalDataAssets() {
+  public String getTotalDataAssets() {
     return totalDataAssets;
   }
 
   public void setTotalDataAssets(Double totalDataAssets) {
-    this.totalDataAssets = totalDataAssets;
+    this.totalDataAssets = String.format("%.2f", totalDataAssets);
   }
 
-  public Double getPercentChangeTotalAssets() {
+  public String getPercentChangeTotalAssets() {
     return percentChangeTotalAssets;
   }
 
   public void setPercentChangeTotalAssets(Double percentChangeTotalAssets) {
-    this.percentChangeTotalAssets = percentChangeTotalAssets;
+    this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);
   }
 
   public String getCompleteMessage() {
