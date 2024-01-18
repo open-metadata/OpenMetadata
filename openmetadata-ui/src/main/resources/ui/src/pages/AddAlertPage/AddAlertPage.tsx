@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   GlobalSettingOptions,
@@ -481,8 +482,11 @@ const AddAlertPage = () => {
   }, [subscriptionType]);
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1
+      pageTitle={t('label.add-entity', {
+        entity: t('label.alert-plural'),
+      })}>
+      <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <Typography.Title level={5}>
             {!isEmpty(fqn)
@@ -719,7 +723,7 @@ const AddAlertPage = () => {
         <Col span={24} />
         <Col span={24} />
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 

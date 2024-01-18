@@ -14,12 +14,10 @@
 import i18next from 'i18next';
 import { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
-import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
-import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
@@ -36,7 +34,6 @@ import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
-import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as IntegrationIcon } from '../assets/svg/setting-integration.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
@@ -59,10 +56,12 @@ import {
   UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
 import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
-import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
-import i18n from './i18next/LocalUtil';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -99,331 +98,334 @@ export const getGlobalSettingsMenuWithPermission = (
   return [
     {
       category: i18next.t('label.service-plural'),
-      key: 'services',
+      key: GlobalSettingsMenuCategory.SERVICES,
       icon: ServiceIcon,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.service-description'),
       items: [
         {
           label: i18next.t('label.database-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-databases'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DATABASE_SERVICE,
             permissions
           ),
-          key: 'services.databases',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATABASES}`,
           icon: DatabaseIcon,
         },
         {
           label: i18next.t('label.messaging'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-messagings'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions
           ),
-          key: 'services.messaging',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MESSAGING}`,
           icon: MessagingIcon,
         },
         {
           label: i18next.t('label.dashboard-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-dashboards'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.DASHBOARD_SERVICE,
             permissions
           ),
-          key: 'services.dashboards',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DASHBOARDS}`,
           icon: DashboardIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-pipelines'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.PIPELINE_SERVICE,
             permissions
           ),
-          key: 'services.pipelines',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.PIPELINES}`,
           icon: PipelineIcon,
         },
         {
           label: i18next.t('label.ml-model-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-ml-models'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.ML_MODEL_SERVICE,
             permissions
           ),
-          key: 'services.mlmodels',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MLMODELS}`,
           icon: MlModelIcon,
         },
         {
           label: i18next.t('label.storage-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-storages'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
             permissions
           ),
-          key: 'services.storages',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.STORAGES}`,
           icon: StorageIcon,
         },
         {
           label: i18next.t('label.search'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-search'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.SEARCH_SERVICE,
             permissions
           ),
-          key: 'services.search',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.SEARCH}`,
           icon: SearchIcon,
         },
         {
           label: i18next.t('label.metadata'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-metadata'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.METADATA_SERVICE,
             permissions
           ),
-          key: 'services.metadata',
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
           icon: MetadataIcon,
         },
       ],
     },
     {
       category: i18next.t('label.integration-plural'),
-      key: 'integrations',
+      key: GlobalSettingsMenuCategory.INTEGRATIONS,
       icon: IntegrationIcon,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.integration-description'),
       items: [
         {
           label: i18next.t('label.application-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.application-to-improve-data'),
           isProtected: Boolean(isAdminUser),
-          key: 'integrations.apps',
+          key: `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.APPLICATIONS}`,
           icon: ApplicationIcon,
         },
         {
           label: i18next.t('label.bot-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-bots'),
           isProtected: Boolean(isAdminUser),
-          key: 'integrations.bots',
+          key: `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.BOTS}`,
           icon: BotIcon,
         },
       ],
     },
     {
-      category: i18next.t('label.data-observability'),
-      key: 'data-observability',
-      icon: DataObservability,
-      description: i18next.t('label.service-description'),
+      category: i18next.t('label.notification-plural'),
+      key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+      icon: NotificationIcon,
+      description: i18next.t('message.notification-description'),
       isProtected: Boolean(isAdminUser),
     },
     {
-      category: i18next.t('label.notification-plural'),
-      key: 'notifications',
-      icon: NotificationIcon,
-      description: i18next.t('label.service-description'),
-      items: [
-        {
-          label: i18next.t('label.activity-feed-plural'),
-          description: i18next.t('label.service-description'),
-          isProtected: Boolean(isAdminUser),
-          key: 'notifications.activityFeeds',
-          icon: AllActivityIcon,
-        },
-        {
-          label: i18next.t('label.alert-plural'),
-          description: i18next.t('label.service-description'),
-          isProtected: Boolean(isAdminUser),
-          key: 'notifications.alerts',
-          icon: BellIcon,
-        },
-      ],
-    },
-    {
       category: i18next.t('label.team-user-management'),
-      key: 'members',
+      key: GlobalSettingsMenuCategory.MEMBERS,
       icon: ManagementIcon,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.member-description'),
       items: [
         {
           label: i18next.t('label.team-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-teams'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.TEAM,
             permissions
           ),
-          key: 'members.teams',
+          key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.TEAMS}`,
           icon: TeamsIcon,
         },
         {
           label: i18next.t('label.user-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-users'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.USER,
             permissions
           ),
-          key: 'members.users',
+          key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.USERS}`,
           icon: UsersIcon,
         },
         {
           label: i18next.t('label.admin-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-admins'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.USER,
             permissions
           ),
-          key: 'members.admins',
+          key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
           icon: AdminIcon,
         },
 
         {
           label: i18next.t('label.persona-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-persona'),
           isProtected: Boolean(isAdminUser),
-          key: 'members.persona',
+          key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
           icon: PersonasIcon,
         },
       ],
     },
     {
       category: i18next.t('label.access-control'),
-      key: 'access',
+      key: GlobalSettingsMenuCategory.ACCESS,
       icon: AccessControlIcon,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.access-control-description'),
       items: [
         {
           label: i18next.t('label.role-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-roles'),
           isProtected: Boolean(isAdminUser),
-          key: 'access.roles',
+          key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.ROLES}`,
           icon: RolesIcon,
         },
         {
           label: i18next.t('label.policy-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.page-sub-header-for-policies'),
           isProtected: Boolean(isAdminUser),
-          key: 'access.policies',
+          key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
           icon: PoliciesIcon,
         },
       ],
     },
-
     {
       category: i18next.t('label.customize-open-metadata'),
-      key: 'openMetadata',
+      key: GlobalSettingsMenuCategory.OPEN_METADATA,
       icon: OpenMetadataIcon,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.customize-open-metadata-description'),
       items: [
         {
           label: i18next.t('label.customize-entity', {
             entity: i18next.t('label.landing-page'),
           }),
-          description: i18next.t('label.service-description'),
+          description: i18next.t(
+            'message.page-sub-header-for-customize-landing-page'
+          ),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customizeLandingPage',
+          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
           icon: CustomDashboardLogoIcon,
         },
         {
           label: i18next.t('label.email'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.email-configuration-message'),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
+          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.EMAIL}`,
           icon: EmailIcon,
         },
         {
           label: i18next.t('label.custom-logo'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.custom-logo-configuration-message'),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customLogo',
+          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOM_LOGO}`,
           icon: CustomLogoIcon,
         },
         {
           label: i18next.t('label.login-configuration'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t(
+            'message.page-sub-header-for-login-configuration'
+          ),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.loginConfiguration',
+          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
           icon: LoginIcon,
         },
       ],
     },
     {
       category: i18next.t('label.custom-property-plural'),
-      key: 'customAttributes',
+      key: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
       icon: CustomProperties,
-      description: i18next.t('label.service-description'),
+      description: i18next.t('message.custom-properties-description'),
       items: [
         {
           label: i18next.t('label.database'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.database'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.databases',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASES}`,
           icon: DatabaseIcon,
         },
         {
           label: i18next.t('label.database-schema'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.database-schema'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.databaseSchemas',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
           icon: SchemaIcon,
         },
         {
           label: i18next.t('label.table-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.table-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.tables',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLES}`,
           icon: TableIcon,
         },
         {
           label: i18next.t('label.stored-procedure-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.stored-procedure-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.storedProcedures',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.STORED_PROCEDURES}`,
           icon: StoredProcedureIcon,
         },
         {
           label: i18next.t('label.dashboard-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.dashboard-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.dashboards',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
           icon: DashboardIcon,
         },
         {
           label: i18next.t('label.pipeline-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.pipeline-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.pipelines',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.PIPELINES}`,
           icon: PipelineIcon,
         },
         {
           label: i18next.t('label.topic-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.topic-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.topics',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TOPICS}`,
           icon: MessagingIcon,
         },
         {
           label: i18next.t('label.container-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.container-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.containers',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CONTAINERS}`,
           icon: StorageIcon,
         },
         {
           label: i18next.t('label.ml-model-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.ml-model-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.mlmodels',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.MLMODELS}`,
           icon: MlModelIcon,
         },
         {
           label: i18next.t('label.search-index-plural'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.search-index-plural'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.searchIndexes',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
           icon: SearchIcon,
         },
         {
           label: i18next.t('label.glossary-term'),
-          description: i18next.t('label.service-description'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.glossary-term'),
+          }),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.glossaryTerm',
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
           icon: GlossaryIcon,
         },
       ],
@@ -473,55 +475,40 @@ export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
     .replace(':pageFqn', pageFqn);
 };
 
-export enum SettingCategory {
-  SERVICES = 'services',
-  INTEGRATIONS = 'integrations',
-  DATA_OBSERVABILITY = 'data-observability',
-  NOTIFICATIONS = 'notifications',
-  MEMBERS = 'members',
-  ACCESS = 'access',
-  OPEN_METADATA = 'openMetadata',
-  CUSTOM_ATTRIBUTES = 'customAttributes',
-}
-
 export const settingCategories = {
-  [SettingCategory.SERVICES]: {
-    name: i18n.t('label.service-plural'),
-    url: SettingCategory.SERVICES,
+  [GlobalSettingsMenuCategory.SERVICES]: {
+    name: i18next.t('label.service-plural'),
+    url: GlobalSettingsMenuCategory.SERVICES,
   },
-  [SettingCategory.INTEGRATIONS]: {
-    name: i18n.t('label.integration-plural'),
-    url: SettingCategory.INTEGRATIONS,
+  [GlobalSettingsMenuCategory.INTEGRATIONS]: {
+    name: i18next.t('label.integration-plural'),
+    url: GlobalSettingsMenuCategory.INTEGRATIONS,
   },
-  [SettingCategory.DATA_OBSERVABILITY]: {
-    name: i18n.t('label.observability'),
-    url: SettingCategory.DATA_OBSERVABILITY,
+  [GlobalSettingsMenuCategory.NOTIFICATIONS]: {
+    name: i18next.t('label.notification-plural'),
+    url: GlobalSettingsMenuCategory.NOTIFICATIONS,
   },
-  [SettingCategory.NOTIFICATIONS]: {
-    name: i18n.t('label.notification-plural'),
-    url: SettingCategory.NOTIFICATIONS,
+  [GlobalSettingsMenuCategory.MEMBERS]: {
+    name: i18next.t('label.member-plural'),
+    url: GlobalSettingsMenuCategory.MEMBERS,
   },
-  [SettingCategory.MEMBERS]: {
-    name: i18n.t('label.member-plural'),
-    url: SettingCategory.MEMBERS,
+  [GlobalSettingsMenuCategory.ACCESS]: {
+    name: i18next.t('label.access-control'),
+    url: GlobalSettingsMenuCategory.ACCESS,
   },
-  [SettingCategory.ACCESS]: {
-    name: i18n.t('label.access-control'),
-    url: SettingCategory.ACCESS,
+  [GlobalSettingsMenuCategory.OPEN_METADATA]: {
+    name: i18next.t('label.open-metadata'),
+    url: GlobalSettingsMenuCategory.OPEN_METADATA,
   },
-  [SettingCategory.OPEN_METADATA]: {
-    name: i18n.t('label.open-metadata'),
-    url: SettingCategory.OPEN_METADATA,
-  },
-  [SettingCategory.CUSTOM_ATTRIBUTES]: {
-    name: i18n.t('label.custom-property-plural'),
-    url: SettingCategory.CUSTOM_ATTRIBUTES,
+  [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
+    name: i18next.t('label.custom-property-plural'),
+    url: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
   },
 };
 
 export const getSettingPageEntityBreadCrumb = (
-  category: SettingCategory,
-  entityName: string
+  category: GlobalSettingsMenuCategory,
+  entityName?: string
 ) => {
   const categoryObject = settingCategories[category];
 
@@ -532,12 +519,17 @@ export const getSettingPageEntityBreadCrumb = (
     },
     {
       name: categoryObject.name,
-      url: getSettingPath(categoryObject.url),
+      url: entityName ? getSettingPath(categoryObject.url) : '',
+      activeTitle: !entityName,
     },
-    {
-      name: entityName,
-      url: '',
-      activeTitle: true,
-    },
+    ...(entityName
+      ? [
+          {
+            name: entityName,
+            url: '',
+            activeTitle: true,
+          },
+        ]
+      : []),
   ];
 };

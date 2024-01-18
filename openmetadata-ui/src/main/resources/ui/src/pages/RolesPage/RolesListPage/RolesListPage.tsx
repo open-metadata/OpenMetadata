@@ -32,6 +32,7 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -45,10 +46,7 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -103,7 +101,7 @@ const RolesListPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.ACCESS,
+        GlobalSettingsMenuCategory.ACCESS,
         t('label.role-plural')
       ),
     []

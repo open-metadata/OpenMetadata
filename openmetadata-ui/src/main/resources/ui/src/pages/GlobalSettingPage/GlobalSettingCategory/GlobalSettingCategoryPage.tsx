@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
-import { upperFirst } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -21,17 +20,16 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import SettingItemCard from '../../../components/Setting/SettingItemCard/SettingItemCard.component';
-import { ROUTES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { useAuth } from '../../../hooks/authHooks';
 import {
   getGlobalSettingsMenuWithPermission,
+  getSettingPageEntityBreadCrumb,
   SettingMenuItem,
 } from '../../../utils/GlobalSettingsUtils';
 import {
@@ -43,25 +41,28 @@ import {
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { settingCategory } = useParams<{ settingCategory: string }>();
+  const { settingCategory } =
+    useParams<{ settingCategory: GlobalSettingsMenuCategory }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => [
-      {
-        name: t('label.setting-plural'),
-        url: ROUTES.SETTINGS,
-        activeTitle: false,
-      },
-      {
-        name: upperFirst(settingCategory),
-        url: '',
-        activeTitle: true,
-      },
-    ],
+    () => getSettingPageEntityBreadCrumb(settingCategory),
     [settingCategory]
   );
+
+  const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
+    const category = getGlobalSettingsMenuWithPermission(
+      permissions,
+      isAdminUser
+    ).find((item) => item.key === settingCategory);
+
+    if (category) {
+      category.items?.filter((item) => item.isProtected);
+    }
+
+    return category;
+  }, [settingCategory, permissions, isAdminUser]);
 
   const handleSettingItemClick = useCallback((key: string) => {
     const [category, option] = key.split('.');
@@ -92,15 +93,6 @@ const GlobalSettingCategoryPage = () => {
     }
   }, []);
 
-  const categoryItems: SettingMenuItem[] = useMemo(
-    () =>
-      getGlobalSettingsMenuWithPermission(permissions, isAdminUser).find(
-        (item) => item.key === settingCategory
-      )?.items || [],
-
-    [settingCategory, permissions, isAdminUser]
-  );
-
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
       <Row className="page-container" gutter={[0, 20]}>
@@ -110,13 +102,18 @@ const GlobalSettingCategoryPage = () => {
 
         <Col span={24}>
           <Space className="w-full d-flex justify-between">
-            <PageHeader data={PAGE_HEADERS.SETTING} />
+            <PageHeader
+              data={{
+                header: settingCategoryData?.category,
+                subHeader: settingCategoryData?.description ?? '',
+              }}
+            />
           </Space>
         </Col>
 
         <Col span={24}>
           <Row gutter={[20, 20]}>
-            {categoryItems.map((category) => (
+            {settingCategoryData?.items?.map((category) => (
               <Col key={category?.key} span={6}>
                 <SettingItemCard
                   data={category}

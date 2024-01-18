@@ -31,14 +31,12 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { CUSTOM_LOGO_DOCS } from '../../constants/docs.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomLogoConfigSettingsPage = () => {
@@ -50,7 +48,7 @@ const CustomLogoConfigSettingsPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.OPEN_METADATA,
         t('label.custom-logo')
       ),
     []

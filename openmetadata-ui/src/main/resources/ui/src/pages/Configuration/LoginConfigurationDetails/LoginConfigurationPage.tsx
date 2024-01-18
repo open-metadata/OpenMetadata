@@ -28,13 +28,12 @@ import {
   NO_DATA_PLACEHOLDER,
   ROUTES,
 } from '../../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LoginConfigurationPage = () => {
@@ -54,7 +53,7 @@ const LoginConfigurationPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.OPEN_METADATA,
         t('label.login')
       ),
     []
@@ -97,13 +96,7 @@ const LoginConfigurationPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader
-                data={{
-                  header: 'Login',
-                  subHeader:
-                    'Login configuration such as failed attampts or expiry timer.',
-                }}
-              />
+              <PageHeader data={PAGE_HEADERS.LOGIN_CONFIGURATION} />
             </Col>
             <Col>
               <Button

@@ -41,14 +41,12 @@ import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-properties-pageV1.less';
@@ -78,7 +76,7 @@ const CustomEntityDetailV1 = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.CUSTOM_ATTRIBUTES,
+        GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
         capitalize(tabAttributePath)
       ),
     [tabAttributePath]
@@ -159,7 +157,7 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.mlmodels:
+      case ENTITY_PATH.mlModels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.containers:

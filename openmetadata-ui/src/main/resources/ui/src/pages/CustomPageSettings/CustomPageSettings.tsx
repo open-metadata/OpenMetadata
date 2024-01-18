@@ -41,7 +41,6 @@ import { getEntityName } from '../../utils/EntityUtils';
 import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
-  SettingCategory,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -67,7 +66,7 @@ export const CustomPageSettings = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.OPEN_METADATA,
         t('label.customize-entity', {
           entity: t('label.landing-page'),
         })

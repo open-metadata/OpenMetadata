@@ -80,10 +80,7 @@ import { getSuggestions } from '../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../rest/teamsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
@@ -196,7 +193,7 @@ const TeamDetailsV1 = ({
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.MEMBERS,
+        GlobalSettingsMenuCategory.MEMBERS,
         t('label.team-plural')
       ),
     []

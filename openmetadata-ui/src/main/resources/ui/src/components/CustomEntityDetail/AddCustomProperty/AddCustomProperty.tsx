@@ -66,7 +66,7 @@ const AddCustomProperty = () => {
       {
         name: t('label.custom-attribute-plural'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
           getSettingOptionByEntityType(entityTypeFQN)
         ),
       },

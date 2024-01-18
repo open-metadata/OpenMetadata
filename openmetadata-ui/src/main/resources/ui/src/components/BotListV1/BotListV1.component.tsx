@@ -22,6 +22,7 @@ import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder
 import Table from '../../components/common/Table/Table';
 import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -32,10 +33,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getBots } from '../../rest/botsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -76,7 +74,7 @@ const BotListV1 = ({
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.INTEGRATIONS,
+        GlobalSettingsMenuCategory.INTEGRATIONS,
         t('label.bot-plural')
       ),
     []

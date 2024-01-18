@@ -84,7 +84,7 @@ class EntityUtilClassBase {
 
       case EntityType.TYPE:
         return getSettingPath(
-          GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
           `${fullyQualifiedName}s`
         );
 

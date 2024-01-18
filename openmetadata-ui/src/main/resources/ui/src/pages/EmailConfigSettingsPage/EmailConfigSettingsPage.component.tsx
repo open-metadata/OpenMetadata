@@ -25,6 +25,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -33,10 +34,7 @@ import {
   testEmailConnection,
 } from '../../rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
@@ -49,7 +47,7 @@ function EmailConfigSettingsPage() {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.OPEN_METADATA,
         t('label.email')
       ),
     []

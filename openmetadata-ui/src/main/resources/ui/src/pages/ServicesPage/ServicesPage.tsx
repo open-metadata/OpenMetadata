@@ -23,13 +23,11 @@ import { IngestionPipelineList } from '../../components/Ingestion/IngestionPipel
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import Services from '../../components/Services/Services';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 
@@ -64,7 +62,10 @@ const ServicesPage = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(SettingCategory.SERVICES, capitalize(tab)),
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.SERVICES,
+        capitalize(tab)
+      ),
     []
   );
 

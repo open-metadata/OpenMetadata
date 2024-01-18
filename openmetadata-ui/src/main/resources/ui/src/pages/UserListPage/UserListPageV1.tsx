@@ -37,7 +37,10 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
-import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -51,10 +54,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
@@ -100,7 +100,10 @@ const UserListPageV1 = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(SettingCategory.MEMBERS, capitalize(tab)),
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.MEMBERS,
+        capitalize(tab)
+      ),
     [tab]
   );
 

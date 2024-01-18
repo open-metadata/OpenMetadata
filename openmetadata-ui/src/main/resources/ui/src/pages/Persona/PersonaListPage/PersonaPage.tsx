@@ -25,6 +25,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
 import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -33,10 +34,7 @@ import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -62,7 +60,7 @@ export const PersonaPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.MEMBERS,
+        GlobalSettingsMenuCategory.MEMBERS,
         t('label.persona-plural')
       ),
     []

@@ -22,7 +22,10 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -38,6 +41,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -57,6 +61,12 @@ const AlertsPage = () => {
     showPagination,
     paging,
   } = usePaging();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+    []
+  );
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
@@ -112,7 +122,7 @@ const AlertsPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`alert/${record.id}`}>{name}</Link>;
+          return <Link to={`notifications/alert/${record.id}`}>{name}</Link>;
         },
       },
       {
@@ -184,8 +194,11 @@ const AlertsPage = () => {
   );
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
@@ -254,7 +267,7 @@ const AlertsPage = () => {
           />
         </Col>
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 

@@ -781,7 +781,7 @@ export const ENTITY_PATH = {
   topics: 'topic',
   dashboards: 'dashboard',
   pipelines: 'pipeline',
-  mlmodels: 'mlmodel',
+  mlModels: 'mlmodel',
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',

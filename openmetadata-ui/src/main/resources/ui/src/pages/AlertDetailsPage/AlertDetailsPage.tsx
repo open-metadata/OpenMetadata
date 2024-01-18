@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -104,7 +105,7 @@ const AlertDetailsPage = () => {
   );
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={getEntityName(alerts)}>
       {loadingCount > 0 && <Card loading={loadingCount > 0} />}
       {alerts && (
         <AlertDetailsComponent
@@ -124,7 +125,7 @@ const AlertDetailsPage = () => {
           setShowDeleteModel(false);
         }}
       />
-    </>
+    </PageLayoutV1>
   );
 };
 

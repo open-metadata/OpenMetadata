@@ -56,6 +56,19 @@ jest.mock('../../rest/miscAPI', () => ({
   ),
 }));
 
+jest.mock('../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: '/setting',
+    },
+  ]),
+}));
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../../components/common/Table/Table', () => {
   return jest.fn().mockImplementation(() => <table>mockTable</table>);
 });
@@ -63,6 +76,13 @@ jest.mock('../../components/common/Table/Table', () => {
 jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
+  }
+);
 
 describe('Test UserListPage component', () => {
   it('users api should called on initial load', async () => {

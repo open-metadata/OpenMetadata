@@ -980,14 +980,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
-
-      <Route
-        exact
-        component={GlobalSettingCategoryPage}
-        path={ROUTES.SETTINGS_WITH_CATEGORY}
-      />
-
       <Route
         exact
         component={TestSuiteDetailsPage}
@@ -1081,7 +1073,55 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.CUSTOMIZE_PAGE}
       />
 
-      {/* Setting Page Routes */}
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
+
+      {/*  Setting routes without any category will be places here */}
+      <AdminProtectedRoute
+        exact
+        component={AlertsPage}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.EDIT_ALERTS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERT,
+          true
+        )}
+      />
+
+      {/* Setting Page Routes with categories */}
+
+      <Route
+        exact
+        component={GlobalSettingCategoryPage}
+        path={ROUTES.SETTINGS_WITH_CATEGORY}
+      />
+
       <Route exact path={getSettingPath()}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
@@ -1242,47 +1282,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
-        component={AlertsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AddAlertPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_ALERTS,
-          true
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddAlertPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_ALERTS
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertDetailsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERT,
-          true
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={AlertsActivityFeedPage}
         hasPermission={false}
         path={getSettingPath(
@@ -1306,7 +1305,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CustomPropertiesPageV1}
         hasPermission={false}
         path={getSettingCategoryPath(
-          GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
 

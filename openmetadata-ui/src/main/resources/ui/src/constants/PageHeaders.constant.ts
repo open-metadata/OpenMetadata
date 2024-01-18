@@ -178,4 +178,8 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.setting-plural'),
     subHeader: i18n.t('message.page-sub-header-for-setting'),
   },
+  LOGIN_CONFIGURATION: {
+    header: i18n.t('label.login'),
+    subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
+  },
 };

@@ -25,6 +25,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
@@ -33,10 +34,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getSettingPageEntityBreadCrumb,
-  SettingCategory,
-} from '../../utils/GlobalSettingsUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -62,7 +60,7 @@ const ApplicationPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        SettingCategory.INTEGRATIONS,
+        GlobalSettingsMenuCategory.INTEGRATIONS,
         capitalize(settingService)
       ),
     [settingService]
