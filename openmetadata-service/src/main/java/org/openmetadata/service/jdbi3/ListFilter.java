@@ -36,6 +36,10 @@ public class ListFilter {
     return this;
   }
 
+  public void removeQueryParam(String name) {
+    queryParams.remove(name);
+  }
+
   public String getQueryParam(String name) {
     return name.equals("include") ? include.value() : queryParams.get(name);
   }
