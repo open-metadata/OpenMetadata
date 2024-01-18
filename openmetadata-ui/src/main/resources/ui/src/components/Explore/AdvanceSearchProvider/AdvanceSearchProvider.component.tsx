@@ -148,16 +148,7 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
     setQueryFilter(undefined);
     setSQLQuery('');
-
-    history.push({
-      pathname: location.pathname,
-      search: Qs.stringify({
-        quickFilter: undefined,
-        queryFilter: undefined,
-        page: 1,
-      }),
-    });
-  }, []);
+  }, [config]);
 
   const handleConfigUpdate = (updatedConfig: Config) => {
     setConfig(updatedConfig);
@@ -223,7 +214,6 @@ export const AdvanceSearchProvider = ({
       }));
 
       (updatedConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
-        showSearch: true,
         listValues: tierFields,
       };
 
@@ -233,7 +223,7 @@ export const AdvanceSearchProvider = ({
     }
   }
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     const actualConfig = getQbConfigs(searchIndex);
     let updatedConfig =
       (await getCustomAttributesSubfields(actualConfig)) ?? actualConfig;
@@ -241,37 +231,33 @@ export const AdvanceSearchProvider = ({
     setConfig(updatedConfig);
 
     return updatedConfig;
-  }, [searchIndex]);
+  };
 
-  const loadTree = useCallback(
-    async (treeObj: JsonTree) => {
-      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), config);
-      setTreeInternal(tree);
-      const qFilter = {
-        query: elasticSearchFormat(tree, config),
-      };
-      setQueryFilter(qFilter);
-      setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
-    },
-    [config]
-  );
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const loadTree = async (treeObj: JsonTree) => {
+    const config = await loadData();
+    const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), config);
+    setTreeInternal(tree);
+    const qFilter = {
+      query: elasticSearchFormat(tree, config),
+    };
+    setQueryFilter(qFilter);
+    setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
+  };
 
   useEffect(() => {
     if (!jsonTree) {
-      handleReset();
+      loadData();
     }
-  }, [jsonTree, handleReset]);
+  }, [searchIndex]);
 
   useEffect(() => {
     if (jsonTree) {
       loadTree(jsonTree);
+    } else {
+      handleReset();
     }
     setLoading(false);
-  }, [jsonTree, loadTree]);
+  }, [jsonTree]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
