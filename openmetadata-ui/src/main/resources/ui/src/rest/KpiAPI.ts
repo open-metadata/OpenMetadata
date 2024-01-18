@@ -18,6 +18,7 @@ import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequ
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type KpiResultParam = {
@@ -63,8 +64,8 @@ export const patchKPI = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getKPIByName = async (kpiName: string, params?: ListParams) => {
-  const response = await APIClient.get<Kpi>(`/kpi/name/${kpiName}`, {
+export const getKPIByName = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Kpi>(`/kpi/name/${getEncodedFqn(fqn)}`, {
     params,
   });
 
@@ -77,7 +78,7 @@ export const getListKpiResult = async (
   orderBy = 'ASC'
 ) => {
   const response = await APIClient.get<PagingResponse<KpiResult[]>>(
-    `/kpi/${fqn}/kpiResult`,
+    `/kpi/${getEncodedFqn(fqn)}/kpiResult`,
     { params: { ...params, orderBy } }
   );
 
@@ -85,7 +86,7 @@ export const getListKpiResult = async (
 };
 export const getLatestKpiResult = async (fqn: string) => {
   const response = await APIClient.get<KpiResult>(
-    `/kpi/${fqn}/latestKpiResult`
+    `/kpi/${getEncodedFqn(fqn)}/latestKpiResult`
   );
 
   return response.data;

@@ -28,7 +28,7 @@ import { isEqual } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
@@ -38,6 +38,7 @@ import {
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { TableProfile } from '../../../generated/entity/data/table';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -46,7 +47,6 @@ import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -81,7 +81,8 @@ const TableProfilerChart = ({
     isProfilingEnabled,
     customMetric: tableCustomMetric,
   } = useTableProfiler();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
   const customMetrics = useMemo(
@@ -111,7 +112,7 @@ const TableProfilerChart = ({
         history.push(
           getAddDataQualityTableTestPath(
             ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
+            datasetFQN
           )
         );
       },
@@ -121,10 +122,7 @@ const TableProfilerChart = ({
       key: 'custom-metric',
       onClick: () => {
         history.push(
-          getAddCustomMetricPath(
-            ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
-          )
+          getAddCustomMetricPath(ProfilerDashboardType.TABLE, datasetFQN)
         );
       },
     },

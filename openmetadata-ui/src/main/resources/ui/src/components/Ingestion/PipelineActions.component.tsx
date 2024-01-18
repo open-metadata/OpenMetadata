@@ -24,7 +24,6 @@ import {
   getEditIngestionPath,
   getLogsViewerPath,
 } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
@@ -99,9 +98,7 @@ function PipelineActions({
       getEditIngestionPath(
         serviceCategory,
         serviceName,
-        getEncodedFqn(
-          ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`
-        ),
+        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
         ingestion.pipelineType
       )
     );
@@ -232,7 +229,7 @@ function PipelineActions({
           to={getLogsViewerPath(
             serviceCategory,
             record.service?.name || '',
-            getEncodedFqn(record?.fullyQualifiedName || record?.name || '')
+            record?.fullyQualifiedName || record?.name || ''
           )}>
           <Button
             className="p-x-xss"

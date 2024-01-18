@@ -33,7 +33,6 @@ import {
   getLogEntityPath,
   getSettingPath,
 } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -96,10 +95,8 @@ export const getLogBreadCrumbs = (
         name: ingestionDetails.name,
         url:
           getTableTabPath(
-            getEncodedFqn(
-              (ingestionDetails.sourceConfig.config as Pipeline)
-                ?.entityFullyQualifiedName ?? ''
-            ),
+            (ingestionDetails.sourceConfig.config as Pipeline)
+              ?.entityFullyQualifiedName ?? '',
             EntityTabs.PROFILER
           ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
       },
@@ -116,9 +113,7 @@ export const getLogBreadCrumbs = (
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1
-          ? getLogEntityPath(getEncodedFqn(path), serviceType)
-          : '',
+        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
     };
   });
 };
