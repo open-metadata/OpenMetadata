@@ -25,8 +25,6 @@ import {
   updateExpiration,
   visitUserListPage,
 } from '../../common/Utils/Users';
-import { EntityType } from '../../constants/Entity.interface';
-
 import {
   BASE_URL,
   DELETE_ENTITY,
@@ -34,7 +32,9 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
+
 const entity = new UsersTestClass();
 const expirationTime = {
   oneday: '1',
@@ -137,11 +137,11 @@ describe('User with different Roles', () => {
   });
 
   it('Data Consumer operations for settings page', () => {
-    cy.storeSession(user.email, user.newPassword);
-    cy.goToHomePage();
-    cy.url().should('eq', `${BASE_URL}/my-data`);
+    cy.login(user.email, user.newPassword);
+
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
+    cy.sidebarHoverOutside();
     Object.values(ID).forEach((id) => {
       if (id?.api) {
         interceptURL('GET', id.api, 'getTabDetails');
@@ -226,9 +226,10 @@ describe('User with different Roles', () => {
 
   it('Data Steward operations for settings page', () => {
     cy.login(user.email, user.newStewardPassword);
-    cy.url().should('eq', `${BASE_URL}/my-data`);
+
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
+    cy.sidebarHoverOutside();
     Object.values(ID).forEach((id) => {
       if (id?.api) {
         interceptURL('GET', id.api, 'getTabDetails');
