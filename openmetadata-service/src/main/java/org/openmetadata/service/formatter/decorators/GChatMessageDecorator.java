@@ -13,16 +13,13 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
-import org.openmetadata.service.util.FeedUtils;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
@@ -67,42 +64,44 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildMessage(ChangeEvent event) {
-    GChatMessage gChatMessage = new GChatMessage();
-    GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
-    GChatMessage.Card card = new GChatMessage.Card();
-    GChatMessage.Section section = new GChatMessage.Section();
-    EntityInterface entityInterface = getEntity(event);
-    if (event.getEntity() != null) {
-      String headerTemplate = "%s posted on %s %s";
-      String headerText =
-          String.format(
-              headerTemplate,
-              event.getUserName(),
-              event.getEntityType(),
-              this.buildEntityUrl(event.getEntityType(), entityInterface));
-      gChatMessage.setText(headerText);
+  public GChatMessage buildEntityMessage(ChangeEvent event) {
+    return getGChatMessage(createEntityMessage(event));
+  }
+
+  @Override
+  public GChatMessage buildThreadMessage(ChangeEvent event) {
+    return getGChatMessage(createThreadMessage(event));
+  }
+
+  private GChatMessage getGChatMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      GChatMessage gChatMessage = new GChatMessage();
+      GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
+      GChatMessage.Card card = new GChatMessage.Card();
+      GChatMessage.Section section = new GChatMessage.Section();
+
+      // Header
+      gChatMessage.setText("Change Event from OpenMetadata");
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
-      String cardHeaderText =
-          String.format(
-              headerTemplate,
-              event.getUserName(),
-              event.getEntityType(),
-              entityInterface.getName());
-      cardHeader.setTitle(cardHeaderText);
+      cardHeader.setTitle(outgoingMessage.getHeader());
       card.setHeader(cardHeader);
+
+      // Attachments
+      List<GChatMessage.Widget> widgets = new ArrayList<>();
+      outgoingMessage.getMessages().forEach(m -> widgets.add(getGChatWidget(m)));
+      section.setWidgets(widgets);
+      card.setSections(List.of(section));
+      cardsV2.setCard(card);
+      gChatMessage.setCardsV2(List.of(cardsV2));
+
+      return gChatMessage;
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
-    List<GChatMessage.Widget> widgets = new ArrayList<>();
-    for (Thread entry : thread) {
-      GChatMessage.Widget widget = new GChatMessage.Widget();
-      widget.setTextParagraph(new GChatMessage.TextParagraph(entry.getMessage()));
-      widgets.add(widget);
-    }
-    section.setWidgets(widgets);
-    card.setSections(List.of(section));
-    cardsV2.setCard(card);
-    gChatMessage.setCardsV2(List.of(cardsV2));
-    return gChatMessage;
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private GChatMessage.Widget getGChatWidget(String message) {
+    GChatMessage.Widget widget = new GChatMessage.Widget();
+    widget.setTextParagraph(new GChatMessage.TextParagraph(message));
+    return widget;
   }
 }
