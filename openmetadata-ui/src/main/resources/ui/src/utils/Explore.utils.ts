@@ -18,8 +18,6 @@ import {
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
-import { EntityTypeSearchIndexMapping } from '../constants/explore.constants';
-import { EntityType } from '../enums/entity.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
@@ -148,8 +146,4 @@ export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
       };
 
   return quickFilterQuery;
-};
-
-export const getSearchIndexFromEntityType = (entityType: EntityType) => {
-  return EntityTypeSearchIndexMapping[entityType];
 };
