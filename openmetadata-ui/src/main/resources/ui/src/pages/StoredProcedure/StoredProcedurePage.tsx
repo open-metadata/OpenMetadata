@@ -472,6 +472,16 @@ const StoredProcedurePage = () => {
           ...storedProcedure,
           extension: updatedData.extension,
         }));
+      setStoredProcedure((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          extension: updatedData.extension,
+        };
+      });
     },
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
@@ -559,6 +569,7 @@ const StoredProcedurePage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={storedProcedure}
                 dataProducts={storedProcedure?.dataProducts ?? []}
                 domain={storedProcedure?.domain}
                 editTagPermission={editTagsPermission}
@@ -566,6 +577,7 @@ const StoredProcedurePage = () => {
                 entityId={storedProcedure?.id ?? ''}
                 entityType={EntityType.STORED_PROCEDURE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -616,6 +628,7 @@ const StoredProcedurePage = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
@@ -712,7 +725,6 @@ const StoredProcedurePage = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.CODE}
             className="entity-details-page-tabs"
             data-testid="tabs"

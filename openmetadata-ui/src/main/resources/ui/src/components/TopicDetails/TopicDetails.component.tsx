@@ -327,6 +327,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={topicDetails}
                 dataProducts={topicDetails?.dataProducts ?? []}
                 domain={topicDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -334,6 +335,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -413,6 +415,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={topicDetails}
             entityType={EntityType.TOPIC}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
@@ -477,7 +480,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </Col>
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.SCHEMA}
             className="entity-details-page-tabs"
             data-testid="tabs"

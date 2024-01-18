@@ -192,7 +192,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: 'owner,tags,domain,votes',
+      fields: 'owner,tags,domain,votes,extension',
       include: Include.All,
     })
       .then((res) => {
@@ -534,6 +534,7 @@ const DatabaseDetails: FunctionComponent = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={database}
                 dataProducts={database?.dataProducts ?? []}
                 domain={database?.domain}
                 editTagPermission={editTagsPermission}
@@ -541,6 +542,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 entityId={database?.id ?? ''}
                 entityType={EntityType.DATABASE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -578,6 +580,7 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={database}
             entityType={EntityType.DATABASE}
             handleExtensionUpdate={settingsUpdateHandler}
             hasEditAccess={editCustomAttributePermission}

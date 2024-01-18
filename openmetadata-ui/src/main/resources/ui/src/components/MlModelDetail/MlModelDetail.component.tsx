@@ -419,6 +419,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={mlModelDetail}
                 dataProducts={mlModelDetail?.dataProducts ?? []}
                 domain={mlModelDetail?.domain}
                 editTagPermission={editTagsPermission}
@@ -426,6 +427,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 entityId={mlModelDetail.id}
                 entityType={EntityType.MLMODEL}
                 selectedTags={mlModelTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={handleThreadLinkSelect}
               />
@@ -488,6 +490,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={mlModelDetail}
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

@@ -198,7 +198,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,domain,votes',
+          fields: 'owner,usageSummary,tags,domain,votes,extension',
           include: Include.All,
         }
       );
@@ -537,15 +537,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, databaseSchema]
   );
 
-  const handelExtentionUpdate = useCallback(
-    async (schema: DatabaseSchema) => {
-      await saveUpdatedDatabaseSchemaData({
-        ...databaseSchema,
+  const handleExtensionUpdate = async (schema: DatabaseSchema) => {
+    await saveUpdatedDatabaseSchemaData({
+      ...databaseSchema,
+      extension: schema.extension,
+    });
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
         extension: schema.extension,
-      });
-    },
-    [saveUpdatedDatabaseSchemaData, databaseSchema]
-  );
+      };
+    });
+  };
 
   const tabs: TabsProps['items'] = [
     {
@@ -583,6 +590,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             data-testid="entity-right-panel"
             flex="320px">
             <EntityRightPanel
+              customProperties={databaseSchema}
               dataProducts={databaseSchema?.dataProducts ?? []}
               domain={databaseSchema?.domain}
               editTagPermission={editTagsPermission}
@@ -590,6 +598,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
+              viewAllPermission={viewAllPermission}
               onTagSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
@@ -641,8 +650,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       children: (
         <CustomPropertyTable
           className=""
+          entityDetails={databaseSchema}
           entityType={EntityType.DATABASE_SCHEMA}
-          handleExtensionUpdate={handelExtentionUpdate}
+          handleExtensionUpdate={handleExtensionUpdate}
           hasEditAccess={editCustomAttributePermission}
           hasPermission={viewAllPermission}
           isVersionView={false}

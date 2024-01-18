@@ -25,9 +25,7 @@ import {
   CustomProperty,
   Type,
 } from '../../../generated/entity/type';
-import { useFqn } from '../../../hooks/useFqn';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -58,31 +56,16 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
+  isInRightPanel,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [extentionDetails, setExtentionDetails] =
-    useState<ExtentionEntities[T]>();
+
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
-  const { fqn: decodedFqn } = useFqn();
-
-  const fetchExtentiondetails = async () => {
-    const response = await getEntityExtentionDetailsFromEntityType<T>(
-      entityType,
-      decodedFqn
-    );
-
-    setExtentionDetails(response as ExtentionEntities[T]);
-  };
-
-  useEffect(() => {
-    fetchExtentiondetails();
-  }, [decodedFqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
-  const versionDetails = entityDetails ?? extentionDetails;
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -119,16 +102,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(handleExtensionUpdate) && versionDetails) {
+      if (!isUndefined(handleExtensionUpdate) && entityDetails) {
         const updatedData = {
-          ...versionDetails,
+          ...entityDetails,
           extension: updatedExtension,
         };
         await handleExtensionUpdate(updatedData);
-        setExtentionDetails(updatedData);
       }
     },
-    [versionDetails, handleExtensionUpdate]
+    [entityDetails, handleExtensionUpdate]
   );
 
   const extensionObject: {
@@ -136,7 +118,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
-      const changeDescription = versionDetails?.changeDescription;
+      const changeDescription = entityDetails?.changeDescription;
       const extensionDiff = getDiffByFieldName(
         EntityField.EXTENSION,
         changeDescription as ChangeDescription
@@ -148,19 +130,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         const addedFields = JSON.parse(newValues ? newValues : [])[0];
         if (addedFields) {
           return {
-            extensionObject: versionDetails?.extension,
+            extensionObject: entityDetails?.extension,
             addedKeysList: Object.keys(addedFields),
           };
         }
       }
 
-      if (versionDetails && extensionDiff.updated) {
-        return getUpdatedExtensionDiffFields(versionDetails, extensionDiff);
+      if (entityDetails && extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
       }
     }
 
-    return { extensionObject: versionDetails?.extension };
-  }, [isVersionView, versionDetails?.extension]);
+    return { extensionObject: entityDetails?.extension };
+  }, [isVersionView, entityDetails?.extension]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
@@ -168,7 +150,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 200,
+        ellipsis: true,
+        width: '50%',
         render: (_, record) => getEntityName(record),
         sorter: columnSorter,
       },
@@ -190,10 +173,26 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       },
     ];
   }, [
-    versionDetails?.extension,
+    entityDetails,
+    entityDetails?.extension,
     hasEditAccess,
     extensionObject,
     isVersionView,
+    onExtensionUpdate,
+  ]);
+
+  const classNameValue = useMemo(() => {
+    return isInRightPanel ? '' : 'm-sm';
+  }, [isInRightPanel]);
+
+  const dataSourceValue = useMemo(() => {
+    return isInRightPanel
+      ? entityTypeDetail.customProperties?.slice(0, 5)
+      : entityTypeDetail.customProperties ?? [];
+  }, [
+    entityType,
+    entityTypeDetail,
+    entityTypeDetail.customProperties,
     onExtensionUpdate,
   ]);
 
@@ -201,7 +200,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
     }
-  }, [typePermission]);
+  }, [typePermission, entityDetails?.extension]);
 
   useEffect(() => {
     fetchResourcePermission(entityType);
@@ -221,7 +220,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    isUndefined(versionDetails?.extension)
+    isUndefined(entityDetails?.extension)
   ) {
     return (
       <div className="flex-center tab-content-height">
@@ -237,15 +236,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(versionDetails?.extension) ? (
-    <ExtensionTable extension={versionDetails?.extension} />
+    !isUndefined(entityDetails?.extension) ? (
+    <ExtensionTable extension={entityDetails?.extension} />
   ) : (
     <Table
       bordered
-      className="m-md"
+      className={classNameValue}
       columns={tableColumn}
       data-testid="custom-properties-table"
-      dataSource={entityTypeDetail.customProperties ?? []}
+      dataSource={dataSourceValue}
       loading={entityTypeDetailLoading}
       pagination={false}
       rowKey="name"

@@ -98,6 +98,33 @@ const mockProp = {
   entityType: EntityType.TABLE,
   hasEditAccess: true,
   hasPermission: true,
+  entityDetails: {
+    id: '0e84330a',
+    name: 'cypr081639',
+    fullyQualifiedName: 'cy-da-1705598081639',
+    tags: [],
+    version: 0.1,
+    updatedAt: 1705,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/databases/',
+    service: {
+      id: '420df68ba',
+      type: 'databaseService',
+      name: 'cy-da348',
+      fullyQualifiedName: 'cy3348',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/services/dat83b567868ba',
+    },
+    serviceType: 'Mysql',
+    default: false,
+    deleted: false,
+    votes: {
+      upVotes: 0,
+      downVotes: 0,
+      upVoters: [],
+      downVoters: [],
+    },
+  },
 };
 
 describe('Test CustomProperty Table Component', () => {
@@ -165,5 +192,21 @@ describe('Test CustomProperty Table Component', () => {
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Should render custom property data if custom properties list is not empty', async () => {
+    (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ customProperties: mockCustomProperties })
+    );
+    await act(async () => {
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
+    });
+    const tableRowTitle = await screen.findByText('xName');
+    const tableRowValue = await screen.findByText('PropertyValue');
+
+    expect(tableRowTitle).toBeInTheDocument();
+    expect(tableRowValue).toBeInTheDocument();
   });
 });

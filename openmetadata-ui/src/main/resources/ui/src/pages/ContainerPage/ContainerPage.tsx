@@ -605,6 +605,7 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={containerData}
                 dataProducts={containerData?.dataProducts ?? []}
                 domain={containerData?.domain}
                 editTagPermission={
@@ -614,6 +615,7 @@ const ContainerPage = () => {
                 entityId={containerData?.id ?? ''}
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -691,6 +693,7 @@ const ContainerPage = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={containerData}
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

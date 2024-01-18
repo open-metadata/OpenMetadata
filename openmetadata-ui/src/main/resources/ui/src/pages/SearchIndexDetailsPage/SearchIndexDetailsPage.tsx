@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual } from 'lodash';
+import { isEqual, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -220,13 +220,12 @@ function SearchIndexDetailsPage() {
       history.push(getSearchIndexTabPath(decodedSearchIndexFQN, activeKey));
     }
   };
-
   const saveUpdatedSearchIndexData = useCallback(
     (updatedData: SearchIndex) => {
-      if (!searchIndexDetails) {
-        return updatedData;
-      }
-      const jsonPatch = compare(searchIndexDetails, updatedData);
+      const jsonPatch = compare(
+        omitBy(searchIndexDetails, isUndefined),
+        updatedData
+      );
 
       return patchSearchIndexDetails(searchIndexId, jsonPatch);
     },
@@ -346,70 +345,15 @@ function SearchIndexDetailsPage() {
   const onExtensionUpdate = useCallback(
     async (updatedData: SearchIndex) => {
       searchIndexDetails &&
-        (await saveUpdatedSearchIndexData({
-          ...searchIndexDetails,
-          extension: updatedData.extension,
-        }));
+        (await onSearchIndexUpdate(
+          {
+            ...searchIndexDetails,
+            extension: updatedData.extension,
+          },
+          'extension'
+        ));
     },
     [saveUpdatedSearchIndexData, searchIndexDetails]
-  );
-
-  const fieldsTab = useMemo(
-    () => (
-      <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
-          <div className="d-flex flex-col gap-4">
-            <DescriptionV1
-              description={searchIndexDetails?.description}
-              entityFqn={decodedSearchIndexFQN}
-              entityName={entityName}
-              entityType={EntityType.SEARCH_INDEX}
-              hasEditAccess={editDescriptionPermission}
-              isEdit={isEdit}
-              owner={searchIndexDetails?.owner}
-              showActions={!searchIndexDetails?.deleted}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <SearchIndexFieldsTab
-              entityFqn={decodedSearchIndexFQN}
-              fields={searchIndexDetails?.fields ?? []}
-              hasDescriptionEditAccess={editDescriptionPermission}
-              hasTagEditAccess={editTagsPermission}
-              isReadOnly={searchIndexDetails?.deleted}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onFieldsUpdate}
-            />
-          </div>
-        </Col>
-        <Col
-          className="entity-tag-right-panel-container"
-          data-testid="entity-right-panel"
-          flex="320px">
-          <EntityRightPanel
-            dataProducts={searchIndexDetails?.dataProducts ?? []}
-            domain={searchIndexDetails?.domain}
-            editTagPermission={editTagsPermission}
-            entityFQN={decodedSearchIndexFQN}
-            entityId={searchIndexDetails?.id ?? ''}
-            entityType={EntityType.SEARCH_INDEX}
-            selectedTags={searchIndexTags}
-            onTagSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        </Col>
-      </Row>
-    ),
-    [
-      isEdit,
-      searchIndexDetails,
-      onDescriptionEdit,
-      onDescriptionUpdate,
-      editTagsPermission,
-      editDescriptionPermission,
-    ]
   );
 
   const tabs = useMemo(() => {
@@ -419,7 +363,57 @@ function SearchIndexDetailsPage() {
           <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         key: EntityTabs.FIELDS,
-        children: fieldsTab,
+        children: (
+          <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
+            <Col
+              className="p-t-sm m-l-lg tab-content-height p-r-lg"
+              flex="auto">
+              <div className="d-flex flex-col gap-4">
+                <DescriptionV1
+                  description={searchIndexDetails?.description}
+                  entityFqn={decodedSearchIndexFQN}
+                  entityName={entityName}
+                  entityType={EntityType.SEARCH_INDEX}
+                  hasEditAccess={editDescriptionPermission}
+                  isEdit={isEdit}
+                  owner={searchIndexDetails?.owner}
+                  showActions={!searchIndexDetails?.deleted}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+                <SearchIndexFieldsTab
+                  entityFqn={decodedSearchIndexFQN}
+                  fields={searchIndexDetails?.fields ?? []}
+                  hasDescriptionEditAccess={editDescriptionPermission}
+                  hasTagEditAccess={editTagsPermission}
+                  isReadOnly={searchIndexDetails?.deleted}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                  onUpdate={onFieldsUpdate}
+                />
+              </div>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="320px">
+              <EntityRightPanel
+                customProperties={searchIndexDetails}
+                dataProducts={searchIndexDetails?.dataProducts ?? []}
+                domain={searchIndexDetails?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedSearchIndexFQN}
+                entityId={searchIndexDetails?.id ?? ''}
+                entityType={EntityType.SEARCH_INDEX}
+                selectedTags={searchIndexTags}
+                viewAllPermission={viewAllPermission}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+            </Col>
+          </Row>
+        ),
       },
       {
         label: (
@@ -501,6 +495,7 @@ function SearchIndexDetailsPage() {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={searchIndexDetails}
             entityType={EntityType.SEARCH_INDEX}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
@@ -512,7 +507,6 @@ function SearchIndexDetailsPage() {
 
     return allTabs;
   }, [
-    fieldsTab,
     activeTab,
     searchIndexDetails,
     feedCount,
@@ -523,6 +517,13 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    isEdit,
+    searchIndexDetails,
+    searchIndexDetails?.extension,
+    onDescriptionEdit,
+    onDescriptionUpdate,
+    editTagsPermission,
+    editDescriptionPermission,
   ]);
 
   const onTierUpdate = useCallback(
@@ -748,7 +749,6 @@ function SearchIndexDetailsPage() {
 
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.FIELDS}
             className="entity-details-page-tabs"
             data-testid="tabs"

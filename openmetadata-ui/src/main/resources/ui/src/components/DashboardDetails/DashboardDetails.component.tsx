@@ -621,6 +621,7 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -628,6 +629,7 @@ const DashboardDetails = ({
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -678,6 +680,7 @@ const DashboardDetails = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
+            entityDetails={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
