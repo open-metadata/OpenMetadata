@@ -42,9 +42,9 @@ import {
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import './test-case-issue-tab.style.less';
+import './test-case-incident-tab.style.less';
 
-const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
+const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
@@ -201,4 +201,4 @@ const TestCaseIssueTab = ({ owner }: { owner?: EntityReference }) => {
   );
 };
 
-export default TestCaseIssueTab;
+export default TestCaseIncidentTab;

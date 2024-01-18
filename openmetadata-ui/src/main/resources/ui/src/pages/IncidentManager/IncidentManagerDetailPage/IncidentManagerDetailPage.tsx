@@ -24,7 +24,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import IncidentManagerPageHeader from '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
-import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
+import TestCaseIncidentTab from '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -106,7 +106,7 @@ const IncidentManagerDetailPage = () => {
           />
         ),
         key: IncidentManagerTabs.ISSUES,
-        children: <TestCaseIssueTab owner={testCaseData.data?.owner} />,
+        children: <TestCaseIncidentTab owner={testCaseData.data?.owner} />,
       },
     ],
     [testCaseData, taskCount]

@@ -121,8 +121,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>TestCaseResultTab</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component',
-  () => jest.fn().mockImplementation(() => <div>TestCaseIssueTab</div>)
+  '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
+  () => jest.fn().mockImplementation(() => <div>TestCaseIncidentTab</div>)
 );
 jest.mock(
   '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
