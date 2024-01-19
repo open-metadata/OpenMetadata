@@ -36,6 +36,7 @@ import {
 } from 'reactflow';
 import {
   ELEMENT_DELETE_STATE,
+  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -112,6 +113,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
   );
+  const [activeNode, setActiveNode] = useState<Node>();
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
@@ -213,6 +215,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           }, // load only one level of child nodes
           queryFilter
         );
+
+        const activeNode = nodes.find((n) => n.id === node.id);
+        if (activeNode) {
+          setActiveNode(activeNode);
+        }
 
         const allNodes = uniqWith(
           [...(entityLineage?.nodes ?? []), ...(res.nodes ?? []), res.entity],
@@ -472,6 +479,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     (node: Node) => {
       if (node) {
         setSelectedEdge(undefined);
+        setActiveNode(node);
         setSelectedNode(node.data.node as SourceType);
         setIsDrawerOpen(true);
         handleLineageTracing(node);
@@ -484,26 +492,26 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsDrawerOpen(false);
     setTracedNodes([]);
     setTracedColumns([]);
+    setActiveNode(undefined);
     setSelectedNode({} as SourceType);
   }, []);
 
   const onEdgeClick = useCallback((edge: Edge) => {
     setSelectedEdge(edge);
+    setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
   }, []);
 
   const onLineageEditClick = useCallback(() => {
     setIsEditMode((pre) => !pre);
+    setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(false);
   }, []);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
-    setTimeout(() => {
-      onLoad(reactFlowInstance);
-    }, 500);
-
+    onLoad(reactFlowInstance);
     setReactFlowInstance(reactFlowInstance);
   };
 
@@ -839,6 +847,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges, entityLineage]
   );
 
+  const selectNode = (node: Node) => {
+    const { position } = node;
+    // moving selected node in center
+    reactFlowInstance &&
+      reactFlowInstance.setCenter(position.x, position.y, {
+        duration: ZOOM_TRANSITION_DURATION,
+        zoom: zoomValue,
+      });
+  };
+
   const redrawLineage = useCallback(
     (lineageData: EntityLineageReponse) => {
       const allNodes = uniqWith(
@@ -861,8 +879,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         decodedFqn
       );
       setUpstreamDownstreamData(data);
+
+      if (activeNode) {
+        selectNode(activeNode);
+      }
     },
-    [decodedFqn]
+    [decodedFqn, activeNode]
   );
 
   useEffect(() => {

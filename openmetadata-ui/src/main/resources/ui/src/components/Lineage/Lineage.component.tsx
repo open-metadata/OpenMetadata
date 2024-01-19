@@ -128,6 +128,7 @@ const Lineage = ({
         )}
         <ReactFlowProvider>
           <ReactFlow
+            onlyRenderVisibleElements
             className="custom-react-flow"
             data-testid="react-flow-component"
             edgeTypes={customEdges}
