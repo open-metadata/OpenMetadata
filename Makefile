@@ -102,12 +102,19 @@ snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies
 	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
 	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
+.PHONY: snyk-ingestion-base-slim-report
+snyk-ingestion-base-slim-report:
+	@echo "Validating Ingestion Slim Container"
+	docker build -t openmetadata-ingestion-base-slim:scan -f ingestion/operators/docker/Dockerfile --build-arg INGESTION_DEPENDENCY=slim .
+	snyk container test openmetadata-ingestion-base-slim:scan --file=ingestion/operators/docker/Dockerfile $(SNYK_ARGS) --json > security-report/ingestion-docker-base-slim-scan.json | true;
+
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
 	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
 	rm -rf security-report
 	mkdir -p security-report
 	$(MAKE) snyk-ingestion-report
+	$(MAKE) snyk-ingestion-base-slim-report
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
