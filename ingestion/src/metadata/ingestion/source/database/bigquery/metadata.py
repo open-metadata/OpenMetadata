@@ -89,11 +89,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
-from metadata.utils.tag_utils import (
-    get_ometa_tag_and_classification,
-    get_tag_label,
-    get_tag_labels,
-)
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
+from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
@@ -296,6 +293,7 @@ class BigquerySource(
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
                         classification_description="",
+                        include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database]
@@ -315,6 +313,7 @@ class BigquerySource(
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
                         classification_description="",
+                        include_tags=self.source_config.includeTags,
                     )
         except Exception as exc:
             yield Either(
@@ -370,16 +369,16 @@ class BigquerySource(
         )
 
         dataset_obj = self.client.get_dataset(schema_name)
-        if dataset_obj.labels:
+        if dataset_obj.labels and self.source_config.includeTags:
             database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags.append(
-                    get_tag_label(
-                        metadata=self.metadata,
-                        tag_name=label_tag_name,
-                        classification_name=label_classification,
-                    )
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
+                    tag_name=label_tag_name,
+                    classification_name=label_classification,
                 )
+                if tag_label:
+                    database_schema_request_obj.tags.append(tag_label)
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
@@ -398,6 +397,7 @@ class BigquerySource(
                     classification_name=key,
                     tag_description="Bigquery Table Label",
                     classification_description="",
+                    include_tags=self.source_config.includeTags,
                 )
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
@@ -426,7 +426,7 @@ class BigquerySource(
         is properly informed
         """
         if column.get("policy_tags"):
-            return get_tag_labels(
+            return fetch_tag_labels_om(
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
