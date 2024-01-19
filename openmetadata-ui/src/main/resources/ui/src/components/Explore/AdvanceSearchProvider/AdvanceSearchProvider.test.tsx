@@ -80,10 +80,15 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const Children = () => {
-  const { toggleModal } = useAdvanceSearch();
+  const { toggleModal, onResetAllFilters } = useAdvanceSearch();
 
   return (
-    <button onClick={() => toggleModal(true)}>Open AdvanceSearch Modal</button>
+    <>
+      <button onClick={() => toggleModal(true)}>
+        Open AdvanceSearch Modal
+      </button>
+      <button onClick={onResetAllFilters}>Reset All Filters</button>
+    </>
   );
 };
 
@@ -124,5 +129,15 @@ describe('AdvanceSearchProvider component', () => {
     userEvent.click(screen.getByText('Open AdvanceSearch Modal'));
 
     expect(screen.getByText('AdvanceSearchModal Open')).toBeInTheDocument();
+  });
+
+  it('onResetAllFilters call mockPush should be called', async () => {
+    await act(async () => {
+      render(<ComponentWithProvider />);
+    });
+
+    userEvent.click(screen.getByText('Reset All Filters'));
+
+    expect(mockPush).toHaveBeenCalled();
   });
 });
