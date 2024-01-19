@@ -55,9 +55,7 @@ class ProfilerProcessor(Processor):
         )
 
         try:
-            profile: ProfilerResponse = profiler_runner.process(
-                self.source_config.generateSampleData,
-            )
+            profile: ProfilerResponse = profiler_runner.process()
         except Exception as exc:
             self.status.failed(
                 StackTraceError(
