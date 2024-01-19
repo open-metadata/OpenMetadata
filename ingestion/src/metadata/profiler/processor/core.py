@@ -53,6 +53,7 @@ from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -521,24 +522,28 @@ class Profiler(Generic[TMetric]):
     def process(
         self,
         generate_sample_data: Optional[bool],
+        compute_metrics: Optional[bool],
     ) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
         in a Dict in the shape {col_name: Profiler}
         """
-        logger.debug(
-            f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-        )
 
-        self.compute_metrics()
+        if compute_metrics:
+            logger.debug(
+                f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+            )
+            self.compute_metrics()
+
         if generate_sample_data:
             sample_data = self.generate_sample_data()
         else:
             sample_data = None
 
         profile = self.get_profile()
-        self._check_profile_and_handle(profile)
+        if compute_metrics:
+            self._check_profile_and_handle(profile)
 
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
@@ -548,6 +553,7 @@ class Profiler(Generic[TMetric]):
 
         return table_profile
 
+    @calculate_execution_time
     def generate_sample_data(self) -> Optional[TableData]:
         """Fetch and ingest sample data
 

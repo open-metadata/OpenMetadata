@@ -60,6 +60,7 @@ class ProfilerProcessor(Processor):
         try:
             profile: ProfilerResponse = profiler_runner.process(
                 self.source_config.generateSampleData,
+                self.source_config.computeMetrics,
             )
         except Exception as exc:
             self.status.failed(
