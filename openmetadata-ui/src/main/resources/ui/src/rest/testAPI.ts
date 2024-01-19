@@ -84,7 +84,7 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/${fqn}/testCaseResult`;
+  const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
@@ -236,7 +236,7 @@ export const getTestSuiteByName = async (
   params?: ListTestCaseParams
 ) => {
   const response = await APIClient.get<TestSuite>(
-    `${testSuiteUrl}/name/${name}`,
+    `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
     { params }
   );
 
@@ -281,7 +281,7 @@ export const patchTestCaseResult = async ({
     headers: { 'Content-type': 'application/json-patch+json' },
   };
   const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
-    `${testCaseUrl}/${testCaseFqn}/testCaseResult/${timestamp}`,
+    `${testCaseUrl}/${getEncodedFqn(testCaseFqn)}/testCaseResult/${timestamp}`,
     patch,
     configOptions
   );

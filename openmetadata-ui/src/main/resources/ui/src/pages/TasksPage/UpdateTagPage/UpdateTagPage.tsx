@@ -36,6 +36,7 @@ import {
 import { Chart } from '../../../generated/entity/data/chart';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
@@ -43,7 +44,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -65,8 +65,9 @@ const UpdateTag = () => {
   const [form] = useForm();
   const { currentUser } = useAuthContext();
 
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -96,8 +97,6 @@ const UpdateTag = () => {
       }),
     [value, entityType, field, entityData]
   );
-
-  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const back = () => history.goBack();
 
@@ -140,7 +139,7 @@ const UpdateTag = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -162,7 +161,7 @@ const UpdateTag = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

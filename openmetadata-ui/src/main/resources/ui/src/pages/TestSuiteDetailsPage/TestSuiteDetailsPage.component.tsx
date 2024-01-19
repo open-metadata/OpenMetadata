@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
 import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -43,6 +43,7 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import {
   addTestCaseToLogicalTestSuite,
@@ -63,7 +64,7 @@ import './test-suite-details-page.styles.less';
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: testSuiteFQN } = useParams<{ fqn: string }>();
+  const { fqn: testSuiteFQN } = useFqn();
   const { isAdminUser } = useAuth();
   const history = useHistory();
 

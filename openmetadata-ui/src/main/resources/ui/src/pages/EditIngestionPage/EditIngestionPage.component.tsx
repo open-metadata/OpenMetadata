@@ -40,6 +40,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
   deployIngestionPipelineById,
@@ -59,17 +60,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const EditIngestionPage = () => {
   const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
-  const {
-    ingestionFQN,
-    ingestionType,
-    fqn: serviceFQN,
-    serviceCategory,
-  } = useParams<{
-    ingestionFQN: string;
+  const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
-    fqn: string;
     serviceCategory: string;
   }>();
+  const { fqn: serviceFQN, ingestionFQN } = useFqn();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(

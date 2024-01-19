@@ -68,6 +68,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -84,7 +85,6 @@ import {
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -108,12 +108,9 @@ const DomainDetailsPage = ({
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const {
-    fqn,
-    tab: activeTab,
-    version,
-  } = useParams<{ fqn: string; tab: string; version: string }>();
-  const domainFqn = fqn ? getDecodedFqn(fqn) : '';
+  const { tab: activeTab, version } =
+    useParams<{ tab: string; version: string }>();
+  const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -201,11 +198,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
-          getDataProductsDetailsPath(
-            getEncodedFqn(res.fullyQualifiedName ?? '')
-          )
-        );
+        history.push(getDataProductsDetailsPath(res.fullyQualifiedName ?? ''));
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -229,10 +222,7 @@ const DomainDetailsPage = ({
   const handleVersionClick = async () => {
     const path = isVersionsView
       ? getDomainPath(domainFqn)
-      : getDomainVersionsPath(
-          getEncodedFqn(domainFqn),
-          toString(domain.version)
-        );
+      : getDomainVersionsPath(domainFqn, toString(domain.version));
 
     history.push(path);
   };
@@ -261,7 +251,7 @@ const DomainDetailsPage = ({
   };
 
   const fetchDomainAssets = async () => {
-    if (fqn && !isVersionsView) {
+    if (domainFqn && !isVersionsView) {
       try {
         const encodedFqn = getEncodedFqn(
           escapeESReservedCharacters(domain.fullyQualifiedName)
@@ -301,7 +291,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(getEncodedFqn(domainFqn), activeKey));
+      history.push(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 

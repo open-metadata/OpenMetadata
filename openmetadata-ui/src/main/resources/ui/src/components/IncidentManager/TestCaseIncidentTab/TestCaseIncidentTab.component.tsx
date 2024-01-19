@@ -21,7 +21,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -33,7 +32,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import { useFqn } from '../../../hooks/useFqn';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import {
@@ -46,8 +45,8 @@ import './test-case-incident-tab.style.less';
 
 const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
-  const decodedFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn } = useFqn();
+
   const {
     selectedThread,
     setActiveThread,
@@ -77,10 +76,10 @@ const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
   );
 
   useEffect(() => {
-    if (fqn && isInView && entityPaging.after && !loading) {
+    if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, fqn]);
+  }, [entityPaging, loading, isInView, decodedFqn]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
