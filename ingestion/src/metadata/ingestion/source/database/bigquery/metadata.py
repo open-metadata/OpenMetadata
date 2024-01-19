@@ -557,13 +557,14 @@ class BigquerySource(
                 skip_es_search=True,
             )
             table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            yield from self.get_life_cycle_data(
-                entity=table,
-                query=BIGQUERY_LIFE_CYCLE_QUERY.format(
-                    database_name=table.database.name,
-                    schema_name=table.databaseSchema.name,
-                ),
-            )
+            if table:
+                yield from self.get_life_cycle_data(
+                    entity=table,
+                    query=BIGQUERY_LIFE_CYCLE_QUERY.format(
+                        database_name=table.database.name,
+                        schema_name=table.databaseSchema.name,
+                    ),
+                )
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
