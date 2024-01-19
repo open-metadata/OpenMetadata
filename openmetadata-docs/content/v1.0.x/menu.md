@@ -666,9 +666,6 @@ site_menu:
   - category: Features / Discovery & Collaboration
     url: /features/discovery-collaboration
 
-  - category: Features / Teams & Users
-    url: /features/users
-
   - category: Features / Integrations
     url: /features/integrations
   - category: Features / Integrations / Great Expectations
