@@ -36,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   GlobalSettingOptions,
@@ -67,6 +66,7 @@ import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getFunctionDisplayName,
+  listLengthValidator,
   StyledCard,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -197,7 +197,7 @@ const AddAlertPage = () => {
           ...(filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
-        alertType: AlertType.ChangeEvent,
+        alertType: AlertType.Notification,
         provider,
       });
 
@@ -424,10 +424,10 @@ const AddAlertPage = () => {
               {sendToCommonFields}
             </>
           );
-        case SubscriptionType.GenericWebhook:
-        case SubscriptionType.SlackWebhook:
-        case SubscriptionType.MSTeamsWebhook:
-        case SubscriptionType.GChatWebhook:
+        case SubscriptionType.Generic:
+        case SubscriptionType.Slack:
+        case SubscriptionType.MSTeams:
+        case SubscriptionType.GChat:
           return (
             <>
               <Form.Item required name={['subscriptionConfig', 'endpoint']}>
@@ -482,240 +482,240 @@ const AddAlertPage = () => {
   }, [subscriptionType]);
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.add-entity', {
-        entity: t('label.alert-plural'),
-      })}>
-      <Row className="page-container" gutter={[16, 16]}>
-        <Col span={24}>
-          <Typography.Title level={5}>
-            {!isEmpty(fqn)
-              ? t('label.edit-entity', { entity: t('label.alert-plural') })
-              : t('label.create-entity', { entity: t('label.alert-plural') })}
-          </Typography.Title>
-          <Typography.Text>{t('message.alerts-description')}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Form<EventSubscription>
-            className="alerts-notification-form"
-            form={form}
-            onFinish={handleSave}
-            onValuesChange={handleChange}>
-            {loadingCount > 0 ? (
-              <Skeleton title paragraph={{ rows: 8 }} />
-            ) : (
-              <>
-                <Form.Item
-                  label={t('label.name')}
-                  labelCol={{ span: 24 }}
-                  name="name"
-                  rules={[
-                    { required: true },
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
-                  <Input disabled={isEditMode} placeholder={t('label.name')} />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.description')}
-                  labelCol={{ span: 24 }}
-                  name="description"
-                  trigger="onTextChange"
-                  valuePropName="initialValue">
-                  <RichTextEditor
-                    data-testid="description"
-                    height="200px"
-                    initialValue=""
-                  />
-                </Form.Item>
-                <Row gutter={[16, 16]}>
-                  <Col span={8}>
-                    <Space className="w-full" direction="vertical" size={16}>
-                      <StyledCard
-                        heading={t('label.trigger')}
-                        subHeading={t('message.alerts-trigger-description')}
-                      />
-                      <div>
-                        <Form.Item
-                          required
-                          initialValue={['all']}
-                          messageVariables={{
-                            fieldName: t('label.data-asset-plural'),
-                          }}
-                          name={['filteringRules', 'resources']}>
-                          <TreeSelect
-                            treeCheckable
-                            className="w-full"
-                            data-testid="triggerConfig-type"
-                            placeholder={t('label.select-field', {
-                              field: t('label.data-asset-plural'),
-                            })}
-                            showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                            treeData={resourcesOptions}
-                          />
-                        </Form.Item>
-                      </div>
-                    </Space>
-                  </Col>
-                  <Col span={8}>
-                    <Space className="w-full" direction="vertical" size={16}>
-                      <StyledCard
-                        heading={t('label.filter-plural')}
-                        subHeading={t('message.alerts-filter-description')}
-                      />
-
-                      <Form.List name={['filteringRules', 'rules']}>
-                        {(fields, { add, remove }, { errors }) => (
-                          <>
-                            <Button
-                              block
-                              data-testid="add-filters"
-                              icon={<PlusOutlined />}
-                              type="default"
-                              onClick={() => add({}, 0)}>
-                              {t('label.add-entity', {
-                                entity: t('label.filter-plural'),
-                              })}
-                            </Button>
-                            {fields.map(({ key, name }) => (
-                              <div key={`filteringRules-${key}`}>
-                                {name > 0 && (
-                                  <Divider
-                                    style={{
-                                      margin: 0,
-                                      marginBottom: '16px',
-                                    }}
-                                  />
-                                )}
-                                <Row>
-                                  <Col span={22}>
-                                    <div className="flex-1">
-                                      <Form.Item
-                                        key={key}
-                                        name={[name, 'name']}>
-                                        <Select
-                                          options={functions}
-                                          placeholder={t('label.select-field', {
-                                            field: t('label.condition'),
-                                          })}
-                                        />
-                                      </Form.Item>
-                                      {filters &&
-                                        filters[name] &&
-                                        getConditionField(
-                                          filters[name].name ?? '',
-                                          name
-                                        )}
-
-                                      <Form.Item
-                                        initialValue={Effect.Include}
-                                        key={key}
-                                        name={[name, 'effect']}>
-                                        <Select
-                                          options={map(
-                                            Effect,
-                                            (func: string) => ({
-                                              label: startCase(func),
-                                              value: func,
-                                            })
-                                          )}
-                                          placeholder={t('label.select-field', {
-                                            field: t('label.effect'),
-                                          })}
-                                        />
-                                      </Form.Item>
-                                    </div>
-                                  </Col>
-                                  <Col span={2}>
-                                    <Button
-                                      data-testid={`remove-filter-rule-${name}`}
-                                      icon={
-                                        <SVGIcons
-                                          alt={t('label.delete')}
-                                          className="w-4"
-                                          icon={Icons.DELETE}
-                                        />
-                                      }
-                                      type="text"
-                                      onClick={() => remove(name)}
-                                    />
-                                  </Col>
-                                </Row>
-                              </div>
-                            ))}
-                            <Form.ErrorList errors={errors} />
-                          </>
-                        )}
-                      </Form.List>
-                    </Space>
-                  </Col>
-                  <Col span={8}>
-                    <Space className="w-full" direction="vertical" size={16}>
-                      <StyledCard
-                        heading={t('label.destination')}
-                        subHeading={t('message.alerts-destination-description')}
-                      />
+    <Row gutter={[16, 16]}>
+      <Col span={24}>
+        <Typography.Title level={5}>
+          {!isEmpty(fqn)
+            ? t('label.edit-entity', { entity: t('label.alert-plural') })
+            : t('label.create-entity', { entity: t('label.alert-plural') })}
+        </Typography.Title>
+        <Typography.Text>{t('message.alerts-description')}</Typography.Text>
+      </Col>
+      <Col span={24}>
+        <Form<EventSubscription>
+          className="alerts-notification-form"
+          form={form}
+          onFinish={handleSave}
+          onValuesChange={handleChange}>
+          {loadingCount > 0 ? (
+            <Skeleton title paragraph={{ rows: 8 }} />
+          ) : (
+            <>
+              <Form.Item
+                label={t('label.name')}
+                labelCol={{ span: 24 }}
+                name="name"
+                rules={[
+                  { required: true },
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                ]}>
+                <Input disabled={isEditMode} placeholder={t('label.name')} />
+              </Form.Item>
+              <Form.Item
+                label={t('label.description')}
+                labelCol={{ span: 24 }}
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
+                <RichTextEditor
+                  data-testid="description"
+                  height="200px"
+                  initialValue=""
+                />
+              </Form.Item>
+              <Row gutter={[16, 16]}>
+                <Col span={8}>
+                  <Space className="w-full" direction="vertical" size={16}>
+                    <StyledCard
+                      heading={t('label.trigger')}
+                      subHeading={t('message.alerts-trigger-description')}
+                    />
+                    <div>
                       <Form.Item
                         required
-                        name="subscriptionType"
-                        rules={[
-                          {
-                            required: true,
-                            message: t('label.field-required', {
-                              field: t('label.destination'),
-                            }),
-                          },
-                        ]}>
-                        <Select
-                          data-testid="alert-action-type"
-                          disabled={provider === ProviderType.System}
+                        initialValue={['all']}
+                        messageVariables={{
+                          fieldName: t('label.data-asset-plural'),
+                        }}
+                        name={['filteringRules', 'resources']}>
+                        <TreeSelect
+                          treeCheckable
+                          className="w-full"
+                          data-testid="triggerConfig-type"
                           placeholder={t('label.select-field', {
-                            field: t('label.source'),
+                            field: t('label.data-asset-plural'),
                           })}
-                          showSearch={false}>
-                          {map(SubscriptionType, (value) => {
-                            return [
-                              SubscriptionType.ActivityFeed,
-                              SubscriptionType.DataInsight,
-                            ].includes(value) ? null : (
-                              <Select.Option key={value} value={value}>
-                                <Space size={16}>
-                                  {getAlertsActionTypeIcon(
-                                    value as SubscriptionType
-                                  )}
-                                  {getAlertActionTypeDisplayName(value)}
-                                </Space>
-                              </Select.Option>
-                            );
-                          })}
-                        </Select>
+                          showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                          treeData={resourcesOptions}
+                        />
                       </Form.Item>
-                      {getDestinationConfigFields()}
-                    </Space>
-                  </Col>
-                  <Col className="footer" span={24}>
-                    <Button onClick={() => history.goBack()}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      data-testid="save"
-                      htmlType="submit"
-                      loading={isButtonLoading}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Col>
-                </Row>
-              </>
-            )}
-          </Form>
-        </Col>
-        <Col span={24} />
-        <Col span={24} />
-      </Row>
-    </PageLayoutV1>
+                    </div>
+                  </Space>
+                </Col>
+                <Col span={8}>
+                  <Space className="w-full" direction="vertical" size={16}>
+                    <StyledCard
+                      heading={t('label.filter-plural')}
+                      subHeading={t('message.alerts-filter-description')}
+                    />
+
+                    <Form.List
+                      name={['filteringRules', 'rules']}
+                      rules={[
+                        {
+                          validator: listLengthValidator(
+                            t('label.filter-plural')
+                          ),
+                        },
+                      ]}>
+                      {(fields, { add, remove }, { errors }) => (
+                        <>
+                          <Button
+                            block
+                            data-testid="add-filters"
+                            icon={<PlusOutlined />}
+                            type="default"
+                            onClick={() => add({}, 0)}>
+                            {t('label.add-entity', {
+                              entity: t('label.filter-plural'),
+                            })}
+                          </Button>
+                          {fields.map(({ key, name }) => (
+                            <div key={`filteringRules-${key}`}>
+                              {name > 0 && (
+                                <Divider
+                                  style={{
+                                    margin: 0,
+                                    marginBottom: '16px',
+                                  }}
+                                />
+                              )}
+                              <Row>
+                                <Col span={22}>
+                                  <div className="flex-1">
+                                    <Form.Item key={key} name={[name, 'name']}>
+                                      <Select
+                                        options={functions}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.condition'),
+                                        })}
+                                      />
+                                    </Form.Item>
+                                    {filters &&
+                                      filters[name] &&
+                                      getConditionField(
+                                        filters[name].name ?? '',
+                                        name
+                                      )}
+
+                                    <Form.Item
+                                      initialValue={Effect.Include}
+                                      key={key}
+                                      name={[name, 'effect']}>
+                                      <Select
+                                        options={map(
+                                          Effect,
+                                          (func: string) => ({
+                                            label: startCase(func),
+                                            value: func,
+                                          })
+                                        )}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.effect'),
+                                        })}
+                                      />
+                                    </Form.Item>
+                                  </div>
+                                </Col>
+                                <Col span={2}>
+                                  <Button
+                                    data-testid={`remove-filter-rule-${name}`}
+                                    icon={
+                                      <SVGIcons
+                                        alt={t('label.delete')}
+                                        className="w-4"
+                                        icon={Icons.DELETE}
+                                      />
+                                    }
+                                    type="text"
+                                    onClick={() => remove(name)}
+                                  />
+                                </Col>
+                              </Row>
+                            </div>
+                          ))}
+                          <Form.ErrorList errors={errors} />
+                        </>
+                      )}
+                    </Form.List>
+                  </Space>
+                </Col>
+                <Col span={8}>
+                  <Space className="w-full" direction="vertical" size={16}>
+                    <StyledCard
+                      heading={t('label.destination')}
+                      subHeading={t('message.alerts-destination-description')}
+                    />
+                    <Form.Item
+                      required
+                      name="subscriptionType"
+                      rules={[
+                        {
+                          required: true,
+                          message: t('label.field-required', {
+                            field: t('label.destination'),
+                          }),
+                        },
+                      ]}>
+                      <Select
+                        data-testid="alert-action-type"
+                        disabled={provider === ProviderType.System}
+                        placeholder={t('label.select-field', {
+                          field: t('label.source'),
+                        })}
+                        showSearch={false}>
+                        {map(SubscriptionType, (value) => {
+                          return [SubscriptionType.ActivityFeed].includes(
+                            value
+                          ) ? null : (
+                            <Select.Option key={value} value={value}>
+                              <Space size={16}>
+                                {getAlertsActionTypeIcon(
+                                  value as SubscriptionType
+                                )}
+                                {getAlertActionTypeDisplayName(value)}
+                              </Space>
+                            </Select.Option>
+                          );
+                        })}
+                      </Select>
+                    </Form.Item>
+                    {getDestinationConfigFields()}
+                  </Space>
+                </Col>
+                <Col className="footer" span={24}>
+                  <Button onClick={() => history.goBack()}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="save"
+                    htmlType="submit"
+                    loading={isButtonLoading}
+                    type="primary">
+                    {t('label.save')}
+                  </Button>
+                </Col>
+              </Row>
+            </>
+          )}
+        </Form>
+      </Col>
+      <Col span={24} />
+      <Col span={24} />
+    </Row>
   );
 };
 

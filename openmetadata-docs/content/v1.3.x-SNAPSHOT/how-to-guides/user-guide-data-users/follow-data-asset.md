@@ -5,7 +5,7 @@ slug: /how-to-guides/guide-for-data-users/follow-data-asset
 
 # How to Follow a Data Asset
 
-Users can get timely information about all the **activities**, **announcements**, and **feeds** related to a data asset by following those assets. The owners of the data assets will receive all the updates by default. The follow option can be used for the assets that you do not own. Data asset owners have more access to edit the assets, whereas followers can only **rate** the data assets, and not edit them.
+Users can get timely information about all the **activities**, **announcements**, and **feeds** related to a data asset by following those assets. The owners of the data assets will receive all the updates by default. The follow option can be used for the assets that you do not own.
 
 To follow a data asset, 
 - Navigate to the **Explore** page.
@@ -26,7 +26,7 @@ alt="Star the Data Asset"
 caption="Star the Data Asset"
 /%}
 
-The data assets you are following will be displayed in the ‘My Data’ page on the right-hand side.
+The data assets you are following will be displayed in the **Following** section in **My Data** page.
 
 {% image
 src="/images/v1.3/how-to-guides/user-guide-for-data-stewards/data6.png"
@@ -41,6 +41,15 @@ src="/images/v1.3/how-to-guides/user-guide-for-data-stewards/profile1.png"
 alt="Profile Page: Following Tab"
 caption="Profile Page: Following Tab"
 /%}
+
+The Activity Feeds tab displays all the activities related to the data assets that you own, follow, or where you are mentioned.
+
+{% image
+src="/images/v1.3/how-to-guides/user-guide-for-data-stewards/activity.png"
+alt="Activity Feeds Tab"
+caption="Activity Feeds Tab"
+/%}
+
 
 {%inlineCallout
   color="violet-70"

@@ -65,7 +65,3 @@ With the Announcements feature, you can now inform your entire team of all the u
 Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page. 
 
 {% image src="/images/v1.0/features/discovery-collaboration/announcement-reply.png" alt="announcement-reply" /%}
-
-## Glossaries
-
-## Tags
